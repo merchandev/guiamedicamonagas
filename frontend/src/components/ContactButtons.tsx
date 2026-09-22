@@ -34,20 +34,6 @@ export function PhoneButton({ professionalId, phone }: { professionalId: string;
   );
 }
 
-export function WebsiteButton({ professionalId, website }: { professionalId: string; website: string }) {
-  return (
-    <a
-      href={website}
-      target="_blank"
-      rel="noopener noreferrer"
-      onClick={() => track('WEBSITE_CLICK', professionalId)}
-      className="flex items-center justify-center gap-2 rounded-lg border border-ink-200 bg-white px-4 py-3 text-sm font-semibold text-ink-800 hover:bg-ink-50"
-    >
-      Visitar sitio web
-    </a>
-  );
-}
-
 export function trackProfileView(professionalId: string) {
   track('PROFILE_VIEW', professionalId);
 }

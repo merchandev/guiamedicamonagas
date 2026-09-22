@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { ProfessionalListItem } from '@/lib/types';
-import { Badge } from '@/components/ui/Badge';
+import { VerificationBadge } from '@/components/VerificationBadge';
 import { cn } from '@/lib/cn';
 
 export function DoctorCard({ doctor }: { doctor: ProfessionalListItem }) {
@@ -38,7 +38,7 @@ export function DoctorCard({ doctor }: { doctor: ProfessionalListItem }) {
             <h3 className="truncate font-semibold text-ink-900">
               Dr(a). {doctor.firstName} {doctor.lastName}
             </h3>
-            <Badge tone="pine" className="flex-shrink-0">Verificado</Badge>
+            <VerificationBadge kind="doctor" tier={doctor.planTier} />
           </div>
           <p className="mt-0.5 truncate text-sm text-ink-600">
             {doctor.specialties.map((s) => s.specialty.name).join(', ') || 'Medicina General'}

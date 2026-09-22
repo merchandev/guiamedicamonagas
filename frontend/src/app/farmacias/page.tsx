@@ -4,6 +4,8 @@ import { serverGet } from '@/lib/server-fetch';
 import { Organization } from '@/lib/types';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Badge } from '@/components/ui/Badge';
+import { VerificationBadge } from '@/components/VerificationBadge';
+import { SocialLinksRow } from '@/components/SocialLinksRow';
 
 export const metadata: Metadata = {
   title: 'Farmacias, laboratorios y clínicas',
@@ -60,7 +62,10 @@ export default async function FarmaciasPage({
           {organizations.map((org) => (
             <div key={org.id} className="card p-5">
               <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-ink-900">{org.name}</h3>
+                <div className="flex items-center gap-1.5">
+                  <h3 className="font-semibold text-ink-900">{org.name}</h3>
+                  <VerificationBadge kind="organization" type={org.type} />
+                </div>
                 <Badge tone="neutral">{TYPE_LABELS[org.type]}</Badge>
               </div>
               {org.description && <p className="mt-2 text-sm text-ink-600">{org.description}</p>}
@@ -72,6 +77,7 @@ export default async function FarmaciasPage({
                   </li>
                 ))}
               </ul>
+              <SocialLinksRow links={org.socialLinks} resourceId={org.id} className="mt-3" />
             </div>
           ))}
         </div>

@@ -5,7 +5,6 @@ import {
   IsLongitude,
   IsOptional,
   IsString,
-  IsUrl,
   Matches,
   MaxLength,
   MinLength,
@@ -57,10 +56,6 @@ export class UpdateProfessionalProfileDto {
   @IsOptional()
   @Matches(/^0(412|414|416|424|426)-?\d{7}$/, { message: 'WhatsApp inválido (ej. 0414-1234567)' })
   whatsapp?: string;
-
-  @IsOptional()
-  @IsUrl()
-  website?: string;
 
   @IsOptional()
   @IsString()

@@ -1,3 +1,5 @@
+import type { SocialLink } from './social';
+
 export interface Specialty {
   id: string;
   slug: string;
@@ -46,7 +48,6 @@ export interface ProfessionalPost {
 
 export interface ProfessionalDetail extends ProfessionalListItem {
   phone: string | null;
-  website: string | null;
   address: string | null;
   latitude: number | null;
   longitude: number | null;
@@ -58,6 +59,7 @@ export interface ProfessionalDetail extends ProfessionalListItem {
   verifiedAt: string | null;
   locations: ProfessionalExtraLocation[];
   posts: ProfessionalPost[];
+  socialLinks: SocialLink[];
 }
 
 export interface PaginatedResult<T> {
@@ -84,8 +86,8 @@ export interface Organization {
   name: string;
   description: string | null;
   logoUrl: string | null;
-  website: string | null;
   locations: OrganizationLocation[];
+  socialLinks: SocialLink[];
 }
 
 export interface SubscriptionPlan {

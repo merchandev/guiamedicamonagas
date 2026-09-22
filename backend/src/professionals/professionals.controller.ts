@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query, Req } from '@nestjs/common';
 import { Role } from '@prisma/client';
 import type { FastifyRequest } from 'fastify';
 import { Public } from '../common/decorators/public.decorator';
@@ -10,6 +10,7 @@ import { StorageService } from '../storage/storage.service';
 import { ProfessionalsService } from './professionals.service';
 import { UpdateProfessionalProfileDto } from './dto/update-professional-profile.dto';
 import { UpsertLocationDto } from './dto/upsert-location.dto';
+import { UpsertSocialLinksDto } from '../common/dto/social-link.dto';
 
 const PHOTO_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const MAX_PHOTO_SIZE = 5 * 1024 * 1024;
@@ -76,6 +77,12 @@ export class ProfessionalsController {
   @Delete('me/locations/:id')
   removeOwnLocation(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
     return this.professionals.removeOwnLocation(user.id, id);
+  }
+
+  @Roles(Role.PROFESSIONAL)
+  @Put('me/social-links')
+  setOwnSocialLinks(@CurrentUser() user: AuthenticatedUser, @Body() dto: UpsertSocialLinksDto) {
+    return this.professionals.setOwnSocialLinks(user.id, dto);
   }
 
   @Roles(Role.ADMIN, Role.SUPERADMIN)

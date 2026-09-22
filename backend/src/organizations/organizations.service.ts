@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { slugify } from '../common/utils/slugify';
+import { assertValidSocialLinks } from '../subscriptions/plan-tiers';
 import { UpsertOrganizationDto } from './dto/upsert-organization.dto';
 
 @Injectable()
@@ -22,19 +23,23 @@ export class OrganizationsService {
         type,
         locations: municipality ? { some: { municipality } } : undefined,
       },
-      include: { locations: true },
+      include: { locations: true, socialLinks: true },
       orderBy: { name: 'asc' },
     });
   }
 
   async findBySlug(slug: string) {
-    const org = await this.prisma.organization.findUnique({ where: { slug }, include: { locations: true } });
+    const org = await this.prisma.organization.findUnique({
+      where: { slug },
+      include: { locations: true, socialLinks: true },
+    });
     if (!org || !org.isPublished) throw new NotFoundException('Organización no encontrada');
     return org;
   }
 
   async create(dto: UpsertOrganizationDto) {
     await this.ensureLocationCount(dto.locations.length);
+    assertValidSocialLinks(dto.socialLinks ?? [], 'ORGANIZATION');
     const slug = slugify(dto.name);
     const exists = await this.prisma.organization.findUnique({ where: { slug } });
     if (exists) throw new ConflictException('Ya existe una organización con ese nombre');
@@ -44,30 +49,32 @@ export class OrganizationsService {
         name: dto.name,
         slug,
         description: dto.description,
-        website: dto.website,
         logoUrl: dto.logoUrl,
         locations: { create: dto.locations },
+        socialLinks: dto.socialLinks?.length ? { create: dto.socialLinks } : undefined,
       },
-      include: { locations: true },
+      include: { locations: true, socialLinks: true },
     });
   }
 
   async update(id: string, dto: UpsertOrganizationDto) {
     await this.ensureExists(id);
     await this.ensureLocationCount(dto.locations.length);
+    assertValidSocialLinks(dto.socialLinks ?? [], 'ORGANIZATION');
     return this.prisma.$transaction(async (tx) => {
       await tx.organizationLocation.deleteMany({ where: { organizationId: id } });
+      await tx.organizationSocialLink.deleteMany({ where: { organizationId: id } });
       return tx.organization.update({
         where: { id },
         data: {
           type: dto.type,
           name: dto.name,
           description: dto.description,
-          website: dto.website,
           logoUrl: dto.logoUrl,
           locations: { create: dto.locations },
+          socialLinks: dto.socialLinks?.length ? { create: dto.socialLinks } : undefined,
         },
-        include: { locations: true },
+        include: { locations: true, socialLinks: true },
       });
     });
   }

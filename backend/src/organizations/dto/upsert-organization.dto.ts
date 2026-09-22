@@ -12,6 +12,7 @@ import {
   MinLength,
   ValidateNested,
 } from 'class-validator';
+import { SocialLinkDto } from '../../common/dto/social-link.dto';
 
 export class OrganizationLocationDto {
   @IsString()
@@ -64,10 +65,6 @@ export class UpsertOrganizationDto {
 
   @IsOptional()
   @IsUrl()
-  website?: string;
-
-  @IsOptional()
-  @IsUrl()
   logoUrl?: string;
 
   @IsArray()
@@ -76,4 +73,11 @@ export class UpsertOrganizationDto {
   @ValidateNested({ each: true })
   @Type(() => OrganizationLocationDto)
   locations!: OrganizationLocationDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(4)
+  @ValidateNested({ each: true })
+  @Type(() => SocialLinkDto)
+  socialLinks?: SocialLinkDto[];
 }

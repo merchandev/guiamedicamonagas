@@ -1,5 +1,23 @@
 import { z } from 'zod';
 
+// Valores que jamás deben aparecer en producción.
+const INSECURE_DEFAULTS = ['password', 'supersecret123', 'dev_master_key', 'change_me', 'CHANGE_ME'];
+
+/** Valida que un string no sea un default inseguro conocido (solo en NODE_ENV=production). */
+function noInsecureDefault(fieldName: string) {
+  return z.string().superRefine((val, ctx) => {
+    if (process.env.NODE_ENV !== 'production') return;
+    for (const forbidden of INSECURE_DEFAULTS) {
+      if (val.toLowerCase().includes(forbidden.toLowerCase())) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `${fieldName} contiene el valor inseguro '${forbidden}'. Genera un secreto real con: openssl rand -base64 48`,
+        });
+      }
+    }
+  });
+}
+
 export const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().default(4000),
@@ -7,18 +25,23 @@ export const envSchema = z.object({
 
   DATABASE_URL: z.string().min(1),
 
-  JWT_SECRET: z.string().min(32),
+  REDIS_URL: z.string().optional(),
+  REDIS_HOST: z.string().optional(),
+  REDIS_PORT: z.coerce.number().default(6379),
+  REDIS_PASSWORD: z.string().optional(),
+
+  JWT_SECRET: z.string().min(32).and(noInsecureDefault('JWT_SECRET')),
   JWT_EXPIRATION: z.string().default('15m'),
-  JWT_REFRESH_SECRET: z.string().min(32),
+  JWT_REFRESH_SECRET: z.string().min(32).and(noInsecureDefault('JWT_REFRESH_SECRET')),
   JWT_REFRESH_EXPIRATION_DAYS: z.coerce.number().default(7),
 
-  COOKIE_SECRET: z.string().min(32),
+  COOKIE_SECRET: z.string().min(32).and(noInsecureDefault('COOKIE_SECRET')),
 
   S3_ENDPOINT: z.string().url(),
   S3_REGION: z.string().default('us-east-1'),
   S3_BUCKET: z.string().min(1),
   S3_ACCESS_KEY: z.string().min(1),
-  S3_SECRET_KEY: z.string().min(1),
+  S3_SECRET_KEY: z.string().min(1).and(noInsecureDefault('S3_SECRET_KEY')),
   S3_FORCE_PATH_STYLE: z.coerce.boolean().default(true),
 
   SMTP_HOST: z.string().min(1),

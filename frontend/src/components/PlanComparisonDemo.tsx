@@ -5,6 +5,8 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { cn } from '@/lib/cn';
 import { Badge } from '@/components/ui/Badge';
 import { BadgeCheckIcon, BuildingIcon, LockIcon, MapPinIcon, SparklesIcon, WhatsAppIcon } from '@/components/icons';
+import { VerificationBadge } from '@/components/VerificationBadge';
+import { DOCTOR_SOCIAL_LIMITS, SOCIAL_PLATFORM_COLORS, SOCIAL_PLATFORM_ICONS, type SocialPlatform } from '@/lib/social';
 
 type DoctorTier = 'FREE' | 'PROFESSIONAL' | 'PROFESSIONAL_PLUS' | 'PREMIUM';
 type DemoTier = DoctorTier | 'ORGANIZATION';
@@ -31,9 +33,20 @@ const FEATURE_ROWS: { label: string; min: DoctorTier }[] = [
   { label: 'Estadísticas básicas de tu perfil', min: 'PROFESSIONAL' },
   { label: 'Formulario de mensajes desde el perfil', min: 'PROFESSIONAL_PLUS' },
   { label: 'Publicaciones y varias sedes', min: 'PROFESSIONAL_PLUS' },
+  { label: 'Redes sociales (hasta 2: Instagram/Facebook/TikTok)', min: 'PROFESSIONAL_PLUS' },
   { label: 'Perfil destacado y prioridad en el buscador', min: 'PREMIUM' },
-  { label: 'Publicaciones ilimitadas y analítica avanzada', min: 'PREMIUM' },
+  { label: 'Publicaciones ilimitadas, redes + web y analítica avanzada', min: 'PREMIUM' },
 ];
+
+/** Chip de ícono no interactivo, solo para la vista previa (no navega ni trackea clics reales). */
+function SocialIconChip({ platform }: { platform: SocialPlatform }) {
+  const Icon = SOCIAL_PLATFORM_ICONS[platform];
+  return (
+    <span className={cn('flex h-9 w-9 items-center justify-center rounded-full', SOCIAL_PLATFORM_COLORS[platform])}>
+      <Icon className="h-4 w-4" />
+    </span>
+  );
+}
 
 function Locked({ label }: { label: string }) {
   return (
@@ -65,7 +78,7 @@ function DoctorDemo({ tier }: { tier: DoctorTier }) {
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="text-xl text-ink-950">Dra. Valentina Blanco</h3>
-            <Badge tone="pine">Perfil verificado</Badge>
+            <VerificationBadge kind="doctor" tier={tier} />
             {featured && <Badge tone="gold">Destacado</Badge>}
           </div>
           <p className="mt-1 text-sm text-pine-700">Cardiología · Maturín, Monagas</p>
@@ -174,6 +187,27 @@ function DoctorDemo({ tier }: { tier: DoctorTier }) {
         )}
       </div>
 
+      <div className="mt-6 border-t border-ink-100 pt-5">
+        <h4 className="mb-3 text-sm font-semibold text-ink-900">Redes sociales y web</h4>
+        {canPlus ? (
+          <div className="flex flex-wrap items-center gap-2">
+            {(tier === 'PREMIUM'
+              ? DOCTOR_SOCIAL_LIMITS.PREMIUM.allowedPlatforms
+              : DOCTOR_SOCIAL_LIMITS.PROFESSIONAL_PLUS.allowedPlatforms.slice(0, 2)
+            ).map((platform) => (
+              <SocialIconChip key={platform} platform={platform} />
+            ))}
+            <span className="text-xs text-ink-500">
+              {tier === 'PREMIUM'
+                ? 'Las 3 redes (Instagram/Facebook/TikTok) + Web'
+                : 'Hasta 2 redes a elegir, sin repetir'}
+            </span>
+          </div>
+        ) : (
+          <Locked label="Redes sociales y web desde el plan Profesional Plus" />
+        )}
+      </div>
+
       {featured && (
         <div className="mt-5 flex items-center gap-2 rounded-lg bg-gold-50 px-4 py-3 text-sm font-medium text-gold-800">
           <SparklesIcon className="h-4 w-4 flex-shrink-0" /> Este perfil aparece primero en los resultados de
@@ -194,7 +228,7 @@ function OrganizationDemo() {
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="text-xl text-ink-950">Laboratorio Clínico San Rafael</h3>
-            <Badge tone="pine">Perfil verificado</Badge>
+            <VerificationBadge kind="organization" type="LABORATORY" />
           </div>
           <p className="mt-1 text-sm text-ink-600">Laboratorio clínico · Maturín, Monagas</p>
         </div>
@@ -202,7 +236,7 @@ function OrganizationDemo() {
       <p className="mb-5 text-sm text-ink-600">
         Exámenes de laboratorio, imagenología básica y perfil hormonal, con resultados en 24 horas.
       </p>
-      <div>
+      <div className="mb-5">
         <h4 className="mb-2 text-sm font-semibold text-ink-900">Sedes (hasta 4 incluidas)</h4>
         <div className="grid gap-2 sm:grid-cols-2">
           {['Sede Centro — Av. Bolívar', 'Sede Las Cocuizas', 'Sede Punta de Mata', 'Sede Caripito'].map((s) => (
@@ -210,6 +244,15 @@ function OrganizationDemo() {
               <MapPinIcon className="h-3.5 w-3.5 flex-shrink-0 text-pine-600" /> {s}
             </div>
           ))}
+        </div>
+      </div>
+      <div>
+        <h4 className="mb-2 text-sm font-semibold text-ink-900">Redes sociales y web</h4>
+        <div className="flex flex-wrap items-center gap-2">
+          {(['INSTAGRAM', 'FACEBOOK', 'TIKTOK', 'WEBSITE'] as const).map((platform) => (
+            <SocialIconChip key={platform} platform={platform} />
+          ))}
+          <span className="text-xs text-ink-500">Las 3 redes + Web, incluidas siempre</span>
         </div>
       </div>
     </div>
@@ -226,6 +269,10 @@ export function PlanComparisonDemo() {
         <h2 className="text-3xl text-ink-950">Mira la diferencia entre cada plan</h2>
         <p className="mt-2 text-ink-600">
           Un mismo perfil de ejemplo, mostrado tal como lo verían tus pacientes en cada plan.
+        </p>
+        <p className="mt-1 text-xs text-ink-400">
+          El check de verificación cambia de color según tu plan: gris (Básico), azul (Profesional), índigo (Plus),
+          dorado (Premium) — y para organizaciones, verde (farmacias), morado (laboratorios) y naranja (clínicas).
         </p>
       </div>
 

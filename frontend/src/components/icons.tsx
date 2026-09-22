@@ -159,3 +159,39 @@ export function MegaphoneIcon(props: IconProps) {
     </svg>
   );
 }
+
+export function InstagramIcon(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <rect x="3.5" y="3.5" width="17" height="17" rx="5" />
+      <circle cx="12" cy="12" r="4" />
+      <circle cx="17.2" cy="6.8" r="1" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+export function FacebookIcon(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" {...props}>
+      <path d="M13.5 21v-7.6h2.6l.4-3h-3v-1.9c0-.87.24-1.46 1.5-1.46h1.6V4.34c-.28-.04-1.22-.12-2.32-.12-2.3 0-3.87 1.4-3.87 3.98v2.2H7.8v3h2.6V21h3.1Z" />
+    </svg>
+  );
+}
+
+export function TikTokIcon(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" {...props}>
+      <path d="M16.5 3c.4 2.1 1.7 3.5 3.9 3.7v2.6c-1.4.1-2.7-.3-3.9-1.2v6.6c0 3.1-2.5 5.3-5.4 5.3-2.9 0-5.4-2.3-5.4-5.3s2.5-5.3 5.4-5.3c.3 0 .6 0 .9.1v2.7c-.3-.1-.6-.2-.9-.2-1.5 0-2.7 1.2-2.7 2.7s1.2 2.7 2.7 2.7 2.8-1.1 2.8-2.7V3h2.6Z" />
+    </svg>
+  );
+}
+
+export function GlobeIcon(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M12 3.5c2.3 2.4 3.5 5.3 3.5 8.5s-1.2 6.1-3.5 8.5c-2.3-2.4-3.5-5.3-3.5-8.5S9.7 5.9 12 3.5Z" />
+      <path d="M4 9.5h16M4 14.5h16" />
+    </svg>
+  );
+}

@@ -11,9 +11,11 @@ import { PageSpinner } from '@/components/ui/Spinner';
 import { Badge } from '@/components/ui/Badge';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { MONAGAS_MUNICIPALITIES } from '@/lib/monagas';
-import { Specialty } from '@/lib/types';
+import { PlanTier, Specialty } from '@/lib/types';
 import { PLAN_TIER_LABELS } from '@/lib/labels';
 import { ExtraLocationsManager } from '@/components/ExtraLocationsManager';
+import { SocialLinksManager } from '@/components/SocialLinksManager';
+import type { SocialLink } from '@/lib/social';
 
 interface OwnProfileForm {
   firstName: string;
@@ -26,7 +28,6 @@ interface OwnProfileForm {
   inpremedicoNumber?: string;
   phone?: string;
   whatsapp?: string;
-  website?: string;
   municipality?: string;
   address?: string;
   seoTitle?: string;
@@ -42,7 +43,8 @@ export default function EditProfilePage() {
   const [selectedSpecialties, setSelectedSpecialties] = useState<string[]>([]);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
-  const [planTier, setPlanTier] = useState<string>('FREE');
+  const [planTier, setPlanTier] = useState<PlanTier>('FREE');
+  const [socialLinks, setSocialLinks] = useState<SocialLink[]>([]);
 
   const { register, handleSubmit, reset, control } = useForm<OwnProfileForm>();
 
@@ -56,6 +58,7 @@ export default function EditProfilePage() {
         setSelectedSpecialties(profile.specialties.map((s: any) => s.specialty.id));
         setPhotoUrl(profile.photoUrl);
         setPlanTier(profile.planTier ?? 'FREE');
+        setSocialLinks(profile.socialLinks ?? []);
         setSpecialties(allSpecialties);
       })
       .finally(() => setLoading(false));
@@ -183,7 +186,6 @@ export default function EditProfilePage() {
           <div className="grid gap-4 sm:grid-cols-2">
             <Input label="Teléfono" placeholder="0414-1234567" {...register('phone')} />
             <Input label="WhatsApp" placeholder="0414-1234567" {...register('whatsapp')} />
-            <Input label="Sitio web" placeholder="https://" {...register('website')} />
             <Controller
               name="municipality"
               control={control}
@@ -214,6 +216,7 @@ export default function EditProfilePage() {
         </Button>
       </form>
 
+      <SocialLinksManager planTier={planTier} initialLinks={socialLinks} />
       <ExtraLocationsManager />
     </div>
   );

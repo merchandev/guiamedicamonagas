@@ -4,9 +4,10 @@ import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { profileVerifiedTemplate } from '../mail/mail.templates';
-import { tierAtLeast } from '../subscriptions/plan-tiers';
+import { assertValidSocialLinks, SOCIAL_LINK_LIMITS, tierAtLeast } from '../subscriptions/plan-tiers';
 import { UpdateProfessionalProfileDto } from './dto/update-professional-profile.dto';
 import { UpsertLocationDto } from './dto/upsert-location.dto';
+import { UpsertSocialLinksDto } from '../common/dto/social-link.dto';
 
 const PUBLIC_LIST_SELECT = {
   id: true,
@@ -117,7 +118,6 @@ export class ProfessionalsService {
       select: {
         ...PUBLIC_LIST_SELECT,
         phone: true,
-        website: true,
         address: true,
         latitude: true,
         longitude: true,
@@ -131,6 +131,7 @@ export class ProfessionalsService {
         verificationStatus: true,
         locations: true,
         posts: { where: { published: true }, orderBy: { createdAt: 'desc' }, select: { id: true, title: true, slug: true, content: true, createdAt: true } },
+        socialLinks: { select: { platform: true, url: true } },
       },
     });
     if (!profile || !profile.isPublished || profile.verificationStatus !== 'VERIFIED') {
@@ -138,10 +139,19 @@ export class ProfessionalsService {
     }
 
     const canPlus = tierAtLeast(profile.planTier, 'PROFESSIONAL_PLUS');
+    // Filtro de defensa: si el plan bajó (ej. suscripción vencida), nunca se
+    // muestran más redes/plataformas de las que el plan actual permite,
+    // aunque el registro siga guardado por si vuelve a subir de plan.
+    const { allowedPlatforms, maxLinks } = SOCIAL_LINK_LIMITS[profile.planTier];
+    const socialLinks = profile.socialLinks
+      .filter((link) => allowedPlatforms.includes(link.platform))
+      .slice(0, maxLinks);
+
     const shaped = {
       ...gateByTier(profile),
       locations: canPlus ? profile.locations : [],
       posts: canPlus ? profile.posts : [],
+      socialLinks,
     };
     return this.signPhoto(shaped);
   }
@@ -153,6 +163,7 @@ export class ProfessionalsService {
         specialties: { include: { specialty: true } },
         documents: { orderBy: { createdAt: 'desc' } },
         locations: { orderBy: { createdAt: 'asc' } },
+        socialLinks: true,
         subscriptions: {
           include: { plan: true, installments: { include: { payments: true } } },
           orderBy: { createdAt: 'desc' },
@@ -254,6 +265,27 @@ export class ProfessionalsService {
     }
     await this.prisma.professionalLocation.delete({ where: { id: locationId } });
     return { message: 'Sede eliminada' };
+  }
+
+  // --- Redes sociales / web (Profesional Plus en adelante) -------------
+
+  async setOwnSocialLinks(userId: string, dto: UpsertSocialLinksDto) {
+    const profile = await this.prisma.professionalProfile.findUnique({ where: { userId } });
+    if (!profile) throw new NotFoundException('No tienes un perfil profesional');
+    assertValidSocialLinks(dto.links, profile.planTier);
+
+    await this.prisma.$transaction([
+      this.prisma.professionalSocialLink.deleteMany({ where: { professionalId: profile.id } }),
+      ...(dto.links.length
+        ? [
+            this.prisma.professionalSocialLink.createMany({
+              data: dto.links.map((link) => ({ professionalId: profile.id, platform: link.platform, url: link.url })),
+            }),
+          ]
+        : []),
+    ]);
+
+    return this.prisma.professionalSocialLink.findMany({ where: { professionalId: profile.id } });
   }
 
   // --- Administración -------------------------------------------------

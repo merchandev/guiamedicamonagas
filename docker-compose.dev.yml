@@ -1,0 +1,83 @@
+# =============================================================================
+# docker-compose.yml  ·  DESARROLLO local
+# Todos los servicios de apoyo accesibles en localhost para el desarrollador.
+# Los puertos 5432, 6379, 7700, 9000, 9001 quedan expuestos SOLO al host
+# (127.0.0.1) para facilitar el trabajo con GUIs y herramientas locales.
+# NUNCA usar este archivo en producción.
+# =============================================================================
+version: '3.9'
+
+networks:
+  gmm_internal:
+    driver: bridge
+
+services:
+  postgres:
+    image: postgres:16.4-alpine
+    container_name: gmm_postgres_dev
+    environment:
+      POSTGRES_USER: ${DB_USER:-gmm_dev}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-gmm_dev_pass}
+      POSTGRES_DB: ${DB_NAME:-guia_medica_dev}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pgdata_dev:/var/lib/postgresql/data
+    networks:
+      - gmm_internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-gmm_dev}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7.4-alpine
+    container_name: gmm_redis_dev
+    command: redis-server --save "" --appendonly no
+    ports:
+      - "127.0.0.1:6379:6379"
+    networks:
+      - gmm_internal
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.10.3
+    container_name: gmm_meilisearch_dev
+    environment:
+      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:-dev_master_key_local_only}
+      MEILI_ENV: development
+    ports:
+      - "127.0.0.1:7700:7700"
+    volumes:
+      - meilidata_dev:/meili_data
+    networks:
+      - gmm_internal
+
+  minio:
+    image: quay.io/minio/minio:RELEASE.2025-07-23T15-29-46Z
+    container_name: gmm_minio_dev
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-gmm_minio_root}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-gmm_minio_root_pass}
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+    volumes:
+      - miniodata_dev:/data
+    networks:
+      - gmm_internal
+
+  mailpit:
+    image: axllent/mailpit:v1.22
+    container_name: gmm_mailpit_dev
+    ports:
+      - "127.0.0.1:1025:1025"
+      - "127.0.0.1:8025:8025"
+    networks:
+      - gmm_internal
+
+volumes:
+  pgdata_dev:
+  meilidata_dev:
+  miniodata_dev:

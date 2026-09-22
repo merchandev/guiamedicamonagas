@@ -4,15 +4,18 @@ import { serverGet } from '@/lib/server-fetch';
 import { ProfessionalDetail } from '@/lib/types';
 import { Badge } from '@/components/ui/Badge';
 import { ContactForm } from '@/components/ContactForm';
-import { WhatsAppButton, PhoneButton, WebsiteButton } from '@/components/ContactButtons';
+import { WhatsAppButton, PhoneButton } from '@/components/ContactButtons';
 import { ProfileViewTracker } from '@/components/ProfileViewTracker';
+import { VerificationBadge } from '@/components/VerificationBadge';
+import { SocialLinksRow } from '@/components/SocialLinksRow';
 
 async function getDoctor(slug: string) {
   return serverGet<ProfessionalDetail>(`/professionals/${slug}`, 30);
 }
 
-export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
-  const doctor = await getDoctor(params.slug);
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params;
+  const doctor = await getDoctor(slug);
   if (!doctor) return { title: 'Médico no encontrado' };
 
   const fullName = `Dr(a). ${doctor.firstName} ${doctor.lastName}`;
@@ -31,8 +34,9 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   };
 }
 
-export default async function DoctorProfilePage({ params }: { params: { slug: string } }) {
-  const doctor = await getDoctor(params.slug);
+export default async function DoctorProfilePage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const doctor = await getDoctor(slug);
   if (!doctor) notFound();
 
   const fullName = `Dr(a). ${doctor.firstName} ${doctor.lastName}`;
@@ -45,7 +49,7 @@ export default async function DoctorProfilePage({ params }: { params: { slug: st
       ? { '@type': 'PostalAddress', streetAddress: doctor.address, addressRegion: 'Monagas', addressCountry: 'VE' }
       : undefined,
     telephone: doctor.phone ?? undefined,
-    url: doctor.website ?? undefined,
+    url: doctor.socialLinks.find((l) => l.platform === 'WEBSITE')?.url,
   };
 
   return (
@@ -73,13 +77,14 @@ export default async function DoctorProfilePage({ params }: { params: { slug: st
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-2xl text-ink-950">{fullName}</h1>
-              <Badge tone="pine">Perfil verificado</Badge>
+              <VerificationBadge kind="doctor" tier={doctor.planTier} />
               {doctor.isFeatured && <Badge tone="gold">Destacado</Badge>}
             </div>
             <p className="mt-1 text-pine-700">
               {doctor.specialties.map((s) => s.specialty.name).join(', ') || 'Medicina General'}
             </p>
             {doctor.bio && <p className="mt-3 leading-relaxed text-ink-600">{doctor.bio}</p>}
+            <SocialLinksRow links={doctor.socialLinks} resourceId={doctor.id} className="mt-3" />
           </div>
         </div>
 
@@ -112,7 +117,6 @@ export default async function DoctorProfilePage({ params }: { params: { slug: st
             <div className="space-y-2">
               {doctor.whatsapp && <WhatsAppButton professionalId={doctor.id} whatsapp={doctor.whatsapp} />}
               {doctor.phone && <PhoneButton professionalId={doctor.id} phone={doctor.phone} />}
-              {doctor.website && <WebsiteButton professionalId={doctor.id} website={doctor.website} />}
             </div>
             {doctor.address && (
               <div className="mt-4">

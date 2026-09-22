@@ -7,7 +7,6 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import * as bcrypt from 'bcryptjs';
 import { createHash, randomBytes } from 'crypto';
 import type { EnvConfig } from '../config/env.validation';
 import { PrismaService } from '../prisma/prisma.service';
@@ -18,13 +17,13 @@ import {
 } from '../mail/mail.templates';
 import { AuditService } from '../audit/audit.service';
 import { slugify } from '../common/utils/slugify';
+import { hashPassword, verifyPassword } from '../common/utils/password.util';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOCKOUT_MINUTES = 15;
-const BCRYPT_ROUNDS = 12;
 
 function hashToken(token: string): string {
   return createHash('sha256').update(token).digest('hex');
@@ -54,7 +53,7 @@ export class AuthService {
       throw new BadRequestException('Nombre y apellido son obligatorios para cuentas profesionales');
     }
 
-    const passwordHash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
+    const passwordHash = await hashPassword(dto.password);
 
     const user = await this.prisma.$transaction(async (tx) => {
       const created = await tx.user.create({
@@ -150,8 +149,8 @@ export class AuthService {
       );
     }
 
-    const passwordMatches = await bcrypt.compare(dto.password, user.passwordHash);
-    if (!passwordMatches) {
+    const verification = await verifyPassword(dto.password, user.passwordHash);
+    if (!verification.valid) {
       const attempts = user.failedLoginAttempts + 1;
       const shouldLock = attempts >= MAX_LOGIN_ATTEMPTS;
       await this.prisma.user.update({
@@ -164,6 +163,7 @@ export class AuthService {
       throw new UnauthorizedException('Credenciales inválidas');
     }
 
+    // Migración silenciosa bcrypt → Argon2id: el usuario no nota nada
     await this.prisma.user.update({
       where: { id: user.id },
       data: {
@@ -171,6 +171,8 @@ export class AuthService {
         lockedUntil: null,
         lastLoginAt: new Date(),
         lastLoginIp: ipAddress,
+        // Solo actualiza el hash si era bcrypt (needsRehash = true)
+        ...(verification.needsRehash && { passwordHash: verification.newHash }),
       },
     });
 
@@ -278,7 +280,7 @@ export class AuthService {
       throw new BadRequestException('El enlace de restablecimiento es inválido o expiró');
     }
 
-    const passwordHash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
+    const passwordHash = await hashPassword(newPassword);
     await this.prisma.$transaction([
       this.prisma.user.update({
         where: { id: token.userId },
@@ -296,11 +298,11 @@ export class AuthService {
 
   async changePassword(userId: string, dto: ChangePasswordDto) {
     const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
-    const matches = await bcrypt.compare(dto.currentPassword, user.passwordHash);
-    if (!matches) {
+    const verification = await verifyPassword(dto.currentPassword, user.passwordHash);
+    if (!verification.valid) {
       throw new BadRequestException('La contraseña actual no es correcta');
     }
-    const passwordHash = await bcrypt.hash(dto.newPassword, BCRYPT_ROUNDS);
+    const passwordHash = await hashPassword(dto.newPassword);
     await this.prisma.$transaction([
       this.prisma.user.update({ where: { id: userId }, data: { passwordHash } }),
       this.prisma.refreshToken.updateMany({
