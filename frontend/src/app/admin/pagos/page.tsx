@@ -1,97 +1,152 @@
 'use client';
 
-import React, { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { api, ApiError } from '@/lib/api';
+import { Alert } from '@/components/ui/Alert';
+import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/components/ui/Button';
+import { Modal } from '@/components/ui/Modal';
+import { Textarea } from '@/components/ui/Input';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { PageSpinner } from '@/components/ui/Spinner';
+import { PAYMENT_STATUS_LABELS } from '@/lib/labels';
 
-// Mock data
-const mockPayments = [
-  {
-    id: "pay_1",
-    doctorName: "Dr. Juan Pérez",
-    bank: "Banesco",
-    phone: "0414-1112233",
-    reference: "456789",
-    amount: "100.00",
-    date: "2026-09-21",
-    status: "PENDING"
-  },
-  {
-    id: "pay_2",
-    doctorName: "Dra. María Gómez",
-    bank: "Mercantil",
-    phone: "0412-9998877",
-    reference: "123123",
-    amount: "100.00",
-    date: "2026-09-20",
-    status: "COMPLETED"
-  }
-];
+interface QueuePayment {
+  id: string;
+  amountBs: string;
+  senderBankName: string | null;
+  senderPhone: string | null;
+  referenceNumber: string | null;
+  paidAt: string | null;
+  status: string;
+  createdAt: string;
+  installment: {
+    subscription: {
+      professional: { firstName: string; lastName: string; slug: string };
+      plan: { name: string };
+    };
+  };
+}
 
 export default function AdminPaymentsPage() {
-  const [payments, setPayments] = useState(mockPayments);
+  const [items, setItems] = useState<QueuePayment[] | null>(null);
+  const [reviewing, setReviewing] = useState<QueuePayment | null>(null);
+  const [note, setNote] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleApprove = (id: string) => {
-    setPayments(payments.map(p => p.id === id ? { ...p, status: 'COMPLETED' } : p));
-    alert("Pago aprobado y suscripción activada.");
+  const load = () =>
+    api.get<{ items: QueuePayment[] }>('/payments/admin/queue?status=PENDING&limit=50').then((res) => setItems(res.items));
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  const openReceipt = async (id: string) => {
+    const { url } = await api.get<{ url: string }>(`/payments/admin/${id}/receipt`);
+    window.open(url, '_blank', 'noopener,noreferrer');
   };
 
-  const handleReject = (id: string) => {
-    setPayments(payments.map(p => p.id === id ? { ...p, status: 'FAILED' } : p));
-    alert("Pago rechazado.");
+  const submitReview = async (approved: boolean) => {
+    if (!reviewing) return;
+    if (!approved && !note.trim()) {
+      setError('Debes indicar un motivo de rechazo');
+      return;
+    }
+    setSubmitting(true);
+    setError(null);
+    try {
+      await api.patch(`/payments/admin/${reviewing.id}/review`, { approved, note: note || undefined });
+      setReviewing(null);
+      setNote('');
+      await load();
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'No se pudo revisar el pago');
+    } finally {
+      setSubmitting(false);
+    }
   };
+
+  if (!items) return <PageSpinner />;
 
   return (
-    <div className="max-w-6xl mx-auto py-8">
-      <h1 className="text-2xl font-bold mb-6">Verificación de Pagos Móviles</h1>
-      
-      <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
-        <table className="w-full text-left">
-          <thead className="bg-gray-50 border-b">
-            <tr>
-              <th className="p-4 text-sm font-medium text-gray-600">Profesional</th>
-              <th className="p-4 text-sm font-medium text-gray-600">Fecha</th>
-              <th className="p-4 text-sm font-medium text-gray-600">Banco Emisor</th>
-              <th className="p-4 text-sm font-medium text-gray-600">Teléfono</th>
-              <th className="p-4 text-sm font-medium text-gray-600">Referencia</th>
-              <th className="p-4 text-sm font-medium text-gray-600">Monto (Bs)</th>
-              <th className="p-4 text-sm font-medium text-gray-600">Estado</th>
-              <th className="p-4 text-sm font-medium text-gray-600">Acciones</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y">
-            {payments.map(payment => (
-              <tr key={payment.id} className="hover:bg-gray-50">
-                <td className="p-4 text-sm font-medium">{payment.doctorName}</td>
-                <td className="p-4 text-sm">{payment.date}</td>
-                <td className="p-4 text-sm">{payment.bank}</td>
-                <td className="p-4 text-sm">{payment.phone}</td>
-                <td className="p-4 text-sm font-mono bg-yellow-50">{payment.reference}</td>
-                <td className="p-4 text-sm font-semibold">{payment.amount}</td>
-                <td className="p-4 text-sm">
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    payment.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
-                    payment.status === 'COMPLETED' ? 'bg-green-100 text-green-800' :
-                    'bg-red-100 text-red-800'
-                  }`}>
-                    {payment.status === 'PENDING' ? 'Pendiente' : payment.status === 'COMPLETED' ? 'Aprobado' : 'Rechazado'}
-                  </span>
-                </td>
-                <td className="p-4 text-sm">
-                  {payment.status === 'PENDING' && (
-                    <div className="flex gap-2">
-                      <button onClick={() => handleApprove(payment.id)} className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-xs">
-                        Aprobar
-                      </button>
-                      <button onClick={() => handleReject(payment.id)} className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 text-xs">
-                        Rechazar
-                      </button>
-                    </div>
-                  )}
-                </td>
+    <div className="space-y-6">
+      <h1 className="text-2xl">Verificación de pagos móviles</h1>
+
+      {items.length === 0 ? (
+        <EmptyState title="No hay pagos pendientes de revisión" />
+      ) : (
+        <div className="card overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="border-b border-ink-100 bg-ink-50/50">
+              <tr>
+                <th className="p-4 font-medium text-ink-600">Profesional</th>
+                <th className="p-4 font-medium text-ink-600">Banco</th>
+                <th className="p-4 font-medium text-ink-600">Teléfono</th>
+                <th className="p-4 font-medium text-ink-600">Referencia</th>
+                <th className="p-4 font-medium text-ink-600">Monto (Bs)</th>
+                <th className="p-4 font-medium text-ink-600">Estado</th>
+                <th className="p-4 font-medium text-ink-600">Acciones</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody className="divide-y divide-ink-50">
+              {items.map((p) => {
+                const status = PAYMENT_STATUS_LABELS[p.status];
+                return (
+                  <tr key={p.id}>
+                    <td className="p-4 font-medium text-ink-900">
+                      {p.installment.subscription.professional.firstName}{' '}
+                      {p.installment.subscription.professional.lastName}
+                    </td>
+                    <td className="p-4">{p.senderBankName}</td>
+                    <td className="p-4">{p.senderPhone}</td>
+                    <td className="p-4 font-mono">{p.referenceNumber}</td>
+                    <td className="p-4 font-semibold">{p.amountBs}</td>
+                    <td className="p-4">{status && <Badge tone={status.tone}>{status.label}</Badge>}</td>
+                    <td className="p-4">
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm" onClick={() => openReceipt(p.id)}>
+                          Ver comprobante
+                        </Button>
+                        <Button size="sm" onClick={() => setReviewing(p)}>
+                          Revisar
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <Modal open={!!reviewing} onClose={() => setReviewing(null)} title="Revisar pago">
+        {reviewing && (
+          <div className="space-y-4">
+            <p className="text-sm text-ink-600">
+              Bs. {reviewing.amountBs} — {reviewing.installment.subscription.professional.firstName}{' '}
+              {reviewing.installment.subscription.professional.lastName}
+            </p>
+            {error && <Alert tone="error">{error}</Alert>}
+            <Textarea
+              label="Nota (obligatoria si rechazas)"
+              rows={3}
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Ej. El monto no coincide con la referencia"
+            />
+            <div className="flex justify-end gap-2">
+              <Button variant="danger" loading={submitting} onClick={() => submitReview(false)}>
+                Rechazar
+              </Button>
+              <Button loading={submitting} onClick={() => submitReview(true)}>
+                Aprobar
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

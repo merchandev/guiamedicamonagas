@@ -1,14 +1,16 @@
 // prisma/schema.prisma
 
 generator client {
-  provider        = "prisma-client-js"
-  previewFeatures = ["driverAdapters"]
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
+
+// ---------------------------------------------------------------------------
+// Cuentas y autenticación
+// ---------------------------------------------------------------------------
 
 model User {
   id                    String                 @id @default(uuid())
@@ -16,14 +18,23 @@ model User {
   passwordHash          String
   role                  Role                   @default(USER)
   isEmailVerified       Boolean                @default(false)
+  isActive              Boolean                @default(true)
+  failedLoginAttempts   Int                    @default(0)
+  lockedUntil           DateTime?
+  lastLoginAt           DateTime?
+  lastLoginIp           String?
   createdAt             DateTime               @default(now())
   updatedAt             DateTime               @updatedAt
 
   professionalProfile   ProfessionalProfile?
-  identityVerification  IdentityVerification?
   refreshTokens         RefreshToken[]
+  verificationTokens    VerificationToken[]
   auditLogs             AuditLog[]
   notifications         Notification[]
+  reviewedDocuments      ProfessionalDocument[] @relation("DocumentReviewer")
+  reviewedPayments      Payment[]              @relation("PaymentReviewer")
+
+  @@index([role])
 }
 
 enum Role {
@@ -33,24 +44,69 @@ enum Role {
   SUPERADMIN
 }
 
+model RefreshToken {
+  id                   String                 @id @default(uuid())
+  userId               String
+  user                 User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash            String                 @unique
+  userAgent            String?
+  ipAddress            String?
+  expiresAt            DateTime
+  revokedAt            DateTime?
+  replacedByTokenHash  String?
+  createdAt            DateTime               @default(now())
+
+  @@index([userId])
+}
+
+enum VerificationTokenType {
+  EMAIL_VERIFICATION
+  PASSWORD_RESET
+}
+
+model VerificationToken {
+  id                   String                 @id @default(uuid())
+  userId               String
+  user                 User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash            String                 @unique
+  type                 VerificationTokenType
+  expiresAt            DateTime
+  usedAt               DateTime?
+  createdAt            DateTime               @default(now())
+
+  @@index([userId, type])
+}
+
+// ---------------------------------------------------------------------------
+// Perfil profesional y verificación legal (Ley de Ejercicio de la Medicina,
+// MPPS/SACS, Colegio de Médicos de Monagas, INPREMEDICO)
+// ---------------------------------------------------------------------------
+
 model ProfessionalProfile {
   id                   String                 @id @default(uuid())
   userId               String                 @unique
   user                 User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
   slug                 String                 @unique
   firstName            String
   lastName             String
   photoUrl             String?
   bio                  String?
+
+  // Avales legales y gremiales (obligatorios para publicarse en el directorio)
   mppsNumber           String?
   colmedMonagasNumber  String?
   inpremedicoNumber    String?
-  specialtyCredential  String?
   cedula               String?
   rif                  String?
+
   verificationStatus   VerificationStatus     @default(PENDING)
-  
+  rejectionReason      String?
+  verifiedAt           DateTime?
+  isPublished          Boolean                @default(false)
+  isSpecialist         Boolean                @default(false)
+  planTier             PlanTier               @default(FREE)
+
   phone                String?
   whatsapp             String?
   website              String?
@@ -58,24 +114,108 @@ model ProfessionalProfile {
   address              String?
   latitude             Float?
   longitude            Float?
-  
+
   seoTitle             String?
   seoDescription       String?
-  
+  seoKeywords          String?
+  ogImageUrl           String?
+  noIndex              Boolean                @default(false)
+
   createdAt            DateTime               @default(now())
   updatedAt            DateTime               @updatedAt
 
   specialties          ProfessionalSpecialty[]
+  documents            ProfessionalDocument[]
   subscriptions        Subscription[]
   posts                Post[]
   messages             ContactMessage[]
+  locations            ProfessionalLocation[]
+
+  @@index([verificationStatus, isPublished])
+  @@index([municipality])
+  @@index([planTier])
+}
+
+/** Sedes adicionales de consulta, disponibles desde el plan Profesional Plus. */
+model ProfessionalLocation {
+  id                   String                 @id @default(uuid())
+  professionalId       String
+  professional         ProfessionalProfile    @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+
+  name                 String
+  address              String
+  municipality         String?
+  phone                String?
+  whatsapp             String?
+  latitude             Float?
+  longitude            Float?
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+}
+
+enum PlanTier {
+  FREE
+  PROFESSIONAL
+  PROFESSIONAL_PLUS
+  PREMIUM
+  ORGANIZATION
 }
 
 enum VerificationStatus {
   PENDING
+  IN_REVIEW
   VERIFIED
   REJECTED
   SUSPENDED
+}
+
+// Catálogo de documentos exigidos por la ley venezolana para habilitar
+// médicos en el directorio. Cada tipo tiene su propia validación de admin.
+enum DocumentType {
+  TITULO_MEDICO                // Título de Médico Cirujano (sellado Registro Principal)
+  REGISTRO_MPPS_SACS           // Constancia de Registro de Título ante el MPPS (SACS)
+  ARTICULO_8                   // Constancia de cumplimiento del Art. 8 (rural/internado)
+  MATRICULA_COLEGIO_MONAGAS    // N° de Matrícula, Colegio de Médicos de Monagas
+  INPREMEDICO                  // Registro ante la FMV
+  SOLVENCIA_DEONTOLOGICA       // Vigencia anual, Colegio de Médicos de Monagas
+  TITULO_POSTGRADO             // Solo especialistas
+  CREDENCIAL_ESPECIALIDAD      // Reconocimiento de especialidad, Colegio de Médicos de Monagas
+  CEDULA_IDENTIDAD
+  RIF
+}
+
+enum DocumentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  EXPIRED
+}
+
+model ProfessionalDocument {
+  id                   String                 @id @default(uuid())
+  professionalId       String
+  professional         ProfessionalProfile    @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+
+  type                 DocumentType
+  fileKey              String                 // clave privada en almacenamiento (S3/MinIO)
+  originalFileName     String
+  mimeType             String
+  fileSizeBytes        Int
+
+  status               DocumentStatus         @default(PENDING)
+  issuedAt             DateTime?              // fecha de emisión del documento (p.ej. solvencia)
+  expiresAt            DateTime?              // solvencia deontológica vence anualmente
+
+  reviewedById         String?
+  reviewedBy           User?                  @relation("DocumentReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewNote           String?
+  reviewedAt           DateTime?
+
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+
+  @@index([professionalId, type])
+  @@index([status])
 }
 
 model Specialty {
@@ -98,6 +238,10 @@ model ProfessionalSpecialty {
   @@id([professionalId, specialtyId])
 }
 
+// ---------------------------------------------------------------------------
+// Organizaciones (farmacias, laboratorios, clínicas)
+// ---------------------------------------------------------------------------
+
 model Organization {
   id                   String                 @id @default(uuid())
   type                 OrganizationType
@@ -106,6 +250,11 @@ model Organization {
   description          String?
   logoUrl              String?
   website              String?
+  isPublished          Boolean                @default(true)
+
+  seoTitle             String?
+  seoDescription        String?
+
   createdAt            DateTime               @default(now())
   updatedAt            DateTime               @updatedAt
 
@@ -122,7 +271,7 @@ model OrganizationLocation {
   id                   String                 @id @default(uuid())
   organizationId       String
   organization         Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  
+
   name                 String
   address              String
   municipality         String?
@@ -135,27 +284,24 @@ model OrganizationLocation {
   updatedAt            DateTime               @updatedAt
 }
 
-model IdentityVerification {
-  id                   String                 @id @default(uuid())
-  userId               String                 @unique
-  user                 User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  documentType         String                 // e.g. DNI, PASSPORT, MEDICAL_LICENSE
-  documentUrl          String                 // S3 Private URL
-  status               VerificationStatus     @default(PENDING)
-  reviewedBy           String?                // Admin ID
-  rejectionReason      String?
-  createdAt            DateTime               @default(now())
-  updatedAt            DateTime               @updatedAt
-}
+// ---------------------------------------------------------------------------
+// Suscripciones y pagos (Pago Móvil, verificación manual por admin)
+// ---------------------------------------------------------------------------
 
 model SubscriptionPlan {
   id                   String                 @id @default(uuid())
+  tier                 PlanTier               @unique
   name                 String
   description          String?
-  price                Decimal                @db.Decimal(10, 2)
+  /** Precio de referencia en USD; el monto a pagar en Bs se calcula con la tasa vigente al momento de suscribirse. */
+  priceUsd             Decimal                @db.Decimal(10, 2)
   billingCycle         BillingCycle
+  /** Lista de beneficios a mostrar en la página de precios. */
   features             Json?
+  /** Sedes totales permitidas (principal + adicionales). */
+  maxLocations         Int                    @default(1)
+  /** Publicaciones activas permitidas; null = ilimitadas. */
+  postsLimit           Int?
   isActive             Boolean                @default(true)
   createdAt            DateTime               @default(now())
   updatedAt            DateTime               @updatedAt
@@ -173,21 +319,24 @@ model Subscription {
   id                   String                 @id @default(uuid())
   professionalId       String
   professional         ProfessionalProfile    @relation(fields: [professionalId], references: [id], onDelete: Cascade)
-  
+
   planId               String
   plan                 SubscriptionPlan       @relation(fields: [planId], references: [id])
-  
-  status               SubscriptionStatus     @default(ACTIVE)
-  currentPeriodStart   DateTime
-  currentPeriodEnd     DateTime
+
+  status               SubscriptionStatus     @default(PENDING)
+  currentPeriodStart   DateTime?
+  currentPeriodEnd     DateTime?
   cancelAtPeriodEnd    Boolean                @default(false)
   createdAt            DateTime               @default(now())
   updatedAt            DateTime               @updatedAt
 
   installments         SubscriptionInstallment[]
+
+  @@index([professionalId, status])
 }
 
 enum SubscriptionStatus {
+  PENDING
   ACTIVE
   CANCELED
   PAST_DUE
@@ -198,8 +347,8 @@ model SubscriptionInstallment {
   id                   String                 @id @default(uuid())
   subscriptionId       String
   subscription         Subscription           @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
-  
-  amount               Decimal                @db.Decimal(10, 2)
+
+  amountBs             Decimal                @db.Decimal(12, 2)
   dueDate              DateTime
   status               InstallmentStatus      @default(PENDING)
   createdAt            DateTime               @default(now())
@@ -218,20 +367,32 @@ model Payment {
   id                   String                 @id @default(uuid())
   installmentId        String
   installment          SubscriptionInstallment @relation(fields: [installmentId], references: [id])
-  
-  amount               Decimal                @db.Decimal(10, 2)
-  currency             String                 @default("USD")
-  method               PaymentMethod
-  providerReference    String?                // Stripe/PayPal id or Pago Movil reference
-  receiptUrl           String?                // Uploaded receipt for manual transfer
+
+  amountBs             Decimal                @db.Decimal(12, 2)
+  method               PaymentMethod          @default(PAGO_MOVIL)
+
+  // Datos del reporte de Pago Móvil hechos por el profesional
+  senderBankCode       String?
+  senderBankName       String?
+  senderPhone          String?
+  referenceNumber      String?
+  paidAt               DateTime?
+  receiptFileKey       String?
+
   status               PaymentStatus          @default(PENDING)
+  reviewedById         String?
+  reviewedBy           User?                  @relation("PaymentReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewNote           String?
+  reviewedAt           DateTime?
+
   createdAt            DateTime               @default(now())
   updatedAt            DateTime               @updatedAt
+
+  @@index([status])
+  @@index([referenceNumber])
 }
 
 enum PaymentMethod {
-  CREDIT_CARD
-  PAYPAL
   PAGO_MOVIL
   BANK_TRANSFER
 }
@@ -239,30 +400,24 @@ enum PaymentMethod {
 enum PaymentStatus {
   PENDING
   COMPLETED
-  FAILED
-  REFUNDED
+  REJECTED
 }
+
+// ---------------------------------------------------------------------------
+// Contacto, notificaciones, analítica y publicidad
+// ---------------------------------------------------------------------------
 
 model ContactMessage {
   id                   String                 @id @default(uuid())
   professionalId       String
   professional         ProfessionalProfile    @relation(fields: [professionalId], references: [id], onDelete: Cascade)
-  
+
   senderName           String
   senderEmail          String
   senderPhone          String?
   content              String
   isRead               Boolean                @default(false)
-  createdAt            DateTime               @default(now())
-}
-
-model AnalyticsEvent {
-  id                   String                 @id @default(uuid())
-  eventType            EventType
-  resourceId           String                 // Professional ID, Post ID, Ad ID
-  metadata             Json?
   ipAddress            String?
-  userAgent            String?
   createdAt            DateTime               @default(now())
 }
 
@@ -277,15 +432,27 @@ enum EventType {
   AD_CLICK
 }
 
+model AnalyticsEvent {
+  id                   String                 @id @default(uuid())
+  eventType            EventType
+  resourceId           String
+  metadata             Json?
+  ipAddress            String?
+  userAgent            String?
+  createdAt            DateTime               @default(now())
+
+  @@index([eventType, resourceId])
+}
+
 model AdSlot {
   id                   String                 @id @default(uuid())
   name                 String
-  location             String                 // e.g. "HOME_TOP", "SIDEBAR"
+  location             String
   width                Int?
   height               Int?
   isActive             Boolean                @default(true)
   createdAt            DateTime               @default(now())
-  
+
   campaigns            AdCampaign[]
 }
 
@@ -293,7 +460,7 @@ model AdCampaign {
   id                   String                 @id @default(uuid())
   slotId               String
   slot                 AdSlot                 @relation(fields: [slotId], references: [id])
-  
+
   title                String
   imageUrl             String
   targetUrl            String
@@ -310,7 +477,7 @@ model Post {
   id                   String                 @id @default(uuid())
   professionalId       String
   professional         ProfessionalProfile    @relation(fields: [professionalId], references: [id], onDelete: Cascade)
-  
+
   title                String
   slug                 String                 @unique
   content              String                 @db.Text
@@ -323,7 +490,7 @@ model Notification {
   id                   String                 @id @default(uuid())
   userId               String
   user                 User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
   type                 String
   title                String
   content              String
@@ -331,14 +498,29 @@ model Notification {
   createdAt            DateTime               @default(now())
 }
 
-model RefreshToken {
+// Registro de envíos de correo y WhatsApp (auditoría + depuración)
+enum MessageChannel {
+  EMAIL
+  WHATSAPP
+}
+
+enum MessageStatus {
+  SENT
+  FAILED
+  SKIPPED
+}
+
+model MessageLog {
   id                   String                 @id @default(uuid())
-  userId               String
-  user                 User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  token                String                 @unique
-  expiresAt            DateTime
-  isRevoked            Boolean                @default(false)
+  channel              MessageChannel
+  recipient            String
+  template             String
+  status               MessageStatus
+  errorMessage         String?
+  relatedUserId        String?
   createdAt            DateTime               @default(now())
+
+  @@index([channel, status])
 }
 
 model AuditLog {
@@ -351,12 +533,44 @@ model AuditLog {
   details              Json?
   ipAddress            String?
   createdAt            DateTime               @default(now())
+
+  @@index([resource, resourceId])
 }
 
+// Registro de consentimiento de cookies (evidencia de cumplimiento)
+model CookieConsent {
+  id                   String                 @id @default(uuid())
+  subjectId            String                 // userId o UUID anónimo guardado en cookie
+  necessary            Boolean                @default(true)
+  analytics            Boolean                @default(false)
+  marketing            Boolean                @default(false)
+  ipAddress            String?
+  userAgent            String?
+  createdAt            DateTime               @default(now())
+
+  @@index([subjectId])
+}
+
+// Configuración global (SEO por defecto, datos de Pago Móvil de la
+// plataforma, textos de cookies, etc.) como pares clave/valor.
 model SiteSettings {
   id                   String                 @id @default(uuid())
   key                  String                 @unique
   value                Json
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+}
+
+// SEO editable por página estática (estilo Yoast) para rutas que no
+// tienen una entidad propia (home, /medicos, /especialidades, ...).
+model PageSeo {
+  id                   String                 @id @default(uuid())
+  path                 String                 @unique
+  title                String?
+  metaDescription      String?
+  focusKeyword         String?
+  ogImageUrl           String?
+  noIndex              Boolean                @default(false)
   createdAt            DateTime               @default(now())
   updatedAt            DateTime               @updatedAt
 }

@@ -1,28 +1,36 @@
 import './globals.css';
 import type { Metadata } from 'next';
-
-export const metadata: Metadata = {
-  title: 'Guía Médica Monagas',
-  description: 'Encuentra a los mejores médicos y especialistas en Monagas.',
-};
-
+import { Fraunces, Inter } from 'next/font/google';
+import { AuthProvider } from '@/lib/auth-context';
+import { TopBar } from '@/components/layout/TopBar';
+import { Header } from '@/components/layout/Header';
+import { Footer } from '@/components/layout/Footer';
 import CookieConsent from '@/components/CookieConsent';
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+const display = Fraunces({ subsets: ['latin'], variable: '--font-display', weight: ['500', '600'] });
+const sans = Inter({ subsets: ['latin'], variable: '--font-sans' });
+
+export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'),
+  title: {
+    default: 'Guía Médica Monagas — Directorio médico verificado',
+    template: '%s — Guía Médica Monagas',
+  },
+  description:
+    'Encuentra médicos, especialistas, farmacias y clínicas verificadas en el estado Monagas. Cada profesional pasa por un proceso de verificación legal y gremial.',
+};
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es">
-      <body>
-        <nav className="p-4 bg-blue-600 text-white">
-          <h1 className="text-xl font-bold">Guía Médica Monagas</h1>
-        </nav>
-        <main className="p-4">
-          {children}
-        </main>
-        <CookieConsent />
+    <html lang="es" className={`${display.variable} ${sans.variable}`}>
+      <body className="flex min-h-screen flex-col font-sans">
+        <AuthProvider>
+          <TopBar />
+          <Header />
+          <main className="flex-1">{children}</main>
+          <Footer />
+          <CookieConsent />
+        </AuthProvider>
       </body>
     </html>
   );

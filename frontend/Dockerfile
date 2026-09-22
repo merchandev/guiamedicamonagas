@@ -1,19 +1,23 @@
 FROM node:24-alpine AS builder
 
 WORKDIR /app
-COPY package.json pnpm-lock.yaml* ./
-RUN corepack enable pnpm && pnpm install
+COPY package.json package-lock.json ./
+RUN npm ci
 
 COPY . .
-RUN pnpm build
+ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_SITE_URL
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+ENV NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL}
+RUN npm run build
 
 FROM node:24-alpine
 WORKDIR /app
+ENV NODE_ENV=production
 
-COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
-COPY --from=builder /app/package.json ./
-COPY --from=builder /app/node_modules ./node_modules
 
 EXPOSE 3000
-CMD ["npm", "start"]
+CMD ["node", "server.js"]

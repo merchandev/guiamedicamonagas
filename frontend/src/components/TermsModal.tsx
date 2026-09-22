@@ -1,6 +1,8 @@
 'use client';
 
-import React from 'react';
+import Link from 'next/link';
+import { Modal } from '@/components/ui/Modal';
+import { Button } from '@/components/ui/Button';
 
 interface TermsModalProps {
   isOpen: boolean;
@@ -8,95 +10,62 @@ interface TermsModalProps {
   onAccept: () => void;
 }
 
+const SECTIONS = [
+  {
+    title: 'Herramienta tecnológica, no acto médico',
+    body: 'Guía Médica Monagas conecta pacientes y profesionales y organiza su presencia digital. El diagnóstico, la indicación terapéutica y la responsabilidad médica corresponden siempre al profesional de la salud.',
+  },
+  {
+    title: 'Responsabilidad profesional y legal',
+    body: 'El médico debe usar datos reales y vigentes, cumplir el Artículo 8 de la Ley de Ejercicio de la Medicina y estar debidamente inscrito en el MPPS (SACS), el Colegio de Médicos de Monagas y el INPREMEDICO. La cuenta es personal e intransferible.',
+  },
+  {
+    title: 'Verificación obligatoria de documentos',
+    body: 'Antes de publicarse, cada perfil se revisa manualmente contra los documentos exigidos por ley. La plataforma muestra públicamente el N° MPPS, N° Colegio de Médicos de Monagas y N° INPREMEDICO para garantizar transparencia.',
+  },
+  {
+    title: 'Pagos por Pago Móvil',
+    body: 'La suscripción se paga por Pago Móvil en bolívares. El profesional reporta el pago con su comprobante y un administrador debe aprobarlo manualmente antes de activar el servicio.',
+  },
+];
+
 export default function TermsModal({ isOpen, onClose, onAccept }: TermsModalProps) {
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 px-4 py-6">
-      <div className="bg-white rounded-2xl w-full max-w-2xl max-h-full flex flex-col shadow-xl overflow-hidden relative">
-        
-        {/* Header */}
-        <div className="px-6 py-6 border-b flex justify-between items-start">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Condiciones de uso de Guía Médica Monagas</h2>
-            <p className="text-gray-600 text-sm">
-              Resumen claro de lo que acepta el médico al crear su cuenta en la plataforma.
-            </p>
+    <Modal open={isOpen} onClose={onClose} title="Condiciones de uso" widthClassName="max-w-2xl">
+      <div className="space-y-4">
+        {SECTIONS.map((s) => (
+          <div key={s.title} className="rounded-lg border border-ink-100 bg-ink-50/50 p-4">
+            <h3 className="mb-1 text-sm font-semibold text-ink-900">{s.title}</h3>
+            <p className="text-sm text-ink-600">{s.body}</p>
           </div>
-          <button 
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors rounded-full p-2 bg-gray-100 hover:bg-gray-200"
-            aria-label="Cerrar"
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-          </button>
-        </div>
+        ))}
 
-        {/* Scrollable Content */}
-        <div className="overflow-y-auto px-6 py-4 flex-grow bg-gray-50/50 space-y-4">
-          
-          <div className="bg-white border rounded-xl p-4 shadow-sm">
-            <h3 className="font-semibold text-gray-900 mb-1">Herramienta tecnológica, no acto médico</h3>
-            <p className="text-gray-600 text-sm">
-              Guía Médica Monagas ayuda a conectar pacientes y profesionales, y a organizar su presencia digital. El diagnóstico, la indicación terapéutica y la responsabilidad médica corresponden siempre al profesional sanitario.
-            </p>
-          </div>
+        <p className="text-sm text-ink-500">
+          Puedes leer el documento completo en{' '}
+          <Link href="/terminos-y-condiciones" target="_blank" className="font-medium text-pine-700 underline">
+            Términos y condiciones
+          </Link>{' '}
+          y en la{' '}
+          <Link href="/privacidad" target="_blank" className="font-medium text-pine-700 underline">
+            Política de privacidad
+          </Link>
+          .
+        </p>
 
-          <div className="bg-white border rounded-xl p-4 shadow-sm">
-            <h3 className="font-semibold text-gray-900 mb-2">Responsabilidad profesional y legal</h3>
-            <ul className="list-disc pl-5 text-gray-600 text-sm space-y-1">
-              <li>El médico debe usar datos reales, actualizados y acordes con su habilitación legal para ejercer en Venezuela y en el estado Monagas.</li>
-              <li>Debe cumplir con el Artículo 8 y estar debidamente inscrito en el MPPS, Colegio de Médicos y FMV.</li>
-              <li>La cuenta es personal e intransferible.</li>
-            </ul>
-          </div>
-
-          <div className="bg-white border rounded-xl p-4 shadow-sm">
-            <h3 className="font-semibold text-gray-900 mb-1">Privacidad y datos de pacientes</h3>
-            <p className="text-gray-600 text-sm">
-              Los datos introducidos en la plataforma se usan para prestar el servicio y proteger la seguridad. El profesional se compromete a mantener la confidencialidad de los datos de contacto y consultas de los pacientes generados por la plataforma.
-            </p>
-          </div>
-
-          <div className="bg-white border rounded-xl p-4 shadow-sm">
-            <h3 className="font-semibold text-gray-900 mb-1">Verificación profesional y transparencia</h3>
-            <p className="text-gray-600 text-sm">
-              La plataforma exige y hará público de manera obligatoria el N° MPPS, N° Colegio de Médicos de Monagas, N° INPREMEDICO y credenciales de especialista para disuadir el ejercicio irregular y garantizar confianza a los pacientes.
-            </p>
-          </div>
-
-          <div className="bg-white border rounded-xl p-4 shadow-sm">
-            <h3 className="font-semibold text-gray-900 mb-1">Documentos completos</h3>
-            <p className="text-gray-600 text-sm">
-              Antes de aceptar puedes revisar los documentos principales: <a href="/terminos" className="text-blue-600 hover:underline font-medium">términos y condiciones</a>, <a href="/privacidad" className="text-blue-600 hover:underline font-medium">política de privacidad</a> y <a href="/responsabilidad" className="text-blue-600 hover:underline font-medium">responsabilidad profesional</a>.
-            </p>
-          </div>
-
-        </div>
-
-        {/* Footer */}
-        <div className="px-6 py-4 border-t bg-white flex justify-end items-center gap-3">
-          <button 
-            onClick={onClose}
-            className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 font-medium rounded-lg transition-colors text-sm"
-          >
+        <div className="flex justify-end gap-2 pt-2">
+          <Button variant="outline" onClick={onClose}>
             Cancelar
-          </button>
-          <button 
+          </Button>
+          <Button
             onClick={() => {
               onAccept();
               onClose();
             }}
-            className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors text-sm shadow-sm"
           >
-            Aceptar y Continuar
-          </button>
+            Aceptar y continuar
+          </Button>
         </div>
-
       </div>
-    </div>
+    </Modal>
   );
 }
