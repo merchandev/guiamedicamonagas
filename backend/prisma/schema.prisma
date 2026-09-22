@@ -1,0 +1,362 @@
+// prisma/schema.prisma
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                    String                 @id @default(uuid())
+  email                 String                 @unique
+  passwordHash          String
+  role                  Role                   @default(USER)
+  isEmailVerified       Boolean                @default(false)
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+
+  professionalProfile   ProfessionalProfile?
+  identityVerification  IdentityVerification?
+  refreshTokens         RefreshToken[]
+  auditLogs             AuditLog[]
+  notifications         Notification[]
+}
+
+enum Role {
+  USER
+  PROFESSIONAL
+  ADMIN
+  SUPERADMIN
+}
+
+model ProfessionalProfile {
+  id                   String                 @id @default(uuid())
+  userId               String                 @unique
+  user                 User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  slug                 String                 @unique
+  firstName            String
+  lastName             String
+  photoUrl             String?
+  bio                  String?
+  mppsNumber           String?
+  colmedMonagasNumber  String?
+  inpremedicoNumber    String?
+  specialtyCredential  String?
+  cedula               String?
+  rif                  String?
+  verificationStatus   VerificationStatus     @default(PENDING)
+  
+  phone                String?
+  whatsapp             String?
+  website              String?
+  municipality         String?
+  address              String?
+  latitude             Float?
+  longitude            Float?
+  
+  seoTitle             String?
+  seoDescription       String?
+  
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+
+  specialties          ProfessionalSpecialty[]
+  subscriptions        Subscription[]
+  posts                Post[]
+  messages             ContactMessage[]
+}
+
+enum VerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+  SUSPENDED
+}
+
+model Specialty {
+  id                   String                 @id @default(uuid())
+  slug                 String                 @unique
+  name                 String                 @unique
+  description          String?
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+
+  professionals        ProfessionalSpecialty[]
+}
+
+model ProfessionalSpecialty {
+  professionalId       String
+  specialtyId          String
+  professional         ProfessionalProfile    @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  specialty            Specialty              @relation(fields: [specialtyId], references: [id], onDelete: Cascade)
+
+  @@id([professionalId, specialtyId])
+}
+
+model Organization {
+  id                   String                 @id @default(uuid())
+  type                 OrganizationType
+  slug                 String                 @unique
+  name                 String
+  description          String?
+  logoUrl              String?
+  website              String?
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+
+  locations            OrganizationLocation[]
+}
+
+enum OrganizationType {
+  PHARMACY
+  LABORATORY
+  CLINIC
+}
+
+model OrganizationLocation {
+  id                   String                 @id @default(uuid())
+  organizationId       String
+  organization         Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  
+  name                 String
+  address              String
+  municipality         String?
+  phone                String?
+  whatsapp             String?
+  latitude             Float?
+  longitude            Float?
+  googlePlaceId        String?
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+}
+
+model IdentityVerification {
+  id                   String                 @id @default(uuid())
+  userId               String                 @unique
+  user                 User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  documentType         String                 // e.g. DNI, PASSPORT, MEDICAL_LICENSE
+  documentUrl          String                 // S3 Private URL
+  status               VerificationStatus     @default(PENDING)
+  reviewedBy           String?                // Admin ID
+  rejectionReason      String?
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+}
+
+model SubscriptionPlan {
+  id                   String                 @id @default(uuid())
+  name                 String
+  description          String?
+  price                Decimal                @db.Decimal(10, 2)
+  billingCycle         BillingCycle
+  features             Json?
+  isActive             Boolean                @default(true)
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+
+  subscriptions        Subscription[]
+}
+
+enum BillingCycle {
+  MONTHLY
+  QUARTERLY
+  YEARLY
+}
+
+model Subscription {
+  id                   String                 @id @default(uuid())
+  professionalId       String
+  professional         ProfessionalProfile    @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  
+  planId               String
+  plan                 SubscriptionPlan       @relation(fields: [planId], references: [id])
+  
+  status               SubscriptionStatus     @default(ACTIVE)
+  currentPeriodStart   DateTime
+  currentPeriodEnd     DateTime
+  cancelAtPeriodEnd    Boolean                @default(false)
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+
+  installments         SubscriptionInstallment[]
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELED
+  PAST_DUE
+  UNPAID
+}
+
+model SubscriptionInstallment {
+  id                   String                 @id @default(uuid())
+  subscriptionId       String
+  subscription         Subscription           @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  
+  amount               Decimal                @db.Decimal(10, 2)
+  dueDate              DateTime
+  status               InstallmentStatus      @default(PENDING)
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+
+  payments             Payment[]
+}
+
+enum InstallmentStatus {
+  PENDING
+  PAID
+  OVERDUE
+}
+
+model Payment {
+  id                   String                 @id @default(uuid())
+  installmentId        String
+  installment          SubscriptionInstallment @relation(fields: [installmentId], references: [id])
+  
+  amount               Decimal                @db.Decimal(10, 2)
+  currency             String                 @default("USD")
+  method               PaymentMethod
+  providerReference    String?                // Stripe/PayPal id or Pago Movil reference
+  receiptUrl           String?                // Uploaded receipt for manual transfer
+  status               PaymentStatus          @default(PENDING)
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+}
+
+enum PaymentMethod {
+  CREDIT_CARD
+  PAYPAL
+  PAGO_MOVIL
+  BANK_TRANSFER
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+model ContactMessage {
+  id                   String                 @id @default(uuid())
+  professionalId       String
+  professional         ProfessionalProfile    @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  
+  senderName           String
+  senderEmail          String
+  senderPhone          String?
+  content              String
+  isRead               Boolean                @default(false)
+  createdAt            DateTime               @default(now())
+}
+
+model AnalyticsEvent {
+  id                   String                 @id @default(uuid())
+  eventType            EventType
+  resourceId           String                 // Professional ID, Post ID, Ad ID
+  metadata             Json?
+  ipAddress            String?
+  userAgent            String?
+  createdAt            DateTime               @default(now())
+}
+
+enum EventType {
+  PROFILE_VIEW
+  WHATSAPP_CLICK
+  PHONE_CLICK
+  WEBSITE_CLICK
+  MAP_CLICK
+  CONTACT_SUBMIT
+  AD_IMPRESSION
+  AD_CLICK
+}
+
+model AdSlot {
+  id                   String                 @id @default(uuid())
+  name                 String
+  location             String                 // e.g. "HOME_TOP", "SIDEBAR"
+  width                Int?
+  height               Int?
+  isActive             Boolean                @default(true)
+  createdAt            DateTime               @default(now())
+  
+  campaigns            AdCampaign[]
+}
+
+model AdCampaign {
+  id                   String                 @id @default(uuid())
+  slotId               String
+  slot                 AdSlot                 @relation(fields: [slotId], references: [id])
+  
+  title                String
+  imageUrl             String
+  targetUrl            String
+  startDate            DateTime
+  endDate              DateTime
+  isActive             Boolean                @default(true)
+  clicks               Int                    @default(0)
+  impressions          Int                    @default(0)
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+}
+
+model Post {
+  id                   String                 @id @default(uuid())
+  professionalId       String
+  professional         ProfessionalProfile    @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  
+  title                String
+  slug                 String                 @unique
+  content              String                 @db.Text
+  published            Boolean                @default(false)
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+}
+
+model Notification {
+  id                   String                 @id @default(uuid())
+  userId               String
+  user                 User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  type                 String
+  title                String
+  content              String
+  isRead               Boolean                @default(false)
+  createdAt            DateTime               @default(now())
+}
+
+model RefreshToken {
+  id                   String                 @id @default(uuid())
+  userId               String
+  user                 User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token                String                 @unique
+  expiresAt            DateTime
+  isRevoked            Boolean                @default(false)
+  createdAt            DateTime               @default(now())
+}
+
+model AuditLog {
+  id                   String                 @id @default(uuid())
+  userId               String?
+  user                 User?                  @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action               String
+  resource             String
+  resourceId           String?
+  details              Json?
+  ipAddress            String?
+  createdAt            DateTime               @default(now())
+}
+
+model SiteSettings {
+  id                   String                 @id @default(uuid())
+  key                  String                 @unique
+  value                Json
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+}
