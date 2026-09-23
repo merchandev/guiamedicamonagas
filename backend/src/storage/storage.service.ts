@@ -24,19 +24,37 @@ export const MAX_DOCUMENT_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
 export class StorageService implements OnModuleInit {
   private readonly logger = new Logger(StorageService.name);
   private readonly client: S3Client;
+  /**
+   * Cliente usado SOLO para firmar URLs de descarga. En producción, MinIO
+   * vive en la red interna (http://minio:9000) e inalcanzable desde el
+   * navegador; este cliente firma contra S3_PUBLIC_ENDPOINT (la ruta pública
+   * proxeada por Caddy) para que la URL resultante sí abra desde afuera. Si
+   * no está definida, se reutiliza el mismo cliente interno — comportamiento
+   * sin cambios en desarrollo local, donde el navegador sí llega a MinIO.
+   */
+  private readonly presignClient: S3Client;
   private readonly bucket: string;
 
   constructor(private readonly config: ConfigService<EnvConfig, true>) {
     this.bucket = this.config.get('S3_BUCKET', { infer: true });
+    const region = this.config.get('S3_REGION', { infer: true });
+    const forcePathStyle = this.config.get('S3_FORCE_PATH_STYLE', { infer: true });
+    const credentials = {
+      accessKeyId: this.config.get('S3_ACCESS_KEY', { infer: true }),
+      secretAccessKey: this.config.get('S3_SECRET_KEY', { infer: true }),
+    };
+
     this.client = new S3Client({
       endpoint: this.config.get('S3_ENDPOINT', { infer: true }),
-      region: this.config.get('S3_REGION', { infer: true }),
-      forcePathStyle: this.config.get('S3_FORCE_PATH_STYLE', { infer: true }),
-      credentials: {
-        accessKeyId: this.config.get('S3_ACCESS_KEY', { infer: true }),
-        secretAccessKey: this.config.get('S3_SECRET_KEY', { infer: true }),
-      },
+      region,
+      forcePathStyle,
+      credentials,
     });
+
+    const publicEndpoint = this.config.get('S3_PUBLIC_ENDPOINT', { infer: true });
+    this.presignClient = publicEndpoint
+      ? new S3Client({ endpoint: publicEndpoint, region, forcePathStyle, credentials })
+      : this.client;
   }
 
   async onModuleInit() {
@@ -85,7 +103,7 @@ export class StorageService implements OnModuleInit {
       Key: key,
       ResponseContentDisposition: forceDownload ? 'attachment' : undefined,
     });
-    return getSignedUrl(this.client, command, { expiresIn: expiresInSeconds });
+    return getSignedUrl(this.presignClient, command, { expiresIn: expiresInSeconds });
   }
 
   async deleteObject(key: string): Promise<void> {

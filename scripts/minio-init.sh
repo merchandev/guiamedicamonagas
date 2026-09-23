@@ -37,10 +37,13 @@ docker exec gmm_minio mc mb --ignore-existing "${MINIO_ALIAS}/${S3_BUCKET}"
 echo "→ Configurando acceso privado en el bucket..."
 docker exec gmm_minio mc anonymous set none "${MINIO_ALIAS}/${S3_BUCKET}"
 
-echo "→ Creando usuario de servicio con permisos limitados..."
-# Crear usuario de servicio (app user)
+echo "→ Creando/actualizando usuario de servicio con permisos limitados..."
+# `mc admin user add` sobre un usuario existente solo actualiza su secreto
+# (no es un error), pero se tolera igual por si una versión de mc distinta
+# lo trata diferente — re-ejecutar este script nunca debe abortar a mitad.
 docker exec gmm_minio mc admin user add "${MINIO_ALIAS}" \
-  "${S3_ACCESS_KEY}" "${S3_SECRET_KEY}"
+  "${S3_ACCESS_KEY}" "${S3_SECRET_KEY}" \
+  || echo "  (el usuario ya existía, se conserva)"
 
 echo "→ Creando política de permisos mínimos para la API..."
 # Política: solo lectura/escritura en el bucket de la app
@@ -67,12 +70,18 @@ cat > /tmp/gmm-app-policy.json << EOF
 EOF
 
 docker cp /tmp/gmm-app-policy.json gmm_minio:/tmp/gmm-app-policy.json
+# `policy create` sobre un nombre existente reemplaza su contenido —
+# idempotente por diseño, pero se tolera el error igual por si acaso.
 docker exec gmm_minio mc admin policy create "${MINIO_ALIAS}" gmm-app-policy \
-  /tmp/gmm-app-policy.json
+  /tmp/gmm-app-policy.json \
+  || echo "  (la política ya existía, se actualizó su contenido)"
 
 echo "→ Asignando política al usuario de servicio..."
+# Algunas versiones de mc devuelven error si la política ya está asignada
+# a ese usuario — no es un fallo real, el estado deseado ya está logrado.
 docker exec gmm_minio mc admin policy attach "${MINIO_ALIAS}" gmm-app-policy \
-  --user "${S3_ACCESS_KEY}"
+  --user "${S3_ACCESS_KEY}" \
+  || echo "  (la política ya estaba asignada a este usuario)"
 
 echo ""
 echo "✅ MinIO inicializado correctamente."

@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
-import * as bcrypt from 'bcryptjs';
+import { hashPassword } from '../src/common/utils/password.util';
 
 const prisma = new PrismaClient({ adapter: new PrismaPg(process.env.DATABASE_URL!) });
 
@@ -159,9 +159,20 @@ async function main() {
   const superadminEmail = process.env.SEED_SUPERADMIN_EMAIL ?? 'admin@guiamedicamonagas.com';
   const superadminPassword = process.env.SEED_SUPERADMIN_PASSWORD;
 
-  if (superadminPassword) {
+  if (!superadminPassword) {
+    if (process.env.NODE_ENV === 'production') {
+      // En producción, un seed "exitoso" sin superadmin deja el sitio sin
+      // nadie que pueda administrar nada — mejor fallar fuerte que seguir
+      // en silencio como antes.
+      throw new Error(
+        'SEED_SUPERADMIN_PASSWORD no está definida. En producción es obligatoria: ' +
+          'define SEED_SUPERADMIN_EMAIL y SEED_SUPERADMIN_PASSWORD en .env.prod antes de sembrar.',
+      );
+    }
+    console.log('SEED_SUPERADMIN_PASSWORD no definida: se omite la creación del superadmin.');
+  } else {
     console.log(`Sembrando superadmin (${superadminEmail})...`);
-    const passwordHash = await bcrypt.hash(superadminPassword, 12);
+    const passwordHash = await hashPassword(superadminPassword);
     await prisma.user.upsert({
       where: { email: superadminEmail },
       update: {},
@@ -172,8 +183,6 @@ async function main() {
         isEmailVerified: true,
       },
     });
-  } else {
-    console.log('SEED_SUPERADMIN_PASSWORD no definida: se omite la creación del superadmin.');
   }
 }
 

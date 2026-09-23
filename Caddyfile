@@ -1,25 +1,41 @@
-{
-	# Opciones globales del servidor ACME (Let's Encrypt)
-	email admin@guiamedicamonagas.com
-	# En staging, reemplazar por: acme_ca https://acme-staging-v02.api.letsencrypt.org/directory
-}
+# =============================================================================
+# Caddyfile · Lanzamiento HTTP independiente (sin dominio/HTTPS todavía)
+# =============================================================================
+# Este proyecto corre aislado junto a otros servicios en el mismo VPS/IP, cuyos
+# puertos 80/443/3000/25/587 ya están ocupados. Por eso Caddy escucha en un
+# puerto alterno (8088) sin bloque ACME/TLS: es HTTP simple a propósito. La
+# migración a HTTPS con dominio propio (segunda IP, DNS-01 challenge o
+# certificado manual) es un paso posterior que no debería requerir tocar la
+# app — solo este archivo y el mapeo de puertos en docker-compose.prod.yml.
+# =============================================================================
 
-guiamedicamonagas.com, www.guiamedicamonagas.com {
-
-	# HSTS + headers de seguridad
+:8088 {
+	# Headers de seguridad que sí aplican sin HTTPS (HSTS se omite a propósito:
+	# forzarlo sobre una conexión sin cifrar rompería el propio sitio).
 	header {
-		Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
 		X-Content-Type-Options "nosniff"
 		X-Frame-Options "DENY"
 		Referrer-Policy "strict-origin-when-cross-origin"
 		Permissions-Policy "geolocation=(), microphone=(), camera=()"
-		# Quitar cabecera que identifica el servidor
 		-Server
 	}
 
 	# API — solo /api/* llega al backend NestJS
 	handle /api/* {
 		reverse_proxy api:4000 {
+			header_up X-Real-IP {remote_host}
+			header_up X-Forwarded-For {remote_host}
+			header_up X-Forwarded-Proto {scheme}
+		}
+	}
+
+	# Archivos de MinIO (fotos de perfil, documentos con URL firmada) — el
+	# nombre del bucket es el propio prefijo de ruta, así que no hace falta
+	# reescribir el path y la firma SigV4 de la URL (generada por la API
+	# contra S3_PUBLIC_ENDPOINT) sigue siendo válida: Caddy conserva el
+	# header Host original por defecto, que es lo que la firma cubre.
+	handle /{$S3_BUCKET}/* {
+		reverse_proxy minio:9000 {
 			header_up X-Real-IP {remote_host}
 			header_up X-Forwarded-For {remote_host}
 			header_up X-Forwarded-Proto {scheme}
@@ -45,8 +61,3 @@ guiamedicamonagas.com, www.guiamedicamonagas.com {
 		format json
 	}
 }
-
-# Redirigir www → apex (si se usa apex como principal)
-# www.guiamedicamonagas.com {
-# 	redir https://guiamedicamonagas.com{uri} permanent
-# }

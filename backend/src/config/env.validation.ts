@@ -50,8 +50,17 @@ export const envSchema = z.object({
   JWT_REFRESH_EXPIRATION_DAYS: z.coerce.number().default(7),
 
   COOKIE_SECRET: z.string().min(32).and(noInsecureDefault('COOKIE_SECRET')),
+  // Cookie del refresh token: debe ir en `true` en cuanto el sitio sirva por
+  // HTTPS. En `false` solo para un lanzamiento HTTP temporal (el navegador
+  // nunca reenvía una cookie `secure` por una conexión sin cifrar).
+  COOKIE_SECURE: envBoolean(true),
 
   S3_ENDPOINT: z.string().url(),
+  // URL pública (vía proxy de Caddy) para las descargas firmadas que ve el
+  // navegador. Si no se define, se reutiliza S3_ENDPOINT (comportamiento
+  // actual sin cambios en desarrollo local, donde el navegador sí alcanza
+  // el contenedor de MinIO directamente).
+  S3_PUBLIC_ENDPOINT: z.string().url().optional(),
   S3_REGION: z.string().default('us-east-1'),
   S3_BUCKET: z.string().min(1),
   S3_ACCESS_KEY: z.string().min(1),

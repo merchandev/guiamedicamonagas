@@ -13,7 +13,7 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 
-const REFRESH_COOKIE = 'refresh_token';
+const REFRESH_COOKIE = 'gmm_refresh_token';
 
 @Controller('auth')
 export class AuthController {
@@ -25,7 +25,7 @@ export class AuthController {
   private setRefreshCookie(reply: FastifyReply, token: string, expiresAt: Date) {
     reply.setCookie(REFRESH_COOKIE, token, {
       httpOnly: true,
-      secure: this.config.get('NODE_ENV', { infer: true }) === 'production',
+      secure: this.config.get('COOKIE_SECURE', { infer: true }),
       sameSite: 'lax',
       path: '/api/v1/auth',
       expires: expiresAt,

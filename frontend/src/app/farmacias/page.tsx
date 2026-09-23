@@ -28,9 +28,10 @@ const TABS = [
 export default async function FarmaciasPage({
   searchParams,
 }: {
-  searchParams: { tipo?: string };
+  searchParams: Promise<{ tipo?: string }>;
 }) {
-  const type = searchParams.tipo ?? '';
+  const { tipo } = await searchParams;
+  const type = tipo ?? '';
   const query = type ? `?type=${type}` : '';
   const organizations = (await serverGet<Organization[]>(`/organizations${query}`)) ?? [];
 

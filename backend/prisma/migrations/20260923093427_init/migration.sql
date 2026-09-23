@@ -5,6 +5,12 @@ CREATE TYPE "Role" AS ENUM ('USER', 'PROFESSIONAL', 'ADMIN', 'SUPERADMIN');
 CREATE TYPE "VerificationTokenType" AS ENUM ('EMAIL_VERIFICATION', 'PASSWORD_RESET');
 
 -- CreateEnum
+CREATE TYPE "SocialPlatform" AS ENUM ('INSTAGRAM', 'FACEBOOK', 'TIKTOK', 'WEBSITE');
+
+-- CreateEnum
+CREATE TYPE "PlanTier" AS ENUM ('FREE', 'PROFESSIONAL', 'PROFESSIONAL_PLUS', 'PREMIUM', 'ORGANIZATION');
+
+-- CreateEnum
 CREATE TYPE "VerificationStatus" AS ENUM ('PENDING', 'IN_REVIEW', 'VERIFIED', 'REJECTED', 'SUSPENDED');
 
 -- CreateEnum
@@ -32,13 +38,25 @@ CREATE TYPE "PaymentMethod" AS ENUM ('PAGO_MOVIL', 'BANK_TRANSFER');
 CREATE TYPE "PaymentStatus" AS ENUM ('PENDING', 'COMPLETED', 'REJECTED');
 
 -- CreateEnum
-CREATE TYPE "EventType" AS ENUM ('PROFILE_VIEW', 'WHATSAPP_CLICK', 'PHONE_CLICK', 'WEBSITE_CLICK', 'MAP_CLICK', 'CONTACT_SUBMIT', 'AD_IMPRESSION', 'AD_CLICK');
+CREATE TYPE "EventType" AS ENUM ('PROFILE_VIEW', 'WHATSAPP_CLICK', 'PHONE_CLICK', 'WEBSITE_CLICK', 'SOCIAL_LINK_CLICK', 'MAP_CLICK', 'CONTACT_SUBMIT', 'AD_IMPRESSION', 'AD_CLICK');
 
 -- CreateEnum
 CREATE TYPE "MessageChannel" AS ENUM ('EMAIL', 'WHATSAPP');
 
 -- CreateEnum
 CREATE TYPE "MessageStatus" AS ENUM ('SENT', 'FAILED', 'SKIPPED');
+
+-- CreateEnum
+CREATE TYPE "AppointmentStatus" AS ENUM ('PENDING', 'CONFIRMED', 'COMPLETED', 'CANCELLED', 'NO_SHOW');
+
+-- CreateEnum
+CREATE TYPE "AppointmentSource" AS ENUM ('WEB', 'WHATSAPP', 'APP', 'PHONE');
+
+-- CreateEnum
+CREATE TYPE "CancelledByType" AS ENUM ('PATIENT', 'PROFESSIONAL');
+
+-- CreateEnum
+CREATE TYPE "FinanceType" AS ENUM ('INCOME', 'EXPENSE');
 
 -- CreateTable
 CREATE TABLE "User" (
@@ -105,9 +123,9 @@ CREATE TABLE "ProfessionalProfile" (
     "verifiedAt" TIMESTAMP(3),
     "isPublished" BOOLEAN NOT NULL DEFAULT false,
     "isSpecialist" BOOLEAN NOT NULL DEFAULT false,
+    "planTier" "PlanTier" NOT NULL DEFAULT 'FREE',
     "phone" TEXT,
     "whatsapp" TEXT,
-    "website" TEXT,
     "municipality" TEXT,
     "address" TEXT,
     "latitude" DOUBLE PRECISION,
@@ -121,6 +139,34 @@ CREATE TABLE "ProfessionalProfile" (
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "ProfessionalProfile_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "ProfessionalLocation" (
+    "id" TEXT NOT NULL,
+    "professionalId" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "address" TEXT NOT NULL,
+    "municipality" TEXT,
+    "phone" TEXT,
+    "whatsapp" TEXT,
+    "latitude" DOUBLE PRECISION,
+    "longitude" DOUBLE PRECISION,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "ProfessionalLocation_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "ProfessionalSocialLink" (
+    "id" TEXT NOT NULL,
+    "professionalId" TEXT NOT NULL,
+    "platform" "SocialPlatform" NOT NULL,
+    "url" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "ProfessionalSocialLink_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -172,7 +218,6 @@ CREATE TABLE "Organization" (
     "name" TEXT NOT NULL,
     "description" TEXT,
     "logoUrl" TEXT,
-    "website" TEXT,
     "isPublished" BOOLEAN NOT NULL DEFAULT true,
     "seoTitle" TEXT,
     "seoDescription" TEXT,
@@ -201,13 +246,27 @@ CREATE TABLE "OrganizationLocation" (
 );
 
 -- CreateTable
+CREATE TABLE "OrganizationSocialLink" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "platform" "SocialPlatform" NOT NULL,
+    "url" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "OrganizationSocialLink_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "SubscriptionPlan" (
     "id" TEXT NOT NULL,
+    "tier" "PlanTier" NOT NULL,
     "name" TEXT NOT NULL,
     "description" TEXT,
-    "priceBs" DECIMAL(12,2) NOT NULL,
+    "priceUsd" DECIMAL(10,2) NOT NULL,
     "billingCycle" "BillingCycle" NOT NULL,
     "features" JSONB,
+    "maxLocations" INTEGER NOT NULL DEFAULT 1,
+    "postsLimit" INTEGER,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -419,6 +478,137 @@ CREATE TABLE "PageSeo" (
     CONSTRAINT "PageSeo_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE "Schedule" (
+    "id" TEXT NOT NULL,
+    "professionalId" TEXT NOT NULL,
+    "slotDurationMinutes" INTEGER NOT NULL DEFAULT 30,
+    "bufferMinutes" INTEGER NOT NULL DEFAULT 0,
+    "maxDailyAppointments" INTEGER,
+    "autoConfirm" BOOLEAN NOT NULL DEFAULT false,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Schedule_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "ScheduleBlock" (
+    "id" TEXT NOT NULL,
+    "scheduleId" TEXT NOT NULL,
+    "dayOfWeek" INTEGER NOT NULL,
+    "startTime" TEXT NOT NULL,
+    "endTime" TEXT NOT NULL,
+
+    CONSTRAINT "ScheduleBlock_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "ScheduleException" (
+    "id" TEXT NOT NULL,
+    "scheduleId" TEXT NOT NULL,
+    "date" TIMESTAMP(3) NOT NULL,
+    "isBlocked" BOOLEAN NOT NULL DEFAULT true,
+    "startTime" TEXT,
+    "endTime" TEXT,
+    "reason" TEXT,
+
+    CONSTRAINT "ScheduleException_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "PatientProfile" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT,
+    "patientCode" TEXT NOT NULL,
+    "firstName" TEXT,
+    "lastName" TEXT,
+    "cedula" TEXT,
+    "phone" TEXT,
+    "birthDate" TIMESTAMP(3),
+    "sex" TEXT,
+    "bloodType" TEXT,
+    "allergies" TEXT,
+    "municipality" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "PatientProfile_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Appointment" (
+    "id" TEXT NOT NULL,
+    "professionalId" TEXT NOT NULL,
+    "patientId" TEXT NOT NULL,
+    "locationId" TEXT,
+    "startsAt" TIMESTAMP(3) NOT NULL,
+    "endsAt" TIMESTAMP(3) NOT NULL,
+    "status" "AppointmentStatus" NOT NULL DEFAULT 'PENDING',
+    "reason" TEXT,
+    "source" "AppointmentSource" NOT NULL DEFAULT 'WEB',
+    "internalNotes" TEXT,
+    "confirmationSentAt" TIMESTAMP(3),
+    "reminderSentAt" TIMESTAMP(3),
+    "reminder2hSentAt" TIMESTAMP(3),
+    "cancelledAt" TIMESTAMP(3),
+    "cancellationReason" TEXT,
+    "cancelledBy" "CancelledByType",
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Appointment_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "ClinicalNote" (
+    "id" TEXT NOT NULL,
+    "appointmentId" TEXT NOT NULL,
+    "patientId" TEXT NOT NULL,
+    "professionalId" TEXT NOT NULL,
+    "chiefComplaint" TEXT,
+    "diagnosis" TEXT,
+    "treatment" TEXT,
+    "medications" JSONB,
+    "followUpDate" TIMESTAMP(3),
+    "privateNotes" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "ClinicalNote_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "FinanceRecord" (
+    "id" TEXT NOT NULL,
+    "professionalId" TEXT NOT NULL,
+    "type" "FinanceType" NOT NULL,
+    "category" TEXT NOT NULL,
+    "amountBs" DECIMAL(12,2) NOT NULL,
+    "amountUsd" DECIMAL(10,2),
+    "bcvRateUsed" DECIMAL(10,4),
+    "description" TEXT,
+    "date" TIMESTAMP(3) NOT NULL,
+    "appointmentId" TEXT,
+    "receiptFileKey" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "FinanceRecord_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "PushSubscription" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "endpoint" TEXT NOT NULL,
+    "p256dh" TEXT NOT NULL,
+    "auth" TEXT NOT NULL,
+    "userAgent" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "PushSubscription_pkey" PRIMARY KEY ("id")
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
 
@@ -450,6 +640,12 @@ CREATE INDEX "ProfessionalProfile_verificationStatus_isPublished_idx" ON "Profes
 CREATE INDEX "ProfessionalProfile_municipality_idx" ON "ProfessionalProfile"("municipality");
 
 -- CreateIndex
+CREATE INDEX "ProfessionalProfile_planTier_idx" ON "ProfessionalProfile"("planTier");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "ProfessionalSocialLink_professionalId_platform_key" ON "ProfessionalSocialLink"("professionalId", "platform");
+
+-- CreateIndex
 CREATE INDEX "ProfessionalDocument_professionalId_type_idx" ON "ProfessionalDocument"("professionalId", "type");
 
 -- CreateIndex
@@ -463,6 +659,12 @@ CREATE UNIQUE INDEX "Specialty_name_key" ON "Specialty"("name");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Organization_slug_key" ON "Organization"("slug");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "OrganizationSocialLink_organizationId_platform_key" ON "OrganizationSocialLink"("organizationId", "platform");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "SubscriptionPlan_tier_key" ON "SubscriptionPlan"("tier");
 
 -- CreateIndex
 CREATE INDEX "Subscription_professionalId_status_idx" ON "Subscription"("professionalId", "status");
@@ -494,6 +696,60 @@ CREATE UNIQUE INDEX "SiteSettings_key_key" ON "SiteSettings"("key");
 -- CreateIndex
 CREATE UNIQUE INDEX "PageSeo_path_key" ON "PageSeo"("path");
 
+-- CreateIndex
+CREATE UNIQUE INDEX "Schedule_professionalId_key" ON "Schedule"("professionalId");
+
+-- CreateIndex
+CREATE INDEX "ScheduleBlock_scheduleId_dayOfWeek_idx" ON "ScheduleBlock"("scheduleId", "dayOfWeek");
+
+-- CreateIndex
+CREATE INDEX "ScheduleException_scheduleId_date_idx" ON "ScheduleException"("scheduleId", "date");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "PatientProfile_userId_key" ON "PatientProfile"("userId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "PatientProfile_patientCode_key" ON "PatientProfile"("patientCode");
+
+-- CreateIndex
+CREATE INDEX "PatientProfile_patientCode_idx" ON "PatientProfile"("patientCode");
+
+-- CreateIndex
+CREATE INDEX "Appointment_professionalId_startsAt_idx" ON "Appointment"("professionalId", "startsAt");
+
+-- CreateIndex
+CREATE INDEX "Appointment_patientId_idx" ON "Appointment"("patientId");
+
+-- CreateIndex
+CREATE INDEX "Appointment_status_idx" ON "Appointment"("status");
+
+-- CreateIndex
+CREATE INDEX "Appointment_startsAt_idx" ON "Appointment"("startsAt");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "ClinicalNote_appointmentId_key" ON "ClinicalNote"("appointmentId");
+
+-- CreateIndex
+CREATE INDEX "ClinicalNote_patientId_idx" ON "ClinicalNote"("patientId");
+
+-- CreateIndex
+CREATE INDEX "ClinicalNote_professionalId_idx" ON "ClinicalNote"("professionalId");
+
+-- CreateIndex
+CREATE INDEX "FinanceRecord_professionalId_date_idx" ON "FinanceRecord"("professionalId", "date");
+
+-- CreateIndex
+CREATE INDEX "FinanceRecord_professionalId_type_idx" ON "FinanceRecord"("professionalId", "type");
+
+-- CreateIndex
+CREATE INDEX "FinanceRecord_appointmentId_idx" ON "FinanceRecord"("appointmentId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "PushSubscription_endpoint_key" ON "PushSubscription"("endpoint");
+
+-- CreateIndex
+CREATE INDEX "PushSubscription_userId_idx" ON "PushSubscription"("userId");
+
 -- AddForeignKey
 ALTER TABLE "RefreshToken" ADD CONSTRAINT "RefreshToken_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
@@ -502,6 +758,12 @@ ALTER TABLE "VerificationToken" ADD CONSTRAINT "VerificationToken_userId_fkey" F
 
 -- AddForeignKey
 ALTER TABLE "ProfessionalProfile" ADD CONSTRAINT "ProfessionalProfile_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ProfessionalLocation" ADD CONSTRAINT "ProfessionalLocation_professionalId_fkey" FOREIGN KEY ("professionalId") REFERENCES "ProfessionalProfile"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ProfessionalSocialLink" ADD CONSTRAINT "ProfessionalSocialLink_professionalId_fkey" FOREIGN KEY ("professionalId") REFERENCES "ProfessionalProfile"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "ProfessionalDocument" ADD CONSTRAINT "ProfessionalDocument_professionalId_fkey" FOREIGN KEY ("professionalId") REFERENCES "ProfessionalProfile"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -517,6 +779,9 @@ ALTER TABLE "ProfessionalSpecialty" ADD CONSTRAINT "ProfessionalSpecialty_specia
 
 -- AddForeignKey
 ALTER TABLE "OrganizationLocation" ADD CONSTRAINT "OrganizationLocation_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "OrganizationSocialLink" ADD CONSTRAINT "OrganizationSocialLink_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Subscription" ADD CONSTRAINT "Subscription_professionalId_fkey" FOREIGN KEY ("professionalId") REFERENCES "ProfessionalProfile"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -547,3 +812,50 @@ ALTER TABLE "Notification" ADD CONSTRAINT "Notification_userId_fkey" FOREIGN KEY
 
 -- AddForeignKey
 ALTER TABLE "AuditLog" ADD CONSTRAINT "AuditLog_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Schedule" ADD CONSTRAINT "Schedule_professionalId_fkey" FOREIGN KEY ("professionalId") REFERENCES "ProfessionalProfile"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ScheduleBlock" ADD CONSTRAINT "ScheduleBlock_scheduleId_fkey" FOREIGN KEY ("scheduleId") REFERENCES "Schedule"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ScheduleException" ADD CONSTRAINT "ScheduleException_scheduleId_fkey" FOREIGN KEY ("scheduleId") REFERENCES "Schedule"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "PatientProfile" ADD CONSTRAINT "PatientProfile_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Appointment" ADD CONSTRAINT "Appointment_professionalId_fkey" FOREIGN KEY ("professionalId") REFERENCES "ProfessionalProfile"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Appointment" ADD CONSTRAINT "Appointment_patientId_fkey" FOREIGN KEY ("patientId") REFERENCES "PatientProfile"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Appointment" ADD CONSTRAINT "Appointment_locationId_fkey" FOREIGN KEY ("locationId") REFERENCES "ProfessionalLocation"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ClinicalNote" ADD CONSTRAINT "ClinicalNote_appointmentId_fkey" FOREIGN KEY ("appointmentId") REFERENCES "Appointment"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ClinicalNote" ADD CONSTRAINT "ClinicalNote_patientId_fkey" FOREIGN KEY ("patientId") REFERENCES "PatientProfile"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ClinicalNote" ADD CONSTRAINT "ClinicalNote_professionalId_fkey" FOREIGN KEY ("professionalId") REFERENCES "ProfessionalProfile"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "FinanceRecord" ADD CONSTRAINT "FinanceRecord_professionalId_fkey" FOREIGN KEY ("professionalId") REFERENCES "ProfessionalProfile"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "FinanceRecord" ADD CONSTRAINT "FinanceRecord_appointmentId_fkey" FOREIGN KEY ("appointmentId") REFERENCES "Appointment"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "PushSubscription" ADD CONSTRAINT "PushSubscription_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- Anti-doble-reserva: Prisma no puede expresar índices únicos parciales en
+-- schema.prisma, así que se agrega a mano. Garantiza que un profesional no
+-- pueda tener dos citas activas (PENDING/CONFIRMED) con el mismo horario de
+-- inicio, incluso ante una condición de carrera entre dos reservas simultáneas.
+CREATE UNIQUE INDEX "Appointment_professional_active_slot_key"
+  ON "Appointment" ("professionalId", "startsAt")
+  WHERE "status" IN ('PENDING', 'CONFIRMED');

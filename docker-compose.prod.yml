@@ -4,7 +4,8 @@
 # Principios de este archivo:
 #
 #   1. NINGÚN servicio interno (postgres, redis, minio, meilisearch) publica
-#      puertos al host.  Solo Caddy expone 80/443 a Internet.
+#      puertos al host.  Solo Caddy expone un puerto a Internet (CADDY_PORT,
+#      por defecto 8088 — ver Caddyfile).
 #
 #   2. Todos los servicios corren en la red interna gmm_internal.
 #      api y web también en gmm_dmz para poder hablar con Caddy.
@@ -24,13 +25,21 @@
 #   DB_USER, DB_PASSWORD, DB_NAME
 #   MEILI_MASTER_KEY
 #   MINIO_ROOT_USER, MINIO_ROOT_PASSWORD
-#   S3_ACCESS_KEY, S3_SECRET_KEY
+#   S3_ACCESS_KEY, S3_SECRET_KEY, S3_BUCKET
 #   JWT_SECRET, JWT_REFRESH_SECRET, COOKIE_SECRET
-#   FRONTEND_URL, NEXT_PUBLIC_API_URL, NEXT_PUBLIC_SITE_URL
+#   FRONTEND_URL, NEXT_PUBLIC_API_URL, NEXT_PUBLIC_SITE_URL, S3_PUBLIC_ENDPOINT
 #   SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, MAIL_FROM
+#   CADDY_PORT (puerto público de Caddy; ver Caddyfile)
 #   + todos los opcionales del .env.example
+#
+# Este stack corre como proyecto Compose aislado ("gmm-independent", ver
+# `name:` abajo) para convivir en el mismo VPS con otros proyectos Docker sin
+# interferir: nombres de red, volúmenes y contenedores exclusivos, y ningún
+# puerto publicado choca con lo que ya esté ocupado (ver Caddyfile: por
+# defecto HTTP simple en :8088, no 80/443).
 # =============================================================================
-version: '3.9'
+
+name: gmm-independent
 
 networks:
   # Red interna: solo contenedores de la aplicación y servicios de datos.
@@ -70,6 +79,10 @@ services:
       retries: 5
     security_opt:
       - no-new-privileges:true
+    # Límites conservadores para no afectar a otros proyectos del mismo VPS.
+    # Ajustar según los recursos realmente libres del servidor.
+    mem_limit: 512m
+    cpus: 0.5
 
   redis:
     image: redis:7.4-alpine
@@ -88,6 +101,8 @@ services:
       - gmm_internal
     security_opt:
       - no-new-privileges:true
+    mem_limit: 320m
+    cpus: 0.3
 
   meilisearch:
     image: getmeili/meilisearch:v1.10.3
@@ -103,6 +118,8 @@ services:
       - gmm_internal
     security_opt:
       - no-new-privileges:true
+    mem_limit: 512m
+    cpus: 0.5
 
   minio:
     image: quay.io/minio/minio:RELEASE.2025-07-23T15-29-46Z
@@ -120,6 +137,8 @@ services:
       - gmm_internal
     security_opt:
       - no-new-privileges:true
+    mem_limit: 512m
+    cpus: 0.5
     # La consola (9001) NO se expone. Acceso solo via VPN/SSH tunnel.
 
   # ---------------------------------------------------------------------------
@@ -143,6 +162,9 @@ services:
       MEILI_MASTER_KEY: ${MEILI_MASTER_KEY}
       # La API usa el usuario de servicio limitado, NO las credenciales root
       S3_ENDPOINT: http://minio:9000
+      # URL pública (proxeada por Caddy) usada solo para firmar URLs de
+      # descarga que abre el navegador — ver storage.service.ts y Caddyfile.
+      S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT}
       S3_REGION: ${S3_REGION:-us-east-1}
       S3_BUCKET: ${S3_BUCKET}
       S3_ACCESS_KEY: ${S3_ACCESS_KEY}
@@ -153,6 +175,9 @@ services:
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
       JWT_REFRESH_EXPIRATION_DAYS: ${JWT_REFRESH_EXPIRATION_DAYS:-7}
       COOKIE_SECRET: ${COOKIE_SECRET}
+      # false mientras se sirva por HTTP simple (ver Caddyfile); pasar a
+      # true en cuanto el sitio tenga HTTPS real.
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
       SMTP_HOST: ${SMTP_HOST}
       SMTP_PORT: ${SMTP_PORT:-587}
       SMTP_SECURE: ${SMTP_SECURE:-true}
@@ -181,6 +206,8 @@ services:
     # Sin puertos al host: solo accesible desde Caddy via gmm_dmz
     security_opt:
       - no-new-privileges:true
+    mem_limit: 512m
+    cpus: 0.5
 
   web:
     build:
@@ -192,6 +219,11 @@ services:
     image: gmm_web:latest
     container_name: gmm_web
     restart: unless-stopped
+    environment:
+      # Runtime (NO build arg): el servidor Next.js dentro del contenedor lee
+      # esto para sus fetches SSR, apuntando al nombre interno del servicio
+      # en vez de la URL pública — ver server-fetch.ts.
+      API_INTERNAL_URL: http://api:4000/api/v1
     depends_on:
       - api
     networks:
@@ -199,6 +231,8 @@ services:
     # Sin puertos al host: solo accesible desde Caddy via gmm_dmz
     security_opt:
       - no-new-privileges:true
+    mem_limit: 512m
+    cpus: 0.5
 
   # ---------------------------------------------------------------------------
   # Proxy inverso — única entrada desde Internet
@@ -208,10 +242,13 @@ services:
     image: caddy:2.9-alpine
     container_name: gmm_caddy
     restart: unless-stopped
+    environment:
+      # El Caddyfile usa {$S3_BUCKET} para el path del proxy de archivos.
+      S3_BUCKET: ${S3_BUCKET}
     ports:
-      - "80:80"
-      - "443:443"
-      - "443:443/udp"  # HTTP/3
+      # Puerto alterno: 80/443 ya están ocupados por otros proyectos del
+      # mismo VPS. HTTP simple por ahora — ver Caddyfile.
+      - "${CADDY_PORT:-8088}:8088"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
@@ -223,6 +260,8 @@ services:
       - web
     security_opt:
       - no-new-privileges:true
+    mem_limit: 256m
+    cpus: 0.3
 
 volumes:
   pgdata:

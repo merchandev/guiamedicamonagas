@@ -12,6 +12,13 @@
 set -euo pipefail
 
 ENV_FILE=".env.prod"
+# Nombre de proyecto explícito: aunque docker-compose.prod.yml ya declara
+# `name: gmm-independent`, se repite aquí para que este script nunca dependa
+# del directorio desde el que se invoque ni de detalles de versión de Compose
+# — así ningún comando de este script puede tocar por accidente otro
+# proyecto Docker que corra en el mismo servidor.
+PROJECT_NAME="gmm-independent"
+COMPOSE=(docker compose -p "${PROJECT_NAME}" -f docker-compose.prod.yml)
 
 # --------------------------------------------------------------------------- #
 # 1. Verificar archivo de entorno
@@ -91,26 +98,29 @@ fi
 # --------------------------------------------------------------------------- #
 echo "✅  Variables de entorno verificadas."
 echo ""
-echo "📦  Actualizando imágenes..."
-docker compose -f docker-compose.prod.yml pull
+echo "📦  Actualizando imágenes externas..."
+# Solo los servicios con `image:` de un registro real. api/web son build-only
+# (gmm_api:latest / gmm_web:latest no existen en ningún registro) — intentar
+# "pull" sobre ellos falla o queda en un estado confuso sin necesidad.
+"${COMPOSE[@]}" pull postgres redis meilisearch minio caddy
 
 echo ""
 echo "🔨  Construyendo imágenes de la aplicación..."
-docker compose -f docker-compose.prod.yml build --no-cache
+"${COMPOSE[@]}" build --no-cache
 
 echo ""
 echo "🚀  Arrancando servicios..."
-docker compose -f docker-compose.prod.yml up -d
+"${COMPOSE[@]}" up -d
 
 echo ""
 echo "⏳  Esperando que la base de datos esté lista..."
-until docker compose -f docker-compose.prod.yml exec -T postgres pg_isready -U "${DB_USER}" -q; do
+until "${COMPOSE[@]}" exec -T postgres pg_isready -U "${DB_USER}" -q; do
   sleep 2
 done
 
 echo ""
 echo "⏳  Esperando que MinIO esté listo..."
-until docker compose -f docker-compose.prod.yml exec -T minio mc ready local >/dev/null 2>&1; do
+until "${COMPOSE[@]}" exec -T minio mc ready local >/dev/null 2>&1; do
   sleep 2
 done
 
@@ -120,9 +130,10 @@ bash scripts/minio-init.sh
 
 echo ""
 echo "🔄  Ejecutando migraciones..."
-docker compose -f docker-compose.prod.yml exec -T api npx prisma migrate deploy
+"${COMPOSE[@]}" exec -T api npx prisma migrate deploy
 
 echo ""
 echo "✅  Despliegue completado."
-echo "    Verifica el estado: docker compose -f docker-compose.prod.yml ps"
-echo "    Verifica los logs:  docker compose -f docker-compose.prod.yml logs -f"
+echo "    Verifica el estado: docker compose -p ${PROJECT_NAME} -f docker-compose.prod.yml ps"
+echo "    Verifica los logs:  docker compose -p ${PROJECT_NAME} -f docker-compose.prod.yml logs -f"
+echo "    Accede en: http://<IP-del-servidor>:${CADDY_PORT:-8088}"
