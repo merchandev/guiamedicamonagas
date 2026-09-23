@@ -1,93 +1,69 @@
 #!/usr/bin/env bash
-# =============================================================================
-# scripts/minio-init.sh
-# =============================================================================
-# Crea el bucket privado y el usuario de servicio (app user) con permisos
-# mínimos en MinIO. Debe ejecutarse UNA VEZ después del primer arranque
-# en producción, con acceso al contenedor MinIO via la red interna.
-#
-# Uso (desde el host, con acceso VPN al servidor):
-#   docker exec gmm_minio /bin/sh -c "..."
-# O desde el servidor:
-#   bash scripts/minio-init.sh
-#
-# Variables requeridas (del .env.prod):
-#   MINIO_ROOT_USER, MINIO_ROOT_PASSWORD
-#   S3_BUCKET, S3_ACCESS_KEY, S3_SECRET_KEY
-# =============================================================================
+# Idempotent initialization scoped to the independent Compose project.
 set -euo pipefail
 
-# Leer variables de entorno
+PROJECT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+ENV_FILE="${PROJECT_DIR}/.env.prod"
+if [[ ! -f "${ENV_FILE}" ]]; then
+  echo "ERROR: no existe ${ENV_FILE}." >&2
+  exit 1
+fi
+set -a
+source "${ENV_FILE}"
+set +a
+COMPOSE=(docker compose --project-directory "${PROJECT_DIR}" --env-file "${ENV_FILE}" -p gmm-independent -f "${PROJECT_DIR}/docker-compose.prod.yml")
+
 : "${MINIO_ROOT_USER:?MINIO_ROOT_USER requerido}"
 : "${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD requerido}"
 : "${S3_BUCKET:?S3_BUCKET requerido}"
-: "${S3_ACCESS_KEY:?S3_ACCESS_KEY (usuario de servicio) requerido}"
-: "${S3_SECRET_KEY:?S3_SECRET_KEY (usuario de servicio) requerido}"
+: "${S3_ACCESS_KEY:?S3_ACCESS_KEY requerido}"
+: "${S3_SECRET_KEY:?S3_SECRET_KEY requerido}"
+if [[ ! "${S3_BUCKET}" =~ ^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$ ]]; then
+  echo "ERROR: S3_BUCKET no es un nombre válido de bucket." >&2
+  exit 1
+fi
 
-MINIO_ALIAS="gmm"
-MINIO_HOST="http://minio:9000"
+MINIO_ALIAS=gmm
+POLICY_NAME=gmm-app-policy
+deadline=$((SECONDS + 180))
+echo "Esperando el MinIO exclusivo del proyecto..."
+# Create a known alias using credentials already present inside this container.
+until timeout 10 "${COMPOSE[@]}" exec -T minio sh -c 'mc alias set gmm http://127.0.0.1:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" >/dev/null' &&
+      timeout 10 "${COMPOSE[@]}" exec -T minio mc ready "${MINIO_ALIAS}" >/dev/null 2>&1; do
+  if (( SECONDS >= deadline )); then
+    echo "ERROR: MinIO no estuvo listo en 180 segundos; revisa sus logs y credenciales." >&2
+    exit 1
+  fi
+  sleep 2
+done
 
-echo "→ Configurando alias MinIO..."
-docker exec gmm_minio mc alias set "${MINIO_ALIAS}" "${MINIO_HOST}" \
-  "${MINIO_ROOT_USER}" "${MINIO_ROOT_PASSWORD}"
+echo "Preparando bucket privado y usuario de aplicación..."
+"${COMPOSE[@]}" exec -T minio mc mb --ignore-existing "${MINIO_ALIAS}/${S3_BUCKET}"
+"${COMPOSE[@]}" exec -T minio mc anonymous set none "${MINIO_ALIAS}/${S3_BUCKET}"
+# Existing users are updated by MinIO; any actual error stops the deployment.
+"${COMPOSE[@]}" exec -T minio mc admin user add "${MINIO_ALIAS}" "${S3_ACCESS_KEY}" "${S3_SECRET_KEY}"
 
-echo "→ Creando bucket ${S3_BUCKET} (si no existe)..."
-docker exec gmm_minio mc mb --ignore-existing "${MINIO_ALIAS}/${S3_BUCKET}"
-
-echo "→ Configurando acceso privado en el bucket..."
-docker exec gmm_minio mc anonymous set none "${MINIO_ALIAS}/${S3_BUCKET}"
-
-echo "→ Creando/actualizando usuario de servicio con permisos limitados..."
-# `mc admin user add` sobre un usuario existente solo actualiza su secreto
-# (no es un error), pero se tolera igual por si una versión de mc distinta
-# lo trata diferente — re-ejecutar este script nunca debe abortar a mitad.
-docker exec gmm_minio mc admin user add "${MINIO_ALIAS}" \
-  "${S3_ACCESS_KEY}" "${S3_SECRET_KEY}" \
-  || echo "  (el usuario ya existía, se conserva)"
-
-echo "→ Creando política de permisos mínimos para la API..."
-# Política: solo lectura/escritura en el bucket de la app
-cat > /tmp/gmm-app-policy.json << EOF
+"${COMPOSE[@]}" exec -T minio mc admin policy create "${MINIO_ALIAS}" "${POLICY_NAME}" /dev/stdin <<EOF
 {
   "Version": "2012-10-17",
   "Statement": [
     {
       "Effect": "Allow",
-      "Action": [
-        "s3:GetObject",
-        "s3:PutObject",
-        "s3:DeleteObject"
-      ],
+      "Action": ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"],
       "Resource": "arn:aws:s3:::${S3_BUCKET}/*"
     },
     {
       "Effect": "Allow",
-      "Action": ["s3:GetBucketLocation"],
+      "Action": ["s3:ListBucket", "s3:GetBucketLocation"],
       "Resource": "arn:aws:s3:::${S3_BUCKET}"
     }
   ]
 }
 EOF
 
-docker cp /tmp/gmm-app-policy.json gmm_minio:/tmp/gmm-app-policy.json
-# `policy create` sobre un nombre existente reemplaza su contenido —
-# idempotente por diseño, pero se tolera el error igual por si acaso.
-docker exec gmm_minio mc admin policy create "${MINIO_ALIAS}" gmm-app-policy \
-  /tmp/gmm-app-policy.json \
-  || echo "  (la política ya existía, se actualizó su contenido)"
-
-echo "→ Asignando política al usuario de servicio..."
-# Algunas versiones de mc devuelven error si la política ya está asignada
-# a ese usuario — no es un fallo real, el estado deseado ya está logrado.
-docker exec gmm_minio mc admin policy attach "${MINIO_ALIAS}" gmm-app-policy \
-  --user "${S3_ACCESS_KEY}" \
-  || echo "  (la política ya estaba asignada a este usuario)"
-
-echo ""
-echo "✅ MinIO inicializado correctamente."
-echo "   Bucket:           ${S3_BUCKET}"
-echo "   Usuario de app:   ${S3_ACCESS_KEY}"
-echo "   Permisos:         GetObject, PutObject, DeleteObject (solo ${S3_BUCKET})"
-echo ""
-echo "⚠️  Las credenciales root (${MINIO_ROOT_USER}) no deben usarse desde la API."
-echo "   Configura S3_ACCESS_KEY y S3_SECRET_KEY en .env.prod con el usuario de servicio."
+# Skip an already attached policy without swallowing permissions/network errors.
+USER_INFO="$("${COMPOSE[@]}" exec -T minio mc admin user info "${MINIO_ALIAS}" "${S3_ACCESS_KEY}" --json)"
+if ! grep -Eq '"policyName"[[:space:]]*:[[:space:]]*"([^",]*,)*gmm-app-policy(,[^",]*)*"' <<< "${USER_INFO}"; then
+  "${COMPOSE[@]}" exec -T minio mc admin policy attach "${MINIO_ALIAS}" "${POLICY_NAME}" --user "${S3_ACCESS_KEY}"
+fi
+echo "MinIO inicializado: bucket privado y permisos de objetos/HEAD limitados a este proyecto."

@@ -25,6 +25,9 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
+COPY --from=builder /app/tsconfig.json ./tsconfig.json
+# El seed comparte el algoritmo de contraseñas con la API.
+COPY --from=builder /app/src/common/utils/password.util.ts ./src/common/utils/password.util.ts
 
 # Cambiar a usuario sin privilegios (ya incluido en node:alpine)
 USER node
@@ -33,4 +36,4 @@ EXPOSE 4000
 
 # dumb-init garantiza que las señales SIGTERM/SIGINT lleguen al proceso node
 ENTRYPOINT ["dumb-init", "--"]
-CMD ["node", "dist/main"]
+CMD ["node", "dist/src/main.js"]

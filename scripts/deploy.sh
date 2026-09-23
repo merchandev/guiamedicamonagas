@@ -1,139 +1,87 @@
 #!/usr/bin/env bash
-# =============================================================================
-# scripts/deploy.sh  ·  Despliegue de producción seguro
-# =============================================================================
-# Diferencias clave vs el script original:
-#   1. Usa docker-compose.prod.yml (aislamiento de red, sin puertos al host)
-#   2. Verifica que .env.prod exista y tenga las variables CRÍTICAS antes de
-#      arrancar nada — evita arrancar con defaults inseguros.
-#   3. Nunca copia .env.example a .env.prod automáticamente.
-#   4. Verifica que secrets críticos no tengan valores de ejemplo conocidos.
-# =============================================================================
+# Deploy only this project's services. Run from any working directory.
 set -euo pipefail
 
-ENV_FILE=".env.prod"
-# Nombre de proyecto explícito: aunque docker-compose.prod.yml ya declara
-# `name: gmm-independent`, se repite aquí para que este script nunca dependa
-# del directorio desde el que se invoque ni de detalles de versión de Compose
-# — así ningún comando de este script puede tocar por accidente otro
-# proyecto Docker que corra en el mismo servidor.
+PROJECT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+ENV_FILE="${PROJECT_DIR}/.env.prod"
 PROJECT_NAME="gmm-independent"
-COMPOSE=(docker compose -p "${PROJECT_NAME}" -f docker-compose.prod.yml)
+COMPOSE=(docker compose --project-directory "${PROJECT_DIR}" --env-file "${ENV_FILE}" -p "${PROJECT_NAME}" -f "${PROJECT_DIR}/docker-compose.prod.yml")
+export COMPOSE_PARALLEL_LIMIT="${COMPOSE_PARALLEL_LIMIT:-1}"
 
-# --------------------------------------------------------------------------- #
-# 1. Verificar archivo de entorno
-# --------------------------------------------------------------------------- #
 if [[ ! -f "${ENV_FILE}" ]]; then
-  echo "❌  ${ENV_FILE} no existe."
-  echo "    Crea el archivo a partir de .env.example y configura TODAS las variables"
-  echo "    de producción ANTES de desplegar. Nunca uses .env.example en producción."
+  echo "ERROR: configura ${ENV_FILE} con credenciales propias antes de desplegar." >&2
   exit 1
 fi
-
-# Cargar variables sin exportar todo al entorno del shell
+# This deployment file is trusted configuration owned by the operator.
 set -a
 source "${ENV_FILE}"
 set +a
 
-# --------------------------------------------------------------------------- #
-# 2. Verificar variables críticas (deben existir y tener valor)
-# --------------------------------------------------------------------------- #
 REQUIRED_VARS=(
-  DB_USER DB_PASSWORD DB_NAME
-  REDIS_PASSWORD
-  MEILI_MASTER_KEY
-  MINIO_ROOT_USER MINIO_ROOT_PASSWORD
-  S3_BUCKET S3_ACCESS_KEY S3_SECRET_KEY
+  DB_USER DB_PASSWORD DB_NAME REDIS_PASSWORD MEILI_MASTER_KEY
+  MINIO_ROOT_USER MINIO_ROOT_PASSWORD S3_BUCKET S3_ACCESS_KEY S3_SECRET_KEY
   JWT_SECRET JWT_REFRESH_SECRET COOKIE_SECRET
-  FRONTEND_URL NEXT_PUBLIC_API_URL NEXT_PUBLIC_SITE_URL
-  MAIL_FROM SMTP_HOST SMTP_USER SMTP_PASS
+  FRONTEND_URL NEXT_PUBLIC_API_URL NEXT_PUBLIC_SITE_URL S3_PUBLIC_ENDPOINT
+  MAIL_FROM SMTP_HOST SEED_SUPERADMIN_EMAIL SEED_SUPERADMIN_PASSWORD
 )
-
 MISSING=()
 for var in "${REQUIRED_VARS[@]}"; do
-  if [[ -z "${!var:-}" ]]; then
-    MISSING+=("${var}")
+  [[ -n "${!var:-}" ]] || MISSING+=("${var}")
+done
+if (( ${#MISSING[@]} )); then
+  printf 'ERROR: variable requerida vacía: %s\n' "${MISSING[@]}" >&2
+  exit 1
+fi
+# SMTP authentication is optional for this project's internal mail catcher.
+if [[ -n "${SMTP_USER:-}" && -z "${SMTP_PASS:-}" ]] || [[ -z "${SMTP_USER:-}" && -n "${SMTP_PASS:-}" ]]; then
+  echo "ERROR: SMTP_USER y SMTP_PASS deben configurarse juntos." >&2
+  exit 1
+fi
+for var in DB_PASSWORD REDIS_PASSWORD MINIO_ROOT_PASSWORD MEILI_MASTER_KEY S3_SECRET_KEY JWT_SECRET JWT_REFRESH_SECRET COOKIE_SECRET SEED_SUPERADMIN_PASSWORD; do
+  case "${!var}" in
+    password|supersecret123|dev_master_key_123|change_me|admin|secret)
+      echo "ERROR: ${var} contiene una credencial de ejemplo." >&2
+      exit 1
+      ;;
+  esac
+done
+
+"${COMPOSE[@]}" config --quiet
+SERVICES="$("${COMPOSE[@]}" config --services)"
+DATA_SERVICES=(postgres redis meilisearch minio)
+EXTERNAL_SERVICES=(postgres redis meilisearch minio caddy)
+if grep -qx mailpit <<< "${SERVICES}"; then
+  DATA_SERVICES+=(mailpit)
+  EXTERNAL_SERVICES+=(mailpit)
+fi
+
+echo "Actualizando imágenes externas del proyecto ${PROJECT_NAME}..."
+"${COMPOSE[@]}" pull "${EXTERNAL_SERVICES[@]}"
+echo "Construyendo API y web..."
+BUILD_ARGS=()
+if [[ -n "${GMM_BUILDER:-}" ]]; then
+  BUILD_ARGS+=(--builder "${GMM_BUILDER}")
+fi
+"${COMPOSE[@]}" build "${BUILD_ARGS[@]}" api web
+
+echo "Arrancando los servicios de datos..."
+"${COMPOSE[@]}" up -d --no-deps "${DATA_SERVICES[@]}"
+deadline=$((SECONDS + 180))
+until timeout 10 "${COMPOSE[@]}" exec -T postgres pg_isready -U "${DB_USER}" -d "${DB_NAME}" -t 5 -q; do
+  if (( SECONDS >= deadline )); then
+    echo "ERROR: PostgreSQL no estuvo listo en 180 segundos." >&2
+    exit 1
   fi
-done
-
-if [[ ${#MISSING[@]} -gt 0 ]]; then
-  echo "❌  Las siguientes variables requeridas están vacías o no existen en ${ENV_FILE}:"
-  for v in "${MISSING[@]}"; do echo "    - ${v}"; done
-  exit 1
-fi
-
-# --------------------------------------------------------------------------- #
-# 3. Detectar valores de ejemplo conocidos que NUNCA deben usarse en producción
-# --------------------------------------------------------------------------- #
-FORBIDDEN_DEFAULTS=(
-  "password"
-  "supersecret123"
-  "dev_master_key_123"
-  "change_me"
-  "admin"
-  "secret"
-)
-
-INSECURE=()
-for var in DB_PASSWORD MINIO_ROOT_PASSWORD MEILI_MASTER_KEY JWT_SECRET JWT_REFRESH_SECRET COOKIE_SECRET REDIS_PASSWORD; do
-  val="${!var:-}"
-  for forbidden in "${FORBIDDEN_DEFAULTS[@]}"; do
-    if [[ "${val}" == *"${forbidden}"* ]]; then
-      INSECURE+=("${var} contiene el valor inseguro '${forbidden}'")
-    fi
-  done
-done
-
-if [[ ${#INSECURE[@]} -gt 0 ]]; then
-  echo "❌  CREDENCIALES INSEGURAS detectadas en ${ENV_FILE}:"
-  for msg in "${INSECURE[@]}"; do echo "    - ${msg}"; done
-  echo ""
-  echo "    Genera valores seguros con:"
-  echo "      openssl rand -base64 48"
-  exit 1
-fi
-
-# --------------------------------------------------------------------------- #
-# 4. Despliegue
-# --------------------------------------------------------------------------- #
-echo "✅  Variables de entorno verificadas."
-echo ""
-echo "📦  Actualizando imágenes externas..."
-# Solo los servicios con `image:` de un registro real. api/web son build-only
-# (gmm_api:latest / gmm_web:latest no existen en ningún registro) — intentar
-# "pull" sobre ellos falla o queda en un estado confuso sin necesidad.
-"${COMPOSE[@]}" pull postgres redis meilisearch minio caddy
-
-echo ""
-echo "🔨  Construyendo imágenes de la aplicación..."
-"${COMPOSE[@]}" build --no-cache
-
-echo ""
-echo "🚀  Arrancando servicios..."
-"${COMPOSE[@]}" up -d
-
-echo ""
-echo "⏳  Esperando que la base de datos esté lista..."
-until "${COMPOSE[@]}" exec -T postgres pg_isready -U "${DB_USER}" -q; do
   sleep 2
 done
 
-echo ""
-echo "⏳  Esperando que MinIO esté listo..."
-until "${COMPOSE[@]}" exec -T minio mc ready local >/dev/null 2>&1; do
-  sleep 2
-done
+bash "${PROJECT_DIR}/scripts/minio-init.sh"
+echo "Aplicando migraciones antes de publicar la aplicación..."
+"${COMPOSE[@]}" run --rm --no-deps api npx prisma migrate deploy
+echo "Inicializando catálogos y administrador..."
+"${COMPOSE[@]}" run --rm --no-deps -e SEED_SUPERADMIN_EMAIL -e SEED_SUPERADMIN_PASSWORD api node dist/prisma/seed.js
 
-echo ""
-echo "🪣  Inicializando bucket y usuario de servicio de MinIO (idempotente)..."
-bash scripts/minio-init.sh
-
-echo ""
-echo "🔄  Ejecutando migraciones..."
-"${COMPOSE[@]}" exec -T api npx prisma migrate deploy
-
-echo ""
-echo "✅  Despliegue completado."
-echo "    Verifica el estado: docker compose -p ${PROJECT_NAME} -f docker-compose.prod.yml ps"
-echo "    Verifica los logs:  docker compose -p ${PROJECT_NAME} -f docker-compose.prod.yml logs -f"
-echo "    Accede en: http://<IP-del-servidor>:${CADDY_PORT:-8088}"
+echo "Arrancando API, web y proxy propios..."
+"${COMPOSE[@]}" up -d --wait --wait-timeout 180 api web caddy
+"${COMPOSE[@]}" ps
+echo "Despliegue completado: ${NEXT_PUBLIC_SITE_URL}"

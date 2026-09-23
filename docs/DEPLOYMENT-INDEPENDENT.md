@@ -1,0 +1,114 @@
+# Despliegue independiente de Guía Médica Monagas
+
+La instalación está preparada en `/docker/guiamedicamonagas`, dentro del proyecto Docker Compose `gmm-independent`. El acceso inicial previsto es [http://72.61.77.167:8088](http://72.61.77.167:8088). Dominio, HTTPS público y SMTP de entrega real están pendientes. La verificación final de disponibilidad y comparación de los proyectos anteriores debe registrarse al cerrar el despliegue.
+
+## Aislamiento
+
+| Recurso | Configuración exclusiva |
+|---|---|
+| Directorio | `/docker/guiamedicamonagas` |
+| Proyecto Compose | `gmm-independent` |
+| Web y API públicas | Puerto `8088` mediante Caddy propio |
+| Datos y comunicaciones internas | `gmm-independent_gmm_internal`, `172.31.77.0/24` |
+| Web, API y proxy | `gmm-independent_gmm_dmz`, `172.31.78.0/24` |
+| Proxy y MinIO | `gmm-independent_gmm_storage`, `172.31.79.0/24` |
+| Correo de pruebas | `mailpit:1025`, dentro de la red del proyecto |
+| Interfaz Mailpit | `127.0.0.1:18025`, solo loopback del servidor |
+| Volúmenes | Prefijo `gmm-independent_`, incluidos datos, almacenamiento, correo y Caddy |
+| Imágenes de aplicación | `gmm-independent-api` y `gmm-independent-web` |
+| Builder | `gmm-build-20260923`, dedicado a esta aplicación |
+
+Las direcciones privadas pertenecen a redes Docker diferentes. La IP pública disponible sigue siendo `72.61.77.167`; otra IP pública necesita asignación del proveedor. El puerto exclusivo permite acceder a esta aplicación con esa IP sin reutilizar los puertos web existentes.
+
+La configuración usa credenciales, contenedores, redes, volúmenes y proxy propios. No requiere editar las aplicaciones anteriores, sus archivos ni su proxy. La comparación final del inventario, arranques, puertos y configuraciones anteriores está pendiente de verificación; el diseño aislado no sustituye esa comprobación.
+
+## Archivos de acceso
+
+- `/docker/guiamedicamonagas/.env.prod`: configuración privada del proyecto, permisos `600`.
+- `/var/lib/gmm-deploy-20260923/admin-access.txt`: acceso administrativo generado, permisos `600`.
+
+Estos archivos deben permanecer fuera de Git. No copiar sus valores a logs, documentación o comandos compartidos. El administrador inicial se crea con `SEED_SUPERADMIN_EMAIL` y `SEED_SUPERADMIN_PASSWORD`; el seed recibe las variables por nombre.
+
+En el acceso HTTP temporal se configura `COOKIE_SECURE=false` y HSTS desactivado. Al habilitar HTTPS real, ajustar las URLs públicas, activar cookies seguras y volver a compilar el frontend para incorporar sus variables públicas. HSTS debe habilitarse cuando el acceso HTTPS haya sido verificado.
+
+## Estado y registros
+
+Ejecutar en el servidor:
+
+```bash
+cd /docker/guiamedicamonagas
+docker compose -p gmm-independent --env-file .env.prod -f docker-compose.prod.yml ps
+docker compose -p gmm-independent --env-file .env.prod -f docker-compose.prod.yml logs --tail=100 api web caddy
+curl --fail --max-time 15 http://127.0.0.1:8088/api/v1/health
+```
+
+Los logs tienen rotación configurada y los servicios límites de CPU y memoria. Los servicios de datos no publican puertos externos.
+
+## Actualización de este proyecto
+
+Revisar e integrar únicamente los cambios de este repositorio en `/docker/guiamedicamonagas`; conservar las correcciones locales y `.env.prod`. Antes de una actualización con cambios de esquema, crear la copia de PostgreSQL descrita abajo.
+
+```bash
+cd /docker/guiamedicamonagas
+git status --short
+docker buildx inspect gmm-build-20260923
+GMM_BUILDER=gmm-build-20260923 bash scripts/deploy.sh
+```
+
+El builder dedicado está limitado a **2 GB de memoria y 1,5 CPU**. `scripts/buildkitd.toml` fija `max-parallelism = 1`; el script también limita las operaciones Compose paralelas. Se debe conservar ese builder para compilar en el VPS compartido. No usar compilaciones globales ni sustituir el builder de otras aplicaciones.
+
+`scripts/deploy.sh` resuelve su directorio independientemente del directorio de invocación y fija `--project-directory`, `--env-file .env.prod`, `-p gmm-independent` y `-f docker-compose.prod.yml` en cada comando. Su secuencia es:
+
+1. Validar variables y configuración; descargar solo las imágenes externas necesarias.
+2. Compilar las imágenes de API y web con el builder indicado.
+3. Iniciar los servicios de datos y el Mailpit propio; esperar su preparación con límites de tiempo.
+4. Inicializar el bucket privado, usuario y política de MinIO.
+5. Aplicar migraciones mediante `compose run --rm --no-deps api npx prisma migrate deploy` y ejecutar el seed compilado `node dist/prisma/seed.js`.
+6. Iniciar API, web y Caddy; mostrar el estado del proyecto.
+
+Validar después el endpoint de salud, inicio de sesión, páginas con renderizado del servidor y descarga de archivos mediante URLs firmadas. Si falla una etapa, resolver el error de este proyecto antes de continuar; los scripts no ejecutan limpieza o reinicios globales.
+
+## Copia de PostgreSQL
+
+El siguiente respaldo usa exclusivamente el servicio `postgres` del proyecto y obtiene sus credenciales dentro del contenedor:
+
+```bash
+cd /docker/guiamedicamonagas
+umask 077
+mkdir -p /docker/guiamedicamonagas/backups
+chmod 700 /docker/guiamedicamonagas/backups
+backup_path="/docker/guiamedicamonagas/backups/postgres-$(date -u +%Y%m%dT%H%M%SZ).dump"
+docker compose -p gmm-independent --env-file .env.prod -f docker-compose.prod.yml exec -T postgres \
+  sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --format=custom' > "$backup_path"
+test -s "$backup_path"
+```
+
+Comprobar que `pg_dump` termine correctamente antes de considerar válida la copia. Una copia de PostgreSQL no incluye los archivos MinIO ni `.env.prod`: respaldar también esos datos exclusivos del proyecto y conservar una copia externa protegida. No ejecutar `down -v`, eliminación de volúmenes o `docker system prune`; no forman parte de este procedimiento.
+
+## Correo temporal
+
+Mailpit recibe los mensajes de la aplicación en `mailpit:1025`, con autenticación vacía y TLS desactivado en esta red interna. **No entrega mensajes a Internet**. Registro, recuperación y notificaciones requieren SMTP real para enviar mensajes a sus destinatarios finales.
+
+Para consultar el buzón, abrir un túnel desde el equipo local:
+
+```bash
+ssh -L 18025:127.0.0.1:18025 root@72.61.77.167
+```
+
+Mientras el túnel esté abierto, visitar [http://127.0.0.1:18025](http://127.0.0.1:18025). El puerto no se publica en la interfaz externa del VPS.
+
+## Fallos corregidos para este despliegue
+
+- La etiqueta de MinIO de julio no existía en el registro utilizado; se fijó la versión oficial `RELEASE.2025-09-07T16-13-09Z`.
+- La salida compilada de NestJS está en `dist/src/main.js`; se corrigió el comando de arranque. El seed de producción utiliza `dist/prisma/seed.js`.
+- HSTS se hace configurable para que el acceso HTTP temporal no fuerce un HTTPS todavía inexistente.
+- La caché ISR del frontend dispone de permisos de escritura para el usuario `node` del contenedor.
+- Caddy y MinIO comparten una red de almacenamiento propia para que el proxy pueda servir las URLs firmadas sin conectar otros proyectos.
+- MinIO se inicializa mediante el servicio Compose: política con `ListBucket` y `GetBucketLocation` para HEAD, además de acceso a los objetos de su bucket. La repetición no ignora errores reales de credenciales o permisos.
+- El script despliega usando siempre `.env.prod`, inicia datos antes de migrar, separa descargas externas de compilaciones y admite el SMTP interno sin credenciales.
+
+## Pendientes de cierre
+
+- Registrar los resultados del despliegue real, pruebas públicas y comparación final de los proyectos anteriores.
+- Configurar dominio y HTTPS público; evaluar otra IP pública con el proveedor si sigue siendo un requisito.
+- Configurar SMTP real para la entrega de mensajes y los datos reales de Pago Móvil cuando corresponda.

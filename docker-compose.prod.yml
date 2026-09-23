@@ -41,18 +41,37 @@
 
 name: gmm-independent
 
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 networks:
   # Red interna: solo contenedores de la aplicación y servicios de datos.
   # Internet no puede llegar aquí directamente.
   gmm_internal:
     driver: bridge
     internal: true
+    ipam:
+      config:
+        - subnet: 172.31.77.0/24
 
   # Red DMZ: únicamente Caddy, api y web.
   # Esto permite que Caddy haga reverse proxy sin que los servicios de datos
   # queden accesibles desde la DMZ.
   gmm_dmz:
     driver: bridge
+    ipam:
+      config:
+        - subnet: 172.31.78.0/24
+
+  gmm_storage:
+    driver: bridge
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.31.79.0/24
 
 services:
   # ---------------------------------------------------------------------------
@@ -61,7 +80,7 @@ services:
 
   postgres:
     image: postgres:16.4-alpine
-    container_name: gmm_postgres
+    logging: *default-logging
     restart: unless-stopped
     user: postgres
     environment:
@@ -86,7 +105,7 @@ services:
 
   redis:
     image: redis:7.4-alpine
-    container_name: gmm_redis
+    logging: *default-logging
     restart: unless-stopped
     command: >
       redis-server
@@ -106,7 +125,7 @@ services:
 
   meilisearch:
     image: getmeili/meilisearch:v1.10.3
-    container_name: gmm_meilisearch
+    logging: *default-logging
     restart: unless-stopped
     environment:
       MEILI_MASTER_KEY: ${MEILI_MASTER_KEY}
@@ -122,8 +141,8 @@ services:
     cpus: 0.5
 
   minio:
-    image: quay.io/minio/minio:RELEASE.2025-07-23T15-29-46Z
-    container_name: gmm_minio
+    image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
+    logging: *default-logging
     restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:
@@ -135,6 +154,7 @@ services:
       - miniodata:/data
     networks:
       - gmm_internal
+      - gmm_storage
     security_opt:
       - no-new-privileges:true
     mem_limit: 512m
@@ -149,8 +169,8 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    image: gmm_api:latest
-    container_name: gmm_api
+    image: gmm-independent-api:${GMM_IMAGE_TAG:-local}
+    logging: *default-logging
     restart: unless-stopped
     environment:
       NODE_ENV: production
@@ -209,6 +229,13 @@ services:
     mem_limit: 512m
     cpus: 0.5
 
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4000/api/v1/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
   web:
     build:
       context: ./frontend
@@ -216,8 +243,9 @@ services:
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
         NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL}
-    image: gmm_web:latest
-    container_name: gmm_web
+        NEXT_BUILD_CPUS: 1
+    image: gmm-independent-web:${GMM_IMAGE_TAG:-local}
+    logging: *default-logging
     restart: unless-stopped
     environment:
       # Runtime (NO build arg): el servidor Next.js dentro del contenedor lee
@@ -225,7 +253,8 @@ services:
       # en vez de la URL pública — ver server-fetch.ts.
       API_INTERNAL_URL: http://api:4000/api/v1
     depends_on:
-      - api
+      api:
+        condition: service_healthy
     networks:
       - gmm_dmz
     # Sin puertos al host: solo accesible desde Caddy via gmm_dmz
@@ -234,13 +263,38 @@ services:
     mem_limit: 512m
     cpus: 0.5
 
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/iniciar-sesion').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+  mailpit:
+    image: axllent/mailpit:v1.22
+    restart: unless-stopped
+    logging: *default-logging
+    environment:
+      MP_DATABASE: /data/mailpit.db
+      MP_MAX_MESSAGES: 500
+    volumes:
+      - maildata:/data
+    ports:
+      - "127.0.0.1:18025:8025"
+    networks:
+      - gmm_internal
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 128m
+    cpus: 0.2
+
   # ---------------------------------------------------------------------------
   # Proxy inverso — única entrada desde Internet
   # ---------------------------------------------------------------------------
 
   caddy:
     image: caddy:2.9-alpine
-    container_name: gmm_caddy
+    logging: *default-logging
     restart: unless-stopped
     environment:
       # El Caddyfile usa {$S3_BUCKET} para el path del proxy de archivos.
@@ -255,9 +309,12 @@ services:
       - caddy_config:/config
     networks:
       - gmm_dmz
+      - gmm_storage
     depends_on:
-      - api
-      - web
+      api:
+        condition: service_healthy
+      web:
+        condition: service_healthy
     security_opt:
       - no-new-privileges:true
     mem_limit: 256m
@@ -270,3 +327,4 @@ volumes:
   miniodata:
   caddy_data:
   caddy_config:
+  maildata:

@@ -2,6 +2,9 @@
 const nextConfig = {
   reactStrictMode: true,
   output: 'standalone',
+  experimental: {
+    cpus: Math.max(1, Number.parseInt(process.env.NEXT_BUILD_CPUS || '1', 10) || 1),
+  },
   async headers() {
     return [
       {

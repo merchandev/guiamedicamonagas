@@ -1,10 +1,12 @@
 import { Logger, ValidationPipe } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import fastifyHelmet from '@fastify/helmet';
 import fastifyCookie from '@fastify/cookie';
 import fastifyMultipart from '@fastify/multipart';
 import { AppModule } from './app.module';
+import type { EnvConfig } from './config/env.validation';
 
 async function bootstrap() {
   const fastifyAdapter = new FastifyAdapter({ trustProxy: true });
@@ -12,8 +14,9 @@ async function bootstrap() {
     bufferLogs: true,
   });
 
-  const frontendUrl = process.env.FRONTEND_URL ?? 'http://localhost:3000';
-  const isProduction = process.env.NODE_ENV === 'production';
+  const config = app.get(ConfigService<EnvConfig, true>);
+  const frontendUrl = config.get('FRONTEND_URL', { infer: true });
+  const isProduction = config.get('NODE_ENV', { infer: true }) === 'production';
 
   await app.register(fastifyHelmet, {
     contentSecurityPolicy: isProduction
@@ -28,6 +31,9 @@ async function bootstrap() {
         }
       : false,
     crossOriginResourcePolicy: { policy: 'cross-origin' },
+    strictTransportSecurity: config.get('COOKIE_SECURE', { infer: true })
+      ? { maxAge: 31536000, includeSubDomains: true }
+      : false,
   });
   await app.register(fastifyCookie, { secret: process.env.COOKIE_SECRET });
   await app.register(fastifyMultipart, {
