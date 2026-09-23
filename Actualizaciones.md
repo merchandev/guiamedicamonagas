@@ -3,7 +3,7 @@
 > Bitácora central de cambios, implementaciones, decisiones técnicas y tareas de evolución del sistema.
 >
 > **Repositorio:** [`merchandev/guiamedicamonagas`](https://github.com/merchandev/guiamedicamonagas) · **Rama:** `main`<br>
-> **Última actualización de esta bitácora:** `2026-09-23 10:35:00 -04:00` · **Estado:** 🟢 Registro activo
+> **Última actualización de esta bitácora:** `2026-09-23 10:45:00 -04:00` · **Estado:** 🟢 Registro activo
 
 ![Estado](https://img.shields.io/badge/estado-registro%20activo-16a34a?style=flat-square)
 ![Rama](https://img.shields.io/badge/rama-main-2563eb?style=flat-square)
@@ -116,8 +116,9 @@ flowchart LR
     K[🔐 2026-09-23\n07:55:00\nACT-0011 · Acceso SSH y reconciliación\nde fixes ya probados en producción]
     L[🧑‍🤝‍🧑 2026-09-23\n10:15:00\nACT-0012 · Perfil de paciente\ny fix crítico de CORS]
     M[📐 2026-09-23\n10:35:00\nACT-0013 · Ancho unificado\n80/10/10 en toda la web]
+    N[🧾 2026-09-23\n10:45:00\nACT-0014 · Campos de formulario\nangostos corregidos]
 
-    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L --> M
+    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L --> M --> N
 ```
 
 ### Resumen cuantitativo
@@ -125,10 +126,10 @@ flowchart LR
 | Indicador | Resultado |
 |---|---:|
 | Actividades históricas importadas desde Git | `3` |
-| Actividades documentales añadidas con esta bitácora | `10` |
-| Actividades registradas en total | `13` |
+| Actividades documentales añadidas con esta bitácora | `11` |
+| Actividades registradas en total | `14` |
 | Rama de referencia | `main` |
-| Commit base consultado | [`c548a02`](https://github.com/merchandev/guiamedicamonagas/commit/c548a02) |
+| Commit base consultado | [`2d51c56`](https://github.com/merchandev/guiamedicamonagas/commit/2d51c56) |
 | Zona horaria de control | `America/Caracas` (`-04:00`) |
 
 <a id="act-0001"></a>
@@ -555,6 +556,26 @@ Las páginas que ya combinaban `container-page` con un `max-w-*` más angosto pa
 
 </details>
 
+<a id="act-0014"></a>
+
+### 🧾 ACT-0014 · Campos de formulario angostos corregidos en toda la web
+
+<details>
+<summary><strong>2026-09-23 10:45:00 -04:00</strong> · <code>2d51c56</code> · 🟢 Completado</summary>
+
+**Responsable:** `Claude Sonnet 5`  · **Tipo:** `fix | diseño`  · **Commit:** [`2d51c56`](https://github.com/merchandev/guiamedicamonagas/commit/2d51c56)
+
+El usuario mostró una captura del formulario "Farmacias, laboratorios y clínicas" del panel de administración: el campo "Nombre" se veía plano y angosto junto al `<Select>` "Tipo", que sí tiene un alto y relleno propios (`h-11 px-3`). Al revisar `Input.tsx`, `fieldBase` —la clase compartida detrás de `<Input>` y `<Textarea>` en **toda** la aplicación (registro, login, cada formulario del panel de administración, el perfil del profesional y el nuevo perfil del paciente)— no tenía ni alto ni relleno horizontal definidos: el campo se renderizaba con el tamaño por defecto del navegador, muy por debajo de cualquier `<Select>` con el que compartiera fila. No era un problema de un formulario en particular, sino una sola regla de estilo faltante que afectaba a todos por igual.
+
+Se igualó `fieldBase` al mismo `px-3.5 py-2.5` y se le dio a `<Input>` (no a `<Textarea>`, que se dimensiona con `rows`) el mismo `h-11` del `<Select>`. De paso, se subió el tamaño `md` (por defecto) de `<Button>` de `h-10` a `h-11`, para que un botón junto a un campo en la misma fila (ej. "Agregar red" junto al campo de URL) quede alineado en vez de quedar 4px más corto.
+
+**Verificación realizada:** confirmado visualmente contra los servidores de desarrollo reales, en escritorio (1440px) y móvil (375px): `admin/organizaciones` (el formulario exacto de la captura — "Nombre" ya iguala la altura de "Tipo", "Agregar red" alineado con su fila) y `/registro`. Build de producción (`next build`) limpio.
+
+**Impacto:** todos los campos de texto de la aplicación —no solo el formulario señalado— ahora se ven consistentes entre sí y con los `<Select>` que los acompañan, con un solo cambio en dos componentes compartidos.<br>
+**Archivos destacados:** [`frontend/src/components/ui/Input.tsx`](frontend/src/components/ui/Input.tsx), [`frontend/src/components/ui/Button.tsx`](frontend/src/components/ui/Button.tsx).
+
+</details>
+
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
 <a id="registro-por-area"></a>
@@ -574,7 +595,7 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | 🔒 Pacientes | Código pseudónimo, listado sin datos personales, revelación auditada, registro propio, salud y foto de identificación | [ACT-0007](#act-0007) · [ACT-0012](#act-0012) |
 | 🛠️ Administración | Médicos, pagos, SEO, cookies, especialidades, planes y verificaciones | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) |
 | 📊 Observabilidad | Auditoría, analítica, notificaciones y salud | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) |
-| 🎨 Experiencia | Directorios, dashboard, componentes UI, motion y legal | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0013](#act-0013) |
+| 🎨 Experiencia | Directorios, dashboard, componentes UI, motion y legal | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0013](#act-0013) · [ACT-0014](#act-0014) |
 | 🚢 Operación | Variables de entorno, Compose, almacenamiento, correo y proxy | [ACT-0001](#act-0001) · [ACT-0002](#act-0002) · [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0008](#act-0008) · [ACT-0009](#act-0009) · [ACT-0011](#act-0011) |
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
@@ -609,6 +630,7 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | IMP-022 | Perfil de paciente autoservicio: registro con cédula única, panel propio, medicamentos, condición, contacto de emergencia y foto de identificación | 🟢 Completado | [`frontend/src/app/paciente/page.tsx`](frontend/src/app/paciente/page.tsx), [`backend/src/patients/patients.service.ts`](backend/src/patients/patients.service.ts) |
 | IMP-023 | Corrección de CORS: `PATCH`/`PUT`/`DELETE` habilitados desde el navegador en toda la API (antes solo `GET/HEAD/POST`) | 🟢 Completado | [`backend/src/main.ts`](backend/src/main.ts) |
 | IMP-024 | Ancho unificado 80%/10%/10% en toda la web, responsivo en cualquier tamaño de pantalla | 🟢 Completado | [`frontend/src/app/globals.css`](frontend/src/app/globals.css) |
+| IMP-025 | Campos de texto (`Input`/`Textarea`) con alto y relleno propios, alineados con `Select`/`Button` en toda la web | 🟢 Completado | [`frontend/src/components/ui/Input.tsx`](frontend/src/components/ui/Input.tsx) |
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
@@ -695,6 +717,7 @@ Para cada cambio futuro, añadir una entrada en la línea de tiempo y actualizar
 | `2026-09-23 07:55:00 -04:00` | Incorporación de ACT-0011 (acceso SSH al VPS de producción, reconciliación de fixes reales ya probados en el servidor pero nunca commiteados: tasa BCV con fecha valor, guardado financiero contra tasa Bs 0, cierre del retiro de INPREMEDICO, script de smoke-test), actualización de línea de tiempo, resumen cuantitativo, registro por área, control de implementaciones y próximas actividades | 🟢 Completado |
 | `2026-09-23 10:15:00 -04:00` | Incorporación de ACT-0012 (perfil de paciente autoservicio: registro con cédula/teléfono/correo únicos, medicamentos, condición bloqueable, contacto de emergencia, foto de identificación; corrección de un bug real de CORS que bloqueaba PATCH/PUT/DELETE desde el navegador en toda la app), actualización de línea de tiempo, resumen cuantitativo, registro por área, control de implementaciones y próximas actividades | 🟢 Completado |
 | `2026-09-23 10:35:00 -04:00` | Incorporación de ACT-0013 (ancho unificado 80%/10%/10% en toda la web mediante un único cambio en `.container-page`), actualización de línea de tiempo, resumen cuantitativo, registro por área y control de implementaciones | 🟢 Completado |
+| `2026-09-23 10:45:00 -04:00` | Incorporación de ACT-0014 (campos `Input`/`Textarea` sin alto ni relleno propios corregidos en toda la web, `Button` alineado con `Select`), actualización de línea de tiempo, resumen cuantitativo, registro por área y control de implementaciones | 🟢 Completado |
 
 ---
 
