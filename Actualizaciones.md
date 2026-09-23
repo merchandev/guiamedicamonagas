@@ -3,7 +3,7 @@
 > Bitácora central de cambios, implementaciones, decisiones técnicas y tareas de evolución del sistema.
 >
 > **Repositorio:** [`merchandev/guiamedicamonagas`](https://github.com/merchandev/guiamedicamonagas) · **Rama:** `main`<br>
-> **Última actualización de esta bitácora:** `2026-09-23 10:15:00 -04:00` · **Estado:** 🟢 Registro activo
+> **Última actualización de esta bitácora:** `2026-09-23 10:20:00 -04:00` · **Estado:** 🟢 Registro activo
 
 ![Estado](https://img.shields.io/badge/estado-registro%20activo-16a34a?style=flat-square)
 ![Rama](https://img.shields.io/badge/rama-main-2563eb?style=flat-square)
@@ -522,6 +522,8 @@ Al probar el guardado del nuevo perfil **en el navegador** (no solo con `curl`),
 **Verificación realizada:** migración aplicada contra BD vacía; `tsc --noEmit` y build de producción (`next build`/`nest build`) limpios en ambos lados; flujo completo en el navegador real (registro → redirección a `/paciente` → completar teléfono/dirección/medicamentos/doctores → activar "persona sana" y confirmar bloqueo visual e inmediato → guardar → recargar y confirmar persistencia vía `GET /patients/me`); `409` confirmado para cédula duplicada (registro), correo duplicado (registro, comportamiento preexistente) y teléfono duplicado (actualización de perfil), cada uno con una segunda cuenta real; ambos endpoints de foto probados con una subida multipart real — prefijos de storage correctos, URLs firmadas que de verdad descargan los bytes subidos.
 
 **Pendiente (fuera de alcance deliberado de este cambio):** no se construyó una cola de administración para revisar `identityStatus` — queda visible como "En revisión" en el propio perfil del paciente. El formulario de reserva de cita (`medicos/[slug]/agendar`) sigue pidiendo nombre/teléfono en cada reserva sin precargar desde el nuevo perfil del paciente logueado.
+
+**Desplegado en producción el mismo día (2026-09-23 ~09:50 -04:00), vía SSH, con aprobación explícita del usuario antes de cada paso destructivo:** respaldo de la base de datos de producción (`backups/postgres-20260923T133241Z-pre-act0012.dump`, 86 KB) antes de tocar nada; checkout del VPS actualizado a este commit; imágenes `api`/`web` reconstruidas con el builder dedicado (`gmm-build-20260923`); migración `20260923100000_patient_health_profile` aplicada contra la base real; `api`, `web` y `caddy` recreados y saludables. Verificado en producción: registro real de un paciente de prueba (`POST /auth/register` contra `http://72.61.77.167:8088`), `GET /patients/me` devolviendo el perfil creado, y el preflight CORS de producción confirmando `PATCH` ya permitido — la cuenta de prueba se eliminó de la base de datos al terminar. Los 10 contenedores de los tres proyectos existentes conservan exactamente sus tiempos de actividad previos, sin reinicios.
 
 **Impacto:** los pacientes ahora tienen una cuenta y un panel propio real, con datos de salud básicos accesibles para ellos mismos y, en emergencia, para quien los atienda; y se cerró un bug de CORS que silenciosamente rompía toda edición de datos desde el navegador en la aplicación completa, no solo en esta funcionalidad nueva.<br>
 **Archivos destacados:** [`backend/prisma/schema.prisma`](backend/prisma/schema.prisma), [`backend/src/main.ts`](backend/src/main.ts), [`backend/src/patients/patients.service.ts`](backend/src/patients/patients.service.ts), [`frontend/src/app/paciente/page.tsx`](frontend/src/app/paciente/page.tsx).
