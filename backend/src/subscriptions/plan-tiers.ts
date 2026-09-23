@@ -85,6 +85,8 @@ export interface ExchangeRateConfig {
   usdToBs: number;
   updatedAt: string;
   source: ExchangeRateSource;
+  /** Fecha valor publicada por el BCV; distinta de la fecha de consulta. */
+  effectiveDate?: string;
   /** Solo presente cuando source es BCV: cuándo se sincronizó exitosamente por última vez. */
   lastBcvSyncAt?: string;
   /** Mensaje del último intento fallido de sincronización con el BCV, si aplica. */

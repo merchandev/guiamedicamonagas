@@ -98,6 +98,9 @@ export class SubscriptionsService {
     }
 
     const rate = await this.getExchangeRate();
+    if (!Number.isFinite(rate.usdToBs) || rate.usdToBs <= 0) {
+      throw new BadRequestException('La tasa de cambio no está disponible. Intenta de nuevo más tarde.');
+    }
     const amountBs = Number((Number(plan.priceUsd) * rate.usdToBs).toFixed(2));
 
     return this.prisma.subscription.create({

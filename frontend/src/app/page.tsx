@@ -64,7 +64,7 @@ const FAQ_ITEMS = [
   {
     question: '¿Cómo confío en que el médico está habilitado para ejercer?',
     answer:
-      'Cada perfil verificado muestra públicamente su N° MPPS y su N° del Colegio de Médicos de Monagas — la práctica estándar de transparencia médica en Venezuela. Puedes verificar estos números directamente con el Colegio de Médicos del Estado Monagas.',
+      'Cada perfil verificado muestra públicamente su N° MPPS y N° del Colegio de Médicos de Monagas — la práctica estándar de transparencia médica en Venezuela. Puedes verificar estos números directamente con el Colegio de Médicos del Estado Monagas.',
   },
   {
     question: '¿Cómo se registra un médico en la guía?',

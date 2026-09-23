@@ -27,7 +27,7 @@ const TABS: { tier: DemoTier; label: string }[] = [
 ];
 
 const FEATURE_ROWS: { label: string; min: DoctorTier }[] = [
-  { label: 'Nombre, especialidad, N° MPPS / Colegio de Médicos', min: 'FREE' },
+  { label: 'Nombre, especialidad, N° MPPS / Colegio', min: 'FREE' },
   { label: 'Foto de perfil y biografía', min: 'PROFESSIONAL' },
   { label: 'Botón directo de WhatsApp', min: 'PROFESSIONAL' },
   { label: 'Estadísticas básicas de tu perfil', min: 'PROFESSIONAL' },

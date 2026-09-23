@@ -3,7 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { ExchangeRateConfig, SITE_SETTINGS_EXCHANGE_RATE_KEY } from '../subscriptions/plan-tiers';
 
 const DEFAULT_EXCHANGE_RATE: ExchangeRateConfig = {
-  usdToBs: 50,
+  usdToBs: 0,
   updatedAt: new Date(0).toISOString(),
   source: 'MANUAL',
 };
@@ -31,9 +31,9 @@ export class ExchangeRateService {
     return value;
   }
 
-  async setFromBcv(usdToBs: number): Promise<ExchangeRateConfig> {
+  async setFromBcv(usdToBs: number, effectiveDate: string): Promise<ExchangeRateConfig> {
     const now = new Date().toISOString();
-    const value: ExchangeRateConfig = { usdToBs, updatedAt: now, source: 'BCV', lastBcvSyncAt: now };
+    const value: ExchangeRateConfig = { usdToBs, updatedAt: now, source: 'BCV', lastBcvSyncAt: now, effectiveDate };
     await this.persist(value);
     this.logger.log(`Tasa BCV sincronizada: 1 USD = ${usdToBs} Bs`);
     return value;

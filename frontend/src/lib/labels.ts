@@ -40,7 +40,7 @@ export const DOCUMENT_TYPE_LABELS: Record<string, string> = {
   REGISTRO_MPPS_SACS: 'Registro MPPS (SACS)',
   ARTICULO_8: 'Constancia Artículo 8',
   MATRICULA_COLEGIO_MONAGAS: 'Matrícula Colegio de Médicos Monagas',
-  INPREMEDICO: 'Registro INPREMEDICO',
+  INPREMEDICO: 'Registro complementario (histórico)',
   SOLVENCIA_DEONTOLOGICA: 'Solvencia Deontológica',
   TITULO_POSTGRADO: 'Título de Postgrado',
   CREDENCIAL_ESPECIALIDAD: 'Credencial de Especialidad',

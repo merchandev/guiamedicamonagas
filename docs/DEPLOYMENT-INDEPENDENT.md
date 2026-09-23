@@ -107,8 +107,17 @@ Mientras el túnel esté abierto, visitar [http://127.0.0.1:18025](http://127.0.
 - MinIO se inicializa mediante el servicio Compose: política con `ListBucket` y `GetBucketLocation` para HEAD, además de acceso a los objetos de su bucket. La repetición no ignora errores reales de credenciales o permisos.
 - El script despliega usando siempre `.env.prod`, inicia datos antes de migrar, separa descargas externas de compilaciones y admite el SMTP interno sin credenciales.
 
-## Pendientes de cierre
+## Cierre verificado: 2026-09-23 06:40 VET
 
-- Registrar los resultados del despliegue real, pruebas públicas y comparación final de los proyectos anteriores.
+- Despliegue de `b6fb700` con dos ajustes adicionales: healthcheck de PostgreSQL con base de datos explícita, y Mailpit conectado también a la red no interna del proyecto para que su publicación en loopback funcione.
+- Ocho servicios en ejecución. Acceso externo confirmado en http://72.61.77.167:8088/ e inicio de sesión en `/iniciar-sesion`.
+- `scripts/deploy.sh` y `scripts/smoke-deployment.cjs` terminaron con código 0. Se verificaron páginas públicas, catálogos, sesión de administrador, renovación/cierre de sesión, registro y verificación por correo de prueba, subida y descarga firmada de imagen privada, y rechazo de descarga sin firma. Los datos temporales de prueba fueron eliminados.
+- Los 10 contenedores anteriores conservan identificadores, fechas de arranque, reinicios, imágenes, puertos y redes. Los hashes de sus 9 archivos de configuración no cambiaron.
+- Evidencias y respaldo previo (privados, fuera de este repo): `/var/lib/gmm-deploy-20260923/`, incluyendo `final-verification.json`, `deploy4.log`, `smoke.log` y `before-update-b6fb700.dump`.
+- Builder propio (`gmm-build-20260923`) detenido al terminar para liberar recursos; queda disponible para el siguiente build.
+
+## Pendientes para producción
+
 - Configurar dominio y HTTPS público; evaluar otra IP pública con el proveedor si sigue siendo un requisito.
 - Configurar SMTP real para la entrega de mensajes y los datos reales de Pago Móvil cuando corresponda.
+- Configurar y validar la tasa de cambio: el valor inicial es `0` (sin tasa) hasta la primera sincronización exitosa con el BCV — no una referencia manual de prueba.

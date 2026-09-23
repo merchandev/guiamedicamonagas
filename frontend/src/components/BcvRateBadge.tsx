@@ -8,6 +8,7 @@ export interface ExchangeRate {
   usdToBs: number;
   updatedAt: string;
   source: 'BCV' | 'MANUAL';
+  effectiveDate?: string;
   lastBcvSyncAt?: string;
   lastBcvSyncError?: string;
 }
@@ -51,15 +52,19 @@ export function useExchangeRate() {
 export function BcvRateBadge({ className, showAge = true }: { className?: string; showAge?: boolean }) {
   const rate = useExchangeRate();
   if (!rate) return null;
+  if (!Number.isFinite(rate.usdToBs) || rate.usdToBs <= 0) {
+    return <span className={className}>Tasa USD no disponible</span>;
+  }
 
   return (
     <span
       className={cn('inline-flex items-center gap-1.5', className)}
-      title={`Tasa ${rate.source === 'BCV' ? 'oficial del BCV' : 'manual'}, actualizada ${timeAgo(rate.updatedAt)}`}
+      title={`Tasa ${rate.source === 'BCV' ? 'publicada por el BCV' : 'manual'}, consultada ${timeAgo(rate.updatedAt)}${rate.lastBcvSyncError ? '. La última sincronización falló; se conserva el valor anterior.' : ''}`}
     >
       <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-current opacity-70" />
-      USD {rate.source === 'BCV' ? 'BCV' : '(manual)'} <span className="font-semibold">Bs {formatBs(rate.usdToBs)}</span>
-      {showAge && <span className="hidden opacity-70 sm:inline">· {timeAgo(rate.updatedAt)}</span>}
+      {rate.source === 'BCV' ? 'USD BCV' : 'USD · tasa manual'} <span className="font-semibold">Bs {formatBs(rate.usdToBs)}</span>
+      {showAge && <span className="hidden opacity-70 sm:inline">· {rate.effectiveDate ? `Fecha valor ${rate.effectiveDate.split('-').reverse().join('/')}` : timeAgo(rate.updatedAt)}</span>}
+      {rate.lastBcvSyncError && <span className="opacity-80">· sin actualizar</span>}
     </span>
   );
 }

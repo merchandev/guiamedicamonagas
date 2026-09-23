@@ -153,7 +153,7 @@ async function main() {
   await prisma.siteSettings.upsert({
     where: { key: 'exchange_rate' },
     update: {},
-    create: { key: 'exchange_rate', value: { usdToBs: 50, updatedAt: new Date().toISOString() } },
+    create: { key: 'exchange_rate', value: { usdToBs: 0, source: 'MANUAL', updatedAt: new Date(0).toISOString() } },
   });
 
   const superadminEmail = process.env.SEED_SUPERADMIN_EMAIL ?? 'admin@guiamedicamonagas.com';

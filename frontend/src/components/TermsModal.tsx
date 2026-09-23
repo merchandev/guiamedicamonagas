@@ -21,7 +21,7 @@ const SECTIONS = [
   },
   {
     title: 'Verificación obligatoria de documentos',
-    body: 'Antes de publicarse, cada perfil se revisa manualmente contra los documentos exigidos por ley. La plataforma muestra públicamente el N° MPPS y el N° Colegio de Médicos de Monagas para garantizar transparencia.',
+    body: 'Antes de publicarse, cada perfil se revisa manualmente contra los documentos exigidos por ley. La plataforma muestra públicamente el N° MPPS y N° Colegio de Médicos de Monagas para garantizar transparencia.',
   },
   {
     title: 'Pagos por Pago Móvil',
