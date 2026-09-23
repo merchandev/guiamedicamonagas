@@ -60,6 +60,7 @@ export interface ProfessionalDetail extends ProfessionalListItem {
   locations: ProfessionalExtraLocation[];
   posts: ProfessionalPost[];
   socialLinks: SocialLink[];
+  bookingEnabled: boolean;
 }
 
 export interface PaginatedResult<T> {

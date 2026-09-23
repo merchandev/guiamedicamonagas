@@ -761,6 +761,11 @@ enum AppointmentSource {
   PHONE     // ingresada manualmente por el médico
 }
 
+enum CancelledByType {
+  PATIENT
+  PROFESSIONAL
+}
+
 model Appointment {
   id             String              @id @default(uuid())
   professionalId String
@@ -788,16 +793,18 @@ model Appointment {
 
   // Seguimiento de notificaciones enviadas
   confirmationSentAt DateTime?
-  reminderSentAt     DateTime?
+  reminderSentAt     DateTime? // recordatorio de 24h
+  reminder2hSentAt   DateTime? // recordatorio de 2h
 
   cancelledAt        DateTime?
   cancellationReason String?
-  cancelledBy        String?   // "PATIENT" | "PROFESSIONAL"
+  cancelledBy        CancelledByType?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  clinicalNote ClinicalNote?
+  clinicalNote   ClinicalNote?
+  financeRecords FinanceRecord[]
 
   @@index([professionalId, startsAt])
   @@index([patientId])
@@ -882,8 +889,9 @@ model FinanceRecord {
   description String?
   date        DateTime
 
-  /// Si el ingreso viene de una cita específica
+  /// Si el ingreso viene de una cita específica (auto-generado al completarla)
   appointmentId String?
+  appointment   Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
 
   receiptFileKey String?  // comprobante en MinIO (opcional)
 
@@ -891,6 +899,7 @@ model FinanceRecord {
 
   @@index([professionalId, date])
   @@index([professionalId, type])
+  @@index([appointmentId])
 }
 
 // ---------------------------------------------------------------------------

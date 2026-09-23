@@ -4,7 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { profileVerifiedTemplate } from '../mail/mail.templates';
-import { assertValidSocialLinks, SOCIAL_LINK_LIMITS, tierAtLeast } from '../subscriptions/plan-tiers';
+import { AGENDA_MIN_TIER, assertValidSocialLinks, SOCIAL_LINK_LIMITS, tierAtLeast } from '../subscriptions/plan-tiers';
 import { UpdateProfessionalProfileDto } from './dto/update-professional-profile.dto';
 import { UpsertLocationDto } from './dto/upsert-location.dto';
 import { UpsertSocialLinksDto } from '../common/dto/social-link.dto';
@@ -132,12 +132,15 @@ export class ProfessionalsService {
         locations: true,
         posts: { where: { published: true }, orderBy: { createdAt: 'desc' }, select: { id: true, title: true, slug: true, content: true, createdAt: true } },
         socialLinks: { select: { platform: true, url: true } },
+        schedule: { select: { id: true, blocks: { select: { id: true }, take: 1 } } },
       },
     });
     if (!profile || !profile.isPublished || profile.verificationStatus !== 'VERIFIED') {
       throw new NotFoundException('Profesional no encontrado');
     }
 
+    const bookingEnabled =
+      tierAtLeast(profile.planTier, AGENDA_MIN_TIER) && !!profile.schedule && profile.schedule.blocks.length > 0;
     const canPlus = tierAtLeast(profile.planTier, 'PROFESSIONAL_PLUS');
     // Filtro de defensa: si el plan bajó (ej. suscripción vencida), nunca se
     // muestran más redes/plataformas de las que el plan actual permite,
@@ -147,11 +150,13 @@ export class ProfessionalsService {
       .filter((link) => allowedPlatforms.includes(link.platform))
       .slice(0, maxLinks);
 
+    const { schedule: _schedule, ...profileWithoutSchedule } = profile;
     const shaped = {
-      ...gateByTier(profile),
+      ...gateByTier(profileWithoutSchedule),
       locations: canPlus ? profile.locations : [],
       posts: canPlus ? profile.posts : [],
       socialLinks,
+      bookingEnabled,
     };
     return this.signPhoto(shaped);
   }

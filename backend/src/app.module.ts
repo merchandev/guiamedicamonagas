@@ -12,6 +12,9 @@ import { WhatsappModule } from './whatsapp/whatsapp.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { AuthModule } from './auth/auth.module';
 import { ProfessionalsModule } from './professionals/professionals.module';
+import { AgendaModule } from './agenda/agenda.module';
+import { PatientsModule } from './patients/patients.module';
+import { AppointmentsModule } from './appointments/appointments.module';
 import { PostsModule } from './posts/posts.module';
 import { DocumentsModule } from './documents/documents.module';
 import { SpecialtiesModule } from './specialties/specialties.module';
@@ -42,6 +45,9 @@ import { HealthController } from './health.controller';
     NotificationsModule,
     AuthModule,
     ProfessionalsModule,
+    AgendaModule,
+    PatientsModule,
+    AppointmentsModule,
     PostsModule,
     DocumentsModule,
     SpecialtiesModule,

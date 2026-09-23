@@ -1,5 +1,19 @@
 import { z } from 'zod';
 
+/**
+ * z.coerce.boolean() usa Boolean(valor) por debajo: CUALQUIER string no
+ * vacío (incluido literalmente "false") se convierte en `true`. Eso rompía
+ * en silencio SMTP_SECURE=false (nodemailer intentaba TLS contra Mailpit)
+ * y WHATSAPP_ENABLED=false (el flag de no-op en dev quedaba inactivo).
+ * Este helper solo acepta los strings "true"/"false" explícitamente.
+ */
+function envBoolean(defaultValue: boolean) {
+  return z
+    .enum(['true', 'false'])
+    .default(String(defaultValue) as 'true' | 'false')
+    .transform((val) => val === 'true');
+}
+
 // Valores que jamás deben aparecer en producción.
 const INSECURE_DEFAULTS = ['password', 'supersecret123', 'dev_master_key', 'change_me', 'CHANGE_ME'];
 
@@ -42,16 +56,16 @@ export const envSchema = z.object({
   S3_BUCKET: z.string().min(1),
   S3_ACCESS_KEY: z.string().min(1),
   S3_SECRET_KEY: z.string().min(1).and(noInsecureDefault('S3_SECRET_KEY')),
-  S3_FORCE_PATH_STYLE: z.coerce.boolean().default(true),
+  S3_FORCE_PATH_STYLE: envBoolean(true),
 
   SMTP_HOST: z.string().min(1),
   SMTP_PORT: z.coerce.number().default(587),
-  SMTP_SECURE: z.coerce.boolean().default(false),
+  SMTP_SECURE: envBoolean(false),
   SMTP_USER: z.string().optional().default(''),
   SMTP_PASS: z.string().optional().default(''),
   MAIL_FROM: z.string().min(1),
 
-  WHATSAPP_ENABLED: z.coerce.boolean().default(false),
+  WHATSAPP_ENABLED: envBoolean(false),
   WHATSAPP_API_VERSION: z.string().default('v21.0'),
   WHATSAPP_PHONE_NUMBER_ID: z.string().optional().default(''),
   WHATSAPP_ACCESS_TOKEN: z.string().optional().default(''),

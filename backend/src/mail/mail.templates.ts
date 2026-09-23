@@ -130,6 +130,114 @@ export function paymentReviewedTemplate(
   );
 }
 
+function appointmentDetailsBlock(details: {
+  doctorName?: string;
+  specialty?: string;
+  dateLabel: string;
+  timeLabel: string;
+  location?: string;
+  reason?: string;
+}): string {
+  const rows: string[] = [];
+  if (details.doctorName) rows.push(`<strong>Especialista:</strong> Dr(a). ${escapeHtml(details.doctorName)}`);
+  if (details.specialty) rows.push(`<strong>Especialidad:</strong> ${escapeHtml(details.specialty)}`);
+  rows.push(`<strong>Fecha:</strong> ${escapeHtml(details.dateLabel)}`);
+  rows.push(`<strong>Hora:</strong> ${escapeHtml(details.timeLabel)}`);
+  if (details.location) rows.push(`<strong>Lugar:</strong> ${escapeHtml(details.location)}`);
+  if (details.reason) rows.push(`<strong>Motivo:</strong> ${escapeHtml(details.reason)}`);
+  return `<div style="font-size:13px;background:#f7f7f5;border-radius:8px;padding:14px;color:#3a3a3a;margin-top:8px;line-height:1.8;">
+    ${rows.join('<br/>')}
+  </div>`;
+}
+
+export function appointmentRequestedPatientTemplate(
+  rawPatientName: string,
+  details: { doctorName: string; specialty?: string; dateLabel: string; timeLabel: string; location?: string },
+) {
+  const name = escapeHtml(rawPatientName);
+  return layout(
+    'Solicitud de cita recibida',
+    `<h1 style="font-size:20px;margin:0 0 12px;">Hola, ${name}</h1>
+     <p style="font-size:14px;line-height:1.6;color:#3a3a3a;">Recibimos tu solicitud de cita. Te avisaremos en cuanto el médico la confirme.</p>
+     ${appointmentDetailsBlock(details)}`,
+  );
+}
+
+export function appointmentRequestedProfessionalTemplate(
+  rawDoctorName: string,
+  details: { patientCode: string; dateLabel: string; timeLabel: string; reason?: string },
+  dashboardUrl: string,
+) {
+  const name = escapeHtml(rawDoctorName);
+  return layout(
+    'Nueva solicitud de cita',
+    `<h1 style="font-size:20px;margin:0 0 12px;">Hola, Dr(a). ${name}</h1>
+     <p style="font-size:14px;line-height:1.6;color:#3a3a3a;">Tienes una nueva solicitud de cita del paciente <strong>${escapeHtml(details.patientCode)}</strong>.</p>
+     ${appointmentDetailsBlock(details)}
+     ${button(dashboardUrl, 'Ver en mi agenda')}`,
+  );
+}
+
+export function appointmentConfirmedTemplate(
+  rawPatientName: string,
+  details: { doctorName: string; specialty?: string; dateLabel: string; timeLabel: string; location?: string },
+  manageUrl: string,
+) {
+  const name = escapeHtml(rawPatientName);
+  return layout(
+    'Cita confirmada',
+    `<h1 style="font-size:20px;margin:0 0 12px;">¡Cita confirmada, ${name}!</h1>
+     <p style="font-size:14px;line-height:1.6;color:#3a3a3a;">Tu cita fue confirmada por el médico. Adjuntamos el evento para tu calendario.</p>
+     ${appointmentDetailsBlock(details)}
+     ${button(manageUrl, 'Ver mi cita')}`,
+  );
+}
+
+export function appointmentCancelledTemplate(
+  rawRecipientName: string,
+  details: { dateLabel: string; timeLabel: string; reason?: string },
+  rawCancelledByLabel: string,
+) {
+  const name = escapeHtml(rawRecipientName);
+  const cancelledBy = escapeHtml(rawCancelledByLabel);
+  return layout(
+    'Cita cancelada',
+    `<h1 style="font-size:20px;margin:0 0 12px;">Hola, ${name}</h1>
+     <p style="font-size:14px;line-height:1.6;color:#3a3a3a;">Tu cita fue cancelada por ${cancelledBy}.</p>
+     ${appointmentDetailsBlock(details)}`,
+  );
+}
+
+export function appointmentRescheduledTemplate(
+  rawRecipientName: string,
+  details: { dateLabel: string; timeLabel: string },
+  manageUrl: string,
+) {
+  const name = escapeHtml(rawRecipientName);
+  return layout(
+    'Cita reprogramada',
+    `<h1 style="font-size:20px;margin:0 0 12px;">Hola, ${name}</h1>
+     <p style="font-size:14px;line-height:1.6;color:#3a3a3a;">Tu cita fue reprogramada a una nueva fecha y hora.</p>
+     ${appointmentDetailsBlock(details)}
+     ${button(manageUrl, 'Ver mi cita')}`,
+  );
+}
+
+export function appointmentReminderTemplate(
+  rawPatientName: string,
+  details: { doctorName: string; specialty?: string; dateLabel: string; timeLabel: string; location?: string },
+  rawHoursLabel: string,
+) {
+  const name = escapeHtml(rawPatientName);
+  const hoursLabel = escapeHtml(rawHoursLabel);
+  return layout(
+    'Recordatorio de tu cita',
+    `<h1 style="font-size:20px;margin:0 0 12px;">Hola, ${name}</h1>
+     <p style="font-size:14px;line-height:1.6;color:#3a3a3a;">Te recordamos que tienes una cita ${hoursLabel}.</p>
+     ${appointmentDetailsBlock(details)}`,
+  );
+}
+
 export function contactMessageTemplate(
   rawProfessionalName: string,
   rawSenderName: string,

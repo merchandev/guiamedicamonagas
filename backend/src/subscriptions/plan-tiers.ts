@@ -14,6 +14,9 @@ export function tierAtLeast(tier: PlanTier, min: PlanTier): boolean {
   return DOCTOR_TIER_RANK[tier] >= DOCTOR_TIER_RANK[min];
 }
 
+/** Agenda y citas son un beneficio desde el plan Profesional en adelante. */
+export const AGENDA_MIN_TIER: PlanTier = 'PROFESSIONAL';
+
 /**
  * Redes sociales/web permitidas por plan. El WhatsApp NO vive aquí: es un
  * campo aparte, ya desbloqueado desde el plan Profesional.

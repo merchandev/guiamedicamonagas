@@ -10,6 +10,7 @@ interface SendMailOptions {
   html: string;
   template: string;
   relatedUserId?: string;
+  attachments?: { filename: string; content: string; contentType: string }[];
 }
 
 @Injectable()
@@ -44,6 +45,7 @@ export class MailService {
         to: options.to,
         subject: options.subject,
         html: options.html,
+        attachments: options.attachments,
       });
       await this.log(options, 'SENT');
     } catch (error) {

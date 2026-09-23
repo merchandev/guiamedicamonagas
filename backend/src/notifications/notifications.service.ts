@@ -8,7 +8,13 @@ interface NotifyOptions {
   type: string;
   title: string;
   content: string;
-  email?: { to: string; subject: string; html: string; template: string };
+  email?: {
+    to: string;
+    subject: string;
+    html: string;
+    template: string;
+    attachments?: { filename: string; content: string; contentType: string }[];
+  };
   whatsapp?: { to: string; template: string; body: string };
 }
 
@@ -44,6 +50,7 @@ export class NotificationsService {
           html: options.email.html,
           template: options.email.template,
           relatedUserId: options.userId,
+          attachments: options.email.attachments,
         }),
       );
     }

@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { serverGet } from '@/lib/server-fetch';
 import { ProfessionalDetail } from '@/lib/types';
@@ -115,6 +116,14 @@ export default async function DoctorProfilePage({ params }: { params: Promise<{ 
           <div>
             <h3 className="mb-3 font-semibold text-ink-900">Contacto</h3>
             <div className="space-y-2">
+              {doctor.bookingEnabled && (
+                <Link
+                  href={`/medicos/${doctor.slug}/agendar`}
+                  className="flex items-center justify-center gap-2 rounded-lg bg-pine-700 px-4 py-3 text-sm font-semibold text-white hover:bg-pine-800"
+                >
+                  Agendar cita
+                </Link>
+              )}
               {doctor.whatsapp && <WhatsAppButton professionalId={doctor.id} whatsapp={doctor.whatsapp} />}
               {doctor.phone && <PhoneButton professionalId={doctor.id} phone={doctor.phone} />}
             </div>
