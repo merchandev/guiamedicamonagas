@@ -125,7 +125,8 @@ export default async function PlansPage() {
       <Reveal delay={0.15}>
         <p className="mx-auto mt-10 max-w-2xl text-center text-xs text-ink-400">
           Los precios se cotizan en USD. El pago se realiza por Pago Móvil en bolívares al equivalente vigente el día
-          del pago. Todos los planes requieren la verificación de tus documentos legales antes de publicarse.
+          del pago. La verificación de credenciales y el perfil básico son gratuitos, y la verificación es la misma en todos
+          los planes: pagar nunca sustituye ni acelera la revisión de documentos.
         </p>
       </Reveal>
     </div>

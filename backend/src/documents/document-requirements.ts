@@ -13,7 +13,44 @@ export const DOCUMENT_LABELS: Record<DocumentType, string> = {
   RIF: 'RIF actualizado',
 };
 
-/** Documentos obligatorios para cualquier médico general. */
+/**
+ * Naturaleza de cada requisito. No todo lo que pide la plataforma es
+ * "obligatorio por ley": se distingue lo legal de lo gremial, lo fiscal y lo
+ * que es política interna de verificación de Guía Médica Monagas.
+ */
+export type DocumentCategory =
+  | 'LEGAL'
+  | 'HABILITACION'
+  | 'ESPECIALIDAD'
+  | 'GREMIAL'
+  | 'IDENTIDAD'
+  | 'FISCAL'
+  | 'COMPLEMENTARIO';
+
+export const DOCUMENT_CATEGORY_LABELS: Record<DocumentCategory, string> = {
+  LEGAL: 'Requisito legal (Ley de Ejercicio de la Medicina)',
+  HABILITACION: 'Habilitación profesional',
+  ESPECIALIDAD: 'Especialidad',
+  GREMIAL: 'Requisito gremial (Colegio de Médicos)',
+  IDENTIDAD: 'Identidad',
+  FISCAL: 'Fiscal / comercial',
+  COMPLEMENTARIO: 'Complementario (opcional)',
+};
+
+export const DOCUMENT_CATEGORY: Record<DocumentType, DocumentCategory> = {
+  TITULO_MEDICO: 'LEGAL',
+  REGISTRO_MPPS_SACS: 'HABILITACION',
+  ARTICULO_8: 'LEGAL',
+  MATRICULA_COLEGIO_MONAGAS: 'HABILITACION',
+  INPREMEDICO: 'COMPLEMENTARIO',
+  SOLVENCIA_DEONTOLOGICA: 'GREMIAL',
+  TITULO_POSTGRADO: 'ESPECIALIDAD',
+  CREDENCIAL_ESPECIALIDAD: 'ESPECIALIDAD',
+  CEDULA_IDENTIDAD: 'IDENTIDAD',
+  RIF: 'FISCAL',
+};
+
+/** Documentos que la plataforma exige para verificar a cualquier médico general. */
 export const BASE_REQUIRED_DOCUMENTS: DocumentType[] = [
   'TITULO_MEDICO',
   'REGISTRO_MPPS_SACS',

@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
+import { COOKIE_CONSENT_STORAGE_KEY } from '@/lib/analytics';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 
-const STORAGE_KEY = 'gmm_cookie_consent';
+const STORAGE_KEY = COOKIE_CONSENT_STORAGE_KEY;
 const OPEN_EVENT = 'gmm:open-cookie-preferences';
 
 interface StoredConsent {

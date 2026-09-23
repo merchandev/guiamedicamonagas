@@ -5,6 +5,9 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { validateEnv } from './config/env.validation';
 import { PrismaModule } from './prisma/prisma.module';
+import { CryptoModule } from './crypto/crypto.module';
+import { UploadsModule } from './uploads/uploads.module';
+import { GeoModule } from './geo/geo.module';
 import { AuditModule } from './audit/audit.module';
 import { StorageModule } from './storage/storage.module';
 import { MailModule } from './mail/mail.module';
@@ -38,6 +41,9 @@ import { HealthController } from './health.controller';
     ScheduleModule.forRoot(),
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 120 }]),
     PrismaModule,
+    CryptoModule,
+    UploadsModule,
+    GeoModule,
     AuditModule,
     StorageModule,
     MailModule,

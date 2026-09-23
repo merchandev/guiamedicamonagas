@@ -6,6 +6,7 @@ import { TopBar } from '@/components/layout/TopBar';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import CookieConsent from '@/components/CookieConsent';
+import { LegalAcceptanceGate } from '@/components/LegalAcceptanceGate';
 
 const display = Fraunces({ subsets: ['latin'], variable: '--font-display', weight: ['500', '600'] });
 const sans = Inter({ subsets: ['latin'], variable: '--font-sans' });
@@ -30,6 +31,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <main className="flex-1">{children}</main>
           <Footer />
           <CookieConsent />
+          <LegalAcceptanceGate />
         </AuthProvider>
       </body>
     </html>

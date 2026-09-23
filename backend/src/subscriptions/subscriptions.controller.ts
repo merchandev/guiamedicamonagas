@@ -7,6 +7,7 @@ import type { AuthenticatedUser } from '../common/types/authenticated-user';
 import { SubscriptionsService } from './subscriptions.service';
 import { UpsertPlanDto } from './dto/upsert-plan.dto';
 import { UpdateExchangeRateDto } from './dto/exchange-rate.dto';
+import { Permission, RequirePermissions } from '../common/permissions';
 
 @Controller('subscriptions')
 export class SubscriptionsController {
@@ -24,13 +25,13 @@ export class SubscriptionsController {
     return this.subscriptions.getExchangeRate();
   }
 
-  @Roles(Role.ADMIN, Role.SUPERADMIN)
+  @RequirePermissions(Permission.MANAGE_PLANS)
   @Put('admin/exchange-rate')
   updateExchangeRate(@Body() dto: UpdateExchangeRateDto) {
     return this.subscriptions.updateExchangeRate(dto);
   }
 
-  @Roles(Role.ADMIN, Role.SUPERADMIN)
+  @RequirePermissions(Permission.REVIEW_PAYMENTS)
   @Post('admin/exchange-rate/sync-bcv')
   syncExchangeRateFromBcv() {
     return this.subscriptions.syncExchangeRateFromBcv();
@@ -48,25 +49,37 @@ export class SubscriptionsController {
     return this.subscriptions.subscribe(user.id, planId);
   }
 
-  @Roles(Role.ADMIN, Role.SUPERADMIN)
+  @Roles(Role.ORGANIZATION)
+  @Get('organizations/:organizationId')
+  getOrganizationSubscription(@CurrentUser() user: AuthenticatedUser, @Param('organizationId') organizationId: string) {
+    return this.subscriptions.getOrganizationSubscription(user.id, organizationId);
+  }
+
+  @Roles(Role.ORGANIZATION)
+  @Post('organizations/:organizationId')
+  subscribeOrganization(@CurrentUser() user: AuthenticatedUser, @Param('organizationId') organizationId: string) {
+    return this.subscriptions.subscribeOrganization(user.id, organizationId);
+  }
+
+  @RequirePermissions(Permission.MANAGE_PLANS)
   @Get('admin/plans')
   adminListPlans() {
     return this.subscriptions.adminListPlans();
   }
 
-  @Roles(Role.ADMIN, Role.SUPERADMIN)
+  @RequirePermissions(Permission.MANAGE_PLANS)
   @Post('admin/plans')
   createPlan(@Body() dto: UpsertPlanDto) {
     return this.subscriptions.createPlan(dto);
   }
 
-  @Roles(Role.ADMIN, Role.SUPERADMIN)
+  @RequirePermissions(Permission.MANAGE_PLANS)
   @Put('admin/plans/:id')
   updatePlan(@Param('id') id: string, @Body() dto: UpsertPlanDto) {
     return this.subscriptions.updatePlan(id, dto);
   }
 
-  @Roles(Role.ADMIN, Role.SUPERADMIN)
+  @RequirePermissions(Permission.MANAGE_PLANS)
   @Patch('admin/plans/:id/deactivate')
   deactivatePlan(@Param('id') id: string) {
     return this.subscriptions.deactivatePlan(id);

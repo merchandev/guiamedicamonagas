@@ -1,12 +1,8 @@
 'use client';
 
-import { api } from '@/lib/api';
+import { trackEvent as track } from '@/lib/analytics';
 import { cn } from '@/lib/cn';
 import { SOCIAL_PLATFORM_COLORS, SOCIAL_PLATFORM_ICONS, SOCIAL_PLATFORM_LABELS, type SocialLink } from '@/lib/social';
-
-function track(eventType: string, resourceId: string) {
-  api.post('/analytics/track', { eventType, resourceId }).catch(() => undefined);
-}
 
 export function SocialLinksRow({
   links,

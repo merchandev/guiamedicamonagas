@@ -38,7 +38,13 @@ export default async function FarmaciasPage({
   return (
     <div className="container-page py-10">
       <h1 className="text-3xl">Farmacias, laboratorios y clínicas</h1>
-      <p className="mt-2 text-ink-600">Organizaciones de salud registradas en Monagas.</p>
+      <p className="mt-2 text-ink-600">
+        Organizaciones de salud verificadas en Monagas. ¿Administras una?{' '}
+        <Link href="/registro" className="text-pine-700 underline">
+          Regístrala gratis
+        </Link>
+        .
+      </p>
 
       <div className="mt-6 flex gap-2 border-b border-ink-100">
         {TABS.map((tab) => (
@@ -64,7 +70,11 @@ export default async function FarmaciasPage({
             <div key={org.id} className="card p-5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
-                  <h3 className="font-semibold text-ink-900">{org.name}</h3>
+                  <h3 className="font-semibold text-ink-900">
+                    <Link href={`/organizaciones/${org.slug}`} className="hover:underline">
+                      {org.name}
+                    </Link>
+                  </h3>
                   <VerificationBadge kind="organization" type={org.type} />
                 </div>
                 <Badge tone="neutral">{TYPE_LABELS[org.type]}</Badge>
@@ -79,6 +89,9 @@ export default async function FarmaciasPage({
                 ))}
               </ul>
               <SocialLinksRow links={org.socialLinks} resourceId={org.id} className="mt-3" />
+              <Link href={`/organizaciones/${org.slug}`} className="mt-3 inline-block text-sm font-medium text-pine-700 hover:underline">
+                Ver servicios y sedes →
+              </Link>
             </div>
           ))}
         </div>

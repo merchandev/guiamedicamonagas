@@ -47,3 +47,23 @@ export const DOCUMENT_TYPE_LABELS: Record<string, string> = {
   CEDULA_IDENTIDAD: 'Cédula de Identidad',
   RIF: 'RIF',
 };
+
+export const ORGANIZATION_TYPE_LABELS: Record<'PHARMACY' | 'LABORATORY' | 'CLINIC', string> = {
+  PHARMACY: 'Farmacia',
+  LABORATORY: 'Laboratorio',
+  CLINIC: 'Clínica',
+};
+
+export const ORG_MEMBER_ROLE_LABELS: Record<'OWNER' | 'ADMIN' | 'EDITOR', string> = {
+  OWNER: 'Dueño',
+  ADMIN: 'Administrador',
+  EDITOR: 'Editor',
+};
+
+export const ORG_VERIFICATION_LABELS: Record<string, { label: string; tone: 'neutral' | 'pine' | 'gold' | 'red' | 'amber' }> = {
+  PENDING: { label: 'Pendiente de verificación', tone: 'amber' },
+  IN_REVIEW: { label: 'En revisión', tone: 'amber' },
+  VERIFIED: { label: 'Verificada', tone: 'pine' },
+  REJECTED: { label: 'Requiere correcciones', tone: 'red' },
+  SUSPENDED: { label: 'Suspendida', tone: 'red' },
+};

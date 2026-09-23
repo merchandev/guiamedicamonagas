@@ -5,18 +5,16 @@ import { api, ApiError } from '@/lib/api';
 import { Alert } from '@/components/ui/Alert';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { Select } from '@/components/ui/Select';
 import { PageSpinner } from '@/components/ui/Spinner';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { BANKS_VENEZUELA } from '@/lib/monagas';
 import { PAYMENT_STATUS_LABELS, PLAN_TIER_LABELS, SUBSCRIPTION_STATUS_LABELS } from '@/lib/labels';
 import { SubscriptionPlan } from '@/lib/types';
-import { BcvRateBadge, formatBs, useExchangeRate } from '@/components/BcvRateBadge';
+import { BcvRateBadge, useExchangeRate } from '@/components/BcvRateBadge';
+import { PagoMovilReportForm, type PendingInstallment } from '@/components/PagoMovilReportForm';
 
 type Plan = SubscriptionPlan;
 
-interface Installment {
+interface Installment extends PendingInstallment {
   id: string;
   amountBs: string;
   status: string;
@@ -31,31 +29,17 @@ interface Subscription {
   installments: Installment[];
 }
 
-interface PagoMovilAccount {
-  bankName: string;
-  bankCode: string;
-  phone: string;
-  documentId: string;
-}
-
 export default function PaymentsPage() {
   const [loading, setLoading] = useState(true);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [plans, setPlans] = useState<Plan[]>([]);
-  const [account, setAccount] = useState<PagoMovilAccount | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [selectedBank, setSelectedBank] = useState(BANKS_VENEZUELA[0]);
   const rate = useExchangeRate();
   const exchangeRate = rate?.usdToBs ?? null;
 
   const load = async () => {
-    const [sub, acc] = await Promise.all([
-      api.get<Subscription | null>('/subscriptions/me').catch(() => null),
-      api.get<PagoMovilAccount>('/payments/pago-movil-account').catch(() => null),
-    ]);
+    const sub = await api.get<Subscription | null>('/subscriptions/me').catch(() => null);
     setSubscription(sub);
-    setAccount(acc);
     if (!sub) {
       const allPlans = await api.get<Plan[]>('/subscriptions/plans').catch(() => []);
       setPlans(allPlans.filter((p) => p.tier !== 'FREE' && p.tier !== 'ORGANIZATION'));
@@ -80,29 +64,6 @@ export default function PaymentsPage() {
 
   const pendingInstallment = subscription?.installments.find((i) => i.status === 'PENDING');
   const hasPendingPayment = pendingInstallment?.payments.some((p) => p.status === 'PENDING');
-  // El monto que se le pide pagar hoy usa la tasa BCV vigente en este momento
-  // (no la que estaba al suscribirse), para que nunca pague de menos si el
-  // bolívar se devaluó desde entonces. Nunca es menor al mínimo ya fijado.
-  const liveAmountBs =
-    subscription && exchangeRate
-      ? Math.max(Number(subscription.plan.priceUsd) * exchangeRate, Number(pendingInstallment?.amountBs ?? 0))
-      : Number(pendingInstallment?.amountBs ?? 0);
-
-  const reportPayment = async (formData: FormData) => {
-    if (!pendingInstallment) return;
-    setSubmitting(true);
-    setError(null);
-    try {
-      formData.append('installmentId', pendingInstallment.id);
-      await api.upload('/payments', formData);
-      await load();
-    } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'No se pudo reportar el pago');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
   if (loading) return <PageSpinner />;
 
   return (
@@ -166,67 +127,13 @@ export default function PaymentsPage() {
             </div>
           </div>
 
-          {pendingInstallment && !hasPendingPayment && account && (
-            <div className="card p-6">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <h2 className="text-lg font-semibold text-ink-900">Reportar Pago Móvil</h2>
-                <BcvRateBadge className="rounded-full bg-pine-50 px-2.5 py-1 text-xs text-pine-800" />
-              </div>
-              <div className="mt-3 rounded-lg bg-pine-50 p-4 text-sm text-pine-900">
-                <p><strong>Banco:</strong> {account.bankName} ({account.bankCode})</p>
-                <p><strong>Teléfono:</strong> {account.phone}</p>
-                <p><strong>Cédula/RIF:</strong> {account.documentId}</p>
-                <p className="mt-1 text-base">
-                  <strong>Monto a pagar hoy:</strong> Bs. {formatBs(liveAmountBs)}
-                </p>
-                <p className="mt-0.5 text-xs text-pine-700">
-                  {subscription.plan.name}: ${subscription.plan.priceUsd} al cambio del día según el BCV.
-                </p>
-              </div>
-
-              <form
-                className="mt-4 space-y-4"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  reportPayment(new FormData(e.currentTarget));
-                }}
-              >
-                <Select
-                  label="Banco emisor"
-                  required
-                  value={selectedBank.name}
-                  onChange={(value) => {
-                    const bank = BANKS_VENEZUELA.find((b) => b.name === value);
-                    if (bank) setSelectedBank(bank);
-                  }}
-                  options={BANKS_VENEZUELA.map((b) => ({ value: b.name, label: b.name }))}
-                />
-                {/* El Select tiene estilo propio (no es un <select> nativo), así que su
-                    valor no viaja solo con FormData: lo replicamos en inputs ocultos. */}
-                <input type="hidden" name="senderBankName" value={selectedBank.name} />
-                <input type="hidden" name="senderBankCode" value={selectedBank.code} />
-                <Input label="Teléfono emisor" name="senderPhone" placeholder="0414-1234567" required />
-                <Input label="N° de referencia (últimos dígitos)" name="referenceNumber" required />
-                <Input label="Fecha del pago" name="paidAt" type="date" required />
-                <Input
-                  key={liveAmountBs}
-                  label="Monto enviado (Bs)"
-                  name="amountBs"
-                  type="number"
-                  step="0.01"
-                  defaultValue={liveAmountBs.toFixed(2)}
-                  hint="Precargado con la tasa BCV de hoy. Ajústalo si enviaste un monto distinto."
-                  required
-                />
-                <div>
-                  <label className="field-label">Comprobante de pago (captura o PDF)</label>
-                  <input type="file" name="file" accept="application/pdf,image/*" required className="block w-full text-sm" />
-                </div>
-                <Button type="submit" loading={submitting} className="w-full">
-                  Reportar pago
-                </Button>
-              </form>
-            </div>
+          {pendingInstallment && !hasPendingPayment && (
+            <PagoMovilReportForm
+              installment={pendingInstallment}
+              planName={subscription.plan.name}
+              priceUsd={subscription.plan.priceUsd}
+              onReported={load}
+            />
           )}
 
           {hasPendingPayment && (

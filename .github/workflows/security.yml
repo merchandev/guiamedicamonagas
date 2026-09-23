@@ -1,0 +1,86 @@
+name: Seguridad
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: '0 9 * * 1' # lunes 05:00 America/Caracas: detecta CVE nuevas sin cambios de código
+
+permissions:
+  contents: read
+
+jobs:
+  secrets:
+    name: Secretos en el repositorio (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: gitleaks
+        run: |
+          curl -sSfL https://github.com/gitleaks/gitleaks/releases/download/v8.28.0/gitleaks_8.28.0_linux_x64.tar.gz | tar -xz gitleaks
+          ./gitleaks detect --source . --redact --verbose --exit-code 1
+
+  dependencies:
+    name: Dependencias (npm audit)
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        app: [backend, frontend]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      # Bloquea vulnerabilidades críticas de producción. Las "high" restantes del
+      # backend vienen del CLI de Prisma (mysql2, deepmerge-ts: sin corrección
+      # compatible); se revisan en cada actualización de Prisma.
+      - run: npm audit --omit=dev --audit-level=critical
+        working-directory: ${{ matrix.app }}
+
+  codeql:
+    name: Análisis estático (CodeQL)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+          queries: security-extended
+      - uses: github/codeql-action/analyze@v3
+
+  containers:
+    name: Imágenes y configuración (Trivy)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Construir imagen de la API
+        run: docker build -t gmm-api:ci backend
+      - name: Escaneo de la imagen (CRITICAL bloquea)
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          image-ref: gmm-api:ci
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+      - name: Escaneo de Dockerfiles y compose (informe)
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          scan-type: config
+          scan-ref: .
+          format: sarif
+          output: trivy-config.sarif
+          exit-code: '0'
+      - uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-config.sarif
+          category: trivy-config

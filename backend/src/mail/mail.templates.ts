@@ -260,3 +260,31 @@ export function contactMessageTemplate(
      </div>`,
   );
 }
+
+export function patientDataAccessRequestedTemplate(
+  rawPatientName: string,
+  rawDoctorName: string,
+  scopeLabels: string[],
+  panelUrl: string,
+) {
+  const name = escapeHtml(rawPatientName);
+  const doctor = escapeHtml(rawDoctorName);
+  const scopes = scopeLabels.map(escapeHtml).join(', ');
+  return layout(
+    'Solicitud de acceso a tus datos',
+    `<h1 style="font-size:20px;margin:0 0 12px;">Hola, ${name}</h1>
+     <p style="font-size:14px;line-height:1.6;color:#3a3a3a;">Dr(a). ${doctor} solicita ver tus ${scopes}.</p>
+     <p style="font-size:14px;line-height:1.6;color:#3a3a3a;">Nadie accede a tus datos sin tu autorización. Tú decides qué compartir y por cuánto tiempo, y puedes revocarlo cuando quieras. Si no reconoces esta solicitud, ignórala.</p>
+     ${button(panelUrl, 'Revisar la solicitud')}`,
+  );
+}
+
+export function mfaCodeTemplate(code: string) {
+  return layout(
+    'Código de acceso',
+    `<h1 style="font-size:20px;margin:0 0 12px;">Tu código de acceso</h1>
+     <p style="font-size:14px;line-height:1.6;color:#3a3a3a;">Usa este código para completar el inicio de sesión en el panel administrativo. Vence en 10 minutos.</p>
+     <p style="font-size:28px;font-weight:700;letter-spacing:6px;margin:16px 0;">${escapeHtml(code)}</p>
+     <p style="font-size:13px;line-height:1.6;color:#8a8a8a;">Si no intentaste iniciar sesión, cambia tu contraseña de inmediato.</p>`,
+  );
+}

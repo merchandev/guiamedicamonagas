@@ -61,6 +61,8 @@ export interface ProfessionalDetail extends ProfessionalListItem {
   posts: ProfessionalPost[];
   socialLinks: SocialLink[];
   bookingEnabled: boolean;
+  registrations?: { type: string; issuer: string; jurisdiction: string | null; number: string; verifiedAt: string | null }[];
+  organizations?: { organization: { slug: string; name: string; type: 'PHARMACY' | 'LABORATORY' | 'CLINIC' } }[];
 }
 
 export interface PaginatedResult<T> {
@@ -87,8 +89,18 @@ export interface Organization {
   name: string;
   description: string | null;
   logoUrl: string | null;
+  rif?: string | null;
+  openingHours?: string | null;
+  services?: string[] | null;
+  insurers?: string[] | null;
+  paymentMethods?: string[] | null;
+  seoTitle?: string | null;
+  seoDescription?: string | null;
   locations: OrganizationLocation[];
   socialLinks: SocialLink[];
+  professionals?: {
+    professional: { id: string; slug: string; firstName: string; lastName: string; specialties: { specialty: { name: string; slug: string } }[] };
+  }[];
 }
 
 export interface SubscriptionPlan {

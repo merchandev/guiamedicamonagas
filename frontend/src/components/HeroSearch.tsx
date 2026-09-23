@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Specialty } from '@/lib/types';
-import { MONAGAS_MUNICIPALITIES } from '@/lib/monagas';
+import { municipalityOptions, useMunicipalities } from '@/lib/catalogs';
 import { Select } from '@/components/ui/Select';
 
 export function HeroSearch({ specialties }: { specialties: Specialty[] }) {
@@ -11,6 +11,7 @@ export function HeroSearch({ specialties }: { specialties: Specialty[] }) {
   const [especialidad, setEspecialidad] = useState('');
   const [municipio, setMunicipio] = useState('');
   const [q, setQ] = useState('');
+  const municipalities = useMunicipalities();
 
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,10 +43,7 @@ export function HeroSearch({ specialties }: { specialties: Specialty[] }) {
         value={municipio}
         onChange={setMunicipio}
         placeholder="Cualquier municipio"
-        options={[
-          { value: '', label: 'Cualquier municipio' },
-          ...MONAGAS_MUNICIPALITIES.map((m) => ({ value: m, label: m })),
-        ]}
+        options={municipalityOptions(municipalities, 'Cualquier municipio')}
       />
       <button
         type="submit"

@@ -20,7 +20,7 @@ export default async function EspecialidadesPage() {
         {specialties.map((s) => (
           <Link
             key={s.id}
-            href={`/medicos?especialidad=${s.slug}`}
+            href={`/especialidades/${s.slug}`}
             className="card px-4 py-6 text-center transition-transform hover:-translate-y-0.5 hover:shadow-card"
           >
             <span className="font-medium text-ink-800">{s.name}</span>

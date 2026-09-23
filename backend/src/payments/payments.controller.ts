@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Get, Param, Patch, Post, Query, Req } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Param, Patch, Post, Put, Query, Req } from '@nestjs/common';
 import { Role } from '@prisma/client';
 import { plainToInstance } from 'class-transformer';
 import { validateOrReject } from 'class-validator';
@@ -8,13 +8,21 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../common/types/authenticated-user';
 import { readMultipartFormWithFile } from '../common/utils/multipart';
-import { ALLOWED_DOCUMENT_MIME_TYPES, MAX_DOCUMENT_SIZE_BYTES } from '../storage/storage.service';
+import { MAX_DOCUMENT_SIZE_BYTES } from '../storage/storage.service';
+import { DOCUMENT_TYPES, UploadSecurityService } from '../uploads/upload-security.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { PaymentsService } from './payments.service';
 import { ReportPaymentDto } from './dto/report-payment.dto';
+import { UpsertBankDto } from './dto/upsert-bank.dto';
+import { Permission, RequirePermissions } from '../common/permissions';
 
 @Controller('payments')
 export class PaymentsController {
-  constructor(private readonly payments: PaymentsService) {}
+  constructor(
+    private readonly payments: PaymentsService,
+    private readonly uploads: UploadSecurityService,
+    private readonly prisma: PrismaService,
+  ) {}
 
   @Public()
   @Get('pago-movil-account')
@@ -22,14 +30,16 @@ export class PaymentsController {
     return this.payments.getPagoMovilAccount();
   }
 
-  @Roles(Role.PROFESSIONAL)
+  @Public()
+  @Get('banks')
+  listBanks() {
+    return this.payments.listBanks();
+  }
+
+  @Roles(Role.PROFESSIONAL, Role.ORGANIZATION)
   @Post()
   async report(@CurrentUser() user: AuthenticatedUser, @Req() req: FastifyRequest) {
-    const { fields, file } = await readMultipartFormWithFile(
-      req,
-      ALLOWED_DOCUMENT_MIME_TYPES,
-      MAX_DOCUMENT_SIZE_BYTES,
-    );
+    const { fields, file: raw } = await readMultipartFormWithFile(req, MAX_DOCUMENT_SIZE_BYTES);
     const dto = plainToInstance(ReportPaymentDto, {
       ...fields,
       amountBs: Number(fields.amountBs),
@@ -39,10 +49,11 @@ export class PaymentsController {
     } catch (errors) {
       throw new BadRequestException(errors);
     }
+    const file = await this.uploads.secure(raw, DOCUMENT_TYPES);
     return this.payments.reportPayment(user.id, dto, file);
   }
 
-  @Roles(Role.ADMIN, Role.SUPERADMIN)
+  @RequirePermissions(Permission.REVIEW_PAYMENTS)
   @Get('admin/queue')
   adminQueue(@Query('status') status?: string, @Query('page') page?: string, @Query('limit') limit?: string) {
     return this.payments.adminQueue({
@@ -52,13 +63,13 @@ export class PaymentsController {
     });
   }
 
-  @Roles(Role.ADMIN, Role.SUPERADMIN)
+  @RequirePermissions(Permission.REVIEW_PAYMENTS)
   @Get('admin/:id/receipt')
   adminReceiptUrl(@Param('id') id: string) {
     return this.payments.adminReceiptUrl(id);
   }
 
-  @Roles(Role.ADMIN, Role.SUPERADMIN)
+  @RequirePermissions(Permission.REVIEW_PAYMENTS)
   @Patch('admin/:id/review')
   adminReview(
     @CurrentUser() admin: AuthenticatedUser,
@@ -68,5 +79,23 @@ export class PaymentsController {
     @Req() req: FastifyRequest,
   ) {
     return this.payments.adminReview(id, admin.id, approved, note, req.ip);
+  }
+
+  // --- Catálogo de bancos ------------------------------------------------
+
+  @RequirePermissions(Permission.MANAGE_CATALOG)
+  @Get('admin/banks')
+  adminListBanks() {
+    return this.prisma.financialInstitution.findMany({ orderBy: { code: 'asc' } });
+  }
+
+  @RequirePermissions(Permission.MANAGE_CATALOG)
+  @Put('admin/banks')
+  upsertBank(@Body() dto: UpsertBankDto) {
+    return this.prisma.financialInstitution.upsert({
+      where: { code: dto.code },
+      create: { code: dto.code, name: dto.name, supportsPagoMovil: dto.supportsPagoMovil ?? true, isActive: dto.isActive ?? true },
+      update: { name: dto.name, supportsPagoMovil: dto.supportsPagoMovil, isActive: dto.isActive },
+    });
   }
 }

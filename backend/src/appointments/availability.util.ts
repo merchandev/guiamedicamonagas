@@ -1,22 +1,59 @@
-// Venezuela usa un único huso horario fijo (UTC-4, sin horario de verano),
-// así que basta un offset constante para combinar una fecha "YYYY-MM-DD" con
-// una hora "HH:mm" de los bloques de horario (que son wall-clock locales).
-const VET_OFFSET = '-04:00';
+/**
+ * Dominio temporal de la agenda: America/Caracas. Las fechas de agenda
+ * ("YYYY-MM-DD") y las horas de los bloques ("HH:mm") son de reloj local
+ * venezolano; se convierten a instantes UTC con la zona horaria IANA en vez
+ * de un "-04:00" fijo, así un cambio de huso (como el de 2016) solo requiere
+ * actualizar la base de datos de zonas horarias del sistema.
+ */
+export const VENEZUELA_TIME_ZONE = 'America/Caracas';
 
-export function combineDateAndTime(dateStr: string, time: string): Date {
-  return new Date(`${dateStr}T${time}:00${VET_OFFSET}`);
+const offsetFormatter = new Intl.DateTimeFormat('en-US', { timeZone: VENEZUELA_TIME_ZONE, timeZoneName: 'longOffset' });
+const dateKeyFormatter = new Intl.DateTimeFormat('en-CA', {
+  timeZone: VENEZUELA_TIME_ZONE,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
+
+/** Desfase de America/Caracas respecto de UTC en ese instante, en minutos (ej. -240). */
+export function caracasOffsetMinutes(instant: Date): number {
+  const name = offsetFormatter.formatToParts(instant).find((p) => p.type === 'timeZoneName')?.value ?? 'GMT';
+  const match = name.match(/GMT([+-])(\d{2}):?(\d{2})?/);
+  if (!match) return 0;
+  const minutes = Number(match[2]) * 60 + Number(match[3] ?? 0);
+  return match[1] === '-' ? -minutes : minutes;
 }
 
-/** Formatea una fecha UTC a su "YYYY-MM-DD" correspondiente en hora de Venezuela. */
+/** "2026-09-23" + "08:30" (hora de Caracas) → instante UTC. */
+export function combineDateAndTime(dateKey: string, time: string): Date {
+  const asUtc = new Date(`${dateKey}T${time}:00Z`);
+  return new Date(asUtc.getTime() - caracasOffsetMinutes(asUtc) * 60_000);
+}
+
+/** Inicio (00:00:00.000) del día de Caracas indicado, como instante UTC. */
+export function startOfCaracasDay(dateKey: string): Date {
+  return combineDateAndTime(dateKey, '00:00');
+}
+
+/** Fin (23:59:59.999) del día de Caracas indicado, como instante UTC. */
+export function endOfCaracasDay(dateKey: string): Date {
+  return new Date(startOfCaracasDay(addDaysToDateKey(dateKey, 1)).getTime() - 1);
+}
+
+/** Instante UTC → "YYYY-MM-DD" del calendario de Caracas. */
 export function toVetDateKey(date: Date): string {
-  const vet = new Date(date.getTime() - 4 * 60 * 60 * 1000);
-  return vet.toISOString().slice(0, 10);
+  return dateKeyFormatter.format(date);
 }
 
 export function addDaysToDateKey(dateKey: string, days: number): string {
   const [y, m, d] = dateKey.split('-').map(Number);
   const date = new Date(Date.UTC(y, m - 1, d + days));
   return date.toISOString().slice(0, 10);
+}
+
+/** Día de la semana de una fecha de calendario (0 = domingo); no depende de la zona. */
+export function dayOfWeekForDateKey(dateKey: string): number {
+  return new Date(`${dateKey}T12:00:00Z`).getUTCDay();
 }
 
 interface ScheduleBlockLike {
@@ -26,6 +63,7 @@ interface ScheduleBlockLike {
 }
 
 interface ScheduleExceptionLike {
+  /** Fecha de calendario a medianoche UTC. */
   date: Date;
   isBlocked: boolean;
   startTime: string | null;
@@ -59,7 +97,10 @@ export function computeAvailableSlots(
     const key = toVetDateKey(d);
     existingCountByDay.set(key, (existingCountByDay.get(key) ?? 0) + 1);
   }
-  const exceptionByDay = new Map(schedule.exceptions.map((e) => [toVetDateKey(e.date), e]));
+  // Las excepciones son fechas de calendario guardadas a medianoche UTC
+  // (el panel envía "YYYY-MM-DD"): su día es la parte de fecha en UTC, no el
+  // día en Caracas — convertirlas desplazaba el bloqueo al día anterior.
+  const exceptionByDay = new Map(schedule.exceptions.map((e) => [e.date.toISOString().slice(0, 10), e]));
 
   const slots: Date[] = [];
   let dayKey = fromDateKey;
@@ -69,7 +110,7 @@ export function computeAvailableSlots(
     const exception = exceptionByDay.get(dayKey);
 
     if (!exception?.isBlocked) {
-      const dayOfWeek = new Date(`${dayKey}T12:00:00-04:00`).getUTCDay();
+      const dayOfWeek = dayOfWeekForDateKey(dayKey);
       const dayBlocks =
         exception && exception.startTime && exception.endTime
           ? [{ dayOfWeek, startTime: exception.startTime, endTime: exception.endTime }]

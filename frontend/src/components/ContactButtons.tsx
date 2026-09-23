@@ -1,10 +1,6 @@
 'use client';
 
-import { api } from '@/lib/api';
-
-function track(eventType: string, resourceId: string) {
-  api.post('/analytics/track', { eventType, resourceId }).catch(() => undefined);
-}
+import { trackEvent as track } from '@/lib/analytics';
 
 export function WhatsAppButton({ professionalId, whatsapp }: { professionalId: string; whatsapp: string }) {
   const digits = whatsapp.replace(/[^\d]/g, '');

@@ -3,7 +3,7 @@
 > Bitácora central de cambios, implementaciones, decisiones técnicas y tareas de evolución del sistema.
 >
 > **Repositorio:** [`merchandev/guiamedicamonagas`](https://github.com/merchandev/guiamedicamonagas) · **Rama:** `main`<br>
-> **Última actualización de esta bitácora:** `2026-09-23 10:45:00 -04:00` · **Estado:** 🟢 Registro activo
+> **Última actualización de esta bitácora:** `2026-09-23 18:00:00 -04:00` · **Estado:** 🟢 Registro activo
 
 ![Estado](https://img.shields.io/badge/estado-registro%20activo-16a34a?style=flat-square)
 ![Rama](https://img.shields.io/badge/rama-main-2563eb?style=flat-square)
@@ -117,8 +117,9 @@ flowchart LR
     L[🧑‍🤝‍🧑 2026-09-23\n10:15:00\nACT-0012 · Perfil de paciente\ny fix crítico de CORS]
     M[📐 2026-09-23\n10:35:00\nACT-0013 · Ancho unificado\n80/10/10 en toda la web]
     N[🧾 2026-09-23\n10:45:00\nACT-0014 · Campos de formulario\nangostos corregidos]
+    O[🔏 2026-09-23\n18:00:00\nACT-0015 · Auditoría: salud cifrada,\nconsentimiento y organizaciones]
 
-    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L --> M --> N
+    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L --> M --> N --> O
 ```
 
 ### Resumen cuantitativo
@@ -126,8 +127,8 @@ flowchart LR
 | Indicador | Resultado |
 |---|---:|
 | Actividades históricas importadas desde Git | `3` |
-| Actividades documentales añadidas con esta bitácora | `11` |
-| Actividades registradas en total | `14` |
+| Actividades documentales añadidas con esta bitácora | `12` |
+| Actividades registradas en total | `15` |
 | Rama de referencia | `main` |
 | Commit base consultado | [`2d51c56`](https://github.com/merchandev/guiamedicamonagas/commit/2d51c56) |
 | Zona horaria de control | `America/Caracas` (`-04:00`) |
@@ -578,6 +579,44 @@ Se igualó `fieldBase` al mismo `px-3.5 py-2.5` y se le dio a `<Input>` (no a `<
 
 </details>
 
+<a id="act-0015"></a>
+
+### 🔏 ACT-0015 · Auditoría de privacidad y seguridad: datos de salud cifrados, consentimiento, organizaciones autogestionadas y QA
+
+<details>
+<summary><strong>2026-09-23 18:00:00 -04:00</strong> · <code>ver commit de ACT-0015</code> · 🟢 Completado</summary>
+
+**Responsable:** `Claude Opus 5.5` · **Tipo:** `security | feature | fix | docs | ops`
+
+El usuario compartió una auditoría estática externa del repositorio (arquitectura 8.5/10, pero **datos médicos/privacidad 4.5/10** y QA 4/10) con 10 cambios prioritarios, y pidió aplicarlos y desplegar. Cada hallazgo se verificó contra el código antes de corregirlo; todos los P0 eran reales.
+
+**P0 — corregidos**
+
+- **Datos de salud en claro → cifrado en aplicación (SEC-05).** Cédula, teléfono, datos de salud y contacto de emergencia del paciente, y el motivo de consulta de cada cita, se guardan con AES-256-GCM (IV aleatorio, AAD por campo, llavero versionado con rotación). La unicidad de cédula/teléfono usa HMAC-SHA256 con una clave distinta (no un SHA-256 enumerable). Las claves viven fuera de PostgreSQL. La migración conserva cualquier dato heredado en una tabla temporal que la API cifra y elimina en su primer arranque (probado con datos en claro reales: 2 fichas cifradas, 0 fugas).
+- **Revelación sin consentimiento → `PatientDataGrant`.** El médico ya no "revela" datos por tener una cita: necesita una autorización del paciente con alcance (nombre / contacto / salud), vencimiento y revocación inmediata. Cada lectura queda auditada. El paciente la otorga en el nuevo panel **Permisos** o al reservar (nada marcado por defecto); el médico puede **solicitar acceso** (una vez cada 24 h). Las fichas walk-in solo las ve el médico que las cargó.
+- **Política de privacidad y Términos reescritos** con versión fija (v2.0, 23-09-2026) en vez de `new Date()`, datos de salud, consentimiento, conservación, derechos, proveedores y Argon2id descrito correctamente ("no se guarda la contraseña"). Los términos ya no dicen que hay que pagar para aparecer: verificación y perfil básico gratuitos. La aceptación queda registrada por usuario y versión, con re-aceptación obligatoria si cambia.
+- **Analítica sin consentimiento → corregida.** Los eventos solo se envían si el visitante aceptó la analítica, y el servidor dejó de guardar IP y user-agent (columnas eliminadas).
+- **Subidas (SEC-04).** Tipo real por magic bytes (el MIME del cliente se ignora), imágenes re-codificadas con `sharp` (sin EXIF/GPS ni polyglots), PDF con JavaScript/acciones/archivos incrustados rechazados, nombre y extensión saneados, ClamAV opcional que falla cerrado. `sharp` se actualizó a 0.35.4 porque 0.34 arrastraba CVE de libvips.
+
+**P0/P1 — autorización y sesiones:** permisos granulares por función (un ADMIN verifica documentos y pagos; solo SUPERADMIN cambia planes, tasa manual y SEO) y **sin bypass universal de SUPERADMIN**; detección de reutilización de refresh tokens (revoca todas las sesiones); segundo factor por correo para administradores, implementado pero **desactivado** (`ADMIN_MFA_ENABLED=false`) porque producción aún usa Mailpit — no se usó Google Authenticator, respetando la instrucción del usuario.
+
+**P1 — producto**
+
+- **Organizaciones autogestionadas:** registro como farmacia/laboratorio/clínica, verificación por un admin antes de publicarse, panel propio (perfil, sedes, servicios, aseguradoras, métodos de pago, logo), equipo con roles dueño/admin/editor, suscripción al plan de organizaciones por Pago Móvil, estadísticas y **médicos asociados con aceptación del médico**. Página pública `/organizaciones/[slug]` con JSON-LD.
+- **Venezuela como datos:** tablas Estado → Municipio → Parroquia (24 estados, Monagas activo con sus 13 municipios; las parroquias se cargan desde el panel), `ProfessionalRegistration` por emisor y jurisdicción (backfill desde MPPS/Colegio/INPREMÉDICO), catálogo de bancos administrable (antes fijo en el frontend) y requisitos documentales clasificados (legal, habilitación, gremial, especialidad, identidad, fiscal, complementario).
+- **Pagos:** cada cuota guarda precio USD, tasa BCV, fuente, fecha valor y momento de captura; una referencia de Pago Móvil no puede reutilizarse; la aprobación es idempotente ante doble clic.
+- **Directorio y SEO:** orden por completitud del perfil + impulso acotado del plan (Premium incompleto no supera a Básico completo), franja «Destacado» señalada como patrocinada, sitemap con **todos** los médicos (antes solo 48) y páginas reales `/especialidades/[slug]` y `/especialidades/[slug]/[municipio]` solo si tienen médicos.
+- **Agenda:** zona horaria `America/Caracas` en vez de `-04:00` fijo. Se encontró y corrigió un **bug real**: las excepciones de agenda (vacaciones/días bloqueados) bloqueaban el día anterior. También el selector de fechas de la reserva mostraba "mañana" después de las 8 p. m. Los correos al paciente enlazaban a una ruta solo de médicos: ahora existe **Mis citas** del paciente.
+
+**QA:** 31 pruebas unitarias (Vitest: cifrado, manipulación, rotación, magic bytes, EXIF/polyglot, PDF activo, agenda, permisos, orden del directorio, recorte por alcance) y una suite **e2e de 42 comprobaciones** contra API + PostgreSQL reales. GitHub Actions: CI (tipos, unitarias, build, migraciones sin desvío, e2e) y seguridad (gitleaks, npm audit, CodeQL, Trivy de imagen y configuración).
+
+**Verificación realizada:** migración probada simulando producción (migraciones antiguas + datos en claro → migración nueva → arranque de la API → 0 texto plano en la BD, `migrate diff` sin desvío); unitarias y e2e en verde; `next build` limpio (43 rutas); flujos probados en el navegador: registro de paciente, ficha con datos de salud, reserva con consentimiento solo de "Salud", lista de pacientes del médico mostrando únicamente esos datos, registro y autogestión de una organización, aprobación por admin, página pública, aviso de re-aceptación legal, catálogos de bancos/geografía, landing especialidad+municipio y sitemap.
+
+**Impacto:** la plataforma pasa de "directorio que además guarda salud en claro" a un modelo donde los datos sensibles están cifrados, el paciente controla quién los ve y por cuánto tiempo, y cada acceso es trazable.<br>
+**Archivos destacados:** [`backend/src/crypto`](backend/src/crypto), [`backend/src/patients`](backend/src/patients), [`backend/src/uploads`](backend/src/uploads), [`backend/src/common/permissions.ts`](backend/src/common/permissions.ts), [`backend/src/organizations`](backend/src/organizations), [`backend/prisma/migrations/20260923180000_privacy_security_hardening`](backend/prisma/migrations/20260923180000_privacy_security_hardening), [`frontend/src/app/paciente/permisos`](frontend/src/app/paciente/permisos), [`frontend/src/app/organizacion`](frontend/src/app/organizacion), [`docs/security/sec-02-05-privacidad-y-acceso.md`](docs/security/sec-02-05-privacidad-y-acceso.md), [`.github/workflows`](.github/workflows).
+
+</details>
+
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
 <a id="registro-por-area"></a>
@@ -589,15 +628,15 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | Área | Implementaciones registradas | Actividades relacionadas |
 |---|---|---|
 | 🧱 Fundación técnica | NestJS, Next.js, Prisma, Docker, Caddy, Tailwind | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) |
-| 🔐 Auth y seguridad | JWT, refresh cookie, roles, correo, recuperación, throttling, Argon2id | [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0012](#act-0012) |
+| 🔐 Auth y seguridad | JWT, refresh cookie, roles, correo, recuperación, throttling, Argon2id, permisos granulares, reuso de tokens, MFA por correo, subidas seguras | [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0012](#act-0012) · [ACT-0015](#act-0015) |
 | 👨‍⚕️ Profesionales | Perfiles, ubicaciones, documentos, verificación legal, redes sociales, badges | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0006](#act-0006) |
-| 🏥 Organizaciones | Farmacias, laboratorios, clínicas y ubicaciones | [ACT-0003](#act-0003) · [ACT-0006](#act-0006) |
-| 💳 Monetización | Planes, Pago Móvil, aprobación y tasa BCV | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0010](#act-0010) · [ACT-0011](#act-0011) |
-| 📅 Agenda y citas | Horarios, disponibilidad, reservas, máquina de estados, anti-doble-reserva | [ACT-0007](#act-0007) |
-| 🔒 Pacientes | Código pseudónimo, listado sin datos personales, revelación auditada, registro propio, salud y foto de identificación | [ACT-0007](#act-0007) · [ACT-0012](#act-0012) |
-| 🛠️ Administración | Médicos, pagos, SEO, cookies, especialidades, planes y verificaciones | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) |
-| 📊 Observabilidad | Auditoría, analítica, notificaciones y salud | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) |
-| 🎨 Experiencia | Directorios, dashboard, componentes UI, motion y legal | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0013](#act-0013) · [ACT-0014](#act-0014) |
+| 🏥 Organizaciones | Farmacias, laboratorios, clínicas, ubicaciones, autogestión, equipo, médicos asociados y plan propio | [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0015](#act-0015) |
+| 💳 Monetización | Planes, Pago Móvil, aprobación, tasa BCV, evidencia de tasa por cuota y catálogo de bancos | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0010](#act-0010) · [ACT-0011](#act-0011) · [ACT-0015](#act-0015) |
+| 📅 Agenda y citas | Horarios, disponibilidad, reservas, máquina de estados, anti-doble-reserva, zona America/Caracas | [ACT-0007](#act-0007) · [ACT-0015](#act-0015) |
+| 🔒 Pacientes | Código pseudónimo, cifrado de datos de salud, consentimiento por alcance y tiempo, lecturas auditadas, registro propio y foto de identificación | [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0015](#act-0015) |
+| 🛠️ Administración | Médicos, pagos, SEO, cookies, especialidades, planes, verificaciones, organizaciones, bancos y geografía | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0015](#act-0015) |
+| 📊 Observabilidad | Auditoría, analítica con consentimiento y sin IP, notificaciones, salud, pruebas y CI | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0015](#act-0015) |
+| 🎨 Experiencia | Directorios, dashboard, componentes UI, motion y legal | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0013](#act-0013) · [ACT-0014](#act-0014) · [ACT-0015](#act-0015) |
 | 🚢 Operación | Variables de entorno, Compose, almacenamiento, correo y proxy | [ACT-0001](#act-0001) · [ACT-0002](#act-0002) · [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0008](#act-0008) · [ACT-0009](#act-0009) · [ACT-0011](#act-0011) |
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
@@ -633,6 +672,15 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | IMP-023 | Corrección de CORS: `PATCH`/`PUT`/`DELETE` habilitados desde el navegador en toda la API (antes solo `GET/HEAD/POST`) | 🟢 Completado | [`backend/src/main.ts`](backend/src/main.ts) |
 | IMP-024 | Ancho unificado 80%/10%/10% en toda la web, responsivo en cualquier tamaño de pantalla | 🟢 Completado | [`frontend/src/app/globals.css`](frontend/src/app/globals.css) |
 | IMP-025 | Campos de texto (`Input`/`Textarea`) con alto y relleno propios, alineados con `Select`/`Button` en toda la web | 🟢 Completado | [`frontend/src/components/ui/Input.tsx`](frontend/src/components/ui/Input.tsx) |
+| IMP-026 | SEC-05: cifrado AES-256-GCM de cédula, teléfono, salud y motivo de consulta, con HMAC para unicidad y migración sin pérdida de datos heredados | 🟢 Completado | [`backend/src/crypto`](backend/src/crypto), [`backend/src/patients/patient-data.codec.ts`](backend/src/patients/patient-data.codec.ts) |
+| IMP-027 | Consentimiento paciente → médico (`PatientDataGrant`): alcance, vencimiento, revocación, solicitud de acceso y lecturas auditadas | 🟢 Completado | [`backend/src/patients/patients.service.ts`](backend/src/patients/patients.service.ts), [`frontend/src/app/paciente/permisos`](frontend/src/app/paciente/permisos) |
+| IMP-028 | Textos legales versionados (v2.0) con aceptación registrada y re-aceptación obligatoria | 🟢 Completado | [`frontend/src/app/privacidad`](frontend/src/app/privacidad), [`backend/src/common/legal-versions.ts`](backend/src/common/legal-versions.ts) |
+| IMP-029 | SEC-04: subidas verificadas por contenido, imágenes re-codificadas, PDF activos rechazados, ClamAV opcional | 🟢 Completado | [`backend/src/uploads`](backend/src/uploads) |
+| IMP-030 | SEC-03/SEC-02: permisos granulares sin bypass de SUPERADMIN, reuso de refresh tokens, MFA por correo para administradores (desactivado hasta SMTP real) | 🟢 Completado | [`backend/src/common/permissions.ts`](backend/src/common/permissions.ts), [`backend/src/auth/auth.service.ts`](backend/src/auth/auth.service.ts) |
+| IMP-031 | Organizaciones autogestionadas: registro, verificación, panel, equipo, médicos asociados con aceptación, plan propio y página pública | 🟢 Completado | [`backend/src/organizations`](backend/src/organizations), [`frontend/src/app/organizacion`](frontend/src/app/organizacion) |
+| IMP-032 | Geografía y catálogos como datos (estados/municipios/parroquias, registros profesionales por jurisdicción, bancos) | 🟢 Completado | [`backend/src/geo`](backend/src/geo), [`frontend/src/app/admin/catalogos`](frontend/src/app/admin/catalogos) |
+| IMP-033 | Directorio justo y SEO: orden por completitud + impulso acotado, «Destacado» patrocinado, sitemap completo y landings especialidad+municipio | 🟢 Completado | [`backend/src/professionals/directory-score.ts`](backend/src/professionals/directory-score.ts), [`frontend/src/app/sitemap.ts`](frontend/src/app/sitemap.ts) |
+| IMP-034 | QA: 31 unitarias, 42 comprobaciones e2e y pipelines de CI y seguridad | 🟢 Completado | [`backend/test`](backend/test), [`.github/workflows`](.github/workflows) |
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
@@ -651,9 +699,13 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | 🟠 Media | Limpiar la divergencia de line endings (CRLF/LF) entre el checkout de `/opt/guiamedicamonagas` en el VPS y `origin/main` — no afecta a los contenedores en ejecución | 🔵 Planificado | `git status` limpio en el checkout del VPS tras confirmar con el usuario antes de descartar cambios locales |
 | 🟠 Media | Cola de administración para revisar `identityStatus` (foto de identificación del paciente) — hoy queda en `PENDING` visible solo en el propio perfil, sin flujo de aprobar/rechazar | 🔵 Planificado | Endpoint admin + UI, mismo patrón que [`admin/verificaciones`](frontend/src/app/admin/verificaciones/page.tsx) para documentos profesionales |
 | 🟡 Baja | Precargar el formulario de reserva de cita (`medicos/[slug]/agendar`) con nombre/teléfono del `PatientProfile` del paciente logueado, en vez de pedirlos de nuevo en cada reserva | 🔵 Planificado | Ver [ACT-0012](#act-0012) |
-| 🔴 Alta | SEC-03 · Permisos granulares (eliminar el bypass universal de SUPERADMIN) | 🔵 Planificado | Matriz endpoint × rol verificada, sin permiso implícito por rol |
-| 🔴 Alta | SEC-05 · Cifrado de campos sensibles del paciente (cédula, teléfono) y de `ClinicalNote` | 🔴 Bloqueado | Habilita activar historia clínica — ver línea roja en [ACT-0007](#act-0007) |
-| 🟠 Media | SEC-02 (resto) · `tokenVersion` + detección de reuse de refresh tokens | 🔵 Planificado | Sesión revocada por completo ante cambio de rol/contraseña/compromiso |
+| 🟢 Continua | ~~SEC-03 · Permisos granulares (eliminar el bypass universal de SUPERADMIN)~~ | 🟢 Completado | Ver [ACT-0015](#act-0015) |
+| 🟢 Continua | ~~SEC-05 · Cifrado de campos sensibles del paciente~~ — hecho para el perfil y las citas; `ClinicalNote` deberá usar el mismo servicio al implementarse | 🟢 Completado | Ver [ACT-0015](#act-0015) |
+| 🟠 Media | SEC-02 (resto) · ~~detección de reuso de refresh tokens~~ (hecho en [ACT-0015](#act-0015)); falta `tokenVersion` para invalidar access tokens vigentes ante cambio de rol | 🔵 Planificado | Access token rechazado tras cambio de rol/contraseña |
+| 🔴 Alta | Respaldar fuera del VPS las claves `DATA_ENCRYPTION_KEYS`/`DATA_LOOKUP_KEY` de producción (sin ellas los datos cifrados son irrecuperables) | 🔴 Bloqueado | Copia en una bóveda del usuario, separada de los respaldos de la BD — ver [`docs/security/sec-02-05-privacidad-y-acceso.md`](docs/security/sec-02-05-privacidad-y-acceso.md) |
+| 🟠 Media | Activar `ADMIN_MFA_ENABLED` y evaluar ClamAV (`CLAMAV_HOST`) cuando haya SMTP real y RAM disponible en el VPS | 🔵 Planificado | Login de administrador con código por correo en producción |
+| 🟠 Media | Pagos C2P/P2C o API bancaria autorizada en lugar del reporte manual de Pago Móvil | 🔵 Planificado | Conciliación automática con evidencia del banco |
+| 🟡 Baja | Agenda: duración por servicio, consulta online, precio, política de cancelación, feriados, varias agendas y lista de espera | 🔵 Planificado | Sugeridos por la auditoría de [ACT-0015](#act-0015) |
 | 🟠 Media | Fase 3a · Finanzas: `FinanceRecord` + auto-generación de ingreso al completar cita | 🔵 Planificado | Gated a plan Premium; usa `ExchangeRateService` ya existente |
 | 🟠 Media | Fase 3b · Historia clínica (`ClinicalNote`) | 🔴 Bloqueado | Solo después de SEC-05; sin endpoints ni UI hasta entonces |
 | 🟡 Baja | Fase 4 · Bandeja de conversaciones unificada (WhatsApp/email/in-app) | 🔵 Planificado | Requiere modelo nuevo; `MessageLog` no alcanza |
@@ -720,6 +772,7 @@ Para cada cambio futuro, añadir una entrada en la línea de tiempo y actualizar
 | `2026-09-23 10:15:00 -04:00` | Incorporación de ACT-0012 (perfil de paciente autoservicio: registro con cédula/teléfono/correo únicos, medicamentos, condición bloqueable, contacto de emergencia, foto de identificación; corrección de un bug real de CORS que bloqueaba PATCH/PUT/DELETE desde el navegador en toda la app), actualización de línea de tiempo, resumen cuantitativo, registro por área, control de implementaciones y próximas actividades | 🟢 Completado |
 | `2026-09-23 10:35:00 -04:00` | Incorporación de ACT-0013 (ancho unificado 80%/10%/10% en toda la web mediante un único cambio en `.container-page`), actualización de línea de tiempo, resumen cuantitativo, registro por área y control de implementaciones | 🟢 Completado |
 | `2026-09-23 10:45:00 -04:00` | Incorporación de ACT-0014 (campos `Input`/`Textarea` sin alto ni relleno propios corregidos en toda la web, `Button` alineado con `Select`), actualización de línea de tiempo, resumen cuantitativo, registro por área y control de implementaciones | 🟢 Completado |
+| `2026-09-23 18:00:00 -04:00` | Incorporación de ACT-0015 (respuesta a la auditoría externa: cifrado de datos de salud, consentimiento paciente → médico, textos legales versionados, analítica sin IP, subidas seguras, permisos granulares, organizaciones autogestionadas, geografía/bancos como datos, SEO y QA con CI), actualización de línea de tiempo, resumen cuantitativo, registro por área, control de implementaciones y próximas actividades | 🟢 Completado |
 
 ---
 

@@ -1,7 +1,6 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Post, Req } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import { Role } from '@prisma/client';
 import { Throttle } from '@nestjs/throttler';
-import type { FastifyRequest } from 'fastify';
 import { Public } from '../common/decorators/public.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -17,8 +16,10 @@ export class AnalyticsController {
   @Throttle({ default: { limit: 60, ttl: 60_000 } })
   @HttpCode(HttpStatus.OK)
   @Post('track')
-  track(@Body() dto: TrackEventDto, @Req() req: FastifyRequest) {
-    return this.analytics.track(dto, req.ip, req.headers['user-agent']);
+  // El frontend solo llama aquí si el visitante aceptó cookies de análisis;
+  // aun así no se guarda IP ni user-agent: es un conteo anónimo.
+  track(@Body() dto: TrackEventDto) {
+    return this.analytics.track(dto);
   }
 
   @Roles(Role.PROFESSIONAL)

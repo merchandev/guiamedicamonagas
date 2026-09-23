@@ -1,23 +1,26 @@
-import { Controller, Get, Body, Patch, Post, Req } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Req } from '@nestjs/common';
 import type { FastifyRequest } from 'fastify';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../common/types/authenticated-user';
 import { readSingleUploadedFile } from '../common/utils/multipart';
 import { StorageService } from '../storage/storage.service';
+import { IMAGE_TYPES, UploadSecurityService } from '../uploads/upload-security.service';
 import { PatientsService } from './patients.service';
 import { UpdatePatientProfileDto } from './dto/update-patient-profile.dto';
+import { CreatePatientDataGrantDto } from './dto/patient-data-grant.dto';
 
-const PHOTO_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const MAX_PHOTO_SIZE = 5 * 1024 * 1024;
 
 // Sin @Roles(): cualquier usuario autenticado (USER, PROFESSIONAL, ADMIN...)
 // puede tener su propia ficha de paciente — un médico también puede agendar
-// consigo mismo como paciente de otro colega.
+// consigo mismo como paciente de otro colega. Todo opera sobre la ficha del
+// propio usuario: nadie lee aquí la ficha de otra persona.
 @Controller('patients')
 export class PatientsController {
   constructor(
     private readonly patients: PatientsService,
     private readonly storage: StorageService,
+    private readonly uploads: UploadSecurityService,
   ) {}
 
   @Get('me')
@@ -32,17 +35,41 @@ export class PatientsController {
 
   @Post('me/photo')
   async uploadPhoto(@CurrentUser() user: AuthenticatedUser, @Req() req: FastifyRequest) {
-    const file = await readSingleUploadedFile(req, PHOTO_MIME_TYPES, MAX_PHOTO_SIZE);
-    const key = this.storage.buildKey('patient-photos', file.filename);
+    const raw = await readSingleUploadedFile(req, MAX_PHOTO_SIZE);
+    const file = await this.uploads.secure(raw, IMAGE_TYPES);
+    const key = this.storage.buildKey('patient-photos', file.extension);
     await this.storage.uploadPrivateObject(key, file.buffer, file.mimetype);
     return this.patients.updateOwnPhoto(user.id, key);
   }
 
   @Post('me/id-photo')
   async uploadIdPhoto(@CurrentUser() user: AuthenticatedUser, @Req() req: FastifyRequest) {
-    const file = await readSingleUploadedFile(req, PHOTO_MIME_TYPES, MAX_PHOTO_SIZE);
-    const key = this.storage.buildKey('patient-id-documents', file.filename);
+    const raw = await readSingleUploadedFile(req, MAX_PHOTO_SIZE);
+    const file = await this.uploads.secure(raw, IMAGE_TYPES);
+    const key = this.storage.buildKey('patient-id-documents', file.extension);
     await this.storage.uploadPrivateObject(key, file.buffer, file.mimetype);
     return this.patients.updateOwnIdPhoto(user.id, key);
+  }
+
+  // --- Consentimientos: quién puede ver mis datos --------------------------
+
+  @Get('me/grants')
+  listGrants(@CurrentUser() user: AuthenticatedUser) {
+    return this.patients.listOwnGrants(user.id);
+  }
+
+  @Get('me/professionals')
+  listProfessionals(@CurrentUser() user: AuthenticatedUser) {
+    return this.patients.listOwnProfessionals(user.id);
+  }
+
+  @Post('me/grants')
+  createGrant(@CurrentUser() user: AuthenticatedUser, @Body() dto: CreatePatientDataGrantDto, @Req() req: FastifyRequest) {
+    return this.patients.createGrant(user.id, dto, req.ip);
+  }
+
+  @Delete('me/grants/:id')
+  revokeGrant(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string, @Req() req: FastifyRequest) {
+    return this.patients.revokeGrant(user.id, id, req.ip);
   }
 }

@@ -1,8 +1,9 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { AppointmentStatus, Prisma } from '@prisma/client';
+import { AppointmentStatus, PatientDataScope, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AgendaService } from '../agenda/agenda.service';
 import { PatientsService } from '../patients/patients.service';
+import { PatientDataCodec } from '../patients/patient-data.codec';
 import { NotificationsService } from '../notifications/notifications.service';
 import { AGENDA_MIN_TIER, tierAtLeast } from '../subscriptions/plan-tiers';
 import {
@@ -13,7 +14,7 @@ import {
   appointmentRescheduledTemplate,
 } from '../mail/mail.templates';
 import { buildAppointmentIcs } from './ics.util';
-import { computeAvailableSlots, toVetDateKey } from './availability.util';
+import { computeAvailableSlots, endOfCaracasDay, startOfCaracasDay, toVetDateKey } from './availability.util';
 import { CreateAppointmentDto } from './dto/create-appointment.dto';
 import { CreateManualAppointmentDto } from './dto/create-manual-appointment.dto';
 import { RescheduleAppointmentDto } from './dto/reschedule-appointment.dto';
@@ -30,6 +31,7 @@ export class AppointmentsService {
     private readonly agenda: AgendaService,
     private readonly patients: PatientsService,
     private readonly notifications: NotificationsService,
+    private readonly codec: PatientDataCodec,
   ) {}
 
   // --- Disponibilidad (público) ----------------------------------------
@@ -58,7 +60,7 @@ export class AppointmentsService {
       where: {
         professionalId,
         status: { in: ['PENDING', 'CONFIRMED'] },
-        startsAt: { gte: new Date(`${fromDateKey}T00:00:00-04:00`), lte: new Date(`${toDateKey}T23:59:59-04:00`) },
+        startsAt: { gte: startOfCaracasDay(fromDateKey), lte: endOfCaracasDay(toDateKey) },
       },
       select: { startsAt: true },
     });
@@ -109,34 +111,43 @@ export class AppointmentsService {
       locationId: dto.locationId,
       startsAt,
       endsAt,
-      reason: dto.reason,
+      reason: this.codec.encodeAppointmentReason(dto.reason),
       source: 'WEB',
       status: autoConfirm ? 'CONFIRMED' : 'PENDING',
     });
 
+    if (dto.shareScopes?.length) {
+      await this.patients.createGrant(userId, {
+        professionalId: dto.professionalId,
+        scopes: dto.shareScopes,
+        durationDays: dto.shareDays,
+        reason: 'Autorizado al reservar la cita',
+      });
+    }
+
     await this.notifyCreated(appointment.id);
-    return appointment;
+    return this.presentAppointment(appointment);
   }
 
   async createManual(professionalUserId: string, dto: CreateManualAppointmentDto) {
     const profile = await this.ownProfileOrThrow(professionalUserId);
     const { startsAt, endsAt } = await this.resolveSlot(profile.id, dto.startsAt);
-    const patient = await this.patients.createWalkIn({
-      firstName: dto.firstName,
-      lastName: dto.lastName,
-      phone: dto.phone,
-    });
+    const patient = await this.patients.createWalkIn(
+      { firstName: dto.firstName, lastName: dto.lastName, phone: dto.phone },
+      profile.id,
+    );
 
-    return this.insertAppointment({
+    const appointment = await this.insertAppointment({
       professionalId: profile.id,
       patientId: patient.id,
       locationId: dto.locationId,
       startsAt,
       endsAt,
-      reason: dto.reason,
+      reason: this.codec.encodeAppointmentReason(dto.reason),
       source: 'PHONE',
       status: 'CONFIRMED',
     });
+    return this.presentAppointment(appointment);
   }
 
   private async insertAppointment(data: {
@@ -145,7 +156,7 @@ export class AppointmentsService {
     locationId?: string;
     startsAt: Date;
     endsAt: Date;
-    reason?: string;
+    reason?: string | null;
     source: 'WEB' | 'PHONE';
     status: 'PENDING' | 'CONFIRMED';
   }) {
@@ -189,7 +200,8 @@ export class AppointmentsService {
         template: 'appointment_requested_professional',
         html: appointmentRequestedProfessionalTemplate(
           doctorName,
-          { patientCode: appt.patient.patientCode, dateLabel, timeLabel, reason: appt.reason ?? undefined },
+          // El motivo de consulta es dato de salud: no viaja por correo, se lee en el panel.
+          { patientCode: appt.patient.patientCode, dateLabel, timeLabel },
           `${FRONTEND_URL}/dashboard/citas`,
         ),
       },
@@ -202,7 +214,7 @@ export class AppointmentsService {
         ? appointmentConfirmedTemplate(
             appt.patient.firstName ?? 'Paciente',
             { doctorName, specialty, dateLabel, timeLabel, location },
-            `${FRONTEND_URL}/dashboard/citas`,
+            `${FRONTEND_URL}/paciente/citas`,
           )
         : appointmentRequestedPatientTemplate(appt.patient.firstName ?? 'Paciente', {
             doctorName,
@@ -244,7 +256,7 @@ export class AppointmentsService {
   async listOwn(userId: string) {
     const patient = await this.prisma.patientProfile.findUnique({ where: { userId } });
     if (!patient) return [];
-    return this.prisma.appointment.findMany({
+    const rows = await this.prisma.appointment.findMany({
       where: { patientId: patient.id },
       include: {
         professional: { select: { firstName: true, lastName: true, slug: true } },
@@ -252,6 +264,7 @@ export class AppointmentsService {
       },
       orderBy: { startsAt: 'desc' },
     });
+    return rows.map((row) => this.presentAppointment(row));
   }
 
   private async ownProfileOrThrow(userId: string) {
@@ -268,18 +281,19 @@ export class AppointmentsService {
     if (status && !(Object.values(AppointmentStatus) as string[]).includes(status)) {
       throw new BadRequestException('Estado de cita inválido');
     }
-    return this.prisma.appointment.findMany({
+    const rows = await this.prisma.appointment.findMany({
       where: {
         professionalId: profile.id,
         status: status ? (status as AppointmentStatus) : undefined,
         startsAt: {
-          gte: from ? new Date(`${from}T00:00:00-04:00`) : undefined,
-          lte: to ? new Date(`${to}T23:59:59-04:00`) : undefined,
+          gte: from ? startOfCaracasDay(from) : undefined,
+          lte: to ? endOfCaracasDay(to) : undefined,
         },
       },
       include: { patient: { select: { patientCode: true } }, location: { select: { name: true } } },
       orderBy: { startsAt: 'asc' },
     });
+    return rows.map((row) => this.presentAppointment(row));
   }
 
   // --- Transiciones de estado ------------------------------------------
@@ -303,7 +317,7 @@ export class AppointmentsService {
       data: { status: 'CONFIRMED', confirmationSentAt: new Date() },
     });
     await this.notifyConfirmed(appointmentId);
-    return updated;
+    return this.presentAppointment(updated);
   }
 
   private async notifyConfirmed(appointmentId: string) {
@@ -339,7 +353,7 @@ export class AppointmentsService {
             timeLabel,
             location: appt.location?.address ?? undefined,
           },
-          `${FRONTEND_URL}/dashboard/citas`,
+          `${FRONTEND_URL}/paciente/citas`,
         ),
         attachments: [this.buildIcsAttachment(appt)],
       },
@@ -353,7 +367,9 @@ export class AppointmentsService {
       throw new BadRequestException('Solo se pueden completar citas confirmadas');
     }
     // TODO(Fase 3a – Finanzas): auto-generar FinanceRecord de tipo INCOME aquí.
-    return this.prisma.appointment.update({ where: { id: appointmentId }, data: { status: 'COMPLETED' } });
+    return this.presentAppointment(
+      await this.prisma.appointment.update({ where: { id: appointmentId }, data: { status: 'COMPLETED' } }),
+    );
   }
 
   async noShow(userId: string, appointmentId: string) {
@@ -362,7 +378,9 @@ export class AppointmentsService {
     if (appt.status !== 'CONFIRMED') {
       throw new BadRequestException('Solo se pueden marcar como no asistidas las citas confirmadas');
     }
-    return this.prisma.appointment.update({ where: { id: appointmentId }, data: { status: 'NO_SHOW' } });
+    return this.presentAppointment(
+      await this.prisma.appointment.update({ where: { id: appointmentId }, data: { status: 'NO_SHOW' } }),
+    );
   }
 
   async cancel(userId: string, appointmentId: string, dto: CancelAppointmentDto) {
@@ -380,7 +398,7 @@ export class AppointmentsService {
       },
     });
     await this.notifyCancelled(appointmentId, cancelledBy, dto.cancellationReason);
-    return updated;
+    return this.presentAppointment(updated);
   }
 
   private async notifyCancelled(appointmentId: string, cancelledBy: 'PATIENT' | 'PROFESSIONAL', reason?: string) {
@@ -453,7 +471,7 @@ export class AppointmentsService {
       throw error;
     }
     await this.notifyRescheduled(appointmentId);
-    return updated;
+    return this.presentAppointment(updated);
   }
 
   private async notifyRescheduled(appointmentId: string) {
@@ -474,7 +492,7 @@ export class AppointmentsService {
           to: appt.patient.user.email,
           subject: 'Cita reprogramada — Guía Médica Monagas',
           template: 'appointment_rescheduled',
-          html: appointmentRescheduledTemplate(appt.patient.firstName ?? 'Paciente', { dateLabel, timeLabel }, `${FRONTEND_URL}/dashboard/citas`),
+          html: appointmentRescheduledTemplate(appt.patient.firstName ?? 'Paciente', { dateLabel, timeLabel }, `${FRONTEND_URL}/paciente/citas`),
         },
       });
     }
@@ -517,9 +535,19 @@ export class AppointmentsService {
     return this.patients.listForProfessional(profile.id);
   }
 
-  async revealPatient(userId: string, patientId: string) {
+  async readPatient(userId: string, patientId: string, ipAddress?: string) {
     const profile = await this.ownProfileOrThrow(userId);
-    return this.patients.revealForProfessional(profile.id, patientId, userId);
+    return this.patients.readForProfessional(profile.id, patientId, userId, ipAddress);
+  }
+
+  async requestPatientAccess(userId: string, patientId: string, scopes: PatientDataScope[]) {
+    const profile = await this.ownProfileOrThrow(userId);
+    return this.patients.requestAccess(profile.id, patientId, userId, scopes);
+  }
+
+  /** Descifra el motivo de consulta antes de responder. */
+  private presentAppointment<T extends { reason: string | null }>(appointment: T): T {
+    return { ...appointment, reason: this.codec.decodeAppointmentReason(appointment.reason) };
   }
 }
 

@@ -80,6 +80,21 @@ export const envSchema = z.object({
   WHATSAPP_ACCESS_TOKEN: z.string().optional().default(''),
   WHATSAPP_ADMIN_NUMBER: z.string().optional().default(''),
 
+  // SEC-05: llavero de cifrado de datos de pacientes, FUERA de PostgreSQL.
+  // Perderlas = perder los datos cifrados: respaldarlas aparte, nunca junto
+  // al volcado de la base de datos.
+  DATA_ENCRYPTION_KEYS: z.string().min(1),
+  DATA_ENCRYPTION_ACTIVE_KEY: z.string().default('v1'),
+  DATA_LOOKUP_KEY: z.string().min(1),
+
+  // Segundo factor por correo para ADMIN/SUPERADMIN. Solo activarlo con un
+  // SMTP real: con el Mailpit interno el código nunca llegaría al buzón.
+  ADMIN_MFA_ENABLED: envBoolean(false),
+
+  // SEC-04: antivirus opcional (clamd, protocolo INSTREAM por TCP).
+  CLAMAV_HOST: z.string().optional().default(''),
+  CLAMAV_PORT: z.coerce.number().default(3310),
+
   PAGO_MOVIL_BANK_NAME: z.string().default('Banesco'),
   PAGO_MOVIL_BANK_CODE: z.string().default('0134'),
   PAGO_MOVIL_PHONE: z.string().default(''),

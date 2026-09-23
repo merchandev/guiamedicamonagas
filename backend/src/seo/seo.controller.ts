@@ -1,9 +1,8 @@
 import { Body, Controller, Get, Put, Query } from '@nestjs/common';
-import { Role } from '@prisma/client';
 import { Public } from '../common/decorators/public.decorator';
-import { Roles } from '../common/decorators/roles.decorator';
 import { SeoService } from './seo.service';
 import { UpdateGlobalSeoDto, UpsertPageSeoDto } from './dto/update-global-seo.dto';
+import { Permission, RequirePermissions } from '../common/permissions';
 
 @Controller('seo')
 export class SeoController {
@@ -15,13 +14,13 @@ export class SeoController {
     return this.seo.getGlobal();
   }
 
-  @Roles(Role.ADMIN, Role.SUPERADMIN)
+  @RequirePermissions(Permission.MANAGE_SITE)
   @Put('global')
   updateGlobal(@Body() dto: UpdateGlobalSeoDto) {
     return this.seo.updateGlobal(dto);
   }
 
-  @Roles(Role.ADMIN, Role.SUPERADMIN)
+  @RequirePermissions(Permission.MANAGE_SITE)
   @Get('pages')
   listPages() {
     return this.seo.listPages();
@@ -33,7 +32,7 @@ export class SeoController {
     return this.seo.getPublicMetaForPath(path ?? '/');
   }
 
-  @Roles(Role.ADMIN, Role.SUPERADMIN)
+  @RequirePermissions(Permission.MANAGE_SITE)
   @Put('pages')
   upsertPage(@Body() dto: UpsertPageSeoDto) {
     return this.seo.upsertPage(dto);

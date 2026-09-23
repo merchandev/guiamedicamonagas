@@ -4,7 +4,7 @@ import { Suspense, useEffect, useState, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import { PaginatedResult, ProfessionalListItem, Specialty } from '@/lib/types';
-import { MONAGAS_MUNICIPALITIES } from '@/lib/monagas';
+import { municipalityOptions, useMunicipalities } from '@/lib/catalogs';
 import { DoctorCard } from '@/components/DoctorCard';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
@@ -25,9 +25,10 @@ function MedicosPageContent() {
   const searchParams = useSearchParams();
 
   const [specialties, setSpecialties] = useState<Specialty[]>([]);
-  const [result, setResult] = useState<PaginatedResult<ProfessionalListItem> | null>(null);
+  const [result, setResult] = useState<(PaginatedResult<ProfessionalListItem> & { featured?: ProfessionalListItem[] }) | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState(searchParams.get('q') ?? '');
+  const municipalities = useMunicipalities();
 
   const especialidad = searchParams.get('especialidad') ?? '';
   const municipio = searchParams.get('municipio') ?? '';
@@ -45,7 +46,7 @@ function MedicosPageContent() {
     if (searchParams.get('q')) params.set('search', searchParams.get('q')!);
     params.set('page', String(page));
     api
-      .get<PaginatedResult<ProfessionalListItem>>(`/professionals?${params.toString()}`)
+      .get<PaginatedResult<ProfessionalListItem> & { featured?: ProfessionalListItem[] }>(`/professionals?${params.toString()}`)
       .then(setResult)
       .catch(() => setResult(null))
       .finally(() => setLoading(false));
@@ -71,7 +72,9 @@ function MedicosPageContent() {
   return (
     <div className="container-page py-10">
       <h1 className="text-3xl">Directorio de médicos</h1>
-      <p className="mt-2 text-ink-600">Profesionales verificados en el estado Monagas.</p>
+      <p className="mt-2 text-ink-600">
+        Profesionales verificados en el estado Monagas, ordenados por relevancia y perfil completo.
+      </p>
 
       <div className="card mt-6 grid gap-4 p-5 md:grid-cols-4">
         <form
@@ -98,9 +101,23 @@ function MedicosPageContent() {
           label="Municipio"
           value={municipio}
           onChange={(value) => updateParam('municipio', value)}
-          options={[{ value: '', label: 'Todos' }, ...MONAGAS_MUNICIPALITIES.map((m) => ({ value: m, label: m }))]}
+          options={municipalityOptions(municipalities, 'Todos')}
         />
       </div>
+
+      {!loading && result?.featured && result.featured.length > 0 && (
+        <section className="mt-8" aria-label="Perfiles destacados">
+          <div className="mb-3 flex items-baseline gap-2">
+            <h2 className="text-lg font-semibold text-ink-900">Destacados</h2>
+            <span className="text-xs text-ink-400">Espacio patrocinado · no es una recomendación clínica</span>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {result.featured.map((doctor) => (
+              <DoctorCard key={doctor.id} doctor={doctor} />
+            ))}
+          </div>
+        </section>
+      )}
 
       <div className="mt-8">
         {loading ? (

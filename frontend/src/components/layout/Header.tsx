@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { useAuth } from '@/lib/auth-context';
+import { homePathFor, useAuth } from '@/lib/auth-context';
 import { cn } from '@/lib/cn';
 
 const NAV_LINKS = [
@@ -19,12 +19,7 @@ export function Header() {
   const { user, logout } = useAuth();
   const [open, setOpen] = useState(false);
 
-  const dashboardHref =
-    user?.role === 'ADMIN' || user?.role === 'SUPERADMIN'
-      ? '/admin'
-      : user?.role === 'USER'
-        ? '/paciente'
-        : '/dashboard';
+  const dashboardHref = user ? homePathFor(user.role) : '/iniciar-sesion';
 
   return (
     <header className="sticky top-0 z-40 border-b border-ink-100 bg-canvas/90 backdrop-blur">

@@ -10,7 +10,8 @@ import { Alert } from '@/components/ui/Alert';
 import { PageSpinner } from '@/components/ui/Spinner';
 import { Badge } from '@/components/ui/Badge';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { MONAGAS_MUNICIPALITIES } from '@/lib/monagas';
+import { municipalityOptions, useMunicipalities } from '@/lib/catalogs';
+import { AffiliationsManager } from '@/components/AffiliationsManager';
 import { PlanTier, Specialty } from '@/lib/types';
 import { PLAN_TIER_LABELS } from '@/lib/labels';
 import { ExtraLocationsManager } from '@/components/ExtraLocationsManager';
@@ -45,6 +46,8 @@ export default function EditProfilePage() {
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [planTier, setPlanTier] = useState<PlanTier>('FREE');
   const [socialLinks, setSocialLinks] = useState<SocialLink[]>([]);
+  const [completeness, setCompleteness] = useState<number | null>(null);
+  const municipalities = useMunicipalities();
 
   const { register, handleSubmit, reset, control } = useForm<OwnProfileForm>();
 
@@ -58,6 +61,7 @@ export default function EditProfilePage() {
         setSelectedSpecialties(profile.specialties.map((s: any) => s.specialty.id));
         setPhotoUrl(profile.photoUrl);
         setPlanTier(profile.planTier ?? 'FREE');
+        setCompleteness(profile.profileCompleteness ?? null);
         setSocialLinks(profile.socialLinks ?? []);
         setSpecialties(allSpecialties);
       })
@@ -106,6 +110,22 @@ export default function EditProfilePage() {
         <h1 className="text-2xl">Mi perfil profesional</h1>
         {PLAN_TIER_LABELS[planTier] && <Badge tone={PLAN_TIER_LABELS[planTier].tone}>{PLAN_TIER_LABELS[planTier].label}</Badge>}
       </div>
+
+      {completeness !== null && (
+        <div className="card p-5">
+          <div className="flex items-center justify-between text-sm">
+            <span className="font-medium text-ink-900">Perfil completo al {completeness}%</span>
+            <span className="text-ink-500">Es el criterio principal de orden en el directorio</span>
+          </div>
+          <div className="mt-2 h-2 overflow-hidden rounded-full bg-ink-100">
+            <div className="h-full rounded-full bg-pine-600" style={{ width: `${completeness}%` }} />
+          </div>
+          <p className="mt-2 text-xs text-ink-500">
+            Suma puntos con foto, biografía (80+ caracteres), especialidades, teléfono, dirección, municipio, números MPPS y
+            de Colegio, agenda y ubicación.
+          </p>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit(onSubmit)} className="card space-y-8 p-6">
         {error && <Alert tone="error">{error}</Alert>}
@@ -193,10 +213,7 @@ export default function EditProfilePage() {
                   label="Municipio"
                   value={field.value ?? ''}
                   onChange={field.onChange}
-                  options={[
-                    { value: '', label: 'Selecciona' },
-                    ...MONAGAS_MUNICIPALITIES.map((m) => ({ value: m, label: m })),
-                  ]}
+                  options={municipalityOptions(municipalities, 'Selecciona')}
                 />
               )}
             />
@@ -217,6 +234,7 @@ export default function EditProfilePage() {
 
       <SocialLinksManager planTier={planTier} initialLinks={socialLinks} />
       <ExtraLocationsManager />
+      <AffiliationsManager />
     </div>
   );
 }

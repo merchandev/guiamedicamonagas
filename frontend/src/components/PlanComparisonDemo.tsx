@@ -34,7 +34,7 @@ const FEATURE_ROWS: { label: string; min: DoctorTier }[] = [
   { label: 'Formulario de mensajes desde el perfil', min: 'PROFESSIONAL_PLUS' },
   { label: 'Publicaciones y varias sedes', min: 'PROFESSIONAL_PLUS' },
   { label: 'Redes sociales (hasta 2: Instagram/Facebook/TikTok)', min: 'PROFESSIONAL_PLUS' },
-  { label: 'Perfil destacado y prioridad en el buscador', min: 'PREMIUM' },
+  { label: 'Espacio «Destacado» rotativo (señalado como patrocinado)', min: 'PREMIUM' },
   { label: 'Publicaciones ilimitadas, redes + web y analítica avanzada', min: 'PREMIUM' },
 ];
 
@@ -267,7 +267,7 @@ export function PlanComparisonDemo() {
           Un mismo perfil de ejemplo, mostrado tal como lo verían tus pacientes en cada plan.
         </p>
         <p className="mt-1 text-xs text-ink-400">
-          El check de verificación cambia de color según tu plan: gris (Básico), azul (Profesional), índigo (Plus),
+          Todos pasan la misma verificación; el check solo cambia de color según el plan: gris (Básico), azul (Profesional), índigo (Plus),
           dorado (Premium) — y para organizaciones, verde (farmacias), morado (laboratorios) y naranja (clínicas).
         </p>
       </div>

@@ -7,7 +7,16 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: '*',
         allow: '/',
-        disallow: ['/dashboard', '/admin', '/restablecer-contrasena', '/verificar-correo'],
+        disallow: [
+          '/dashboard',
+          '/admin',
+          '/paciente',
+          // No un prefijo simple: '/organizacion' bloquearía también '/organizaciones/...'.
+          '/organizacion$',
+          '/organizacion/',
+          '/restablecer-contrasena',
+          '/verificar-correo',
+        ],
       },
     ],
     sitemap: `${siteUrl}/sitemap.xml`,

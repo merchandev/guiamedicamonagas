@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/Button';
 import { Input, Textarea } from '@/components/ui/Input';
 import { PageSpinner } from '@/components/ui/Spinner';
 import { ProfessionalDetail } from '@/lib/types';
+import { ALL_SCOPES, SCOPE_INFO, type PatientDataScope } from '@/lib/patient-scopes';
+import { PATIENT_CONSENT_VERSION } from '@/lib/legal';
 
 function nextDays(count: number) {
   return Array.from({ length: count }, (_, i) => {
@@ -18,8 +20,10 @@ function nextDays(count: number) {
   });
 }
 
+// Día de calendario en Caracas (toISOString daría la fecha UTC: después de las
+// 8 p.m. en Venezuela ya sería "mañana").
 function dateKey(d: Date) {
-  return d.toISOString().slice(0, 10);
+  return d.toLocaleDateString('en-CA', { timeZone: 'America/Caracas' });
 }
 
 export default function AgendarCitaPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -35,6 +39,9 @@ export default function AgendarCitaPage({ params }: { params: Promise<{ slug: st
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  // Consentimiento opcional: nada viene marcado por defecto.
+  const [shareScopes, setShareScopes] = useState<PatientDataScope[]>([]);
+  const [shareDays, setShareDays] = useState(30);
 
   useEffect(() => {
     api
@@ -65,6 +72,8 @@ export default function AgendarCitaPage({ params }: { params: Promise<{ slug: st
         firstName: form.firstName || undefined,
         lastName: form.lastName || undefined,
         phone: form.phone || undefined,
+        shareScopes: shareScopes.length ? shareScopes : undefined,
+        shareDays: shareScopes.length ? shareDays : undefined,
       });
       setSuccess(true);
     } catch (e) {
@@ -95,8 +104,8 @@ export default function AgendarCitaPage({ params }: { params: Promise<{ slug: st
             <p className="mt-2 text-ink-600">
               Te avisaremos por correo en cuanto Dr(a). {doctor.firstName} {doctor.lastName} confirme tu cita.
             </p>
-            <Button className="mt-6" onClick={() => router.push('/paciente')}>
-              Ir a mi perfil
+            <Button className="mt-6" onClick={() => router.push('/paciente/citas')}>
+              Ver mis citas
             </Button>
           </div>
         ) : (
@@ -125,7 +134,7 @@ export default function AgendarCitaPage({ params }: { params: Promise<{ slug: st
                         selectedDay === key ? 'border-pine-700 bg-pine-700 text-white' : 'border-ink-200 text-ink-600'
                       }`}
                     >
-                      {d.toLocaleDateString('es-VE', { weekday: 'short', day: 'numeric', month: 'short' })}
+                      {d.toLocaleDateString('es-VE', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'America/Caracas' })}
                     </button>
                   );
                 })}
@@ -149,7 +158,7 @@ export default function AgendarCitaPage({ params }: { params: Promise<{ slug: st
                         selectedSlot === slot ? 'border-pine-700 bg-pine-700 text-white' : 'border-ink-200 text-ink-700'
                       }`}
                     >
-                      {new Date(slot).toLocaleTimeString('es-VE', { timeStyle: 'short' })}
+                      {new Date(slot).toLocaleTimeString('es-VE', { timeStyle: 'short', timeZone: 'America/Caracas' })}
                     </button>
                   ))}
                 </div>
@@ -184,6 +193,49 @@ export default function AgendarCitaPage({ params }: { params: Promise<{ slug: st
                 onChange={(e) => setForm({ ...form, phone: e.target.value })}
               />
             </div>
+
+            <fieldset className="space-y-2 border-t border-ink-100 pt-4">
+              <legend className="field-label">
+                Opcional: ¿qué puede ver Dr(a). {doctor.lastName} antes de la consulta?
+              </legend>
+              <p className="text-xs text-ink-500">
+                Si no marcas nada, solo verá tu código de paciente. Puedes revocar esta autorización cuando quieras desde
+                «Permisos» en tu panel. Tu cédula nunca se comparte.
+              </p>
+              {ALL_SCOPES.map((scope) => (
+                <label key={scope} className="flex items-start gap-3 rounded-lg border border-ink-100 p-3">
+                  <input
+                    type="checkbox"
+                    checked={shareScopes.includes(scope)}
+                    onChange={() =>
+                      setShareScopes((current) =>
+                        current.includes(scope) ? current.filter((s) => s !== scope) : [...current, scope],
+                      )
+                    }
+                    className="mt-0.5 h-4 w-4 rounded border-ink-300 text-pine-700 focus:ring-pine-600"
+                  />
+                  <span>
+                    <span className="block text-sm font-medium text-ink-900">{SCOPE_INFO[scope].label}</span>
+                    <span className="block text-xs text-ink-500">{SCOPE_INFO[scope].description}</span>
+                  </span>
+                </label>
+              ))}
+              {shareScopes.length > 0 && (
+                <label className="flex items-center gap-2 text-sm text-ink-600">
+                  Durante
+                  <select
+                    value={shareDays}
+                    onChange={(e) => setShareDays(Number(e.target.value))}
+                    className="h-9 rounded-lg border-ink-200 text-sm"
+                  >
+                    <option value={7}>7 días</option>
+                    <option value={30}>30 días</option>
+                    <option value={90}>90 días</option>
+                  </select>
+                  <span className="text-xs text-ink-400">Consentimiento v{PATIENT_CONSENT_VERSION}</span>
+                </label>
+              )}
+            </fieldset>
 
             <Button type="submit" loading={submitting} disabled={!selectedSlot} className="w-full">
               Solicitar cita

@@ -1,5 +1,5 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException, OnApplicationBootstrap } from '@nestjs/common';
+import { Prisma, RegistrationType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -8,6 +8,22 @@ import { AGENDA_MIN_TIER, assertValidSocialLinks, SOCIAL_LINK_LIMITS, tierAtLeas
 import { UpdateProfessionalProfileDto } from './dto/update-professional-profile.dto';
 import { UpsertLocationDto } from './dto/upsert-location.dto';
 import { UpsertSocialLinksDto } from '../common/dto/social-link.dto';
+import { GeoService } from '../geo/geo.service';
+import { recomputeDirectoryScore } from './directory-score';
+
+// Emisor de cada número que el médico carga en su perfil (ver ProfessionalRegistration).
+const REGISTRATION_SOURCES: {
+  field: 'mppsNumber' | 'colmedMonagasNumber' | 'inpremedicoNumber';
+  type: RegistrationType;
+  issuer: string;
+  jurisdiction: string;
+}[] = [
+  { field: 'mppsNumber', type: 'MPPS_SACS', issuer: 'MPPS (SACS)', jurisdiction: 'Nacional' },
+  { field: 'colmedMonagasNumber', type: 'COLEGIO_MEDICOS', issuer: 'Colegio de Médicos del Estado Monagas', jurisdiction: 'Monagas' },
+  { field: 'inpremedicoNumber', type: 'INPREMEDICO', issuer: 'INPREMEDICO', jurisdiction: 'Nacional' },
+];
+
+const SITEMAP_PAGE_SIZE = 1000;
 
 const PUBLIC_LIST_SELECT = {
   id: true,
@@ -52,12 +68,22 @@ function gateByTier<
 }
 
 @Injectable()
-export class ProfessionalsService {
+export class ProfessionalsService implements OnApplicationBootstrap {
+  private readonly logger = new Logger(ProfessionalsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly storage: StorageService,
     private readonly notifications: NotificationsService,
+    private readonly geo: GeoService,
   ) {}
+
+  /** Mantiene al día el puntaje del directorio (p.ej. tras desplegar un cambio de fórmula). */
+  async onApplicationBootstrap() {
+    const profiles = await this.prisma.professionalProfile.findMany({ select: { id: true }, take: 5000 });
+    for (const { id } of profiles) await recomputeDirectoryScore(this.prisma, id);
+    if (profiles.length) this.logger.log(`Puntaje de directorio recalculado para ${profiles.length} perfil(es)`);
+  }
 
   private async signPhoto<T extends { photoUrl: string | null }>(profile: T): Promise<T> {
     if (!profile.photoUrl) return profile;
@@ -100,16 +126,31 @@ export class ProfessionalsService {
         select: PUBLIC_LIST_SELECT,
         skip: (page - 1) * limit,
         take: limit,
-        // Los planes pagos aparecen primero (Premium > Plus > Profesional > Básico);
-        // dentro de cada plan, el verificado más recientemente va primero.
-        orderBy: [{ planTier: 'desc' }, { verifiedAt: 'desc' }],
+        // Relevancia = perfil completo + impulso acotado por plan (ver
+        // directory-score.ts): pagar da visibilidad etiquetada, no el primer
+        // lugar garantizado.
+        orderBy: [{ directoryScore: 'desc' }, { verifiedAt: 'desc' }],
       }),
       this.prisma.professionalProfile.count({ where }),
     ]);
 
     const shaped = items.map((item) => gateByTier(item));
     const signedItems = await Promise.all(shaped.map((item) => this.signPhoto(item)));
-    return { items: signedItems, total, page, limit, totalPages: Math.ceil(total / limit) };
+
+    // Franja "Destacado" (patrocinada y rotativa): hasta 3 perfiles Premium
+    // que cumplen el mismo filtro, mostrados aparte y señalados como tales.
+    let featured: typeof signedItems = [];
+    if (page === 1 && !params.search) {
+      const premiumWhere: Prisma.ProfessionalProfileWhereInput = { ...where, planTier: 'PREMIUM' };
+      const premiumCount = await this.prisma.professionalProfile.count({ where: premiumWhere });
+      if (premiumCount > 0) {
+        const skip = premiumCount > 3 ? Math.floor(Math.random() * (premiumCount - 2)) : 0;
+        const rows = await this.prisma.professionalProfile.findMany({ where: premiumWhere, select: PUBLIC_LIST_SELECT, skip, take: 3 });
+        featured = await Promise.all(rows.map((row) => this.signPhoto(gateByTier(row))));
+      }
+    }
+
+    return { items: signedItems, featured, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
   async findPublicBySlug(slug: string) {
@@ -133,6 +174,14 @@ export class ProfessionalsService {
         posts: { where: { published: true }, orderBy: { createdAt: 'desc' }, select: { id: true, title: true, slug: true, content: true, createdAt: true } },
         socialLinks: { select: { platform: true, url: true } },
         schedule: { select: { id: true, blocks: { select: { id: true }, take: 1 } } },
+        registrations: {
+          select: { type: true, issuer: true, jurisdiction: true, number: true, verifiedAt: true },
+          orderBy: { type: 'asc' },
+        },
+        organizations: {
+          where: { status: 'ACCEPTED', organization: { isPublished: true, verificationStatus: 'VERIFIED' } },
+          select: { organization: { select: { slug: true, name: true, type: true } } },
+        },
       },
     });
     if (!profile || !profile.isPublished || profile.verificationStatus !== 'VERIFIED') {
@@ -186,6 +235,7 @@ export class ProfessionalsService {
 
     const { specialtyIds, ...rest } = dto;
     const isSpecialist = (specialtyIds?.length ?? 0) > 0;
+    await this.geo.assertValidMunicipality(dto.municipality);
 
     const updated = await this.prisma.$transaction(async (tx) => {
       if (specialtyIds) {
@@ -213,6 +263,8 @@ export class ProfessionalsService {
       });
     });
 
+    await this.syncRegistrations(profile.id, dto);
+    await recomputeDirectoryScore(this.prisma, profile.id);
     return this.signPhoto(updated);
   }
 
@@ -227,6 +279,7 @@ export class ProfessionalsService {
     if (previousKey) {
       await this.storage.deleteObject(previousKey).catch(() => undefined);
     }
+    await recomputeDirectoryScore(this.prisma, profile.id);
     return this.signPhoto(updated);
   }
 
@@ -291,6 +344,77 @@ export class ProfessionalsService {
     ]);
 
     return this.prisma.professionalSocialLink.findMany({ where: { professionalId: profile.id } });
+  }
+
+  /** Refleja mppsNumber / colmedMonagasNumber / inpremedicoNumber en ProfessionalRegistration. */
+  private async syncRegistrations(professionalId: string, dto: UpdateProfessionalProfileDto) {
+    for (const source of REGISTRATION_SOURCES) {
+      const value = dto[source.field];
+      if (value === undefined) continue;
+      if (!value.trim()) {
+        await this.prisma.professionalRegistration.deleteMany({
+          where: { professionalId, type: source.type, issuer: source.issuer },
+        });
+        continue;
+      }
+      await this.prisma.professionalRegistration.upsert({
+        where: { professionalId_type_issuer: { professionalId, type: source.type, issuer: source.issuer } },
+        create: { professionalId, type: source.type, issuer: source.issuer, jurisdiction: source.jurisdiction, number: value.trim() },
+        // Un número cambiado vuelve a quedar sin verificar hasta la revisión.
+        update: { number: value.trim(), verifiedAt: null },
+      });
+    }
+  }
+
+  // --- SEO: sitemap paginado y páginas especialidad + municipio ----------
+
+  async sitemapEntries(page: number) {
+    const safePage = Math.max(1, Math.floor(page) || 1);
+    const where: Prisma.ProfessionalProfileWhereInput = { isPublished: true, verificationStatus: 'VERIFIED', noIndex: false };
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.professionalProfile.findMany({
+        where,
+        select: { slug: true, updatedAt: true },
+        orderBy: { createdAt: 'asc' },
+        skip: (safePage - 1) * SITEMAP_PAGE_SIZE,
+        take: SITEMAP_PAGE_SIZE,
+      }),
+      this.prisma.professionalProfile.count({ where }),
+    ]);
+    return { items, total, page: safePage, pageSize: SITEMAP_PAGE_SIZE, totalPages: Math.ceil(total / SITEMAP_PAGE_SIZE) };
+  }
+
+  /**
+   * Combinaciones especialidad + municipio con al menos un médico publicado:
+   * solo esas generan página y entran al sitemap (sin páginas vacías).
+   */
+  async landingPages() {
+    const rows = await this.prisma.professionalSpecialty.findMany({
+      where: { professional: { isPublished: true, verificationStatus: 'VERIFIED', municipality: { not: null } } },
+      select: { specialty: { select: { slug: true, name: true } }, professional: { select: { municipality: true } } },
+    });
+    const municipalities = await this.geo.listMunicipalities();
+    const slugByName = new Map(municipalities.map((m) => [m.name, m.slug]));
+    const counts = new Map<
+      string,
+      { specialtySlug: string; specialtyName: string; municipalitySlug: string; municipalityName: string; count: number }
+    >();
+    for (const row of rows) {
+      const municipalityName = row.professional.municipality!;
+      const municipalitySlug = slugByName.get(municipalityName);
+      if (!municipalitySlug) continue;
+      const key = `${row.specialty.slug}|${municipalitySlug}`;
+      const entry = counts.get(key) ?? {
+        specialtySlug: row.specialty.slug,
+        specialtyName: row.specialty.name,
+        municipalitySlug,
+        municipalityName,
+        count: 0,
+      };
+      entry.count += 1;
+      counts.set(key, entry);
+    }
+    return [...counts.values()].sort((a, b) => b.count - a.count);
   }
 
   // --- Administración -------------------------------------------------

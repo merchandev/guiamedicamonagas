@@ -8,8 +8,17 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { PageSpinner } from '@/components/ui/Spinner';
-import { MONAGAS_MUNICIPALITIES } from '@/lib/monagas';
+import { municipalityOptions, useMunicipalities } from '@/lib/catalogs';
+import { ORG_VERIFICATION_LABELS } from '@/lib/labels';
 import { Organization } from '@/lib/types';
+
+type AdminOrganization = Organization & {
+  verificationStatus: string;
+  isPublished: boolean;
+  rejectionReason: string | null;
+  rif: string | null;
+  members: { role: string; user: { email: string } }[];
+};
 import { VerificationBadge } from '@/components/VerificationBadge';
 import { SocialLinksRow } from '@/components/SocialLinksRow';
 import {
@@ -23,7 +32,9 @@ const TYPE_LABELS: Record<string, string> = { PHARMACY: 'Farmacia', LABORATORY: 
 const ORG_SOCIAL_PLATFORMS: SocialPlatform[] = ['INSTAGRAM', 'FACEBOOK', 'TIKTOK', 'WEBSITE'];
 
 export default function AdminOrganizationsPage() {
-  const [items, setItems] = useState<Organization[] | null>(null);
+  const [items, setItems] = useState<AdminOrganization[] | null>(null);
+  const municipalities = useMunicipalities();
+  const [reviewingId, setReviewingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({
@@ -40,7 +51,23 @@ export default function AdminOrganizationsPage() {
   const [newSocialPlatform, setNewSocialPlatform] = useState<SocialPlatform | ''>('');
   const [newSocialUrl, setNewSocialUrl] = useState('');
 
-  const load = () => api.get<Organization[]>('/organizations').then(setItems);
+  // Incluye las que se registraron solas y esperan verificación.
+  const load = () => api.get<AdminOrganization[]>('/organizations/admin/list').then(setItems);
+
+  const review = async (id: string, approved: boolean) => {
+    const note = approved ? undefined : window.prompt('Motivo del rechazo (se le mostrará a la organización):') ?? '';
+    if (!approved && !note) return;
+    setReviewingId(id);
+    setError(null);
+    try {
+      await api.patch(`/organizations/admin/${id}/review`, { approved, note });
+      await load();
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'No se pudo revisar la organización');
+    } finally {
+      setReviewingId(null);
+    }
+  };
 
   useEffect(() => {
     load();
@@ -110,10 +137,7 @@ export default function AdminOrganizationsPage() {
             label="Municipio"
             value={form.municipality}
             onChange={(value) => setForm({ ...form, municipality: value })}
-            options={[
-              { value: '', label: 'Selecciona' },
-              ...MONAGAS_MUNICIPALITIES.map((m) => ({ value: m, label: m })),
-            ]}
+            options={municipalityOptions(municipalities, 'Selecciona')}
           />
           <Input label="Teléfono" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
           <Input label="WhatsApp" value={form.whatsapp} onChange={(e) => setForm({ ...form, whatsapp: e.target.value })} />
@@ -181,22 +205,46 @@ export default function AdminOrganizationsPage() {
       </form>
 
       <div className="card divide-y divide-ink-50">
-        {items.map((org) => (
-          <div key={org.id} className="flex items-center justify-between p-4">
-            <div>
-              <p className="flex items-center gap-1.5 font-medium text-ink-900">
-                {org.name}
-                <VerificationBadge kind="organization" type={org.type} />
-                <Badge tone="neutral" className="ml-1">{TYPE_LABELS[org.type]}</Badge>
-              </p>
-              <p className="text-sm text-ink-500">{org.locations[0]?.address}</p>
-              <SocialLinksRow links={org.socialLinks} className="mt-2" />
+        {items.map((org) => {
+          const status = ORG_VERIFICATION_LABELS[org.verificationStatus];
+          const needsReview = org.verificationStatus !== 'VERIFIED' && org.verificationStatus !== 'SUSPENDED';
+          return (
+            <div key={org.id} className="flex flex-wrap items-center justify-between gap-3 p-4">
+              <div>
+                <p className="flex flex-wrap items-center gap-1.5 font-medium text-ink-900">
+                  {org.name}
+                  {org.verificationStatus === 'VERIFIED' && <VerificationBadge kind="organization" type={org.type} />}
+                  <Badge tone="neutral" className="ml-1">{TYPE_LABELS[org.type]}</Badge>
+                  {status && <Badge tone={status.tone}>{status.label}</Badge>}
+                </p>
+                <p className="text-sm text-ink-500">
+                  {org.locations[0]?.address ?? 'Sin sede cargada'}
+                  {org.rif && ` · RIF ${org.rif}`}
+                </p>
+                {org.members.length > 0 && (
+                  <p className="text-xs text-ink-400">Administrada por {org.members.map((m) => m.user.email).join(', ')}</p>
+                )}
+                {org.rejectionReason && <p className="text-xs text-red-600">Motivo: {org.rejectionReason}</p>}
+                <SocialLinksRow links={org.socialLinks} className="mt-2" />
+              </div>
+              <div className="flex gap-2">
+                {needsReview && (
+                  <>
+                    <Button size="sm" loading={reviewingId === org.id} onClick={() => review(org.id, true)}>
+                      Verificar y publicar
+                    </Button>
+                    <Button variant="outline" size="sm" disabled={reviewingId === org.id} onClick={() => review(org.id, false)}>
+                      Rechazar
+                    </Button>
+                  </>
+                )}
+                <Button variant="ghost" size="sm" onClick={() => remove(org.id)}>
+                  Eliminar
+                </Button>
+              </div>
             </div>
-            <Button variant="ghost" size="sm" onClick={() => remove(org.id)}>
-              Eliminar
-            </Button>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

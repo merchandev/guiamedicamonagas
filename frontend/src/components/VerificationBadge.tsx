@@ -12,11 +12,11 @@ const DOCTOR_TIER_COLORS: Record<PlanTier, string> = {
 };
 
 const DOCTOR_TIER_TITLES: Record<PlanTier, string> = {
-  FREE: 'Perfil verificado · Plan Básico',
-  PROFESSIONAL: 'Perfil verificado · Plan Profesional',
-  PROFESSIONAL_PLUS: 'Perfil verificado · Plan Profesional Plus',
-  PREMIUM: 'Perfil verificado · Plan Premium',
-  ORGANIZATION: 'Perfil verificado',
+  FREE: 'Credenciales verificadas · Perfil Básico',
+  PROFESSIONAL: 'Credenciales verificadas · Perfil Profesional',
+  PROFESSIONAL_PLUS: 'Credenciales verificadas · Perfil Profesional Plus',
+  PREMIUM: 'Credenciales verificadas · Perfil Premium',
+  ORGANIZATION: 'Credenciales verificadas',
 };
 
 const ORG_TYPE_COLORS: Record<OrgType, string> = {
@@ -35,7 +35,11 @@ type Props =
   | { kind: 'doctor'; tier: PlanTier; className?: string }
   | { kind: 'organization'; type: OrgType; className?: string };
 
-/** Ícono de verificación coloreado según el plan (médicos) o el tipo (organizaciones). */
+/**
+ * Ícono de verificación. Todos los perfiles publicados pasaron la MISMA
+ * verificación de credenciales; el color solo indica el nivel de perfil
+ * (gris Básico, azul Profesional, dorado Premium) o el tipo de organización.
+ */
 export function VerificationBadge(props: Props) {
   const color = props.kind === 'doctor' ? DOCTOR_TIER_COLORS[props.tier] : ORG_TYPE_COLORS[props.type];
   const title = props.kind === 'doctor' ? DOCTOR_TIER_TITLES[props.tier] : ORG_TYPE_TITLES[props.type];

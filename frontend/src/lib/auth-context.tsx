@@ -3,7 +3,27 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { api, ApiError, setAccessToken, refreshAccessToken } from './api';
 
-export type Role = 'USER' | 'PROFESSIONAL' | 'ADMIN' | 'SUPERADMIN';
+export type Role = 'USER' | 'PROFESSIONAL' | 'ORGANIZATION' | 'ADMIN' | 'SUPERADMIN';
+
+export type Permission =
+  | 'VERIFY_PROFESSIONALS'
+  | 'REVIEW_PAYMENTS'
+  | 'MANAGE_ORGANIZATIONS'
+  | 'MANAGE_CATALOG'
+  | 'MANAGE_PLANS'
+  | 'MANAGE_SITE'
+  | 'VIEW_ADMIN_STATS';
+
+export interface OrganizationMembership {
+  role: 'OWNER' | 'ADMIN' | 'EDITOR';
+  organization: {
+    id: string;
+    slug: string;
+    name: string;
+    type: 'PHARMACY' | 'LABORATORY' | 'CLINIC';
+    verificationStatus: string;
+  };
+}
 
 export interface AuthUser {
   id: string;
@@ -11,6 +31,9 @@ export interface AuthUser {
   role: Role;
   isEmailVerified: boolean;
   createdAt: string;
+  permissions: Permission[];
+  needsLegalAcceptance: boolean;
+  legal: { termsVersion: string; privacyVersion: string };
   professionalProfile?: {
     id: string;
     slug: string;
@@ -19,20 +42,32 @@ export interface AuthUser {
     verificationStatus: string;
     isPublished: boolean;
   } | null;
+  organizationMemberships?: OrganizationMembership[];
 }
+
+export interface RegisterPayload {
+  email: string;
+  password: string;
+  role: 'USER' | 'PROFESSIONAL' | 'ORGANIZATION';
+  acceptLegal: true;
+  firstName?: string;
+  lastName?: string;
+  cedula?: string;
+  organizationName?: string;
+  organizationType?: 'PHARMACY' | 'LABORATORY' | 'CLINIC';
+  organizationRif?: string;
+}
+
+/** Con el segundo factor activo, el login de un administrador devuelve un desafío en vez de sesión. */
+export type LoginOutcome = { kind: 'USER'; user: AuthUser } | { kind: 'MFA_REQUIRED'; challengeToken: string };
 
 interface AuthContextValue {
   user: AuthUser | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<AuthUser>;
-  register: (payload: {
-    email: string;
-    password: string;
-    role: 'USER' | 'PROFESSIONAL';
-    firstName?: string;
-    lastName?: string;
-    cedula?: string;
-  }) => Promise<AuthUser>;
+  login: (email: string, password: string) => Promise<LoginOutcome>;
+  verifyMfa: (challengeToken: string, code: string) => Promise<AuthUser>;
+  register: (payload: RegisterPayload) => Promise<AuthUser>;
+  acceptLegal: () => Promise<void>;
   logout: () => Promise<void>;
   refreshMe: () => Promise<void>;
 }
@@ -62,33 +97,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })();
   }, [loadMe]);
 
+  const startSession = useCallback(async (accessToken: string) => {
+    setAccessToken(accessToken);
+    const me = await api.get<AuthUser>('/auth/me');
+    setUser(me);
+    return me;
+  }, []);
+
   const login = useCallback(
-    async (email: string, password: string) => {
-      const { accessToken } = await api.post<{ accessToken: string }>('/auth/login', { email, password });
-      setAccessToken(accessToken);
-      const me = await api.get<AuthUser>('/auth/me');
-      setUser(me);
-      return me;
+    async (email: string, password: string): Promise<LoginOutcome> => {
+      const res = await api.post<{ accessToken?: string; mfaRequired?: boolean; challengeToken?: string }>('/auth/login', {
+        email,
+        password,
+      });
+      if (res.mfaRequired && res.challengeToken) {
+        return { kind: 'MFA_REQUIRED', challengeToken: res.challengeToken };
+      }
+      return { kind: 'USER', user: await startSession(res.accessToken!) };
     },
-    [],
+    [startSession],
+  );
+
+  const verifyMfa = useCallback(
+    async (challengeToken: string, code: string) => {
+      const { accessToken } = await api.post<{ accessToken: string }>('/auth/mfa/verify', { challengeToken, code });
+      return startSession(accessToken);
+    },
+    [startSession],
   );
 
   const register = useCallback(
-    async (payload: {
-      email: string;
-      password: string;
-      role: 'USER' | 'PROFESSIONAL';
-      firstName?: string;
-      lastName?: string;
-    }) => {
+    async (payload: RegisterPayload) => {
       const { accessToken } = await api.post<{ accessToken: string }>('/auth/register', payload);
-      setAccessToken(accessToken);
-      const me = await api.get<AuthUser>('/auth/me');
-      setUser(me);
-      return me;
+      return startSession(accessToken);
     },
-    [],
+    [startSession],
   );
+
+  const acceptLegal = useCallback(async () => {
+    const me = await api.post<AuthUser>('/auth/accept-legal');
+    setUser(me);
+  }, []);
 
   const logout = useCallback(async () => {
     await api.post('/auth/logout').catch(() => undefined);
@@ -97,7 +146,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, refreshMe: loadMe }}>
+    <AuthContext.Provider value={{ user, loading, login, verifyMfa, register, acceptLegal, logout, refreshMe: loadMe }}>
       {children}
     </AuthContext.Provider>
   );
@@ -107,6 +156,14 @@ export function useAuth() {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error('useAuth debe usarse dentro de <AuthProvider>');
   return ctx;
+}
+
+/** Ruta de inicio según el tipo de cuenta. */
+export function homePathFor(role: Role): string {
+  if (role === 'PROFESSIONAL') return '/dashboard';
+  if (role === 'ORGANIZATION') return '/organizacion';
+  if (role === 'ADMIN' || role === 'SUPERADMIN') return '/admin';
+  return '/paciente';
 }
 
 export { ApiError };

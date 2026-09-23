@@ -1,12 +1,14 @@
-import { IsISO8601, IsNumber, IsString, Matches, Min, MinLength } from 'class-validator';
+import { IsISO8601, IsNumber, IsOptional, IsString, IsUUID, Matches, Min, MinLength } from 'class-validator';
 
 export class ReportPaymentDto {
-  @IsString()
+  @IsUUID()
   installmentId!: string;
 
+  /** Informativo: el nombre que se guarda sale del catálogo por el código. */
+  @IsOptional()
   @IsString()
   @MinLength(2)
-  senderBankName!: string;
+  senderBankName?: string;
 
   @IsString()
   @Matches(/^\d{4}$/, { message: 'Código de banco inválido (4 dígitos)' })

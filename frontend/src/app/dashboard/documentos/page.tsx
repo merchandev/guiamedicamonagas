@@ -11,7 +11,7 @@ import { DocumentType, ProfessionalDocument } from '@/lib/types';
 
 interface DocsResponse {
   documents: ProfessionalDocument[];
-  required: { type: DocumentType; label: string }[];
+  required: { type: DocumentType; label: string; category: string; categoryLabel: string }[];
   verificationStatus: string;
 }
 
@@ -53,8 +53,9 @@ export default function DocumentsPage() {
       <div>
         <h1 className="text-2xl">Documentos de verificación</h1>
         <p className="mt-1 text-ink-600">
-          Sube cada documento exigido por la Ley de Ejercicio de la Medicina y el Colegio de Médicos de Monagas. Un
-          administrador revisará cada uno manualmente.
+          La verificación es gratuita y la misma para todos los planes. Cada requisito indica su naturaleza (legal, gremial,
+          fiscal o de la plataforma). Un administrador revisa cada documento manualmente. Aceptamos PDF, JPG, PNG o WebP;
+          los PDF con scripts o archivos incrustados se rechazan.
         </p>
       </div>
 
@@ -68,6 +69,7 @@ export default function DocumentsPage() {
             <div key={req.type} className="card flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="font-medium text-ink-900">{DOCUMENT_TYPE_LABELS[req.type] ?? req.label}</p>
+                <p className="text-xs text-ink-400">{req.categoryLabel}</p>
                 {doc ? (
                   <div className="mt-1 flex items-center gap-2">
                     {status && <Badge tone={status.tone}>{status.label}</Badge>}

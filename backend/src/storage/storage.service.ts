@@ -12,12 +12,6 @@ import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'crypto';
 import type { EnvConfig } from '../config/env.validation';
 
-export const ALLOWED_DOCUMENT_MIME_TYPES = [
-  'application/pdf',
-  'image/jpeg',
-  'image/png',
-  'image/webp',
-];
 export const MAX_DOCUMENT_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
 
 @Injectable()
@@ -72,9 +66,9 @@ export class StorageService implements OnModuleInit {
     }
   }
 
-  buildKey(prefix: string, originalFileName: string): string {
-    const ext = originalFileName.split('.').pop()?.toLowerCase().slice(0, 8) ?? 'bin';
-    return `${prefix}/${randomUUID()}.${ext}`;
+  /** La extensión sale del tipo real detectado, nunca del nombre que envía el cliente. */
+  buildKey(prefix: string, extension: string): string {
+    return `${prefix}/${randomUUID()}.${extension}`;
   }
 
   async uploadPrivateObject(key: string, body: Buffer, contentType: string): Promise<void> {

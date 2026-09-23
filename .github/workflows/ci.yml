@@ -1,0 +1,109 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend · tipos, unitarias, build y e2e
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: postgres:16.4-alpine
+        env:
+          POSTGRES_USER: gmm
+          POSTGRES_PASSWORD: gmm_ci_password
+          POSTGRES_DB: gmm_ci
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U gmm -d gmm_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      NODE_ENV: test
+      PORT: 4000
+      FRONTEND_URL: http://localhost:3000
+      DATABASE_URL: postgresql://gmm:gmm_ci_password@localhost:5432/gmm_ci?schema=public
+      JWT_SECRET: ci-jwt-secret-with-at-least-thirty-two-characters
+      JWT_REFRESH_SECRET: ci-refresh-secret-with-at-least-thirty-two-chars
+      COOKIE_SECRET: ci-cookie-secret-with-at-least-thirty-two-chars
+      COOKIE_SECURE: 'false'
+      S3_ENDPOINT: http://localhost:9000
+      S3_BUCKET: gmm-ci
+      S3_ACCESS_KEY: ci
+      S3_SECRET_KEY: ci-s3-secret
+      SMTP_HOST: localhost
+      SMTP_PORT: 1025
+      MAIL_FROM: CI <ci@example.com>
+      SEED_SUPERADMIN_PASSWORD: CiSuperadmin12345
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: npx prisma generate
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - name: Claves de cifrado efímeras (solo para esta ejecución)
+        run: |
+          echo "DATA_ENCRYPTION_KEYS=v1:$(openssl rand -base64 32)" >> "$GITHUB_ENV"
+          echo "DATA_LOOKUP_KEY=$(openssl rand -base64 32)" >> "$GITHUB_ENV"
+      - name: Migraciones contra PostgreSQL limpio
+        run: npx prisma migrate deploy
+      - name: Esquema y migraciones sin desvío
+        run: |
+          DIFF="$(npx prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --script)"
+          echo "$DIFF"
+          if echo "$DIFF" | grep -qE '^(ALTER|CREATE|DROP)'; then
+            echo "::error::schema.prisma y las migraciones no coinciden"
+            exit 1
+          fi
+      - run: npx ts-node prisma/seed.ts
+      - name: Levantar la API
+        run: |
+          node dist/src/main.js > api.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:4000/api/v1/health && exit 0; sleep 2; done
+          cat api.log; exit 1
+      - name: Suite e2e (cifrado, consentimiento, permisos, organizaciones)
+        run: npm run test:e2e
+        env:
+          E2E_API_URL: http://127.0.0.1:4000/api/v1
+      - if: failure()
+        run: cat api.log
+
+  frontend:
+    name: Frontend · tipos y build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    env:
+      NEXT_PUBLIC_API_URL: http://localhost:4000/api/v1
+      NEXT_PUBLIC_SITE_URL: http://localhost:3000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npm run build

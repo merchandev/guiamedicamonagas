@@ -6,9 +6,9 @@ import { TrackEventDto } from './dto/track-event.dto';
 export class AnalyticsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async track(dto: TrackEventDto, ipAddress?: string, userAgent?: string) {
+  async track(dto: TrackEventDto) {
     await this.prisma.analyticsEvent.create({
-      data: { eventType: dto.eventType, resourceId: dto.resourceId, ipAddress, userAgent },
+      data: { eventType: dto.eventType, resourceId: dto.resourceId },
     });
     return { ok: true };
   }

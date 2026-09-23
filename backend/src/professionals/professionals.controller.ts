@@ -7,12 +7,13 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../common/types/authenticated-user';
 import { readSingleUploadedFile } from '../common/utils/multipart';
 import { StorageService } from '../storage/storage.service';
+import { IMAGE_TYPES, UploadSecurityService } from '../uploads/upload-security.service';
 import { ProfessionalsService } from './professionals.service';
 import { UpdateProfessionalProfileDto } from './dto/update-professional-profile.dto';
 import { UpsertLocationDto } from './dto/upsert-location.dto';
 import { UpsertSocialLinksDto } from '../common/dto/social-link.dto';
+import { Permission, RequirePermissions } from '../common/permissions';
 
-const PHOTO_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const MAX_PHOTO_SIZE = 5 * 1024 * 1024;
 
 @Controller('professionals')
@@ -20,6 +21,7 @@ export class ProfessionalsController {
   constructor(
     private readonly professionals: ProfessionalsService,
     private readonly storage: StorageService,
+    private readonly uploads: UploadSecurityService,
   ) {}
 
   @Public()
@@ -40,6 +42,18 @@ export class ProfessionalsController {
     });
   }
 
+  @Public()
+  @Get('sitemap')
+  sitemap(@Query('page') page?: string) {
+    return this.professionals.sitemapEntries(page ? Number(page) : 1);
+  }
+
+  @Public()
+  @Get('landing-pages')
+  landingPages() {
+    return this.professionals.landingPages();
+  }
+
   @Roles(Role.PROFESSIONAL)
   @Get('me')
   getOwn(@CurrentUser() user: AuthenticatedUser) {
@@ -55,8 +69,9 @@ export class ProfessionalsController {
   @Roles(Role.PROFESSIONAL)
   @Post('me/photo')
   async uploadPhoto(@CurrentUser() user: AuthenticatedUser, @Req() req: FastifyRequest) {
-    const file = await readSingleUploadedFile(req, PHOTO_MIME_TYPES, MAX_PHOTO_SIZE);
-    const key = this.storage.buildKey('avatars', file.filename);
+    const raw = await readSingleUploadedFile(req, MAX_PHOTO_SIZE);
+    const file = await this.uploads.secure(raw, IMAGE_TYPES);
+    const key = this.storage.buildKey('avatars', file.extension);
     await this.storage.uploadPrivateObject(key, file.buffer, file.mimetype);
     return this.professionals.updateOwnPhoto(user.id, key);
   }
@@ -85,7 +100,7 @@ export class ProfessionalsController {
     return this.professionals.setOwnSocialLinks(user.id, dto);
   }
 
-  @Roles(Role.ADMIN, Role.SUPERADMIN)
+  @RequirePermissions(Permission.VERIFY_PROFESSIONALS)
   @Get('admin/list')
   adminFindAll(
     @Query('status') status?: string,
@@ -101,13 +116,13 @@ export class ProfessionalsController {
     });
   }
 
-  @Roles(Role.ADMIN, Role.SUPERADMIN)
+  @RequirePermissions(Permission.VERIFY_PROFESSIONALS)
   @Get('admin/:id')
   adminGetOne(@Param('id') id: string) {
     return this.professionals.adminGetOne(id);
   }
 
-  @Roles(Role.ADMIN, Role.SUPERADMIN)
+  @RequirePermissions(Permission.VERIFY_PROFESSIONALS)
   @Patch('admin/:id/suspend')
   adminSuspend(
     @CurrentUser() admin: AuthenticatedUser,

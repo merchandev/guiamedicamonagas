@@ -1,4 +1,4 @@
-import { IsEmail, IsIn, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
+import { Equals, IsEmail, IsIn, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
 
 export class RegisterDto {
   @IsEmail({}, { message: 'Correo inválido' })
@@ -13,8 +13,12 @@ export class RegisterDto {
   })
   password!: string;
 
-  @IsIn(['USER', 'PROFESSIONAL'], { message: 'Rol inválido' })
-  role!: 'USER' | 'PROFESSIONAL';
+  @IsIn(['USER', 'PROFESSIONAL', 'ORGANIZATION'], { message: 'Rol inválido' })
+  role!: 'USER' | 'PROFESSIONAL' | 'ORGANIZATION';
+
+  /** Aceptación explícita de los Términos y la Política de privacidad vigentes. */
+  @Equals(true, { message: 'Debes aceptar los términos y la política de privacidad' })
+  acceptLegal!: boolean;
 
   @IsOptional()
   @IsString()
@@ -29,4 +33,20 @@ export class RegisterDto {
   @IsOptional()
   @Matches(/^[VEJPG]-?\d{5,9}$/i, { message: 'Cédula inválida (ej. V-12345678)' })
   cedula?: string;
+
+  // --- Solo organizaciones (farmacia / laboratorio / clínica) ---
+
+  @IsOptional()
+  @IsString()
+  @MinLength(2)
+  @MaxLength(150)
+  organizationName?: string;
+
+  @IsOptional()
+  @IsIn(['PHARMACY', 'LABORATORY', 'CLINIC'])
+  organizationType?: 'PHARMACY' | 'LABORATORY' | 'CLINIC';
+
+  @IsOptional()
+  @Matches(/^[VEJPG]-?\d{8,9}-?\d$/i, { message: 'RIF inválido (ej. J-12345678-9)' })
+  organizationRif?: string;
 }

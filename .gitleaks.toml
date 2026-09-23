@@ -1,0 +1,14 @@
+title = "Guía Médica Monagas"
+
+[extend]
+useDefault = true
+
+# Solo credenciales ficticias y efímeras: las del Postgres de CI y las
+# contraseñas de prueba de la suite e2e. Cualquier otro hallazgo bloquea.
+[allowlist]
+description = "Valores de prueba no productivos"
+paths = [
+  '''^\.github/workflows/ci\.yml$''',
+  '''^backend/test/e2e/api\.e2e\.mjs$''',
+  '''^\.env\.example$''',
+]

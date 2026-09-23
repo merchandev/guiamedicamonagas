@@ -1,9 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { useAuth } from '@/lib/auth-context';
 import { api, ApiError } from '@/lib/api';
+import { municipalityOptions, useMunicipalities } from '@/lib/catalogs';
 import { Input, Textarea } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Switch } from '@/components/ui/Switch';
@@ -11,7 +13,6 @@ import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
 import { PageSpinner } from '@/components/ui/Spinner';
 import { Badge } from '@/components/ui/Badge';
-import { MONAGAS_MUNICIPALITIES } from '@/lib/monagas';
 
 interface Medication {
   name: string;
@@ -19,7 +20,12 @@ interface Medication {
 }
 
 interface PatientProfileForm {
+  cedula?: string;
   phone?: string;
+  birthDate?: string;
+  sex?: string;
+  bloodType?: string;
+  allergies?: string;
   emergencyAddress?: string;
   emergencyMedicalPhone?: string;
   municipality?: string;
@@ -35,6 +41,10 @@ interface PatientProfileResponse {
   cedula: string | null;
   patientCode: string;
   phone: string | null;
+  birthDate: string | null;
+  sex: string | null;
+  bloodType: string | null;
+  allergies: string | null;
   emergencyAddress: string | null;
   emergencyMedicalPhone: string | null;
   municipality: string | null;
@@ -44,7 +54,7 @@ interface PatientProfileResponse {
   treatingDoctors: string[] | null;
   photoUrl: string | null;
   idPhotoUrl: string | null;
-  idPhotoKey: string | null;
+  hasIdPhoto: boolean;
   identityStatus: 'PENDING' | 'VERIFIED' | 'REJECTED';
 }
 
@@ -54,8 +64,11 @@ const IDENTITY_BADGE: Record<PatientProfileResponse['identityStatus'], { label: 
   REJECTED: { label: 'Rechazada', tone: 'red' },
 };
 
+const BLOOD_TYPES = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+
 export default function PatientProfilePage() {
   const { user } = useAuth();
+  const municipalities = useMunicipalities();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -63,7 +76,7 @@ export default function PatientProfilePage() {
   const [identity, setIdentity] = useState<{
     firstName: string;
     lastName: string;
-    cedula: string;
+    cedula: string | null;
     patientCode: string;
   } | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
@@ -80,36 +93,44 @@ export default function PatientProfilePage() {
   const doctorsArray = useFieldArray({ control, name: 'treatingDoctors' });
   const isHealthy = watch('isHealthy');
 
+  const applyProfile = (profile: PatientProfileResponse) => {
+    reset({
+      cedula: '',
+      phone: profile.phone ?? '',
+      birthDate: profile.birthDate ?? '',
+      sex: profile.sex ?? '',
+      bloodType: profile.bloodType ?? '',
+      allergies: profile.allergies ?? '',
+      emergencyAddress: profile.emergencyAddress ?? '',
+      emergencyMedicalPhone: profile.emergencyMedicalPhone ?? '',
+      municipality: profile.municipality ?? '',
+      isHealthy: profile.isHealthy,
+      conditionSummary: profile.conditionSummary ?? '',
+      medications: profile.medications ?? [],
+      treatingDoctors: (profile.treatingDoctors ?? []).map((name) => ({ name })),
+    });
+    setIdentity({
+      firstName: profile.firstName ?? '',
+      lastName: profile.lastName ?? '',
+      cedula: profile.cedula,
+      patientCode: profile.patientCode,
+    });
+    setPhotoUrl(profile.photoUrl);
+    setIdPhotoUrl(profile.idPhotoUrl);
+    setIdentityStatus(profile.identityStatus);
+  };
+
   useEffect(() => {
     api
       .get<PatientProfileResponse>('/patients/me')
-      .then((profile) => {
-        reset({
-          phone: profile.phone ?? '',
-          emergencyAddress: profile.emergencyAddress ?? '',
-          emergencyMedicalPhone: profile.emergencyMedicalPhone ?? '',
-          municipality: profile.municipality ?? '',
-          isHealthy: profile.isHealthy,
-          conditionSummary: profile.conditionSummary ?? '',
-          medications: profile.medications ?? [],
-          treatingDoctors: (profile.treatingDoctors ?? []).map((name) => ({ name })),
-        });
-        setIdentity({
-          firstName: profile.firstName ?? '',
-          lastName: profile.lastName ?? '',
-          cedula: profile.cedula ?? '',
-          patientCode: profile.patientCode,
-        });
-        setPhotoUrl(profile.photoUrl);
-        setIdPhotoUrl(profile.idPhotoUrl);
-        setIdentityStatus(profile.identityStatus);
-      })
+      .then(applyProfile)
       .catch((e) => setError(e instanceof ApiError ? e.message : 'No se pudo cargar tu perfil'))
       .finally(() => setLoading(false));
-  }, [reset]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // El switch bloquea el campo de verdad: al activarlo se limpia el valor
-  // en el propio formulario, no solo visualmente.
+  // en el propio formulario (y el servidor también lo descarta).
   const onToggleHealthy = (checked: boolean) => {
     setValue('isHealthy', checked);
     if (checked) setValue('conditionSummary', '');
@@ -121,17 +142,22 @@ export default function PatientProfilePage() {
     setSaving(true);
     try {
       const updated = await api.patch<PatientProfileResponse>('/patients/me', {
+        cedula: !identity?.cedula && values.cedula ? values.cedula : undefined,
         phone: values.phone || undefined,
-        emergencyAddress: values.emergencyAddress || undefined,
+        birthDate: values.birthDate || undefined,
+        sex: values.sex || undefined,
+        bloodType: values.bloodType || undefined,
+        allergies: values.allergies ?? undefined,
+        emergencyAddress: values.emergencyAddress ?? undefined,
         emergencyMedicalPhone: values.emergencyMedicalPhone || undefined,
-        municipality: values.municipality || undefined,
+        municipality: values.municipality ?? undefined,
         isHealthy: values.isHealthy,
-        conditionSummary: values.isHealthy ? undefined : values.conditionSummary || undefined,
+        conditionSummary: values.isHealthy ? undefined : (values.conditionSummary ?? undefined),
         medications: values.medications.filter((m) => m.name.trim() && m.schedule.trim()),
         treatingDoctors: values.treatingDoctors.map((d) => d.name.trim()).filter(Boolean),
       });
+      applyProfile(updated);
       setSuccess(true);
-      setIdentityStatus(updated.identityStatus);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'No se pudo guardar tu perfil');
     } finally {
@@ -139,38 +165,25 @@ export default function PatientProfilePage() {
     }
   };
 
-  const onPhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploadingPhoto(true);
+  const upload = async (
+    path: string,
+    file: File,
+    setUploading: (v: boolean) => void,
+    fallbackMessage: string,
+  ) => {
+    setUploading(true);
     setError(null);
     const formData = new FormData();
     formData.append('file', file);
     try {
-      const updated = await api.upload<PatientProfileResponse>('/patients/me/photo', formData);
+      const updated = await api.upload<PatientProfileResponse>(path, formData);
       setPhotoUrl(updated.photoUrl);
-    } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'No se pudo subir la foto');
-    } finally {
-      setUploadingPhoto(false);
-    }
-  };
-
-  const onIdPhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploadingIdPhoto(true);
-    setError(null);
-    const formData = new FormData();
-    formData.append('file', file);
-    try {
-      const updated = await api.upload<PatientProfileResponse>('/patients/me/id-photo', formData);
       setIdPhotoUrl(updated.idPhotoUrl);
       setIdentityStatus(updated.identityStatus);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'No se pudo subir la foto de identificación');
+      setError(e instanceof ApiError ? e.message : fallbackMessage);
     } finally {
-      setUploadingIdPhoto(false);
+      setUploading(false);
     }
   };
 
@@ -183,6 +196,15 @@ export default function PatientProfilePage() {
         {identity && <Badge tone="neutral">{identity.patientCode}</Badge>}
       </div>
 
+      <Alert tone="info">
+        Tus datos personales y de salud se guardan cifrados. En su agenda, los médicos solo ven tu código{' '}
+        <strong>{identity?.patientCode}</strong>; para ver algo más necesitan tu autorización, que controlas en{' '}
+        <Link href="/paciente/permisos" className="font-medium underline">
+          Permisos
+        </Link>
+        .
+      </Alert>
+
       <form onSubmit={handleSubmit(onSubmit)} className="card space-y-8 p-6">
         {error && <Alert tone="error">{error}</Alert>}
         {success && <Alert tone="success">Perfil actualizado correctamente.</Alert>}
@@ -194,7 +216,11 @@ export default function PatientProfilePage() {
             <Input label="Apellidos" value={identity?.lastName ?? ''} disabled hint="No editable aquí" />
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Input label="Cédula de identidad" value={identity?.cedula ?? ''} disabled hint="No editable aquí" />
+            {identity?.cedula ? (
+              <Input label="Cédula de identidad" value={identity.cedula} disabled hint="Para corregirla, contacta a soporte" />
+            ) : (
+              <Input label="Cédula de identidad" placeholder="V-12345678" {...register('cedula')} />
+            )}
             <Input label="Correo electrónico" value={user?.email ?? ''} disabled hint="No editable aquí" />
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
@@ -207,15 +233,11 @@ export default function PatientProfilePage() {
                   label="Municipio"
                   value={field.value ?? ''}
                   onChange={field.onChange}
-                  options={[
-                    { value: '', label: 'Selecciona' },
-                    ...MONAGAS_MUNICIPALITIES.map((m) => ({ value: m, label: m })),
-                  ]}
+                  options={municipalityOptions(municipalities, 'Selecciona')}
                 />
               )}
             />
           </div>
-          <Textarea label="Dirección para emergencia" rows={2} {...register('emergencyAddress')} />
         </section>
 
         <section className="space-y-4">
@@ -230,9 +252,18 @@ export default function PatientProfilePage() {
             <div>
               <label className="cursor-pointer rounded-lg border border-ink-200 px-3 py-2 text-sm font-medium text-ink-700 hover:bg-ink-50">
                 {uploadingPhoto ? 'Subiendo…' : 'Cambiar foto'}
-                <input type="file" accept="image/*" className="hidden" onChange={onPhotoChange} disabled={uploadingPhoto} />
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="hidden"
+                  disabled={uploadingPhoto}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) void upload('/patients/me/photo', file, setUploadingPhoto, 'No se pudo subir la foto');
+                  }}
+                />
               </label>
-              <p className="mt-1 text-xs text-ink-400">JPG, PNG o WebP. Máx. 5MB.</p>
+              <p className="mt-1 text-xs text-ink-400">JPG, PNG o WebP. Máx. 5MB. Se eliminan los metadatos (incluida la ubicación).</p>
             </div>
           </div>
         </section>
@@ -243,8 +274,8 @@ export default function PatientProfilePage() {
             {idPhotoUrl && <Badge tone={IDENTITY_BADGE[identityStatus].tone}>{IDENTITY_BADGE[identityStatus].label}</Badge>}
           </div>
           <p className="text-sm text-ink-600">
-            Una foto legible de tu cédula u otro documento de identidad, para validar que eres una persona real. Solo
-            tú y el equipo de verificación pueden verla.
+            Una foto legible de tu cédula u otro documento de identidad. Se guarda en almacenamiento privado y ningún médico
+            la ve.
           </p>
           <div className="flex items-center gap-4">
             {idPhotoUrl ? (
@@ -258,15 +289,57 @@ export default function PatientProfilePage() {
                 {uploadingIdPhoto ? 'Subiendo…' : idPhotoUrl ? 'Cambiar foto' : 'Subir foto de identificación'}
                 <input
                   type="file"
-                  accept="image/*"
+                  accept="image/jpeg,image/png,image/webp"
                   className="hidden"
-                  onChange={onIdPhotoChange}
                   disabled={uploadingIdPhoto}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      void upload('/patients/me/id-photo', file, setUploadingIdPhoto, 'No se pudo subir la foto de identificación');
+                    }
+                  }}
                 />
               </label>
               <p className="mt-1 text-xs text-ink-400">JPG, PNG o WebP. Máx. 5MB.</p>
             </div>
           </div>
+        </section>
+
+        <section className="space-y-4">
+          <h2 className="border-b border-ink-100 pb-2 text-lg font-semibold text-ink-900">Datos médicos básicos</h2>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Input label="Fecha de nacimiento" type="date" {...register('birthDate')} />
+            <Controller
+              name="sex"
+              control={control}
+              render={({ field }) => (
+                <Select
+                  label="Sexo"
+                  value={field.value ?? ''}
+                  onChange={field.onChange}
+                  options={[
+                    { value: '', label: 'Prefiero no indicarlo' },
+                    { value: 'F', label: 'Femenino' },
+                    { value: 'M', label: 'Masculino' },
+                    { value: 'Otro', label: 'Otro' },
+                  ]}
+                />
+              )}
+            />
+            <Controller
+              name="bloodType"
+              control={control}
+              render={({ field }) => (
+                <Select
+                  label="Grupo sanguíneo"
+                  value={field.value ?? ''}
+                  onChange={field.onChange}
+                  options={[{ value: '', label: 'No lo sé' }, ...BLOOD_TYPES.map((t) => ({ value: t, label: t }))]}
+                />
+              )}
+            />
+          </div>
+          <Textarea label="Alergias" rows={2} placeholder="Ej. Penicilina, mariscos" {...register('allergies')} />
         </section>
 
         <section className="space-y-4">
@@ -277,18 +350,13 @@ export default function PatientProfilePage() {
               <div key={field.id} className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
                 <Input label="Medicamento" placeholder="Ej. Losartán 50mg" {...register(`medications.${index}.name`)} />
                 <Input label="Horario" placeholder="Ej. 8:00 a.m. y 8:00 p.m." {...register(`medications.${index}.schedule`)} />
-                <Button type="button" variant="outline" size="sm" onClick={() => medicationsArray.remove(index)}>
+                <Button type="button" variant="outline" onClick={() => medicationsArray.remove(index)}>
                   Quitar
                 </Button>
               </div>
             ))}
           </div>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => medicationsArray.append({ name: '', schedule: '' })}
-          >
+          <Button type="button" variant="outline" size="sm" onClick={() => medicationsArray.append({ name: '', schedule: '' })}>
             Agregar medicamento
           </Button>
         </section>
@@ -312,12 +380,15 @@ export default function PatientProfilePage() {
 
         <section className="space-y-4">
           <h2 className="border-b border-ink-100 pb-2 text-lg font-semibold text-ink-900">Contacto de emergencia</h2>
-          <Input
-            label="Número de emergencia médica"
-            placeholder="0414-1234567"
-            hint="A quién llamar en caso de una emergencia"
-            {...register('emergencyMedicalPhone')}
-          />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Input
+              label="Número de emergencia médica"
+              placeholder="0414-1234567"
+              hint="A quién llamar en caso de una emergencia"
+              {...register('emergencyMedicalPhone')}
+            />
+          </div>
+          <Textarea label="Dirección para emergencia" rows={2} {...register('emergencyAddress')} />
         </section>
 
         <section className="space-y-4">
@@ -326,7 +397,7 @@ export default function PatientProfilePage() {
             {doctorsArray.fields.map((field, index) => (
               <div key={field.id} className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
                 <Input label="Nombre del doctor" {...register(`treatingDoctors.${index}.name`)} />
-                <Button type="button" variant="outline" size="sm" onClick={() => doctorsArray.remove(index)}>
+                <Button type="button" variant="outline" onClick={() => doctorsArray.remove(index)}>
                   Quitar
                 </Button>
               </div>

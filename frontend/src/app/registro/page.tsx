@@ -5,21 +5,33 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useAuth, ApiError } from '@/lib/auth-context';
+import { useAuth, ApiError, homePathFor } from '@/lib/auth-context';
 import { Input } from '@/components/ui/Input';
+import { Select } from '@/components/ui/Select';
 import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
 import { cn } from '@/lib/cn';
 import TermsModal from '@/components/TermsModal';
+import { PRIVACY_VERSION, TERMS_VERSION } from '@/lib/legal';
 
 const CEDULA_REGEX = /^[VEJPGvejpg]-?\d{5,9}$/;
+const RIF_REGEX = /^[VEJPGvejpg]-?\d{8,9}-?\d$/;
+
+const ROLE_OPTIONS = [
+  { value: 'PROFESSIONAL', label: 'Soy médico' },
+  { value: 'USER', label: 'Soy paciente' },
+  { value: 'ORGANIZATION', label: 'Farmacia, laboratorio o clínica' },
+] as const;
 
 const schema = z
   .object({
-    role: z.enum(['USER', 'PROFESSIONAL']),
+    role: z.enum(['USER', 'PROFESSIONAL', 'ORGANIZATION']),
     firstName: z.string().optional(),
     lastName: z.string().optional(),
     cedula: z.string().optional(),
+    organizationName: z.string().optional(),
+    organizationType: z.enum(['PHARMACY', 'LABORATORY', 'CLINIC']).optional(),
+    organizationRif: z.string().optional(),
     email: z.string().email('Correo inválido'),
     password: z
       .string()
@@ -42,6 +54,18 @@ const schema = z
   .refine((data) => data.role !== 'USER' || !data.cedula || CEDULA_REGEX.test(data.cedula), {
     message: 'Cédula inválida (ej. V-12345678)',
     path: ['cedula'],
+  })
+  .refine((data) => data.role !== 'ORGANIZATION' || (data.organizationName && data.organizationName.trim().length >= 2), {
+    message: 'Indica el nombre de la organización',
+    path: ['organizationName'],
+  })
+  .refine((data) => data.role !== 'ORGANIZATION' || !!data.organizationType, {
+    message: 'Selecciona el tipo',
+    path: ['organizationType'],
+  })
+  .refine((data) => data.role !== 'ORGANIZATION' || !data.organizationRif || RIF_REGEX.test(data.organizationRif), {
+    message: 'RIF inválido (ej. J-12345678-9)',
+    path: ['organizationRif'],
   });
 
 type FormValues = z.infer<typeof schema>;
@@ -56,10 +80,12 @@ export default function RegisterPage() {
     register,
     handleSubmit,
     watch,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: { role: 'PROFESSIONAL' } });
 
   const role = watch('role');
+  const organizationType = watch('organizationType');
 
   const onSubmit = async (values: FormValues) => {
     setError(null);
@@ -72,78 +98,112 @@ export default function RegisterPage() {
         email: values.email,
         password: values.password,
         role: values.role,
-        firstName: values.firstName,
-        lastName: values.lastName,
+        acceptLegal: true,
+        firstName: values.role === 'ORGANIZATION' ? undefined : values.firstName,
+        lastName: values.role === 'ORGANIZATION' ? undefined : values.lastName,
         cedula: values.role === 'USER' ? values.cedula : undefined,
+        organizationName: values.role === 'ORGANIZATION' ? values.organizationName : undefined,
+        organizationType: values.role === 'ORGANIZATION' ? values.organizationType : undefined,
+        organizationRif: values.role === 'ORGANIZATION' ? values.organizationRif || undefined : undefined,
       });
-      router.push(user.role === 'PROFESSIONAL' ? '/dashboard/documentos' : '/paciente');
+      router.push(user.role === 'PROFESSIONAL' ? '/dashboard/documentos' : homePathFor(user.role));
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'No se pudo crear la cuenta');
     }
   };
 
   return (
-    <div className="container-page flex min-h-[70vh] max-w-md flex-col justify-center py-12">
+    <div className="container-page flex min-h-[70vh] max-w-xl flex-col justify-center py-12">
       <h1 className="text-2xl">Crear cuenta</h1>
-      <p className="mt-1 text-sm text-ink-500">Regístrate como paciente o como médico para aparecer en el directorio.</p>
+      <p className="mt-1 text-sm text-ink-500">
+        Regístrate como paciente, como médico o como farmacia, laboratorio o clínica. La verificación y el perfil básico
+        son gratuitos.
+      </p>
 
       <form onSubmit={handleSubmit(onSubmit)} className="card mt-6 space-y-4 p-6">
         {error && <Alert tone="error">{error}</Alert>}
 
-        <div className="grid grid-cols-2 gap-2">
-          {(['PROFESSIONAL', 'USER'] as const).map((r) => (
+        <div className="grid gap-2 sm:grid-cols-3">
+          {ROLE_OPTIONS.map((option) => (
             <label
-              key={r}
+              key={option.value}
               className={cn(
-                'cursor-pointer rounded-lg border px-3 py-2 text-center text-sm font-medium',
-                role === r ? 'border-pine-700 bg-pine-50 text-pine-800' : 'border-ink-200 text-ink-600',
+                'flex cursor-pointer items-center justify-center rounded-lg border px-3 py-2 text-center text-sm font-medium',
+                role === option.value ? 'border-pine-700 bg-pine-50 text-pine-800' : 'border-ink-200 text-ink-600',
               )}
             >
-              <input type="radio" value={r} className="sr-only" {...register('role')} />
-              {r === 'PROFESSIONAL' ? 'Soy médico' : 'Soy paciente'}
+              <input type="radio" value={option.value} className="sr-only" {...register('role')} />
+              {option.label}
             </label>
           ))}
         </div>
 
-        {role === 'PROFESSIONAL' && (
-          <div className="grid grid-cols-2 gap-3">
+        {(role === 'PROFESSIONAL' || role === 'USER') && (
+          <div className="grid gap-3 sm:grid-cols-2">
             <Input label="Nombres" required {...register('firstName')} error={errors.firstName?.message} />
             <Input label="Apellidos" required {...register('lastName')} />
           </div>
         )}
 
         {role === 'USER' && (
+          <Input
+            label="Cédula de identidad"
+            required
+            placeholder="V-12345678"
+            hint="Se guarda cifrada; ningún médico la ve sin tu autorización."
+            {...register('cedula')}
+            error={errors.cedula?.message}
+          />
+        )}
+
+        {role === 'ORGANIZATION' && (
           <>
-            <div className="grid grid-cols-2 gap-3">
-              <Input label="Nombres" required {...register('firstName')} error={errors.firstName?.message} />
-              <Input label="Apellidos" required {...register('lastName')} />
-            </div>
             <Input
-              label="Cédula de identidad"
+              label="Nombre de la organización"
               required
-              placeholder="V-12345678"
-              {...register('cedula')}
-              error={errors.cedula?.message}
+              {...register('organizationName')}
+              error={errors.organizationName?.message}
             />
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Select
+                label="Tipo"
+                required
+                value={organizationType ?? ''}
+                onChange={(value) => setValue('organizationType', (value || undefined) as FormValues['organizationType'], { shouldValidate: true })}
+                options={[
+                  { value: '', label: 'Selecciona' },
+                  { value: 'PHARMACY', label: 'Farmacia' },
+                  { value: 'LABORATORY', label: 'Laboratorio' },
+                  { value: 'CLINIC', label: 'Clínica' },
+                ]}
+                error={errors.organizationType?.message}
+              />
+              <Input label="RIF" placeholder="J-12345678-9" {...register('organizationRif')} error={errors.organizationRif?.message} />
+            </div>
+            <p className="text-xs text-ink-500">
+              Tu organización se publica en el directorio cuando un administrador verifique sus datos.
+            </p>
           </>
         )}
 
         <Input label="Correo electrónico" type="email" required {...register('email')} error={errors.email?.message} />
-        <Input
-          label="Contraseña"
-          type="password"
-          required
-          hint="Mínimo 10 caracteres, con letras y números"
-          {...register('password')}
-          error={errors.password?.message}
-        />
-        <Input
-          label="Confirmar contraseña"
-          type="password"
-          required
-          {...register('confirmPassword')}
-          error={errors.confirmPassword?.message}
-        />
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Input
+            label="Contraseña"
+            type="password"
+            required
+            hint="Mínimo 10 caracteres, con letras y números"
+            {...register('password')}
+            error={errors.password?.message}
+          />
+          <Input
+            label="Confirmar contraseña"
+            type="password"
+            required
+            {...register('confirmPassword')}
+            error={errors.confirmPassword?.message}
+          />
+        </div>
 
         <label className="flex items-start gap-2 text-sm text-ink-600">
           <input
@@ -152,10 +212,17 @@ export default function RegisterPage() {
             onChange={() => setTermsAccepted((v) => !v)}
             className="mt-0.5 h-4 w-4 rounded border-ink-300 text-pine-700 focus:ring-pine-600"
           />
-          He leído y acepto las{' '}
-          <button type="button" onClick={() => setShowTerms(true)} className="text-pine-700 underline">
-            condiciones de uso
-          </button>
+          <span>
+            He leído y acepto los{' '}
+            <button type="button" onClick={() => setShowTerms(true)} className="text-pine-700 underline">
+              Términos y condiciones (v{TERMS_VERSION})
+            </button>{' '}
+            y la{' '}
+            <a href="/privacidad" target="_blank" className="text-pine-700 underline">
+              Política de privacidad (v{PRIVACY_VERSION})
+            </a>
+            .
+          </span>
         </label>
 
         <Button type="submit" loading={isSubmitting} className="w-full">

@@ -23,11 +23,19 @@ model User {
   lockedUntil         DateTime?
   lastLoginAt         DateTime?
   lastLoginIp         String?
+
+  /// Versión exacta de los Términos y de la Política de privacidad que el
+  /// usuario aceptó (ver frontend/src/lib/legal.ts) y cuándo lo hizo.
+  termsVersionAccepted   String?
+  privacyVersionAccepted String?
+  legalAcceptedAt        DateTime?
+
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 
   professionalProfile ProfessionalProfile?
   patientProfile      PatientProfile?
+  organizationMemberships OrganizationMember[]
   refreshTokens       RefreshToken[]
   verificationTokens  VerificationToken[]
   auditLogs           AuditLog[]
@@ -35,6 +43,7 @@ model User {
   reviewedDocuments   ProfessionalDocument[] @relation("DocumentReviewer")
   reviewedPayments    Payment[]              @relation("PaymentReviewer")
   pushSubscriptions   PushSubscription[]
+  grantedPatientData  PatientDataGrant[]
 
   @@index([role])
 }
@@ -42,6 +51,7 @@ model User {
 enum Role {
   USER
   PROFESSIONAL
+  ORGANIZATION
   ADMIN
   SUPERADMIN
 }
@@ -64,6 +74,7 @@ model RefreshToken {
 enum VerificationTokenType {
   EMAIL_VERIFICATION
   PASSWORD_RESET
+  MFA_LOGIN
 }
 
 model VerificationToken {
@@ -72,6 +83,9 @@ model VerificationToken {
   user      User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
   tokenHash String                @unique
   type      VerificationTokenType
+  /// Solo MFA_LOGIN: hash del código de 6 dígitos enviado por correo.
+  codeHash  String?
+  attempts  Int                   @default(0)
   expiresAt DateTime
   usedAt    DateTime?
   createdAt DateTime              @default(now())
@@ -80,8 +94,49 @@ model VerificationToken {
 }
 
 // ---------------------------------------------------------------------------
+// Geografía de Venezuela como datos (no constantes): Estado → Municipio →
+// Parroquia. Se lanza con Monagas, pero cualquier estado se habilita
+// cargando sus municipios, sin refactorizar el sistema.
+// ---------------------------------------------------------------------------
+
+model State {
+  id        String   @id @default(uuid())
+  slug      String   @unique
+  name      String   @unique
+  isActive  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  municipalities Municipality[]
+}
+
+model Municipality {
+  id        String   @id @default(uuid())
+  stateId   String
+  state     State    @relation(fields: [stateId], references: [id], onDelete: Cascade)
+  slug      String
+  name      String
+  createdAt DateTime @default(now())
+
+  parishes Parish[]
+
+  @@unique([stateId, slug])
+  @@unique([stateId, name])
+}
+
+model Parish {
+  id             String       @id @default(uuid())
+  municipalityId String
+  municipality   Municipality @relation(fields: [municipalityId], references: [id], onDelete: Cascade)
+  slug           String
+  name           String
+  createdAt      DateTime     @default(now())
+
+  @@unique([municipalityId, slug])
+}
+
+// ---------------------------------------------------------------------------
 // Perfil profesional y verificación legal (Ley de Ejercicio de la Medicina,
-// MPPS/SACS, Colegio de Médicos de Monagas, INPREMEDICO)
+// MPPS/SACS, Colegio de Médicos, INPREMEDICO complementario)
 // ---------------------------------------------------------------------------
 
 model ProfessionalProfile {
@@ -108,6 +163,11 @@ model ProfessionalProfile {
   isPublished        Boolean            @default(false)
   isSpecialist       Boolean            @default(false)
   planTier           PlanTier           @default(FREE)
+  /// 0–100, recalculado al editar el perfil.
+  profileCompleteness Int               @default(0)
+  /// Orden del directorio = completitud + impulso acotado por plan (máx. +15).
+  /// Un plan pago no puede superar a un perfil gratuito mucho más completo.
+  directoryScore      Int               @default(0)
 
   phone        String?
   whatsapp     String?
@@ -136,10 +196,48 @@ model ProfessionalProfile {
   appointments  Appointment[]
   clinicalNotes ClinicalNote[]
   financeRecords FinanceRecord[]
+  registrations ProfessionalRegistration[]
+  dataGrants    PatientDataGrant[]
+  walkInPatients PatientProfile[]
+  organizations OrganizationProfessional[]
 
   @@index([verificationStatus, isPublished])
   @@index([municipality])
   @@index([planTier])
+  @@index([directoryScore])
+}
+
+enum RegistrationType {
+  MPPS_SACS           // Registro del título ante el MPPS (SACS)
+  COLEGIO_MEDICOS     // Matrícula en un Colegio de Médicos (por estado)
+  INPREMEDICO         // Complementario / histórico
+  ESPECIALIDAD        // Credencial de especialidad
+  OTRO
+}
+
+/**
+ * Registros profesionales por emisor y jurisdicción. Un mismo médico puede
+ * estar matriculado en varios Colegios (Monagas, Anzoátegui, Miranda...).
+ * Sustituye progresivamente a mppsNumber / colmedMonagasNumber /
+ * inpremedicoNumber, que se mantienen sincronizados por compatibilidad.
+ */
+model ProfessionalRegistration {
+  id             String              @id @default(uuid())
+  professionalId String
+  professional   ProfessionalProfile @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+
+  type         RegistrationType
+  issuer       String    // "MPPS", "Colegio de Médicos del Estado Monagas"
+  jurisdiction String?   // "Nacional", "Monagas", "Anzoátegui"
+  number       String
+  issueDate    DateTime?
+  expiryDate   DateTime?
+  verifiedAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([professionalId, type, issuer])
 }
 
 /**
@@ -280,7 +378,21 @@ model Organization {
   name        String
   description String?
   logoUrl     String?
+  rif         String?
   isPublished Boolean          @default(true)
+
+  /// Las creadas por un administrador nacen VERIFIED; las que se registran
+  /// solas nacen PENDING y no se publican hasta que un admin las apruebe.
+  verificationStatus VerificationStatus @default(VERIFIED)
+  rejectionReason    String?
+  verifiedAt         DateTime?
+  planTier           PlanTier           @default(FREE)
+
+  /// Listas simples editables por la propia organización.
+  services       Json? // string[]
+  insurers       Json? // string[] — aseguradoras aceptadas
+  paymentMethods Json? // string[] — "Pago Móvil", "Efectivo", "Zelle"...
+  openingHours   String?
 
   seoTitle       String?
   seoDescription String?
@@ -288,14 +400,58 @@ model Organization {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  locations   OrganizationLocation[]
-  socialLinks OrganizationSocialLink[]
+  locations     OrganizationLocation[]
+  socialLinks   OrganizationSocialLink[]
+  members       OrganizationMember[]
+  professionals OrganizationProfessional[]
+  subscriptions Subscription[]
+
+  @@index([verificationStatus, isPublished])
 }
 
 enum OrganizationType {
   PHARMACY
   LABORATORY
   CLINIC
+}
+
+enum OrganizationMemberRole {
+  OWNER
+  ADMIN
+  EDITOR
+}
+
+model OrganizationMember {
+  id             String                 @id @default(uuid())
+  organizationId String
+  organization   Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role           OrganizationMemberRole @default(EDITOR)
+  createdAt      DateTime               @default(now())
+
+  @@unique([organizationId, userId])
+  @@index([userId])
+}
+
+enum AffiliationStatus {
+  PENDING  // la organización invitó; el médico aún no acepta
+  ACCEPTED // visible públicamente en ambos perfiles
+}
+
+/// Médicos asociados a una clínica/laboratorio. La organización invita y el
+/// médico acepta: nadie aparece vinculado a una institución sin su visto bueno.
+model OrganizationProfessional {
+  organizationId String
+  organization   Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  professionalId String
+  professional   ProfessionalProfile @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  status         AffiliationStatus   @default(PENDING)
+  createdAt      DateTime            @default(now())
+  respondedAt    DateTime?
+
+  @@id([organizationId, professionalId])
+  @@index([professionalId, status])
 }
 
 model OrganizationLocation {
@@ -366,10 +522,14 @@ enum BillingCycle {
   YEARLY
 }
 
+/// Pertenece a un profesional O a una organización (exactamente uno de los
+/// dos; lo garantiza un CHECK en la migración).
 model Subscription {
-  id             String              @id @default(uuid())
-  professionalId String
-  professional   ProfessionalProfile @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  id             String               @id @default(uuid())
+  professionalId String?
+  professional   ProfessionalProfile? @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  organizationId String?
+  organization   Organization?        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   planId String
   plan   SubscriptionPlan @relation(fields: [planId], references: [id])
@@ -384,6 +544,7 @@ model Subscription {
   installments SubscriptionInstallment[]
 
   @@index([professionalId, status])
+  @@index([organizationId, status])
 }
 
 enum SubscriptionStatus {
@@ -399,9 +560,18 @@ model SubscriptionInstallment {
   subscriptionId String
   subscription   Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
 
+  /// Monto esperado en Bs, fijado al crear la cuota.
   amountBs  Decimal           @db.Decimal(12, 2)
   dueDate   DateTime
   status    InstallmentStatus @default(PENDING)
+
+  // Evidencia histórica del cálculo USD → Bs (no depender solo del comprobante).
+  priceUsd       Decimal?  @db.Decimal(10, 2)
+  bcvRate        Decimal?  @db.Decimal(14, 4)
+  rateSource     String?   // "BCV" | "MANUAL"
+  rateEffectiveDate String? // fecha valor publicada por el BCV
+  rateCapturedAt DateTime?
+
   createdAt DateTime          @default(now())
   updatedAt DateTime          @updatedAt
 
@@ -419,6 +589,7 @@ model Payment {
   installmentId String
   installment   SubscriptionInstallment @relation(fields: [installmentId], references: [id])
 
+  /// Monto reportado/recibido en Bs (el esperado vive en la cuota).
   amountBs Decimal       @db.Decimal(12, 2)
   method   PaymentMethod @default(PAGO_MOVIL)
 
@@ -440,7 +611,20 @@ model Payment {
   updatedAt DateTime @updatedAt
 
   @@index([status])
-  @@index([referenceNumber])
+  @@index([senderBankCode, referenceNumber])
+}
+
+/// Catálogo de bancos/instituciones (antes fijo en el frontend). Se
+/// administra desde el panel: fusiones, cierres o bancos nuevos no requieren
+/// un despliegue.
+model FinancialInstitution {
+  id                String   @id @default(uuid())
+  code              String   @unique // código SUDEBAN de 4 dígitos
+  name              String
+  supportsPagoMovil Boolean  @default(true)
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 }
 
 enum PaymentMethod {
@@ -484,13 +668,13 @@ enum EventType {
   AD_CLICK
 }
 
+/// Solo se registra con consentimiento de analítica del visitante, y sin IP
+/// ni user-agent: un conteo anónimo por perfil y tipo de evento.
 model AnalyticsEvent {
   id         String    @id @default(uuid())
   eventType  EventType
   resourceId String
   metadata   Json?
-  ipAddress  String?
-  userAgent  String?
   createdAt  DateTime  @default(now())
 
   @@index([eventType, resourceId])
@@ -703,11 +887,19 @@ model ScheduleException {
  * Perfil del paciente. El `patientCode` es el único identificador
  * que ve el médico en su agenda — nunca el nombre ni la cédula.
  *
- * Los datos personales (firstName, lastName, cedula, phone) están
- * clasificados como RESTRINGIDOS y solo son visibles al médico cuando
- * el paciente otorga acceso explícito y temporal en consulta.
+ * SEC-05 — cifrado en capa de aplicación (AES-256-GCM, claves fuera de
+ * PostgreSQL, ver src/crypto/field-encryption.service.ts):
+ *   - cedulaEnc / phoneEnc: valor cifrado.
+ *   - cedulaLookup / phoneLookup: HMAC-SHA256 del valor normalizado, con
+ *     una clave distinta. Permite unicidad y búsqueda exacta sin guardar el
+ *     dato en claro ni un hash simple enumerable.
+ *   - healthDataEnc: TODOS los datos de salud y contacto de emergencia en un
+ *     único JSON cifrado (fecha de nacimiento, sexo, grupo sanguíneo,
+ *     alergias, condición, medicamentos, médicos tratantes, contactos).
+ * Un volcado de la base de datos, sin las claves, no revela estos datos.
  *
- * El campo `cedula` y `phone` se cifran en capa de aplicación (SEC-05).
+ * El médico solo ve datos del paciente con un PatientDataGrant vigente
+ * (consentimiento explícito, temporal, revocable y auditado).
  */
 model PatientProfile {
   id     String  @id @default(uuid())
@@ -718,30 +910,21 @@ model PatientProfile {
   /// Es el identificador que el médico usa en la agenda.
   patientCode String @unique
 
-  // ─── Datos personales (CLASIFICACIÓN: RESTRINGIDA) ───────────────────────
-  // Solo accesibles con autorización explícita del paciente.
-  // cedula y phone se cifran con AES-256-GCM en capa de aplicación (SEC-05).
-  // Únicos para evitar cuentas duplicadas — nullable: Postgres permite varios
-  // NULL en una columna @unique, así que no rompe fichas walk-in sin estos datos.
   firstName    String?
   lastName     String?
-  cedula       String?  @unique // cifrado en aplicación
-  phone        String?  @unique // cifrado en aplicación
-  birthDate    DateTime?
-  sex          String?   // "M" | "F" | "Otro"
-  bloodType    String?   // "A+" | "A-" | "B+" | "B-" | "AB+" | "AB-" | "O+" | "O-"
-  allergies    String?   // texto libre; el paciente lo completa en su perfil
+  municipality String?
 
-  // Dirección
-  municipality      String?
-  emergencyAddress  String? // dirección a la que acudir en caso de emergencia
+  cedulaEnc    String?
+  cedulaLookup String? @unique
+  phoneEnc     String?
+  phoneLookup  String? @unique
 
-  // ─── Salud y contacto de emergencia (los completa el propio paciente) ────
-  emergencyMedicalPhone String?              // número a llamar en una emergencia
-  isHealthy             Boolean  @default(false)
-  conditionSummary      String?              // se limpia server-side si isHealthy = true
-  medications           Json?                // [{ name: string, schedule: string }]
-  treatingDoctors       Json?                // string[] con nombres de doctores tratantes
+  healthDataEnc String?
+
+  /// Ficha sin cuenta creada por un médico (walk-in / cita por teléfono):
+  /// ese médico ya conoce los datos porque los cargó él mismo.
+  createdByProfessionalId String?
+  createdByProfessional   ProfessionalProfile? @relation(fields: [createdByProfessionalId], references: [id], onDelete: SetNull)
 
   // ─── Identidad ─────────────────────────────────────────────────────────
   photoKey       String?               // foto de perfil (clave privada en storage)
@@ -753,8 +936,41 @@ model PatientProfile {
 
   appointments   Appointment[]
   clinicalNotes  ClinicalNote[]
+  dataGrants     PatientDataGrant[]
 
   @@index([patientCode])
+}
+
+enum PatientDataScope {
+  IDENTITY // nombre y apellido
+  CONTACT  // teléfono y contactos/dirección de emergencia
+  HEALTH   // condición, alergias, medicamentos, grupo sanguíneo, etc.
+}
+
+/**
+ * Consentimiento del paciente para que UN médico vea datos concretos
+ * durante un tiempo limitado. Revocable en cualquier momento. Cada lectura
+ * que se apoya en un grant queda en AuditLog (PATIENT_DATA_READ).
+ */
+model PatientDataGrant {
+  id             String              @id @default(uuid())
+  patientId      String
+  patient        PatientProfile      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  professionalId String
+  professional   ProfessionalProfile @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+
+  scopes         PatientDataScope[]
+  reason         String?
+  grantedAt      DateTime  @default(now())
+  expiresAt      DateTime
+  revokedAt      DateTime?
+  grantedById    String?
+  grantedBy      User?     @relation(fields: [grantedById], references: [id], onDelete: SetNull)
+  /// Versión del texto de consentimiento mostrado al paciente.
+  consentVersion String
+
+  @@index([patientId, professionalId])
+  @@index([professionalId, expiresAt])
 }
 
 enum IdentityStatus {

@@ -6,12 +6,13 @@ import type { EnvConfig } from '../config/env.validation';
 import { Public } from '../common/decorators/public.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../common/types/authenticated-user';
-import { AuthService } from './auth.service';
+import { AuthService, LoginResult } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { VerifyMfaDto } from './dto/verify-mfa.dto';
 
 const REFRESH_COOKIE = 'gmm_refresh_token';
 
@@ -30,6 +31,15 @@ export class AuthController {
       path: '/api/v1/auth',
       expires: expiresAt,
     });
+  }
+
+  /** Solo entrega tokens si el login está completo; con MFA pendiente devuelve el desafío. */
+  private respondToLogin(reply: FastifyReply, result: LoginResult) {
+    if (result.kind === 'MFA_REQUIRED') {
+      return { mfaRequired: true, challengeToken: result.challengeToken };
+    }
+    this.setRefreshCookie(reply, result.refreshToken, result.refreshTokenExpiresAt);
+    return { accessToken: result.accessToken };
   }
 
   private clearRefreshCookie(reply: FastifyReply) {
@@ -58,13 +68,21 @@ export class AuthController {
     @Req() req: FastifyRequest,
     @Res({ passthrough: true }) reply: FastifyReply,
   ) {
-    const { accessToken, refreshToken, refreshTokenExpiresAt } = await this.auth.login(
-      dto,
-      req.ip,
-      req.headers['user-agent'],
-    );
-    this.setRefreshCookie(reply, refreshToken, refreshTokenExpiresAt);
-    return { accessToken };
+    const result = await this.auth.login(dto, req.ip, req.headers['user-agent']);
+    return this.respondToLogin(reply, result);
+  }
+
+  @Public()
+  @Throttle({ default: { limit: 8, ttl: 60_000 } })
+  @HttpCode(HttpStatus.OK)
+  @Post('mfa/verify')
+  async verifyMfa(
+    @Body() dto: VerifyMfaDto,
+    @Req() req: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ) {
+    const result = await this.auth.verifyMfa(dto.challengeToken, dto.code, req.ip, req.headers['user-agent']);
+    return this.respondToLogin(reply, result);
   }
 
   @Public()
@@ -132,5 +150,11 @@ export class AuthController {
   @Get('me')
   me(@CurrentUser() user: AuthenticatedUser) {
     return this.auth.me(user.id);
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Post('accept-legal')
+  acceptLegal(@CurrentUser() user: AuthenticatedUser, @Req() req: FastifyRequest) {
+    return this.auth.acceptLegal(user.id, req.ip);
   }
 }

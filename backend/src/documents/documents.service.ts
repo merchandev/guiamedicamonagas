@@ -4,12 +4,19 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { DocumentType } from '@prisma/client';
 import type { EnvConfig } from '../config/env.validation';
 import { PrismaService } from '../prisma/prisma.service';
-import { StorageService, ALLOWED_DOCUMENT_MIME_TYPES, MAX_DOCUMENT_SIZE_BYTES } from '../storage/storage.service';
+import { StorageService, MAX_DOCUMENT_SIZE_BYTES } from '../storage/storage.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { AuditService } from '../audit/audit.service';
 import { documentReviewedTemplate, profileVerifiedTemplate } from '../mail/mail.templates';
-import { DOCUMENT_LABELS, EXPIRING_DOCUMENT_TYPES, requiredDocumentsFor } from './document-requirements';
-import type { UploadedFileData } from '../common/utils/multipart';
+import {
+  DOCUMENT_CATEGORY,
+  DOCUMENT_CATEGORY_LABELS,
+  DOCUMENT_LABELS,
+  EXPIRING_DOCUMENT_TYPES,
+  requiredDocumentsFor,
+} from './document-requirements';
+import type { SecuredFile } from '../uploads/upload-security.service';
+import { recomputeDirectoryScore } from '../professionals/directory-score';
 
 @Injectable()
 export class DocumentsService {
@@ -21,17 +28,16 @@ export class DocumentsService {
     private readonly config: ConfigService<EnvConfig, true>,
   ) {}
 
-  static readonly allowedMimeTypes = ALLOWED_DOCUMENT_MIME_TYPES;
   static readonly maxSizeBytes = MAX_DOCUMENT_SIZE_BYTES;
 
-  async upload(userId: string, type: DocumentType, file: UploadedFileData, issuedAt?: string) {
+  async upload(userId: string, type: DocumentType, file: SecuredFile, originalFileName: string, issuedAt?: string) {
     if (!Object.values(DocumentType).includes(type)) {
       throw new BadRequestException('Tipo de documento inválido');
     }
     const profile = await this.prisma.professionalProfile.findUnique({ where: { userId } });
     if (!profile) throw new NotFoundException('No tienes un perfil profesional');
 
-    const key = this.storage.buildKey(`documents/${profile.id}`, file.filename);
+    const key = this.storage.buildKey(`documents/${profile.id}`, file.extension);
     await this.storage.uploadPrivateObject(key, file.buffer, file.mimetype);
 
     const document = await this.prisma.professionalDocument.create({
@@ -39,7 +45,7 @@ export class DocumentsService {
         professionalId: profile.id,
         type,
         fileKey: key,
-        originalFileName: file.filename,
+        originalFileName: sanitizeFileName(originalFileName, file.extension),
         mimeType: file.mimetype,
         fileSizeBytes: file.size,
         issuedAt: issuedAt ? new Date(issuedAt) : undefined,
@@ -66,6 +72,8 @@ export class DocumentsService {
     const required = requiredDocumentsFor(profile.isSpecialist).map((type) => ({
       type,
       label: DOCUMENT_LABELS[type],
+      category: DOCUMENT_CATEGORY[type],
+      categoryLabel: DOCUMENT_CATEGORY_LABELS[DOCUMENT_CATEGORY[type]],
     }));
     return { documents, required, verificationStatus: profile.verificationStatus };
   }
@@ -214,6 +222,13 @@ export class DocumentsService {
       },
     });
 
+    // Los números de registro quedan verificados junto con los documentos que los respaldan.
+    await this.prisma.professionalRegistration.updateMany({
+      where: { professionalId },
+      data: { verifiedAt: allApproved ? new Date() : null },
+    });
+    await recomputeDirectoryScore(this.prisma, professionalId);
+
     if (allApproved && !wasVerified) {
       const profileUrl = `${this.config.get('FRONTEND_URL', { infer: true })}/medicos/${profile.slug}`;
       await this.notifications.notify({
@@ -257,4 +272,14 @@ export class DocumentsService {
       await this.recomputeVerification(professionalId);
     }
   }
+}
+
+/** Nombre solo para mostrar: sin rutas, sin caracteres de control, con la extensión real. */
+export function sanitizeFileName(name: string, extension: string): string {
+  const base = (name.split(/[\\/]/).pop() ?? '')
+    .replace(/[\u0000-\u001f<>:"|?*]/g, '')
+    .replace(/\.[^.]*$/, '')
+    .slice(0, 80)
+    .trim();
+  return `${base || 'documento'}.${extension}`;
 }

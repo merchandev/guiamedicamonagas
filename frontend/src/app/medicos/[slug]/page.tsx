@@ -94,18 +94,49 @@ export default async function DoctorProfilePage({ params }: { params: Promise<{ 
             Transparencia médica y legal
           </h2>
           <p className="mb-4 text-sm text-pine-800">
-            Este profesional fue verificado y está legalmente habilitado para ejercer en el estado Monagas.
+            Credenciales verificadas por Guía Médica Monagas contra los documentos presentados. La verificación es la misma
+            para todos los planes.
           </p>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div className="rounded-lg bg-white p-4 shadow-sm">
-              <p className="text-xs font-semibold uppercase tracking-wide text-ink-500">N° MPPS</p>
-              <p className="text-lg font-bold text-ink-900">{doctor.mppsNumber || 'No especificado'}</p>
-            </div>
-            <div className="rounded-lg bg-white p-4 shadow-sm">
-              <p className="text-xs font-semibold uppercase tracking-wide text-ink-500">Colegio de Médicos Monagas</p>
-              <p className="text-lg font-bold text-ink-900">{doctor.colmedMonagasNumber || 'No especificado'}</p>
-            </div>
+            {doctor.registrations && doctor.registrations.length > 0 ? (
+              doctor.registrations.map((reg) => (
+                <div key={`${reg.type}-${reg.issuer}`} className="rounded-lg bg-white p-4 shadow-sm">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-ink-500">
+                    {reg.issuer}
+                    {reg.jurisdiction && reg.jurisdiction !== 'Nacional' && !reg.issuer.includes(reg.jurisdiction)
+                      ? ` · ${reg.jurisdiction}`
+                      : ''}
+                  </p>
+                  <p className="text-lg font-bold text-ink-900">{reg.number}</p>
+                  {reg.verifiedAt && <p className="text-xs text-pine-700">Verificado</p>}
+                </div>
+              ))
+            ) : (
+              <>
+                <div className="rounded-lg bg-white p-4 shadow-sm">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-ink-500">N° MPPS</p>
+                  <p className="text-lg font-bold text-ink-900">{doctor.mppsNumber || 'No especificado'}</p>
+                </div>
+                <div className="rounded-lg bg-white p-4 shadow-sm">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-ink-500">Colegio de Médicos</p>
+                  <p className="text-lg font-bold text-ink-900">{doctor.colmedMonagasNumber || 'No especificado'}</p>
+                </div>
+              </>
+            )}
           </div>
+          {doctor.organizations && doctor.organizations.length > 0 && (
+            <p className="mt-4 text-sm text-pine-900">
+              Atiende en:{' '}
+              {doctor.organizations.map(({ organization }, index) => (
+                <span key={organization.slug}>
+                  {index > 0 && ', '}
+                  <Link href={`/organizaciones/${organization.slug}`} className="font-medium underline">
+                    {organization.name}
+                  </Link>
+                </span>
+              ))}
+            </p>
+          )}
         </div>
 
         <div className="grid gap-8 md:grid-cols-2">

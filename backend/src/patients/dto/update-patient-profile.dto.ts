@@ -11,7 +11,8 @@ import {
   ValidateNested,
 } from 'class-validator';
 
-const PHONE_REGEX = /^0(412|414|416|424|426)-?\d{7}$/;
+export const PHONE_REGEX = /^0(412|414|416|424|426)-?\d{7}$/;
+export const CEDULA_REGEX = /^[VEJPG]-?\d{5,9}$/i;
 
 export class MedicationItemDto {
   @IsString()
@@ -23,19 +24,14 @@ export class MedicationItemDto {
   schedule!: string;
 }
 
+/**
+ * Nombre, apellido y correo no se editan aquí. La cédula solo se puede
+ * cargar si la ficha todavía no tiene una (p.ej. se creó al reservar sin
+ * registro completo); corregir una cédula ya cargada lo hace soporte.
+ */
 export class UpdatePatientProfileDto {
   @IsOptional()
-  @IsString()
-  @MaxLength(80)
-  firstName?: string;
-
-  @IsOptional()
-  @IsString()
-  @MaxLength(80)
-  lastName?: string;
-
-  @IsOptional()
-  @Matches(/^[VEJPG]-?\d{5,9}$/i, { message: 'Cédula inválida (ej. V-12345678)' })
+  @Matches(CEDULA_REGEX, { message: 'Cédula inválida (ej. V-12345678)' })
   cedula?: string;
 
   @IsOptional()

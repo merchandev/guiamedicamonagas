@@ -1,5 +1,7 @@
-import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
-import { Role } from '@prisma/client';
+import { Body, Controller, Get, Param, Patch, Post, Query, Req } from '@nestjs/common';
+import { PatientDataScope, Role } from '@prisma/client';
+import { ArrayMinSize, ArrayUnique, IsArray, IsEnum } from 'class-validator';
+import type { FastifyRequest } from 'fastify';
 import { Public } from '../common/decorators/public.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -9,6 +11,14 @@ import { CreateAppointmentDto } from './dto/create-appointment.dto';
 import { CreateManualAppointmentDto } from './dto/create-manual-appointment.dto';
 import { RescheduleAppointmentDto } from './dto/reschedule-appointment.dto';
 import { CancelAppointmentDto } from './dto/cancel-appointment.dto';
+
+class RequestPatientAccessDto {
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayUnique()
+  @IsEnum(PatientDataScope, { each: true })
+  scopes!: PatientDataScope[];
+}
 
 @Controller('appointments')
 export class AppointmentsController {
@@ -58,10 +68,21 @@ export class AppointmentsController {
     return this.appointments.listPatients(user.id);
   }
 
+  /** Solo con consentimiento vigente del paciente (o ficha walk-in propia); cada lectura se audita. */
   @Roles(Role.PROFESSIONAL)
-  @Post('me/patients/:patientId/reveal')
-  revealPatient(@CurrentUser() user: AuthenticatedUser, @Param('patientId') patientId: string) {
-    return this.appointments.revealPatient(user.id, patientId);
+  @Post('me/patients/:patientId/data')
+  readPatient(@CurrentUser() user: AuthenticatedUser, @Param('patientId') patientId: string, @Req() req: FastifyRequest) {
+    return this.appointments.readPatient(user.id, patientId, req.ip);
+  }
+
+  @Roles(Role.PROFESSIONAL)
+  @Post('me/patients/:patientId/access-request')
+  requestPatientAccess(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('patientId') patientId: string,
+    @Body() dto: RequestPatientAccessDto,
+  ) {
+    return this.appointments.requestPatientAccess(user.id, patientId, dto.scopes);
   }
 
   @Roles(Role.PROFESSIONAL)

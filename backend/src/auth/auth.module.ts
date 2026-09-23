@@ -4,6 +4,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import type { EnvConfig } from '../config/env.validation';
 import { MailModule } from '../mail/mail.module';
+import { PatientsModule } from '../patients/patients.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
@@ -12,6 +13,7 @@ import { JwtStrategy } from './strategies/jwt.strategy';
   imports: [
     PassportModule,
     MailModule,
+    PatientsModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
