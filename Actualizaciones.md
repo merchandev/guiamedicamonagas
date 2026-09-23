@@ -3,7 +3,7 @@
 > Bitácora central de cambios, implementaciones, decisiones técnicas y tareas de evolución del sistema.
 >
 > **Repositorio:** [`merchandev/guiamedicamonagas`](https://github.com/merchandev/guiamedicamonagas) · **Rama:** `main`<br>
-> **Última actualización de esta bitácora:** `2026-09-23 10:20:00 -04:00` · **Estado:** 🟢 Registro activo
+> **Última actualización de esta bitácora:** `2026-09-23 10:35:00 -04:00` · **Estado:** 🟢 Registro activo
 
 ![Estado](https://img.shields.io/badge/estado-registro%20activo-16a34a?style=flat-square)
 ![Rama](https://img.shields.io/badge/rama-main-2563eb?style=flat-square)
@@ -115,8 +115,9 @@ flowchart LR
     J[💱 2026-09-23\n07:20:00\nACT-0010 · Corrección de la tasa BCV\ny retiro de INPREMEDICO]
     K[🔐 2026-09-23\n07:55:00\nACT-0011 · Acceso SSH y reconciliación\nde fixes ya probados en producción]
     L[🧑‍🤝‍🧑 2026-09-23\n10:15:00\nACT-0012 · Perfil de paciente\ny fix crítico de CORS]
+    M[📐 2026-09-23\n10:35:00\nACT-0013 · Ancho unificado\n80/10/10 en toda la web]
 
-    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L
+    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L --> M
 ```
 
 ### Resumen cuantitativo
@@ -124,10 +125,10 @@ flowchart LR
 | Indicador | Resultado |
 |---|---:|
 | Actividades históricas importadas desde Git | `3` |
-| Actividades documentales añadidas con esta bitácora | `9` |
-| Actividades registradas en total | `12` |
+| Actividades documentales añadidas con esta bitácora | `10` |
+| Actividades registradas en total | `13` |
 | Rama de referencia | `main` |
-| Commit base consultado | [`2d46713`](https://github.com/merchandev/guiamedicamonagas/commit/2d46713) |
+| Commit base consultado | [`c548a02`](https://github.com/merchandev/guiamedicamonagas/commit/c548a02) |
 | Zona horaria de control | `America/Caracas` (`-04:00`) |
 
 <a id="act-0001"></a>
@@ -530,6 +531,28 @@ Al probar el guardado del nuevo perfil **en el navegador** (no solo con `curl`),
 
 </details>
 
+<a id="act-0013"></a>
+
+### 📐 ACT-0013 · Ancho unificado 80/10/10 en toda la web
+
+<details>
+<summary><strong>2026-09-23 10:35:00 -04:00</strong> · <code>c548a02</code> · 🟢 Completado</summary>
+
+**Responsable:** `Claude Sonnet 5`  · **Tipo:** `fix | diseño`  · **Commit:** [`c548a02`](https://github.com/merchandev/guiamedicamonagas/commit/c548a02)
+
+El usuario pidió que la web ocupe el 80% de la pantalla del dispositivo, con 10% de margen a cada lado, en todos lados, para unificar el diseño.
+
+Toda la web (unas 20 páginas y los layouts de cabecera/pie/barra superior) comparte un único punto de control: la clase `.container-page` en `globals.css`. Antes era `max-w-6xl` (1152px fijo) con relleno en píxeles fijos (`px-4 sm:px-6 lg:px-8`) — el margen real variaba mucho según el ancho de pantalla: casi sin margen por debajo de 1152px, margen grande y fijo por encima. Se cambió a `w-4/5` (80% de ancho, centrado con `mx-auto`, sin límite máximo), lo que da matemáticamente 10% de margen a cada lado en cualquier tamaño de pantalla, sin excepciones.
+
+Las páginas que ya combinaban `container-page` con un `max-w-*` más angosto para mantener una línea de lectura cómoda (formularios de login/registro/recuperar contraseña, términos, perfil público de un médico) no cambiaron de comportamiento: el `max-width` sigue limitando la caja por debajo del 80% en pantallas anchas, ahora medido contra una caja porcentual en vez de una fija — un formulario de login sigue viéndose como un formulario, no estirado a todo lo ancho.
+
+**Verificación realizada:** medido con `getBoundingClientRect()` contra `document.documentElement.clientWidth` (no `window.innerWidth`, que incluye la barra de scroll y desvía el cálculo) en 375px, 450px y 1425px de ancho efectivo — exactamente 80%/10%/10% en las 12 instancias de `.container-page` de la portada. Confirmado visualmente en `/medicos` (ancho completo) y `/iniciar-sesion` (formulario angosto centrado, sin estirarse) en escritorio y móvil. `tsc --noEmit` limpio.
+
+**Impacto:** el margen lateral ahora es proporcional y consistente en toda la aplicación en vez de depender de en qué punto de quiebre cae cada pantalla — un solo cambio en un único archivo, sin tocar ninguna página individual.<br>
+**Archivos destacados:** [`frontend/src/app/globals.css`](frontend/src/app/globals.css).
+
+</details>
+
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
 <a id="registro-por-area"></a>
@@ -549,7 +572,7 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | 🔒 Pacientes | Código pseudónimo, listado sin datos personales, revelación auditada, registro propio, salud y foto de identificación | [ACT-0007](#act-0007) · [ACT-0012](#act-0012) |
 | 🛠️ Administración | Médicos, pagos, SEO, cookies, especialidades, planes y verificaciones | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) |
 | 📊 Observabilidad | Auditoría, analítica, notificaciones y salud | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) |
-| 🎨 Experiencia | Directorios, dashboard, componentes UI, motion y legal | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0012](#act-0012) |
+| 🎨 Experiencia | Directorios, dashboard, componentes UI, motion y legal | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0013](#act-0013) |
 | 🚢 Operación | Variables de entorno, Compose, almacenamiento, correo y proxy | [ACT-0001](#act-0001) · [ACT-0002](#act-0002) · [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0008](#act-0008) · [ACT-0009](#act-0009) · [ACT-0011](#act-0011) |
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
@@ -583,6 +606,7 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | IMP-021 | Sincronización real de la tasa BCV (certificado intermedio faltante corregido) y etiqueta honesta BCV/manual | 🟢 Completado | [`backend/src/exchange-rate/bcv-scraper.service.ts`](backend/src/exchange-rate/bcv-scraper.service.ts), [`frontend/src/components/BcvRateBadge.tsx`](frontend/src/components/BcvRateBadge.tsx) |
 | IMP-022 | Perfil de paciente autoservicio: registro con cédula única, panel propio, medicamentos, condición, contacto de emergencia y foto de identificación | 🟢 Completado | [`frontend/src/app/paciente/page.tsx`](frontend/src/app/paciente/page.tsx), [`backend/src/patients/patients.service.ts`](backend/src/patients/patients.service.ts) |
 | IMP-023 | Corrección de CORS: `PATCH`/`PUT`/`DELETE` habilitados desde el navegador en toda la API (antes solo `GET/HEAD/POST`) | 🟢 Completado | [`backend/src/main.ts`](backend/src/main.ts) |
+| IMP-024 | Ancho unificado 80%/10%/10% en toda la web, responsivo en cualquier tamaño de pantalla | 🟢 Completado | [`frontend/src/app/globals.css`](frontend/src/app/globals.css) |
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
@@ -668,6 +692,7 @@ Para cada cambio futuro, añadir una entrada en la línea de tiempo y actualizar
 | `2026-09-23 07:20:00 -04:00` | Incorporación de ACT-0010 (certificado intermedio faltante del BCV corregido y verificado en vivo, etiqueta BCV/manual honesta, retiro de INPREMEDICO del contenido visible del sitio), actualización de línea de tiempo, resumen cuantitativo, registro por área y control de implementaciones | 🟢 Completado |
 | `2026-09-23 07:55:00 -04:00` | Incorporación de ACT-0011 (acceso SSH al VPS de producción, reconciliación de fixes reales ya probados en el servidor pero nunca commiteados: tasa BCV con fecha valor, guardado financiero contra tasa Bs 0, cierre del retiro de INPREMEDICO, script de smoke-test), actualización de línea de tiempo, resumen cuantitativo, registro por área, control de implementaciones y próximas actividades | 🟢 Completado |
 | `2026-09-23 10:15:00 -04:00` | Incorporación de ACT-0012 (perfil de paciente autoservicio: registro con cédula/teléfono/correo únicos, medicamentos, condición bloqueable, contacto de emergencia, foto de identificación; corrección de un bug real de CORS que bloqueaba PATCH/PUT/DELETE desde el navegador en toda la app), actualización de línea de tiempo, resumen cuantitativo, registro por área, control de implementaciones y próximas actividades | 🟢 Completado |
+| `2026-09-23 10:35:00 -04:00` | Incorporación de ACT-0013 (ancho unificado 80%/10%/10% en toda la web mediante un único cambio en `.container-page`), actualización de línea de tiempo, resumen cuantitativo, registro por área y control de implementaciones | 🟢 Completado |
 
 ---
 
