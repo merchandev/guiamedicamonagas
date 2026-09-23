@@ -3,7 +3,7 @@
 > Bitácora central de cambios, implementaciones, decisiones técnicas y tareas de evolución del sistema.
 >
 > **Repositorio:** [`merchandev/guiamedicamonagas`](https://github.com/merchandev/guiamedicamonagas) · **Rama:** `main`<br>
-> **Última actualización de esta bitácora:** `2026-09-23 06:30:00 -04:00` · **Estado:** 🟢 Registro activo
+> **Última actualización de esta bitácora:** `2026-09-23 07:20:00 -04:00` · **Estado:** 🟢 Registro activo
 
 ![Estado](https://img.shields.io/badge/estado-registro%20activo-16a34a?style=flat-square)
 ![Rama](https://img.shields.io/badge/rama-main-2563eb?style=flat-square)
@@ -112,8 +112,9 @@ flowchart LR
     G[📅 2026-09-22\n20:07:40\nACT-0007 · Agenda, Citas\ny privacidad del paciente]
     H[🚀 2026-09-23\n05:43:35\nACT-0008 · Despliegue independiente\nen VPS compartido]
     I[🩹 2026-09-23\n06:30:00\nACT-0009 · Correcciones del\nprimer despliegue real]
+    J[💱 2026-09-23\n07:20:00\nACT-0010 · Corrección de la tasa BCV\ny retiro de INPREMEDICO]
 
-    A --> B --> C --> D --> E --> F --> G --> H --> I
+    A --> B --> C --> D --> E --> F --> G --> H --> I --> J
 ```
 
 ### Resumen cuantitativo
@@ -121,10 +122,10 @@ flowchart LR
 | Indicador | Resultado |
 |---|---:|
 | Actividades históricas importadas desde Git | `3` |
-| Actividades documentales añadidas con esta bitácora | `6` |
-| Actividades registradas en total | `9` |
+| Actividades documentales añadidas con esta bitácora | `7` |
+| Actividades registradas en total | `10` |
 | Rama de referencia | `main` |
-| Commit base consultado | [`b9851e6`](https://github.com/merchandev/guiamedicamonagas/commit/b9851e6) |
+| Commit base consultado | [`c152b79`](https://github.com/merchandev/guiamedicamonagas/commit/c152b79) |
 | Zona horaria de control | `America/Caracas` (`-04:00`) |
 
 <a id="act-0001"></a>
@@ -421,6 +422,36 @@ La etiqueta `RELEASE.2025-07-23T15-29-46Z` no existe en el registro — se fijó
 
 </details>
 
+<a id="act-0010"></a>
+
+### 💱 ACT-0010 · Corrección de la tasa BCV y retiro de INPREMEDICO del sitio
+
+<details>
+<summary><strong>2026-09-23 07:20:00 -04:00</strong> · <code>c152b79</code> · 🟢 Completado</summary>
+
+**Responsable:** `Claude Sonnet 5`  · **Tipo:** `fix | contenido`  · **Commit:** [`c152b79`](https://github.com/merchandev/guiamedicamonagas/commit/c152b79)
+
+El usuario reportó dos problemas del sitio en producción: la tasa BCV mostrada no era correcta, y pidió retirar "INPREMEDICO" del contenido visible de la web.
+
+#### 🐛 Tasa BCV: causa raíz real, no solo el síntoma
+La barra superior mostraba siempre `Bs 50,00` etiquetado como "USD BCV" — el valor manual de respaldo (`DEFAULT_EXCHANGE_RATE`), nunca el real. Se diagnosticó con `openssl s_client -showcerts -connect www.bcv.org.ve:443`: el servidor del BCV solo envía su certificado hoja (`*.bcv.org.ve`), **no** el intermedio (`Sectigo Public Server Authentication CA DV R36`) — un error de configuración del propio servidor del BCV, no del cliente. La raíz (`Sectigo Public Server Authentication Root R46`) sí está en el almacén de confianza por defecto de Node; solo faltaba el intermedio, por lo que cualquier cliente que no lo tuviera cacheado de antes fallaba con `UNABLE_TO_VERIFY_LEAF_SIGNATURE` — exactamente el tipo de fallo silencioso que un contenedor Docker recién creado (sin caché de certificados previa) sufriría siempre.
+
+**Se reprodujo el fallo antes de arreglarlo**: un cliente Node limpio con solo las raíces por defecto (`tls.rootCertificates`) falla de verdad contra `bcv.org.ve`. La corrección obtiene el certificado intermedio exacto desde la URL "CA Issuers" que la propia extensión AIA del certificado del BCV publica (`crt.sectigo.com`), lo agrega explícitamente vía un `https.Agent` propio en `bcv-scraper.service.ts`, y **nunca** desactiva `rejectUnauthorized` (eso habría sido inseguro). `fetchRate()` se reescribió de `fetch()` global a `https.request()` para poder pasar ese agente.
+
+**Verificado en tres niveles**: (1) reproducción del fallo con solo las raíces por defecto; (2) éxito del mismo código compilado (`dist/`) ejecutado standalone contra el sitio real del BCV; (3) el backend de desarrollo, corriendo en caliente, pasó de servir `source":"MANUAL"` con `Bs 50` a `source":"BCV"` con `Bs 853,4993` (la tasa real del día) tras el fix, confirmado tanto por `curl` directo al backend como visualmente en el navegador.
+
+Adicionalmente, `BcvRateBadge.tsx` (la barra superior visible en todo el sitio) imprimía el texto literal "USD BCV" sin importar el valor real de `rate.source` — mostraba "BCV" incluso cuando la tasa era la manual de respaldo. Ahora solo dice "BCV" cuando de verdad proviene de una sincronización exitosa; en caso contrario dice "(manual)".
+
+#### 🩹 Retiro de INPREMEDICO del contenido visible
+Se quitó de: portada (pasos de verificación, FAQ, hero, CTA final), pie de página, modal de términos, página de términos y condiciones, página de privacidad, tarjeta de transparencia del perfil público (`medicos/[slug]`), formulario de edición de perfil, demo comparativa de planes (texto **e** ilustración del hero — esta última no apareció en la búsqueda inicial de texto por usar un array `['MPPS', 'COLMED', 'INPREM.']` y se encontró solo al verificar la página cargada en el navegador), y el correo de "perfil verificado". También se quitó de `BASE_REQUIRED_DOCUMENTS`: ya no es un documento obligatorio para publicar un perfil. Se conservó a propósito el campo `inpremedicoNumber` en la base de datos, el valor `INPREMEDICO` del enum `DocumentType` y su etiqueta en `DOCUMENT_LABELS` — para no perder números ya registrados ni romper documentos ya subidos bajo ese tipo.
+
+**Verificación realizada:** `tsc --noEmit` limpio en backend y frontend; verificación visual en el navegador contra los servidores de desarrollo corriendo (`/`, un perfil de médico, `/planes` y la barra superior) confirmando ausencia de "INPREMEDICO" y la tasa BCV real y bien etiquetada.
+
+**Impacto:** la tasa mostrada en todo el sitio (barra superior, planes, pagos) ahora refleja el valor real del BCV en vez de un valor fijo de hace meses, y la etiqueta ya no miente sobre su origen cuando cae al valor manual; el contenido público ya no menciona un requisito que el usuario pidió retirar, sin perder los datos de los profesionales que ya lo tenían registrado.<br>
+**Archivos destacados:** [`backend/src/exchange-rate/bcv-scraper.service.ts`](backend/src/exchange-rate/bcv-scraper.service.ts), [`frontend/src/components/BcvRateBadge.tsx`](frontend/src/components/BcvRateBadge.tsx), [`backend/src/documents/document-requirements.ts`](backend/src/documents/document-requirements.ts).
+
+</details>
+
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
 <a id="registro-por-area"></a>
@@ -435,7 +466,7 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | 🔐 Auth y seguridad | JWT, refresh cookie, roles, correo, recuperación, throttling, Argon2id | [ACT-0003](#act-0003) · [ACT-0006](#act-0006) |
 | 👨‍⚕️ Profesionales | Perfiles, ubicaciones, documentos, verificación legal, redes sociales, badges | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0006](#act-0006) |
 | 🏥 Organizaciones | Farmacias, laboratorios, clínicas y ubicaciones | [ACT-0003](#act-0003) · [ACT-0006](#act-0006) |
-| 💳 Monetización | Planes, Pago Móvil, aprobación y tasa BCV | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) |
+| 💳 Monetización | Planes, Pago Móvil, aprobación y tasa BCV | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0010](#act-0010) |
 | 📅 Agenda y citas | Horarios, disponibilidad, reservas, máquina de estados, anti-doble-reserva | [ACT-0007](#act-0007) |
 | 🔒 Pacientes | Código pseudónimo, listado sin datos personales, revelación auditada | [ACT-0007](#act-0007) |
 | 🛠️ Administración | Médicos, pagos, SEO, cookies, especialidades, planes y verificaciones | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) |
@@ -471,6 +502,7 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | IMP-018 | Cadena de migraciones de Prisma corregida (verificada contra BD vacía real) | 🟢 Completado | [`backend/prisma/migrations/20260923093427_init`](backend/prisma/migrations/20260923093427_init) |
 | IMP-019 | Despliegue independiente en VPS compartido (puerto alterno, proxy de MinIO, aislamiento de proyecto) | 🟢 Completado | [`docker-compose.prod.yml`](docker-compose.prod.yml), [`Caddyfile`](Caddyfile), [`scripts/deploy.sh`](scripts/deploy.sh) |
 | IMP-020 | Correcciones de build/runtime del primer despliegue real (arranque backend, build frontend, healthchecks, redes propias) | 🟡 En revisión | [`backend/Dockerfile`](backend/Dockerfile), [`frontend/src/lib/server-fetch.ts`](frontend/src/lib/server-fetch.ts), [`docker-compose.prod.yml`](docker-compose.prod.yml) |
+| IMP-021 | Sincronización real de la tasa BCV (certificado intermedio faltante corregido) y etiqueta honesta BCV/manual | 🟢 Completado | [`backend/src/exchange-rate/bcv-scraper.service.ts`](backend/src/exchange-rate/bcv-scraper.service.ts), [`frontend/src/components/BcvRateBadge.tsx`](frontend/src/components/BcvRateBadge.tsx) |
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
@@ -550,6 +582,7 @@ Para cada cambio futuro, añadir una entrada en la línea de tiempo y actualizar
 | `2026-09-22 20:07:57 -04:00` | Incorporación de ACT-0006 y ACT-0007 (badges/redes sociales/endurecimiento de infraestructura y Agenda/Citas/Pacientes), actualización de línea de tiempo, resumen cuantitativo, registro por área, control de implementaciones y próximas actividades | 🟢 Completado |
 | `2026-09-23 05:43:45 -04:00` | Incorporación de ACT-0008 (despliegue independiente en VPS compartido: migraciones, cookies, proxy de MinIO, aislamiento de Compose), actualización de línea de tiempo, resumen cuantitativo, registro por área, control de implementaciones y próximas actividades | 🟢 Completado |
 | `2026-09-23 06:30:00 -04:00` | Incorporación de ACT-0009 (correcciones del primer despliegue real en el VPS: arranque del backend, build del frontend, etiqueta de MinIO, healthcheck de `web` corregido, redes/nombres de imagen propios), actualización de línea de tiempo, resumen cuantitativo, registro por área, control de implementaciones y próximas actividades | 🟢 Completado |
+| `2026-09-23 07:20:00 -04:00` | Incorporación de ACT-0010 (certificado intermedio faltante del BCV corregido y verificado en vivo, etiqueta BCV/manual honesta, retiro de INPREMEDICO del contenido visible del sitio), actualización de línea de tiempo, resumen cuantitativo, registro por área y control de implementaciones | 🟢 Completado |
 
 ---
 
