@@ -12,11 +12,14 @@ import { Alert } from '@/components/ui/Alert';
 import { cn } from '@/lib/cn';
 import TermsModal from '@/components/TermsModal';
 
+const CEDULA_REGEX = /^[VEJPGvejpg]-?\d{5,9}$/;
+
 const schema = z
   .object({
     role: z.enum(['USER', 'PROFESSIONAL']),
     firstName: z.string().optional(),
     lastName: z.string().optional(),
+    cedula: z.string().optional(),
     email: z.string().email('Correo inválido'),
     password: z
       .string()
@@ -31,6 +34,14 @@ const schema = z
   .refine((data) => data.role !== 'PROFESSIONAL' || (data.firstName && data.lastName), {
     message: 'Nombre y apellido son obligatorios para médicos',
     path: ['firstName'],
+  })
+  .refine((data) => data.role !== 'USER' || (data.firstName && data.lastName && data.cedula), {
+    message: 'Nombre, apellido y cédula son obligatorios para pacientes',
+    path: ['firstName'],
+  })
+  .refine((data) => data.role !== 'USER' || !data.cedula || CEDULA_REGEX.test(data.cedula), {
+    message: 'Cédula inválida (ej. V-12345678)',
+    path: ['cedula'],
   });
 
 type FormValues = z.infer<typeof schema>;
@@ -63,8 +74,9 @@ export default function RegisterPage() {
         role: values.role,
         firstName: values.firstName,
         lastName: values.lastName,
+        cedula: values.role === 'USER' ? values.cedula : undefined,
       });
-      router.push(user.role === 'PROFESSIONAL' ? '/dashboard/documentos' : '/dashboard');
+      router.push(user.role === 'PROFESSIONAL' ? '/dashboard/documentos' : '/paciente');
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'No se pudo crear la cuenta');
     }
@@ -98,6 +110,22 @@ export default function RegisterPage() {
             <Input label="Nombres" required {...register('firstName')} error={errors.firstName?.message} />
             <Input label="Apellidos" required {...register('lastName')} />
           </div>
+        )}
+
+        {role === 'USER' && (
+          <>
+            <div className="grid grid-cols-2 gap-3">
+              <Input label="Nombres" required {...register('firstName')} error={errors.firstName?.message} />
+              <Input label="Apellidos" required {...register('lastName')} />
+            </div>
+            <Input
+              label="Cédula de identidad"
+              required
+              placeholder="V-12345678"
+              {...register('cedula')}
+              error={errors.cedula?.message}
+            />
+          </>
         )}
 
         <Input label="Correo electrónico" type="email" required {...register('email')} error={errors.email?.message} />

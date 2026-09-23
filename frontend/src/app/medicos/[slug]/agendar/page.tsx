@@ -95,8 +95,8 @@ export default function AgendarCitaPage({ params }: { params: Promise<{ slug: st
             <p className="mt-2 text-ink-600">
               Te avisaremos por correo en cuanto Dr(a). {doctor.firstName} {doctor.lastName} confirme tu cita.
             </p>
-            <Button className="mt-6" onClick={() => router.push('/dashboard')}>
-              Ver mis citas
+            <Button className="mt-6" onClick={() => router.push('/paciente')}>
+              Ir a mi perfil
             </Button>
           </div>
         ) : (

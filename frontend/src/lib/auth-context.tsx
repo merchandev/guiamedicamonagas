@@ -31,6 +31,7 @@ interface AuthContextValue {
     role: 'USER' | 'PROFESSIONAL';
     firstName?: string;
     lastName?: string;
+    cedula?: string;
   }) => Promise<AuthUser>;
   logout: () => Promise<void>;
   refreshMe: () => Promise<void>;

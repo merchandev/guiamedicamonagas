@@ -25,4 +25,8 @@ export class RegisterDto {
   @IsString()
   @MaxLength(80)
   lastName?: string;
+
+  @IsOptional()
+  @Matches(/^[VEJPG]-?\d{5,9}$/i, { message: 'Cédula inválida (ej. V-12345678)' })
+  cedula?: string;
 }

@@ -31,7 +31,13 @@ export default function LoginPage() {
     setError(null);
     try {
       const user = await login(values.email, values.password);
-      router.push(user.role === 'ADMIN' || user.role === 'SUPERADMIN' ? '/admin' : '/dashboard');
+      const destination =
+        user.role === 'ADMIN' || user.role === 'SUPERADMIN'
+          ? '/admin'
+          : user.role === 'USER'
+            ? '/paciente'
+            : '/dashboard';
+      router.push(destination);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'No se pudo iniciar sesión');
     }

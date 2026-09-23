@@ -721,17 +721,32 @@ model PatientProfile {
   // ─── Datos personales (CLASIFICACIÓN: RESTRINGIDA) ───────────────────────
   // Solo accesibles con autorización explícita del paciente.
   // cedula y phone se cifran con AES-256-GCM en capa de aplicación (SEC-05).
+  // Únicos para evitar cuentas duplicadas — nullable: Postgres permite varios
+  // NULL en una columna @unique, así que no rompe fichas walk-in sin estos datos.
   firstName    String?
   lastName     String?
-  cedula       String?  // cifrado en aplicación
-  phone        String?  // cifrado en aplicación
+  cedula       String?  @unique // cifrado en aplicación
+  phone        String?  @unique // cifrado en aplicación
   birthDate    DateTime?
   sex          String?   // "M" | "F" | "Otro"
   bloodType    String?   // "A+" | "A-" | "B+" | "B-" | "AB+" | "AB-" | "O+" | "O-"
   allergies    String?   // texto libre; el paciente lo completa en su perfil
 
   // Dirección
-  municipality String?
+  municipality      String?
+  emergencyAddress  String? // dirección a la que acudir en caso de emergencia
+
+  // ─── Salud y contacto de emergencia (los completa el propio paciente) ────
+  emergencyMedicalPhone String?              // número a llamar en una emergencia
+  isHealthy             Boolean  @default(false)
+  conditionSummary      String?              // se limpia server-side si isHealthy = true
+  medications           Json?                // [{ name: string, schedule: string }]
+  treatingDoctors       Json?                // string[] con nombres de doctores tratantes
+
+  // ─── Identidad ─────────────────────────────────────────────────────────
+  photoKey       String?               // foto de perfil (clave privada en storage)
+  idPhotoKey     String?               // foto de cédula/identificación (clave privada)
+  identityStatus IdentityStatus @default(PENDING)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -740,6 +755,12 @@ model PatientProfile {
   clinicalNotes  ClinicalNote[]
 
   @@index([patientCode])
+}
+
+enum IdentityStatus {
+  PENDING  // sin revisar (incluye el caso de no haber subido nada aún)
+  VERIFIED
+  REJECTED
 }
 
 // ---------------------------------------------------------------------------

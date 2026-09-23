@@ -43,6 +43,13 @@ async function bootstrap() {
   app.enableCors({
     origin: frontendUrl,
     credentials: true,
+    // Sin esto, @fastify/cors calcula `Access-Control-Allow-Methods` de forma
+    // dinámica y puede omitir métodos como PATCH/PUT/DELETE en el preflight
+    // según el orden de registro de rutas — bloqueando silenciosamente en el
+    // navegador peticiones que curl/Postman sí completan (CORS es una
+    // restricción del navegador, no del servidor). Se fija la lista completa
+    // de métodos que la API realmente usa.
+    methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE'],
   });
 
   app.setGlobalPrefix('api/v1');

@@ -19,7 +19,12 @@ export function Header() {
   const { user, logout } = useAuth();
   const [open, setOpen] = useState(false);
 
-  const dashboardHref = user?.role === 'ADMIN' || user?.role === 'SUPERADMIN' ? '/admin' : '/dashboard';
+  const dashboardHref =
+    user?.role === 'ADMIN' || user?.role === 'SUPERADMIN'
+      ? '/admin'
+      : user?.role === 'USER'
+        ? '/paciente'
+        : '/dashboard';
 
   return (
     <header className="sticky top-0 z-40 border-b border-ink-100 bg-canvas/90 backdrop-blur">

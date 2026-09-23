@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
+import { Prisma } from '@prisma/client';
 import { createHash, randomBytes } from 'crypto';
 import type { EnvConfig } from '../config/env.validation';
 import { PrismaService } from '../prisma/prisma.service';
@@ -18,6 +19,7 @@ import {
 import { AuditService } from '../audit/audit.service';
 import { slugify } from '../common/utils/slugify';
 import { hashPassword, verifyPassword } from '../common/utils/password.util';
+import { generatePatientCode } from '../patients/patient-code.util';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
@@ -52,33 +54,63 @@ export class AuthService {
     if (dto.role === 'PROFESSIONAL' && (!dto.firstName || !dto.lastName)) {
       throw new BadRequestException('Nombre y apellido son obligatorios para cuentas profesionales');
     }
+    if (dto.role === 'USER' && (!dto.firstName || !dto.lastName || !dto.cedula)) {
+      throw new BadRequestException('Nombre, apellido y cédula son obligatorios para registrarte como paciente');
+    }
+    if (dto.role === 'USER') {
+      const existingCedula = await this.prisma.patientProfile.findUnique({ where: { cedula: dto.cedula! } });
+      if (existingCedula) {
+        throw new ConflictException('Ya existe una cuenta registrada con esta cédula');
+      }
+    }
 
     const passwordHash = await hashPassword(dto.password);
 
-    const user = await this.prisma.$transaction(async (tx) => {
-      const created = await tx.user.create({
-        data: {
-          email: dto.email.toLowerCase(),
-          passwordHash,
-          role: dto.role,
-        },
-      });
-
-      if (dto.role === 'PROFESSIONAL') {
-        const base = slugify(`${dto.firstName} ${dto.lastName}`);
-        const slug = `${base}-${created.id.slice(0, 6)}`;
-        await tx.professionalProfile.create({
+    let user: Awaited<ReturnType<typeof this.prisma.user.create>>;
+    try {
+      user = await this.prisma.$transaction(async (tx) => {
+        const created = await tx.user.create({
           data: {
-            userId: created.id,
-            slug,
-            firstName: dto.firstName!.trim(),
-            lastName: dto.lastName!.trim(),
+            email: dto.email.toLowerCase(),
+            passwordHash,
+            role: dto.role,
           },
         });
-      }
 
-      return created;
-    });
+        if (dto.role === 'PROFESSIONAL') {
+          const base = slugify(`${dto.firstName} ${dto.lastName}`);
+          const slug = `${base}-${created.id.slice(0, 6)}`;
+          await tx.professionalProfile.create({
+            data: {
+              userId: created.id,
+              slug,
+              firstName: dto.firstName!.trim(),
+              lastName: dto.lastName!.trim(),
+            },
+          });
+        }
+
+        if (dto.role === 'USER') {
+          const patientCode = await generatePatientCode(tx);
+          await tx.patientProfile.create({
+            data: {
+              userId: created.id,
+              patientCode,
+              firstName: dto.firstName!.trim(),
+              lastName: dto.lastName!.trim(),
+              cedula: dto.cedula!.trim().toUpperCase(),
+            },
+          });
+        }
+
+        return created;
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new ConflictException('Ya existe una cuenta con estos datos');
+      }
+      throw error;
+    }
 
     await this.audit.record({
       userId: user.id,

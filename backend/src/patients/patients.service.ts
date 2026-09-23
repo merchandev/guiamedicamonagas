@@ -1,7 +1,9 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { randomBytes } from 'crypto';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
+import { StorageService } from '../storage/storage.service';
+import { generatePatientCode } from './patient-code.util';
 import { UpdatePatientProfileDto } from './dto/update-patient-profile.dto';
 
 interface PatientIdentity {
@@ -15,16 +17,8 @@ export class PatientsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly storage: StorageService,
   ) {}
-
-  private async generatePatientCode(): Promise<string> {
-    for (let attempt = 0; attempt < 10; attempt++) {
-      const code = `GMM-${randomBytes(2).toString('hex').toUpperCase()}`;
-      const exists = await this.prisma.patientProfile.findUnique({ where: { patientCode: code } });
-      if (!exists) return code;
-    }
-    throw new Error('No se pudo generar un código de paciente único');
-  }
 
   /** Paciente logueado: obtiene su ficha, o la crea la primera vez que reserva. */
   async getOrCreateForUser(userId: string, identity?: PatientIdentity) {
@@ -35,7 +29,7 @@ export class PatientsService {
       throw new BadRequestException('Nombre y apellido son obligatorios para tu primera reserva');
     }
 
-    const patientCode = await this.generatePatientCode();
+    const patientCode = await generatePatientCode(this.prisma);
     return this.prisma.patientProfile.create({
       data: {
         userId,
@@ -49,25 +43,84 @@ export class PatientsService {
 
   /** Médico registra un paciente sin cuenta (walk-in / agendado por teléfono). */
   async createWalkIn(identity: PatientIdentity) {
-    const patientCode = await this.generatePatientCode();
+    const patientCode = await generatePatientCode(this.prisma);
     return this.prisma.patientProfile.create({
       data: { patientCode, firstName: identity.firstName, lastName: identity.lastName, phone: identity.phone },
     });
   }
 
+  private async signPhotos<T extends { photoKey: string | null; idPhotoKey: string | null }>(
+    profile: T,
+  ): Promise<T & { photoUrl: string | null; idPhotoUrl: string | null }> {
+    const [photoUrl, idPhotoUrl] = await Promise.all([
+      profile.photoKey ? this.storage.getSignedDownloadUrl(profile.photoKey, 3600, false).catch(() => null) : null,
+      profile.idPhotoKey ? this.storage.getSignedDownloadUrl(profile.idPhotoKey, 3600, false).catch(() => null) : null,
+    ]);
+    return { ...profile, photoUrl, idPhotoUrl };
+  }
+
   async getOwnProfile(userId: string) {
     const profile = await this.prisma.patientProfile.findUnique({ where: { userId } });
     if (!profile) throw new NotFoundException('No tienes una ficha de paciente todavía');
-    return profile;
+    return this.signPhotos(profile);
   }
 
   async updateOwnProfile(userId: string, dto: UpdatePatientProfileDto) {
     const profile = await this.prisma.patientProfile.findUnique({ where: { userId } });
     if (!profile) throw new NotFoundException('No tienes una ficha de paciente todavía');
-    return this.prisma.patientProfile.update({
+
+    if (dto.phone && dto.phone !== profile.phone) {
+      const existingPhone = await this.prisma.patientProfile.findUnique({ where: { phone: dto.phone } });
+      if (existingPhone) {
+        throw new ConflictException('Este número de teléfono ya está registrado');
+      }
+    }
+
+    // El switch "persona sana" bloquea el resumen de condición de verdad, no
+    // solo en la UI: si isHealthy queda en true, cualquier texto que venga en
+    // el DTO se descarta.
+    const isHealthy = dto.isHealthy ?? profile.isHealthy;
+    const conditionSummary = isHealthy ? null : (dto.conditionSummary ?? profile.conditionSummary);
+
+    try {
+      const updated = await this.prisma.patientProfile.update({
+        where: { id: profile.id },
+        data: {
+          ...dto,
+          conditionSummary,
+          birthDate: dto.birthDate ? new Date(dto.birthDate) : undefined,
+          medications: dto.medications as unknown as Prisma.InputJsonValue | undefined,
+          treatingDoctors: dto.treatingDoctors as unknown as Prisma.InputJsonValue | undefined,
+        },
+      });
+      return this.signPhotos(updated);
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new ConflictException('Estos datos ya están asociados a otra cuenta');
+      }
+      throw error;
+    }
+  }
+
+  async updateOwnPhoto(userId: string, key: string) {
+    const profile = await this.prisma.patientProfile.findUnique({ where: { userId } });
+    if (!profile) throw new NotFoundException('No tienes una ficha de paciente todavía');
+    const previousKey = profile.photoKey;
+    const updated = await this.prisma.patientProfile.update({ where: { id: profile.id }, data: { photoKey: key } });
+    if (previousKey) await this.storage.deleteObject(previousKey).catch(() => undefined);
+    return this.signPhotos(updated);
+  }
+
+  async updateOwnIdPhoto(userId: string, key: string) {
+    const profile = await this.prisma.patientProfile.findUnique({ where: { userId } });
+    if (!profile) throw new NotFoundException('No tienes una ficha de paciente todavía');
+    const previousKey = profile.idPhotoKey;
+    const updated = await this.prisma.patientProfile.update({
       where: { id: profile.id },
-      data: { ...dto, birthDate: dto.birthDate ? new Date(dto.birthDate) : undefined },
+      data: { idPhotoKey: key, identityStatus: 'PENDING' },
     });
+    if (previousKey) await this.storage.deleteObject(previousKey).catch(() => undefined);
+    return this.signPhotos(updated);
   }
 
   /**
