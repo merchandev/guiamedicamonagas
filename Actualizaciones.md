@@ -3,7 +3,7 @@
 > Bitácora central de cambios, implementaciones, decisiones técnicas y tareas de evolución del sistema.
 >
 > **Repositorio:** [`merchandev/guiamedicamonagas`](https://github.com/merchandev/guiamedicamonagas) · **Rama:** `main`<br>
-> **Última actualización de esta bitácora:** `2026-09-23 07:20:00 -04:00` · **Estado:** 🟢 Registro activo
+> **Última actualización de esta bitácora:** `2026-09-23 07:55:00 -04:00` · **Estado:** 🟢 Registro activo
 
 ![Estado](https://img.shields.io/badge/estado-registro%20activo-16a34a?style=flat-square)
 ![Rama](https://img.shields.io/badge/rama-main-2563eb?style=flat-square)
@@ -113,8 +113,9 @@ flowchart LR
     H[🚀 2026-09-23\n05:43:35\nACT-0008 · Despliegue independiente\nen VPS compartido]
     I[🩹 2026-09-23\n06:30:00\nACT-0009 · Correcciones del\nprimer despliegue real]
     J[💱 2026-09-23\n07:20:00\nACT-0010 · Corrección de la tasa BCV\ny retiro de INPREMEDICO]
+    K[🔐 2026-09-23\n07:55:00\nACT-0011 · Acceso SSH y reconciliación\nde fixes ya probados en producción]
 
-    A --> B --> C --> D --> E --> F --> G --> H --> I --> J
+    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K
 ```
 
 ### Resumen cuantitativo
@@ -122,10 +123,10 @@ flowchart LR
 | Indicador | Resultado |
 |---|---:|
 | Actividades históricas importadas desde Git | `3` |
-| Actividades documentales añadidas con esta bitácora | `7` |
-| Actividades registradas en total | `10` |
+| Actividades documentales añadidas con esta bitácora | `8` |
+| Actividades registradas en total | `11` |
 | Rama de referencia | `main` |
-| Commit base consultado | [`c152b79`](https://github.com/merchandev/guiamedicamonagas/commit/c152b79) |
+| Commit base consultado | [`3cc2389`](https://github.com/merchandev/guiamedicamonagas/commit/3cc2389) |
 | Zona horaria de control | `America/Caracas` (`-04:00`) |
 
 <a id="act-0001"></a>
@@ -452,6 +453,42 @@ Se quitó de: portada (pasos de verificación, FAQ, hero, CTA final), pie de pá
 
 </details>
 
+<a id="act-0011"></a>
+
+### 🔐 ACT-0011 · Acceso SSH al VPS y reconciliación de los fixes ya probados en producción
+
+<details>
+<summary><strong>2026-09-23 07:55:00 -04:00</strong> · <code>3cc2389</code> · 🟢 Completado</summary>
+
+**Responsable:** `Claude Sonnet 5`  · **Tipo:** `ops | fix`  · **Commit:** [`3cc2389`](https://github.com/merchandev/guiamedicamonagas/commit/3cc2389)
+
+El usuario pidió conexión directa por SSH al VPS para trabajar sobre producción. Se generó una llave ed25519 dedicada para la sesión (no se reutilizó ninguna llave personal del usuario) y se agregó a `~/.ssh/authorized_keys` del servidor. El primer intento de conexión falló (`Permission denied`); el diagnóstico mostró que la entrada anterior del archivo no terminaba en salto de línea, así que la llave nueva quedó pegada al comentario de la anterior (`...#hostinger-managed-keyssh-ed25519...`) formando una sola línea inválida — corregido con `sed` para separarlas, confirmado con una segunda conexión exitosa.
+
+#### 🔎 Hallazgo al conectar: el despliegue ya estaba arriba, con más de lo que había en git
+Antes de tocar nada se hizo un reconocimiento de solo lectura (`docker ps`, `curl` a los endpoints públicos, `git log`/`git status` en el checkout del servidor). Resultado:
+
+- El stack `gmm-independent` (API, web y Caddy) ya estaba corriendo y saludable, publicando `:8088`, con el healthcheck de `/iniciar-sesion` de [ACT-0009](#act-0009) funcionando.
+- El directorio del proyecto no había desaparecido (el aviso pendiente de ACT-0009): está en `/opt/guiamedicamonagas`, fuera de `/docker` (que solo contiene `diario-mercantil`/`saas--mt`/`traefik-ivzc`) — un movimiento deliberado de aislamiento, no una pérdida.
+- El checkout del servidor estaba en `b6fb700` (2 commits detrás de `origin/main`) pero con cambios locales reales sin commitear, hechos y verificados directamente en el servidor — nunca llegaron a GitHub. `git diff -b` (ignorando el ruido de fin de línea CRLF/LF que inflaba el diff crudo a 232 archivos) redujo esto a ~18 archivos con diferencias de contenido reales.
+
+Cada diferencia real se revisó y verificó antes de decidir adoptarla — no se asumió que "ya está en producción" significaba "es correcta":
+
+- **Fix del BCV, versión mejor que la de** [ACT-0010](#act-0010): misma causa raíz (certificado intermedio faltante), pero el certificado se carga desde un archivo (`backend/certs/sectigo-dv-r36.pem`, con su propio `README.md` explicando el porqué) en vez de una constante inline, valida el formato del valor crudo antes de parsearlo, y extrae la **fecha valor** que el propio BCV publica (`effectiveDate`), no solo la hora de consulta. Se volvió a probar de punta a punta contra el sitio real del BCV desde este checkout antes de adoptarlo (resultado: `853.4993`, fecha `2026-09-23`).
+- **Bug financiero real, no detectado en** [ACT-0010](#act-0010): la tasa de respaldo pasó de `50` (un número plausible pero falso) a `0` (un centinela inequívoco), acompañada de un guardado nuevo en `subscriptions.service.ts` que **rechaza crear una suscripción si la tasa no está disponible**, en vez de cobrarla en silencio a Bs 0. `BcvRateBadge.tsx` se actualizó en conjunto para mostrar "Tasa USD no disponible" en vez de "Bs 0,00".
+- **Cierre real del retiro de INPREMEDICO de ACT-0010**: la etiqueta del tipo de documento pasó de `'Registro INPREMEDICO'` a `'Registro complementario (histórico)'` — cierra un hueco que ACT-0010 había dejado: cualquier profesional con un documento histórico de ese tipo seguía viendo la palabra "INPREMEDICO" en pantalla.
+- `docker-compose.prod.yml`: healthcheck de PostgreSQL ahora verifica la base de datos específica, no solo que el servidor acepte conexiones; Mailpit se unió también a la red no interna del proyecto (su publicación en loopback `127.0.0.1:18025` lo necesitaba).
+- Se incorporó a git, por primera vez, [`scripts/smoke-deployment.cjs`](scripts/smoke-deployment.cjs): el script real de humo post-despliegue que existía solo en el disco del VPS — prueba login/refresh/logout de administrador, registro, verificación de correo vía el Mailpit propio del proyecto, subida y descarga firmada de una foto privada, y que el acceso anónimo al archivo sea rechazado; limpia sus propios datos de prueba al terminar.
+- **No se adoptó** un cambio del VPS en `dashboard/perfil/page.tsx` (`sm:grid-cols-3` dejando una tercera columna vacía, ya que solo quedan 2 campos tras retirar INPREMEDICO) — se conservó la versión de ACT-0010 (`sm:grid-cols-2`), que es la correcta.
+
+**Verificación realizada:** `tsc --noEmit` limpio en backend y frontend tras la reconciliación; build del backend confirma que `certs/` se recoge igual que lo copia el Dockerfile; comparación de `docker ps` de los tres proyectos existentes antes y después de toda la sesión SSH — mismos tiempos de actividad, sin reinicios, coincide con la propia evidencia del despliegue (`/var/lib/gmm-deploy-20260923/final-verification.json`, `existingChanges: []`). No se reconstruyó ni se reinició ningún contenedor durante esta actividad — solo se puso a git al día con lo que ya estaba corriendo.
+
+**Pendiente (opcional, no urgente):** el checkout de `/opt/guiamedicamonagas` en el VPS sigue mostrando diferencias frente a `origin/main` por line endings (CRLF vs LF) — no afecta a los contenedores en ejecución, que corren desde la imagen ya construida, no desde ese checkout. Un `git pull`/reset allí es seguro pero no se hizo sin confirmación explícita, por tratarse de una operación que descarta cambios locales en el servidor de producción.
+
+**Impacto:** el repositorio deja de depender de una sola capa de una imagen Docker en un único servidor para conservar el fix real de la tasa BCV; se cierra un bug financiero (suscripciones cobrables a Bs 0 mientras la tasa no estuviera lista) que ninguna sesión anterior había detectado; y el retiro de INPREMEDICO queda completo incluso para documentos históricos.<br>
+**Archivos destacados:** [`backend/src/exchange-rate/bcv-scraper.service.ts`](backend/src/exchange-rate/bcv-scraper.service.ts), [`backend/certs/README.md`](backend/certs/README.md), [`backend/src/subscriptions/subscriptions.service.ts`](backend/src/subscriptions/subscriptions.service.ts), [`scripts/smoke-deployment.cjs`](scripts/smoke-deployment.cjs).
+
+</details>
+
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
 <a id="registro-por-area"></a>
@@ -466,13 +503,13 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | 🔐 Auth y seguridad | JWT, refresh cookie, roles, correo, recuperación, throttling, Argon2id | [ACT-0003](#act-0003) · [ACT-0006](#act-0006) |
 | 👨‍⚕️ Profesionales | Perfiles, ubicaciones, documentos, verificación legal, redes sociales, badges | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0006](#act-0006) |
 | 🏥 Organizaciones | Farmacias, laboratorios, clínicas y ubicaciones | [ACT-0003](#act-0003) · [ACT-0006](#act-0006) |
-| 💳 Monetización | Planes, Pago Móvil, aprobación y tasa BCV | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0010](#act-0010) |
+| 💳 Monetización | Planes, Pago Móvil, aprobación y tasa BCV | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0010](#act-0010) · [ACT-0011](#act-0011) |
 | 📅 Agenda y citas | Horarios, disponibilidad, reservas, máquina de estados, anti-doble-reserva | [ACT-0007](#act-0007) |
 | 🔒 Pacientes | Código pseudónimo, listado sin datos personales, revelación auditada | [ACT-0007](#act-0007) |
 | 🛠️ Administración | Médicos, pagos, SEO, cookies, especialidades, planes y verificaciones | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) |
 | 📊 Observabilidad | Auditoría, analítica, notificaciones y salud | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) |
 | 🎨 Experiencia | Directorios, dashboard, componentes UI, motion y legal | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) |
-| 🚢 Operación | Variables de entorno, Compose, almacenamiento, correo y proxy | [ACT-0001](#act-0001) · [ACT-0002](#act-0002) · [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0008](#act-0008) · [ACT-0009](#act-0009) |
+| 🚢 Operación | Variables de entorno, Compose, almacenamiento, correo y proxy | [ACT-0001](#act-0001) · [ACT-0002](#act-0002) · [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0008](#act-0008) · [ACT-0009](#act-0009) · [ACT-0011](#act-0011) |
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
@@ -514,10 +551,11 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 
 | Prioridad | Actividad | Estado | Criterio de cierre |
 |---|---|---|---|
-| 🔴 Alta | Reanudar el despliegue en el VPS con el healthcheck de `web` corregido (`/iniciar-sesion`) y confirmar que Caddy arranca | 🔵 Planificado | `docker compose -p gmm-independent ps` muestra `api`/`web`/`caddy` saludables |
-| 🔴 Alta | Validar de extremo a extremo tras el arranque: acceso externo a `:8088`, login/refresh/logout, subida y descarga firmada de MinIO, correo de prueba en Mailpit | 🔵 Planificado | Checklist §7 del informe del usuario (2026-09-23) completo |
-| 🔴 Alta | Nueva comparación de contenedores/hashes de `diario-mercantil`/`saas--mt`/`traefik-ivzc` tras el arranque completo (la primera comparación, hecha a mitad del despliegue, ya dio `Changes: []`) | 🔵 Planificado | `docker ps` antes/después idéntico; hashes de configuración sin cambios |
-| 🔴 Alta | Configurar credenciales reales de correo, S3/MinIO, WhatsApp y BCV en producción | 🔵 Planificado | Variables documentadas y prueba de cada integración fuera de dev |
+| 🟢 Continua | ~~Reanudar el despliegue en el VPS con el healthcheck de `web` corregido~~ — hecho: `api`/`web`/`caddy` saludables, `:8088` responde | 🟢 Completado | Ver [ACT-0011](#act-0011) |
+| 🟢 Continua | ~~Validar de extremo a extremo tras el arranque~~ — hecho vía `scripts/smoke-deployment.cjs`: login/refresh/logout, registro, correo de prueba en Mailpit, subida/descarga firmada y rechazo anónimo | 🟢 Completado | Ver [ACT-0011](#act-0011), [`scripts/smoke-deployment.cjs`](scripts/smoke-deployment.cjs) |
+| 🟢 Continua | ~~Nueva comparación de contenedores/hashes de los proyectos existentes tras el arranque completo~~ — hecho, sin diferencias | 🟢 Completado | Ver [ACT-0011](#act-0011) |
+| 🔴 Alta | Configurar dominio/HTTPS real, SMTP real y datos reales de Pago Móvil en producción (BCV ya es automático desde [ACT-0011](#act-0011)) | 🔵 Planificado | Variables documentadas y prueba de cada integración fuera de dev |
+| 🟠 Media | Limpiar la divergencia de line endings (CRLF/LF) entre el checkout de `/opt/guiamedicamonagas` en el VPS y `origin/main` — no afecta a los contenedores en ejecución | 🔵 Planificado | `git status` limpio en el checkout del VPS tras confirmar con el usuario antes de descartar cambios locales |
 | 🔴 Alta | SEC-03 · Permisos granulares (eliminar el bypass universal de SUPERADMIN) | 🔵 Planificado | Matriz endpoint × rol verificada, sin permiso implícito por rol |
 | 🔴 Alta | SEC-05 · Cifrado de campos sensibles del paciente (cédula, teléfono) y de `ClinicalNote` | 🔴 Bloqueado | Habilita activar historia clínica — ver línea roja en [ACT-0007](#act-0007) |
 | 🟠 Media | SEC-02 (resto) · `tokenVersion` + detección de reuse de refresh tokens | 🔵 Planificado | Sesión revocada por completo ante cambio de rol/contraseña/compromiso |
@@ -583,6 +621,7 @@ Para cada cambio futuro, añadir una entrada en la línea de tiempo y actualizar
 | `2026-09-23 05:43:45 -04:00` | Incorporación de ACT-0008 (despliegue independiente en VPS compartido: migraciones, cookies, proxy de MinIO, aislamiento de Compose), actualización de línea de tiempo, resumen cuantitativo, registro por área, control de implementaciones y próximas actividades | 🟢 Completado |
 | `2026-09-23 06:30:00 -04:00` | Incorporación de ACT-0009 (correcciones del primer despliegue real en el VPS: arranque del backend, build del frontend, etiqueta de MinIO, healthcheck de `web` corregido, redes/nombres de imagen propios), actualización de línea de tiempo, resumen cuantitativo, registro por área, control de implementaciones y próximas actividades | 🟢 Completado |
 | `2026-09-23 07:20:00 -04:00` | Incorporación de ACT-0010 (certificado intermedio faltante del BCV corregido y verificado en vivo, etiqueta BCV/manual honesta, retiro de INPREMEDICO del contenido visible del sitio), actualización de línea de tiempo, resumen cuantitativo, registro por área y control de implementaciones | 🟢 Completado |
+| `2026-09-23 07:55:00 -04:00` | Incorporación de ACT-0011 (acceso SSH al VPS de producción, reconciliación de fixes reales ya probados en el servidor pero nunca commiteados: tasa BCV con fecha valor, guardado financiero contra tasa Bs 0, cierre del retiro de INPREMEDICO, script de smoke-test), actualización de línea de tiempo, resumen cuantitativo, registro por área, control de implementaciones y próximas actividades | 🟢 Completado |
 
 ---
 
