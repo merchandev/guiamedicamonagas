@@ -551,6 +551,8 @@ Las páginas que ya combinaban `container-page` con un `max-w-*` más angosto pa
 **Impacto:** el margen lateral ahora es proporcional y consistente en toda la aplicación en vez de depender de en qué punto de quiebre cae cada pantalla — un solo cambio en un único archivo, sin tocar ninguna página individual.<br>
 **Archivos destacados:** [`frontend/src/app/globals.css`](frontend/src/app/globals.css).
 
+**Desplegado en producción el mismo día, vía SSH, con aprobación explícita del usuario:** solo CSS del frontend, sin migración ni cambios de base de datos, así que se reconstruyó únicamente la imagen `web` con el builder dedicado y se recreó solo ese contenedor — `api`, datos y Caddy no se tocaron. Verificado con `curl` contra `http://72.61.77.167:8088/` (home y `/medicos`, ambos `200`) y confirmando `container-page` en el HTML servido. Los tres proyectos existentes conservan sus tiempos de actividad previos.
+
 </details>
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
