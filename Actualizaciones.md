@@ -3,7 +3,7 @@
 > Bitácora central de cambios, implementaciones, decisiones técnicas y tareas de evolución del sistema.
 >
 > **Repositorio:** [`merchandev/guiamedicamonagas`](https://github.com/merchandev/guiamedicamonagas) · **Rama:** `main`<br>
-> **Última actualización de esta bitácora:** `2026-09-22 20:07:57 -04:00` · **Estado:** 🟢 Registro activo
+> **Última actualización de esta bitácora:** `2026-09-23 05:43:45 -04:00` · **Estado:** 🟢 Registro activo
 
 ![Estado](https://img.shields.io/badge/estado-registro%20activo-16a34a?style=flat-square)
 ![Rama](https://img.shields.io/badge/rama-main-2563eb?style=flat-square)
@@ -110,8 +110,9 @@ flowchart LR
     E[📘 2026-09-22\n11:05:51\nACT-0005 · README completo]
     F[🛡️ 2026-09-22\n18:28:17\nACT-0006 · Badges, redes sociales\ny endurecimiento de infraestructura]
     G[📅 2026-09-22\n20:07:40\nACT-0007 · Agenda, Citas\ny privacidad del paciente]
+    H[🚀 2026-09-23\n05:43:35\nACT-0008 · Despliegue independiente\nen VPS compartido]
 
-    A --> B --> C --> D --> E --> F --> G
+    A --> B --> C --> D --> E --> F --> G --> H
 ```
 
 ### Resumen cuantitativo
@@ -119,10 +120,10 @@ flowchart LR
 | Indicador | Resultado |
 |---|---:|
 | Actividades históricas importadas desde Git | `3` |
-| Actividades documentales añadidas con esta bitácora | `4` |
-| Actividades registradas en total | `7` |
+| Actividades documentales añadidas con esta bitácora | `5` |
+| Actividades registradas en total | `8` |
 | Rama de referencia | `main` |
-| Commit base consultado | [`3ded446`](https://github.com/merchandev/guiamedicamonagas/commit/3ded4462565d48ae5b98f35f404fb96eded30c13) |
+| Commit base consultado | [`4dbd800`](https://github.com/merchandev/guiamedicamonagas/commit/4dbd800f768407a4746d46bafafc340bceca78d9) |
 | Zona horaria de control | `America/Caracas` (`-04:00`) |
 
 <a id="act-0001"></a>
@@ -336,6 +337,48 @@ Primeras dos fases de la evolución del producto de "directorio médico" a "plat
 
 </details>
 
+<a id="act-0008"></a>
+
+### 🚀 ACT-0008 · Despliegue independiente en VPS compartido
+
+<details>
+<summary><strong>2026-09-23 05:43:35 -04:00</strong> · <code>4dbd800</code> · 🟢 Completado</summary>
+
+**Responsable:** `Claude Sonnet 5`  · **Tipo:** `fix | ops`  · **Commit:** [`4dbd800`](https://github.com/merchandev/guiamedicamonagas/commit/4dbd800f768407a4746d46bafafc340bceca78d9)
+
+El usuario entregó una lista de 11 bloqueos técnicos concretos para desplegar el proyecto en un VPS de Hostinger que ya tiene otros proyectos Docker corriendo (`diario-mercantil`, `saas--mt`, `traefik-ivzc`), ocupando los puertos 80/443/3000/25/587 en la única IP pública disponible. Cada punto se verificó contra el repo real antes de tocar nada — no eran hipótesis, los 11 reprodujeron.
+
+#### 🐛 Bloqueo crítico: cadena de migraciones de Prisma
+La migración `20260922_feat_schedule_appointments_patients_finance_push` volvía a declarar `CREATE TYPE "Role"`, `CREATE TABLE "User"`, etc. — objetos que la migración `20260922112504_init` ya creaba. `prisma migrate deploy` contra una base vacía (como sería la del VPS) habría fallado a mitad de camino con "already exists". Se regeneró como una única migración limpia (`20260923093427_init`) y se **verificó de verdad**: se aplicó con `migrate deploy` contra una base de datos Postgres recién creada, vacía, sin errores.
+
+#### 🔐 Sesiones para lanzamiento HTTP temporal
+- Cookie renombrada `refresh_token` → `gmm_refresh_token`.
+- `secure` de la cookie pasa de estar atado a `NODE_ENV` a una variable `COOKIE_SECURE` configurable — verificado en ambos estados (con/sin el flag `Secure` en el header `Set-Cookie` real).
+
+#### 📄 Next.js 16 y URLs internas
+- `farmacias/page.tsx` tenía el mismo bug de `searchParams` síncrono ya corregido en `medicos/[slug]` esta sesión, pero no en este archivo.
+- Nueva variable `API_INTERNAL_URL`: el contenedor `web` ahora puede hacer sus fetches SSR contra `http://api:4000` en vez de intentar usar la URL pública, que no resuelve útilmente dentro de la red de Docker.
+
+#### 🪣 URLs firmadas de MinIO detrás de proxy
+Las URLs firmadas se generaban contra `http://minio:9000`, inalcanzable desde el navegador. Se agregó un segundo cliente S3 (`S3_PUBLIC_ENDPOINT`) usado solo para firmar, y Caddy proxea `/<bucket>/*` a MinIO usando el propio nombre del bucket como prefijo — sin reescritura de ruta. **Verificado con una prueba real**: objeto subido vía el cliente interno, URL firmada contra un Caddy local en el puerto alterno, descargada con éxito a través del proxy con firma SigV4 válida.
+
+#### 🐳 Aislamiento del stack en el VPS
+- `docker-compose.prod.yml` ahora declara `name: gmm-independent` — ningún `docker compose down` corrido desde otro proyecto puede alcanzarlo por accidente.
+- Caddy publica un único puerto alterno (`8088` por defecto vía `CADDY_PORT`) en vez de 80/443, ya ocupados.
+- `mem_limit`/`cpus` en cada servicio, para que este stack nuevo no pueda ahogar a los proyectos existentes del mismo VPS.
+- `scripts/deploy.sh`: `docker compose pull` ya no intenta traer `gmm_api`/`gmm_web` (build-only, sin registro) y todas las invocaciones quedan fijadas a `-p gmm-independent`.
+- `scripts/minio-init.sh`: la creación de usuario/política ahora tolera "ya existe" — una re-ejecución (ej. un redeploy) no aborta a mitad de camino.
+- `prisma/seed.ts`: si falta `SEED_SUPERADMIN_PASSWORD` en producción, aborta con error explícito en vez de omitir el superadmin en silencio; su hash pasa de `bcrypt` a `Argon2id` (`hashPassword()`), consistente con el resto del sistema desde [ACT-0006](#act-0006).
+
+**Verificación realizada:** migración aplicada de punta a punta contra una base vacía real; login probado con ambos valores de `COOKIE_SECURE` (header `Set-Cookie` real, no solo lectura de código); flujo completo de subida→firma pública→descarga vía proxy de MinIO probado con un contenedor Caddy real; superadmin re-sembrado y login confirmado con el nuevo hash Argon2id; `tsc --noEmit` limpio en backend y frontend.
+
+**Pendiente (fuera del alcance de este repo):** ejecutar el despliegue real en el VPS, crear `.env.prod` con secretos reales ahí, abrir el puerto `8088` en el firewall, y confirmar en el panel de Hostinger que `diario-mercantil`/`saas--mt`/`traefik-ivzc` quedaron intactos tras el despliegue — ninguna de estas acciones es posible sin acceso directo al servidor.
+
+**Impacto:** el proyecto queda listo para desplegarse junto a los proyectos existentes del VPS sin arriesgarlos, con una cadena de migraciones que de verdad funciona contra una base vacía y URLs de archivos que de verdad abren desde un navegador externo.<br>
+**Archivos destacados:** [`backend/prisma/migrations/20260923093427_init`](backend/prisma/migrations/20260923093427_init), [`backend/src/storage/storage.service.ts`](backend/src/storage/storage.service.ts), [`Caddyfile`](Caddyfile), [`docker-compose.prod.yml`](docker-compose.prod.yml), [`scripts/deploy.sh`](scripts/deploy.sh), [`scripts/minio-init.sh`](scripts/minio-init.sh).
+
+</details>
+
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
 <a id="registro-por-area"></a>
@@ -356,7 +399,7 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | 🛠️ Administración | Médicos, pagos, SEO, cookies, especialidades, planes y verificaciones | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) |
 | 📊 Observabilidad | Auditoría, analítica, notificaciones y salud | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) |
 | 🎨 Experiencia | Directorios, dashboard, componentes UI, motion y legal | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) |
-| 🚢 Operación | Variables de entorno, Compose, almacenamiento, correo y proxy | [ACT-0001](#act-0001) · [ACT-0002](#act-0002) · [ACT-0003](#act-0003) · [ACT-0006](#act-0006) |
+| 🚢 Operación | Variables de entorno, Compose, almacenamiento, correo y proxy | [ACT-0001](#act-0001) · [ACT-0002](#act-0002) · [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0008](#act-0008) |
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
@@ -383,6 +426,8 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | IMP-015 | Agenda: horarios, bloques y excepciones por profesional | 🟢 Completado | [`backend/src/agenda`](backend/src/agenda), [`frontend/src/app/dashboard/agenda`](frontend/src/app/dashboard/agenda) |
 | IMP-016 | Citas: disponibilidad, reserva, estados, anti-doble-reserva y recordatorios | 🟢 Completado | [`backend/src/appointments`](backend/src/appointments), [`frontend/src/app/dashboard/citas`](frontend/src/app/dashboard/citas) |
 | IMP-017 | Privacidad de pacientes: código pseudónimo y revelación auditada | 🟢 Completado | [`backend/src/patients`](backend/src/patients), [`frontend/src/app/dashboard/pacientes`](frontend/src/app/dashboard/pacientes) |
+| IMP-018 | Cadena de migraciones de Prisma corregida (verificada contra BD vacía real) | 🟢 Completado | [`backend/prisma/migrations/20260923093427_init`](backend/prisma/migrations/20260923093427_init) |
+| IMP-019 | Despliegue independiente en VPS compartido (puerto alterno, proxy de MinIO, aislamiento de proyecto) | 🟢 Completado | [`docker-compose.prod.yml`](docker-compose.prod.yml), [`Caddyfile`](Caddyfile), [`scripts/deploy.sh`](scripts/deploy.sh) |
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
@@ -394,6 +439,7 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 
 | Prioridad | Actividad | Estado | Criterio de cierre |
 |---|---|---|---|
+| 🔴 Alta | Ejecutar el despliegue real en el VPS (`gmm-independent`, puerto 8088) y confirmar que diario-mercantil/saas--mt/traefik-ivzc quedan intactos | 🔵 Planificado | `docker ps` antes/después idéntico para los proyectos existentes; sitio nuevo responde en `:8088` |
 | 🔴 Alta | Configurar credenciales reales de correo, S3/MinIO, WhatsApp y BCV en producción | 🔵 Planificado | Variables documentadas y prueba de cada integración fuera de dev |
 | 🔴 Alta | SEC-03 · Permisos granulares (eliminar el bypass universal de SUPERADMIN) | 🔵 Planificado | Matriz endpoint × rol verificada, sin permiso implícito por rol |
 | 🔴 Alta | SEC-05 · Cifrado de campos sensibles del paciente (cédula, teléfono) y de `ClinicalNote` | 🔴 Bloqueado | Habilita activar historia clínica — ver línea roja en [ACT-0007](#act-0007) |
@@ -457,6 +503,7 @@ Para cada cambio futuro, añadir una entrada en la línea de tiempo y actualizar
 | `2026-09-22 10:42:43 -04:00` | Creación de `Actualizaciones.md`, importación de 3 commits históricos y definición del protocolo de control | 🟢 Completado |
 | `2026-09-22 11:05:51 -04:00` | Creación de `README.md` con guía funcional, técnica, operativa y de contribución | 🟢 Completado |
 | `2026-09-22 20:07:57 -04:00` | Incorporación de ACT-0006 y ACT-0007 (badges/redes sociales/endurecimiento de infraestructura y Agenda/Citas/Pacientes), actualización de línea de tiempo, resumen cuantitativo, registro por área, control de implementaciones y próximas actividades | 🟢 Completado |
+| `2026-09-23 05:43:45 -04:00` | Incorporación de ACT-0008 (despliegue independiente en VPS compartido: migraciones, cookies, proxy de MinIO, aislamiento de Compose), actualización de línea de tiempo, resumen cuantitativo, registro por área, control de implementaciones y próximas actividades | 🟢 Completado |
 
 ---
 
