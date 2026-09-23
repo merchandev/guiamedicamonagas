@@ -3,7 +3,7 @@
 > Bitácora central de cambios, implementaciones, decisiones técnicas y tareas de evolución del sistema.
 >
 > **Repositorio:** [`merchandev/guiamedicamonagas`](https://github.com/merchandev/guiamedicamonagas) · **Rama:** `main`<br>
-> **Última actualización de esta bitácora:** `2026-09-23 07:55:00 -04:00` · **Estado:** 🟢 Registro activo
+> **Última actualización de esta bitácora:** `2026-09-23 10:15:00 -04:00` · **Estado:** 🟢 Registro activo
 
 ![Estado](https://img.shields.io/badge/estado-registro%20activo-16a34a?style=flat-square)
 ![Rama](https://img.shields.io/badge/rama-main-2563eb?style=flat-square)
@@ -114,8 +114,9 @@ flowchart LR
     I[🩹 2026-09-23\n06:30:00\nACT-0009 · Correcciones del\nprimer despliegue real]
     J[💱 2026-09-23\n07:20:00\nACT-0010 · Corrección de la tasa BCV\ny retiro de INPREMEDICO]
     K[🔐 2026-09-23\n07:55:00\nACT-0011 · Acceso SSH y reconciliación\nde fixes ya probados en producción]
+    L[🧑‍🤝‍🧑 2026-09-23\n10:15:00\nACT-0012 · Perfil de paciente\ny fix crítico de CORS]
 
-    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K
+    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L
 ```
 
 ### Resumen cuantitativo
@@ -123,10 +124,10 @@ flowchart LR
 | Indicador | Resultado |
 |---|---:|
 | Actividades históricas importadas desde Git | `3` |
-| Actividades documentales añadidas con esta bitácora | `8` |
-| Actividades registradas en total | `11` |
+| Actividades documentales añadidas con esta bitácora | `9` |
+| Actividades registradas en total | `12` |
 | Rama de referencia | `main` |
-| Commit base consultado | [`3cc2389`](https://github.com/merchandev/guiamedicamonagas/commit/3cc2389) |
+| Commit base consultado | [`2d46713`](https://github.com/merchandev/guiamedicamonagas/commit/2d46713) |
 | Zona horaria de control | `America/Caracas` (`-04:00`) |
 
 <a id="act-0001"></a>
@@ -489,6 +490,44 @@ Cada diferencia real se revisó y verificó antes de decidir adoptarla — no se
 
 </details>
 
+<a id="act-0012"></a>
+
+### 🧑‍🤝‍🧑 ACT-0012 · Perfil de paciente autoservicio y corrección crítica de CORS
+
+<details>
+<summary><strong>2026-09-23 10:15:00 -04:00</strong> · <code>2d46713</code> · 🟢 Completado</summary>
+
+**Responsable:** `Claude Sonnet 5`  · **Tipo:** `feature | fix`  · **Commit:** [`2d46713`](https://github.com/merchandev/guiamedicamonagas/commit/2d46713)
+
+El usuario pidió un perfil de paciente completo: registro simple (nombre, cédula, correo, contraseña), y luego, en su panel, dirección de emergencia, teléfono, foto de perfil, foto de identificación, medicamentos con horario, resumen de condición (bloqueable con un switch "persona sana"), número de emergencia médica y doctores tratantes — con cédula, teléfono y correo únicos.
+
+#### 🧭 Decisión de diseño: extender `PatientProfile`, no duplicarlo
+Ya existía un `PatientProfile` (código pseudónimo `GMM-XXXX`, sin contraseña propia, creado perezosamente solo al reservar cita — el diseño de privacidad de [ACT-0007](#act-0007): el médico nunca ve la identidad real sin una revelación auditada). Sus campos (`firstName`, `lastName`, `cedula`, `phone`) coincidían casi exactamente con lo pedido, así que se extendió ese mismo modelo en vez de crear uno paralelo — el sistema de privacidad queda intacto porque protege exactamente estos datos, ahora más completos. Se usó el modo plan antes de escribir código, dado el tamaño del cambio y esta decisión de arquitectura.
+
+#### 🗃️ Cambios de datos
+Migración aditiva `20260923100000_patient_health_profile` (nunca se tocó `20260923093427_init`, ya corrida en producción): `cedula` y `phone` pasan a `@unique` (nullable-safe — Postgres permite múltiples `NULL`, así que las fichas walk-in sin estos datos no se rompen); nuevos campos `emergencyAddress`, `emergencyMedicalPhone`, `medications` (JSON, `{name, schedule}[]`), `conditionSummary`, `isHealthy`, `treatingDoctors` (JSON, `string[]`), `photoKey`, `idPhotoKey`, `identityStatus` (`PENDING|VERIFIED|REJECTED`). Verificada con `prisma migrate deploy` contra una base vacía antes de aplicarla a desarrollo.
+
+#### 🔐 Registro y unicidad
+El registro (`role: USER`) ahora exige nombre, apellido y cédula, y crea el `PatientProfile` en la misma transacción que ya usaba el flujo profesional — ya no de forma perezosa en la primera reserva. Cédula se verifica antes de crear la cuenta; teléfono se verifica al actualizar el perfil; ambos casos devuelven `409` con mensaje claro, y una condición de carrera real (dos altas simultáneas) queda cubierta por el propio `@unique` de Postgres, traducido a `ConflictException`.
+
+#### 🔒 El switch "persona sana" bloquea de verdad
+No es solo una deshabilitación visual: si `isHealthy` llega en `true`, el backend fuerza `conditionSummary` a `null` sin importar qué texto venga en la petición — verificado enviando ambos campos juntos y confirmando que el resumen no se guardó.
+
+#### 🐛 Bug real #1: pacientes sin ningún panel propio
+Encontrado durante la investigación previa al plan: tras iniciar sesión o registrarse, un paciente (`role: USER`) era enviado a `/dashboard`, protegido con `roles={['PROFESSIONAL']}` — rebotado de inmediato a `/`. **Hoy el paciente no tenía ningún área autenticada.** Corregido en tres lugares (`iniciar-sesion/page.tsx`, `Header.tsx`, el botón "ver mis citas" tras reservar) para enviar a `role: USER` a `/paciente`, la nueva sección construida en este cambio.
+
+#### 🐛 Bug real #2, más grave: CORS bloqueaba PATCH/PUT/DELETE desde el navegador en toda la app
+Al probar el guardado del nuevo perfil **en el navegador** (no solo con `curl`), la petición fallaba con `net::ERR_FAILED`. La consola reveló la causa real: `Access-Control-Allow-Methods` en el preflight solo incluía `GET, HEAD, POST` — `app.enableCors({ origin, credentials })` sin una lista explícita de métodos dejaba que `@fastify/cors` calculara el preflight de forma dinámica, omitiendo `PATCH`. **Esto no era un bug de esta funcionalidad — afectaba a toda la aplicación**: cualquier `PATCH`/`PUT`/`DELETE` hecho desde un navegador (incluida la edición del perfil profesional) fallaba en silencio, mientras que `curl`/Postman funcionaban perfecto porque CORS es una restricción exclusiva del navegador, no del servidor — por eso nunca se había detectado con pruebas por API directa. Corregido fijando `methods: ['GET','HEAD','POST','PUT','PATCH','DELETE']` explícitamente en `main.ts`.
+
+**Verificación realizada:** migración aplicada contra BD vacía; `tsc --noEmit` y build de producción (`next build`/`nest build`) limpios en ambos lados; flujo completo en el navegador real (registro → redirección a `/paciente` → completar teléfono/dirección/medicamentos/doctores → activar "persona sana" y confirmar bloqueo visual e inmediato → guardar → recargar y confirmar persistencia vía `GET /patients/me`); `409` confirmado para cédula duplicada (registro), correo duplicado (registro, comportamiento preexistente) y teléfono duplicado (actualización de perfil), cada uno con una segunda cuenta real; ambos endpoints de foto probados con una subida multipart real — prefijos de storage correctos, URLs firmadas que de verdad descargan los bytes subidos.
+
+**Pendiente (fuera de alcance deliberado de este cambio):** no se construyó una cola de administración para revisar `identityStatus` — queda visible como "En revisión" en el propio perfil del paciente. El formulario de reserva de cita (`medicos/[slug]/agendar`) sigue pidiendo nombre/teléfono en cada reserva sin precargar desde el nuevo perfil del paciente logueado.
+
+**Impacto:** los pacientes ahora tienen una cuenta y un panel propio real, con datos de salud básicos accesibles para ellos mismos y, en emergencia, para quien los atienda; y se cerró un bug de CORS que silenciosamente rompía toda edición de datos desde el navegador en la aplicación completa, no solo en esta funcionalidad nueva.<br>
+**Archivos destacados:** [`backend/prisma/schema.prisma`](backend/prisma/schema.prisma), [`backend/src/main.ts`](backend/src/main.ts), [`backend/src/patients/patients.service.ts`](backend/src/patients/patients.service.ts), [`frontend/src/app/paciente/page.tsx`](frontend/src/app/paciente/page.tsx).
+
+</details>
+
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
 <a id="registro-por-area"></a>
@@ -500,15 +539,15 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | Área | Implementaciones registradas | Actividades relacionadas |
 |---|---|---|
 | 🧱 Fundación técnica | NestJS, Next.js, Prisma, Docker, Caddy, Tailwind | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) |
-| 🔐 Auth y seguridad | JWT, refresh cookie, roles, correo, recuperación, throttling, Argon2id | [ACT-0003](#act-0003) · [ACT-0006](#act-0006) |
+| 🔐 Auth y seguridad | JWT, refresh cookie, roles, correo, recuperación, throttling, Argon2id | [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0012](#act-0012) |
 | 👨‍⚕️ Profesionales | Perfiles, ubicaciones, documentos, verificación legal, redes sociales, badges | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0006](#act-0006) |
 | 🏥 Organizaciones | Farmacias, laboratorios, clínicas y ubicaciones | [ACT-0003](#act-0003) · [ACT-0006](#act-0006) |
 | 💳 Monetización | Planes, Pago Móvil, aprobación y tasa BCV | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0010](#act-0010) · [ACT-0011](#act-0011) |
 | 📅 Agenda y citas | Horarios, disponibilidad, reservas, máquina de estados, anti-doble-reserva | [ACT-0007](#act-0007) |
-| 🔒 Pacientes | Código pseudónimo, listado sin datos personales, revelación auditada | [ACT-0007](#act-0007) |
+| 🔒 Pacientes | Código pseudónimo, listado sin datos personales, revelación auditada, registro propio, salud y foto de identificación | [ACT-0007](#act-0007) · [ACT-0012](#act-0012) |
 | 🛠️ Administración | Médicos, pagos, SEO, cookies, especialidades, planes y verificaciones | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) |
 | 📊 Observabilidad | Auditoría, analítica, notificaciones y salud | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) |
-| 🎨 Experiencia | Directorios, dashboard, componentes UI, motion y legal | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) |
+| 🎨 Experiencia | Directorios, dashboard, componentes UI, motion y legal | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0012](#act-0012) |
 | 🚢 Operación | Variables de entorno, Compose, almacenamiento, correo y proxy | [ACT-0001](#act-0001) · [ACT-0002](#act-0002) · [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0008](#act-0008) · [ACT-0009](#act-0009) · [ACT-0011](#act-0011) |
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
@@ -540,6 +579,8 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | IMP-019 | Despliegue independiente en VPS compartido (puerto alterno, proxy de MinIO, aislamiento de proyecto) | 🟢 Completado | [`docker-compose.prod.yml`](docker-compose.prod.yml), [`Caddyfile`](Caddyfile), [`scripts/deploy.sh`](scripts/deploy.sh) |
 | IMP-020 | Correcciones de build/runtime del primer despliegue real (arranque backend, build frontend, healthchecks, redes propias) | 🟡 En revisión | [`backend/Dockerfile`](backend/Dockerfile), [`frontend/src/lib/server-fetch.ts`](frontend/src/lib/server-fetch.ts), [`docker-compose.prod.yml`](docker-compose.prod.yml) |
 | IMP-021 | Sincronización real de la tasa BCV (certificado intermedio faltante corregido) y etiqueta honesta BCV/manual | 🟢 Completado | [`backend/src/exchange-rate/bcv-scraper.service.ts`](backend/src/exchange-rate/bcv-scraper.service.ts), [`frontend/src/components/BcvRateBadge.tsx`](frontend/src/components/BcvRateBadge.tsx) |
+| IMP-022 | Perfil de paciente autoservicio: registro con cédula única, panel propio, medicamentos, condición, contacto de emergencia y foto de identificación | 🟢 Completado | [`frontend/src/app/paciente/page.tsx`](frontend/src/app/paciente/page.tsx), [`backend/src/patients/patients.service.ts`](backend/src/patients/patients.service.ts) |
+| IMP-023 | Corrección de CORS: `PATCH`/`PUT`/`DELETE` habilitados desde el navegador en toda la API (antes solo `GET/HEAD/POST`) | 🟢 Completado | [`backend/src/main.ts`](backend/src/main.ts) |
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
@@ -556,6 +597,8 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | 🟢 Continua | ~~Nueva comparación de contenedores/hashes de los proyectos existentes tras el arranque completo~~ — hecho, sin diferencias | 🟢 Completado | Ver [ACT-0011](#act-0011) |
 | 🔴 Alta | Configurar dominio/HTTPS real, SMTP real y datos reales de Pago Móvil en producción (BCV ya es automático desde [ACT-0011](#act-0011)) | 🔵 Planificado | Variables documentadas y prueba de cada integración fuera de dev |
 | 🟠 Media | Limpiar la divergencia de line endings (CRLF/LF) entre el checkout de `/opt/guiamedicamonagas` en el VPS y `origin/main` — no afecta a los contenedores en ejecución | 🔵 Planificado | `git status` limpio en el checkout del VPS tras confirmar con el usuario antes de descartar cambios locales |
+| 🟠 Media | Cola de administración para revisar `identityStatus` (foto de identificación del paciente) — hoy queda en `PENDING` visible solo en el propio perfil, sin flujo de aprobar/rechazar | 🔵 Planificado | Endpoint admin + UI, mismo patrón que [`admin/verificaciones`](frontend/src/app/admin/verificaciones/page.tsx) para documentos profesionales |
+| 🟡 Baja | Precargar el formulario de reserva de cita (`medicos/[slug]/agendar`) con nombre/teléfono del `PatientProfile` del paciente logueado, en vez de pedirlos de nuevo en cada reserva | 🔵 Planificado | Ver [ACT-0012](#act-0012) |
 | 🔴 Alta | SEC-03 · Permisos granulares (eliminar el bypass universal de SUPERADMIN) | 🔵 Planificado | Matriz endpoint × rol verificada, sin permiso implícito por rol |
 | 🔴 Alta | SEC-05 · Cifrado de campos sensibles del paciente (cédula, teléfono) y de `ClinicalNote` | 🔴 Bloqueado | Habilita activar historia clínica — ver línea roja en [ACT-0007](#act-0007) |
 | 🟠 Media | SEC-02 (resto) · `tokenVersion` + detección de reuse de refresh tokens | 🔵 Planificado | Sesión revocada por completo ante cambio de rol/contraseña/compromiso |
@@ -622,6 +665,7 @@ Para cada cambio futuro, añadir una entrada en la línea de tiempo y actualizar
 | `2026-09-23 06:30:00 -04:00` | Incorporación de ACT-0009 (correcciones del primer despliegue real en el VPS: arranque del backend, build del frontend, etiqueta de MinIO, healthcheck de `web` corregido, redes/nombres de imagen propios), actualización de línea de tiempo, resumen cuantitativo, registro por área, control de implementaciones y próximas actividades | 🟢 Completado |
 | `2026-09-23 07:20:00 -04:00` | Incorporación de ACT-0010 (certificado intermedio faltante del BCV corregido y verificado en vivo, etiqueta BCV/manual honesta, retiro de INPREMEDICO del contenido visible del sitio), actualización de línea de tiempo, resumen cuantitativo, registro por área y control de implementaciones | 🟢 Completado |
 | `2026-09-23 07:55:00 -04:00` | Incorporación de ACT-0011 (acceso SSH al VPS de producción, reconciliación de fixes reales ya probados en el servidor pero nunca commiteados: tasa BCV con fecha valor, guardado financiero contra tasa Bs 0, cierre del retiro de INPREMEDICO, script de smoke-test), actualización de línea de tiempo, resumen cuantitativo, registro por área, control de implementaciones y próximas actividades | 🟢 Completado |
+| `2026-09-23 10:15:00 -04:00` | Incorporación de ACT-0012 (perfil de paciente autoservicio: registro con cédula/teléfono/correo únicos, medicamentos, condición bloqueable, contacto de emergencia, foto de identificación; corrección de un bug real de CORS que bloqueaba PATCH/PUT/DELETE desde el navegador en toda la app), actualización de línea de tiempo, resumen cuantitativo, registro por área, control de implementaciones y próximas actividades | 🟢 Completado |
 
 ---
 
