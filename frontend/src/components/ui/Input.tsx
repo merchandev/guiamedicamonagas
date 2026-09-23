@@ -8,8 +8,12 @@ interface FieldWrapperProps {
   required?: boolean;
 }
 
+// Mismo alto/relleno que el trigger de <Select> (h-11 px-3) para que un
+// input de texto y un dropdown en la misma fila se vean del mismo tamaño —
+// antes este campo no tenía ni alto ni relleno propios y se veía angosto y
+// aplastado junto a cualquier <Select>.
 const fieldBase =
-  'block w-full rounded-lg border-ink-200 bg-white text-sm text-ink-900 shadow-sm placeholder:text-ink-400 focus:border-pine-600 focus:ring-pine-600 disabled:bg-ink-50 disabled:text-ink-400';
+  'block w-full rounded-lg border-ink-200 bg-white px-3.5 py-2.5 text-sm text-ink-900 shadow-sm placeholder:text-ink-400 focus:border-pine-600 focus:ring-pine-600 disabled:bg-ink-50 disabled:text-ink-400';
 
 type InputProps = InputHTMLAttributes<HTMLInputElement> & FieldWrapperProps;
 
@@ -27,7 +31,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         <input
           ref={ref}
           id={inputId}
-          className={cn(fieldBase, error && 'border-red-400 focus:border-red-500 focus:ring-red-500', className)}
+          className={cn(fieldBase, 'h-11', error && 'border-red-400 focus:border-red-500 focus:ring-red-500', className)}
           {...props}
         />
         {hint && !error && <p className="field-hint">{hint}</p>}

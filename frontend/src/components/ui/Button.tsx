@@ -20,9 +20,11 @@ const variants: Record<Variant, string> = {
   danger: 'bg-red-600 text-white hover:bg-red-700 disabled:bg-red-200',
 };
 
+// md coincide con la altura de Input/Select (h-11) para que un botón junto a
+// un campo en la misma fila (ej. "Agregar" al lado de un <Select>) se alinee.
 const sizes: Record<Size, string> = {
   sm: 'h-8 px-3 text-xs',
-  md: 'h-10 px-4 text-sm',
+  md: 'h-11 px-4 text-sm',
   lg: 'h-12 px-6 text-base',
 };
 
