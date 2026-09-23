@@ -27,7 +27,7 @@ const TABS: { tier: DemoTier; label: string }[] = [
 ];
 
 const FEATURE_ROWS: { label: string; min: DoctorTier }[] = [
-  { label: 'Nombre, especialidad, N° MPPS / Colegio / INPREMEDICO', min: 'FREE' },
+  { label: 'Nombre, especialidad, N° MPPS / Colegio de Médicos', min: 'FREE' },
   { label: 'Foto de perfil y biografía', min: 'PROFESSIONAL' },
   { label: 'Botón directo de WhatsApp', min: 'PROFESSIONAL' },
   { label: 'Estadísticas básicas de tu perfil', min: 'PROFESSIONAL' },
@@ -97,7 +97,7 @@ function DoctorDemo({ tier }: { tier: DoctorTier }) {
 
       <div className="mb-6 rounded-xl border border-pine-100 bg-pine-50/60 p-4">
         <p className="mb-3 text-xs font-bold uppercase tracking-wide text-pine-900">Transparencia médica y legal</p>
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           <div className="rounded-lg bg-white p-3 shadow-sm">
             <p className="text-[11px] font-semibold uppercase text-ink-500">N° MPPS</p>
             <p className="text-sm font-bold text-ink-900">45.231</p>
@@ -105,10 +105,6 @@ function DoctorDemo({ tier }: { tier: DoctorTier }) {
           <div className="rounded-lg bg-white p-3 shadow-sm">
             <p className="text-[11px] font-semibold uppercase text-ink-500">Colegio Monagas</p>
             <p className="text-sm font-bold text-ink-900">1.204</p>
-          </div>
-          <div className="rounded-lg bg-white p-3 shadow-sm">
-            <p className="text-[11px] font-semibold uppercase text-ink-500">INPREMEDICO</p>
-            <p className="text-sm font-bold text-ink-900">3.887</p>
           </div>
         </div>
         <p className="mt-2 text-[11px] text-pine-700">

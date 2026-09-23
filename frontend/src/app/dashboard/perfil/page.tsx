@@ -150,10 +150,9 @@ export default function EditProfilePage() {
             Estos números se muestran públicamente en tu perfil verificado, según las normativas del MPPS y el
             Colegio de Médicos de Monagas.
           </p>
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2">
             <Input label="N° Registro MPPS (SACS)" {...register('mppsNumber')} />
             <Input label="N° Colegio de Médicos Monagas" {...register('colmedMonagasNumber')} />
-            <Input label="N° INPREMEDICO" {...register('inpremedicoNumber')} />
           </div>
         </section>
 

@@ -19,7 +19,7 @@ export default function PrivacyPage() {
             <li>Datos de perfil profesional: nombre, biografía, especialidades, teléfono, WhatsApp, dirección de consulta.</li>
             <li>
               Documentos de verificación: título médico, registro MPPS, matrícula del Colegio de Médicos de Monagas,
-              INPREMEDICO, solvencia deontológica, cédula y RIF. Estos documentos se almacenan en un espacio privado
+              solvencia deontológica, cédula y RIF. Estos documentos se almacenan en un espacio privado
               y solo son accesibles por el equipo administrativo encargado de la verificación.
             </li>
             <li>Comprobantes de Pago Móvil reportados para activar la suscripción.</li>

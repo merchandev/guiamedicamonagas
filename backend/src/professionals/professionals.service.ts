@@ -28,8 +28,8 @@ const PUBLIC_LIST_SELECT = {
 
 /**
  * Oculta los campos "de lujo" del perfil según el plan activo. El aval legal
- * (MPPS/Colmed/INPREMEDICO) NUNCA se oculta: la verificación es obligatoria
- * para publicarse, no un beneficio de pago.
+ * (MPPS/Colmed) NUNCA se oculta: la verificación es obligatoria para
+ * publicarse, no un beneficio de pago.
  */
 function gateByTier<
   T extends {

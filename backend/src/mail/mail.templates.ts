@@ -103,7 +103,7 @@ export function profileVerifiedTemplate(rawName: string, profileUrl: string) {
     '¡Tu perfil fue verificado!',
     `<h1 style="font-size:20px;margin:0 0 12px;">Felicidades, ${name} 🎉</h1>
      <p style="font-size:14px;line-height:1.6;color:#3a3a3a;">
-       Tu perfil profesional fue verificado y ya está visible públicamente en ${BRAND_NAME}, junto con tu N° MPPS, Colegio de Médicos de Monagas e INPREMEDICO.
+       Tu perfil profesional fue verificado y ya está visible públicamente en ${BRAND_NAME}, junto con tu N° MPPS y Colegio de Médicos de Monagas.
      </p>
      ${button(profileUrl, 'Ver mi perfil público')}`,
   );

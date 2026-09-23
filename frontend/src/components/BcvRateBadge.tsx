@@ -58,7 +58,7 @@ export function BcvRateBadge({ className, showAge = true }: { className?: string
       title={`Tasa ${rate.source === 'BCV' ? 'oficial del BCV' : 'manual'}, actualizada ${timeAgo(rate.updatedAt)}`}
     >
       <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-current opacity-70" />
-      USD BCV <span className="font-semibold">Bs {formatBs(rate.usdToBs)}</span>
+      USD {rate.source === 'BCV' ? 'BCV' : '(manual)'} <span className="font-semibold">Bs {formatBs(rate.usdToBs)}</span>
       {showAge && <span className="hidden opacity-70 sm:inline">· {timeAgo(rate.updatedAt)}</span>}
     </span>
   );

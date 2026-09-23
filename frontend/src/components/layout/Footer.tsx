@@ -16,7 +16,7 @@ export function Footer() {
           </div>
           <p className="mt-3 max-w-sm text-sm text-ink-600">
             Directorio médico verificado del estado Monagas. Cada profesional pasa por un proceso de validación de
-            sus avales legales y gremiales (MPPS, Colegio de Médicos de Monagas e INPREMEDICO) antes de aparecer
+            sus avales legales y gremiales (MPPS y Colegio de Médicos de Monagas) antes de aparecer
             públicamente.
           </p>
         </div>

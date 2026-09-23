@@ -36,7 +36,7 @@ const VERIFICATION_STEPS = [
   },
   {
     title: 'Subes tus documentos',
-    body: 'Título, registro MPPS (SACS), Artículo 8, matrícula del Colegio de Monagas, INPREMEDICO y solvencia deontológica.',
+    body: 'Título, registro MPPS (SACS), Artículo 8, matrícula del Colegio de Monagas y solvencia deontológica.',
     icon: FileCheckIcon,
   },
   {
@@ -46,7 +46,7 @@ const VERIFICATION_STEPS = [
   },
   {
     title: 'Perfil público',
-    body: 'Tu perfil se activa mostrando siempre tu N° MPPS, Colegio de Médicos de Monagas e INPREMEDICO.',
+    body: 'Tu perfil se activa mostrando siempre tu N° MPPS y Colegio de Médicos de Monagas.',
     icon: BadgeCheckIcon,
   },
 ];
@@ -55,7 +55,7 @@ const FAQ_ITEMS = [
   {
     question: '¿Cómo verifican a los médicos?',
     answer:
-      'Cada médico debe entregar su título universitario, registro ante el MPPS (SACS), constancia del Artículo 8, matrícula del Colegio de Médicos de Monagas, registro INPREMEDICO y solvencia deontológica vigente. Un administrador revisa cada documento manualmente antes de publicar el perfil.',
+      'Cada médico debe entregar su título universitario, registro ante el MPPS (SACS), constancia del Artículo 8, matrícula del Colegio de Médicos de Monagas y solvencia deontológica vigente. Un administrador revisa cada documento manualmente antes de publicar el perfil.',
   },
   {
     question: '¿Es gratis buscar un médico en el directorio?',
@@ -64,7 +64,7 @@ const FAQ_ITEMS = [
   {
     question: '¿Cómo confío en que el médico está habilitado para ejercer?',
     answer:
-      'Cada perfil verificado muestra públicamente su N° MPPS, N° del Colegio de Médicos de Monagas y N° INPREMEDICO — la práctica estándar de transparencia médica en Venezuela. Puedes verificar estos números directamente con el Colegio de Médicos del Estado Monagas.',
+      'Cada perfil verificado muestra públicamente su N° MPPS y su N° del Colegio de Médicos de Monagas — la práctica estándar de transparencia médica en Venezuela. Puedes verificar estos números directamente con el Colegio de Médicos del Estado Monagas.',
   },
   {
     question: '¿Cómo se registra un médico en la guía?',
@@ -106,8 +106,8 @@ export default async function HomePage() {
               Encuentra un médico de confianza en Monagas
             </h1>
             <p className="mt-5 max-w-lg text-lg text-ink-600">
-              Cada profesional en esta guía fue verificado contra sus avales del MPPS, el Colegio de Médicos de
-              Monagas y el INPREMEDICO antes de aparecer aquí.
+              Cada profesional en esta guía fue verificado contra sus avales del MPPS y el Colegio de Médicos de
+              Monagas antes de aparecer aquí.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link
@@ -281,7 +281,7 @@ export default async function HomePage() {
               <h2 className="text-2xl text-white">¿Eres médico en Monagas?</h2>
               <p className="mt-3 max-w-md text-pine-100">
                 Aparece en el directorio con tu perfil verificado, recibe pacientes por WhatsApp y muestra tu N°
-                MPPS, Colegio de Médicos de Monagas e INPREMEDICO con total transparencia.
+                MPPS y Colegio de Médicos de Monagas con total transparencia.
               </p>
               <Link
                 href="/registro"

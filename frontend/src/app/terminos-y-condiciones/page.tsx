@@ -100,10 +100,6 @@ export default function TermsPage() {
               perfil del médico.
             </li>
             <li>
-              <strong>N° de INPREMEDICO</strong>, registro ante la Federación Médica Venezolana (FMV), indispensable
-              para el ejercicio legal y la prescripción de récipes.
-            </li>
-            <li>
               <strong>Solvencia Deontológica vigente</strong>, emitida por el Colegio de Médicos de Monagas. Se
               solicita de forma anual para garantizar que el médico está activo y no ha sido suspendido por el
               Tribunal Disciplinario del colegio.
@@ -131,9 +127,9 @@ export default function TermsPage() {
           </ul>
 
           <p className="mt-4">
-            El perfil público de cada médico muestra de forma obligatoria y visible el <strong>N° MPPS</strong>, el{' '}
-            <strong>N° del Colegio de Médicos de Monagas</strong> y el <strong>N° INPREMEDICO</strong> como práctica
-            estándar de transparencia médica en Venezuela.
+            El perfil público de cada médico muestra de forma obligatoria y visible el <strong>N° MPPS</strong> y el{' '}
+            <strong>N° del Colegio de Médicos de Monagas</strong> como práctica estándar de transparencia médica en
+            Venezuela.
           </p>
         </section>
 

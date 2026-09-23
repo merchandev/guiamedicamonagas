@@ -17,11 +17,11 @@ const SECTIONS = [
   },
   {
     title: 'Responsabilidad profesional y legal',
-    body: 'El médico debe usar datos reales y vigentes, cumplir el Artículo 8 de la Ley de Ejercicio de la Medicina y estar debidamente inscrito en el MPPS (SACS), el Colegio de Médicos de Monagas y el INPREMEDICO. La cuenta es personal e intransferible.',
+    body: 'El médico debe usar datos reales y vigentes, cumplir el Artículo 8 de la Ley de Ejercicio de la Medicina y estar debidamente inscrito en el MPPS (SACS) y el Colegio de Médicos de Monagas. La cuenta es personal e intransferible.',
   },
   {
     title: 'Verificación obligatoria de documentos',
-    body: 'Antes de publicarse, cada perfil se revisa manualmente contra los documentos exigidos por ley. La plataforma muestra públicamente el N° MPPS, N° Colegio de Médicos de Monagas y N° INPREMEDICO para garantizar transparencia.',
+    body: 'Antes de publicarse, cada perfil se revisa manualmente contra los documentos exigidos por ley. La plataforma muestra públicamente el N° MPPS y el N° Colegio de Médicos de Monagas para garantizar transparencia.',
   },
   {
     title: 'Pagos por Pago Móvil',
