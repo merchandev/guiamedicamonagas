@@ -574,6 +574,8 @@ Se igualó `fieldBase` al mismo `px-3.5 py-2.5` y se le dio a `<Input>` (no a `<
 **Impacto:** todos los campos de texto de la aplicación —no solo el formulario señalado— ahora se ven consistentes entre sí y con los `<Select>` que los acompañan, con un solo cambio en dos componentes compartidos.<br>
 **Archivos destacados:** [`frontend/src/components/ui/Input.tsx`](frontend/src/components/ui/Input.tsx), [`frontend/src/components/ui/Button.tsx`](frontend/src/components/ui/Button.tsx).
 
+**Desplegado en producción el mismo día, vía SSH, con aprobación explícita del usuario:** solo frontend, sin migración ni cambios de base de datos — se reconstruyó únicamente la imagen `web` y se recreó solo ese contenedor. Verificado con `curl` contra `http://72.61.77.167:8088/` (home, `/admin/organizaciones` y `/registro`, los tres `200`) y confirmando la clase `h-11` presente en el HTML servido de `/registro`. Los tres proyectos existentes conservan sus tiempos de actividad previos.
+
 </details>
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
