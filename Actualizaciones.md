@@ -3,7 +3,7 @@
 > Bitácora central de cambios, implementaciones, decisiones técnicas y tareas de evolución del sistema.
 >
 > **Repositorio:** [`merchandev/guiamedicamonagas`](https://github.com/merchandev/guiamedicamonagas) · **Rama:** `main`<br>
-> **Última actualización de esta bitácora:** `2026-09-23 05:43:45 -04:00` · **Estado:** 🟢 Registro activo
+> **Última actualización de esta bitácora:** `2026-09-23 06:30:00 -04:00` · **Estado:** 🟢 Registro activo
 
 ![Estado](https://img.shields.io/badge/estado-registro%20activo-16a34a?style=flat-square)
 ![Rama](https://img.shields.io/badge/rama-main-2563eb?style=flat-square)
@@ -111,8 +111,9 @@ flowchart LR
     F[🛡️ 2026-09-22\n18:28:17\nACT-0006 · Badges, redes sociales\ny endurecimiento de infraestructura]
     G[📅 2026-09-22\n20:07:40\nACT-0007 · Agenda, Citas\ny privacidad del paciente]
     H[🚀 2026-09-23\n05:43:35\nACT-0008 · Despliegue independiente\nen VPS compartido]
+    I[🩹 2026-09-23\n06:30:00\nACT-0009 · Correcciones del\nprimer despliegue real]
 
-    A --> B --> C --> D --> E --> F --> G --> H
+    A --> B --> C --> D --> E --> F --> G --> H --> I
 ```
 
 ### Resumen cuantitativo
@@ -120,10 +121,10 @@ flowchart LR
 | Indicador | Resultado |
 |---|---:|
 | Actividades históricas importadas desde Git | `3` |
-| Actividades documentales añadidas con esta bitácora | `5` |
-| Actividades registradas en total | `8` |
+| Actividades documentales añadidas con esta bitácora | `6` |
+| Actividades registradas en total | `9` |
 | Rama de referencia | `main` |
-| Commit base consultado | [`4dbd800`](https://github.com/merchandev/guiamedicamonagas/commit/4dbd800f768407a4746d46bafafc340bceca78d9) |
+| Commit base consultado | [`b9851e6`](https://github.com/merchandev/guiamedicamonagas/commit/b9851e6) |
 | Zona horaria de control | `America/Caracas` (`-04:00`) |
 
 <a id="act-0001"></a>
@@ -379,6 +380,47 @@ Las URLs firmadas se generaban contra `http://minio:9000`, inalcanzable desde el
 
 </details>
 
+<a id="act-0009"></a>
+
+### 🩹 ACT-0009 · Correcciones del primer despliegue real en el VPS
+
+<details>
+<summary><strong>2026-09-23 06:30:00 -04:00</strong> · <code>b9851e6</code> · 🟡 En revisión</summary>
+
+**Responsable:** `Claude Sonnet 5` (reconciliando correcciones aplicadas en el servidor por el usuario)  · **Tipo:** `fix | ops`  · **Commit:** [`b9851e6`](https://github.com/merchandev/guiamedicamonagas/commit/b9851e6)
+
+El usuario ejecutó el primer despliegue real en el VPS (`/docker/guiamedicamonagas`, proyecto `gmm-independent`, puerto `8088`) y reportó un informe detallado paso a paso. Varios fallos solo aparecen al construir y correr los contenedores de verdad, no se veían en revisión de código. Las correcciones se habían aplicado directamente en el servidor (fuera de Git); este commit las reconcilia con el repositorio para que queden versionadas.
+
+#### 🐛 Arranque del backend
+`nest build` genera `dist/src/main.js`, no `dist/main` — el `CMD` de `backend/Dockerfile` y `start:prod` en `package.json` nunca coincidían con la salida real del compilador. El seed en producción (`node dist/prisma/seed.js`) además necesitaba `tsconfig.json` y `password.util.ts` copiados a la imagen final, que antes no estaban.
+
+#### 📄 Build del frontend
+El build de Next.js fallaba al prerenderizar: `NEXT_PUBLIC_API_URL` puede ser una ruta relativa (`/api/v1`) válida para el navegador pero no para un `fetch()` del propio servidor durante SSR/build. `server-fetch.ts` ahora solo usa la URL pública como respaldo si es absoluta; si no, cae a `API_INTERNAL_URL` o a un valor local por defecto. También se limitó el build a 1 CPU (`NEXT_BUILD_CPUS`, vía `next.config.js`) y se corrigieron permisos de `.next/cache` para el usuario `node`, y se agregaron `.dockerignore` en backend y frontend para no arrastrar `node_modules`/`dist`/`.next` locales al contexto de build.
+
+#### 🪣 Etiqueta de imagen de MinIO
+La etiqueta `RELEASE.2025-07-23T15-29-46Z` no existe en el registro — se fijó `RELEASE.2025-09-07T16-13-09Z`.
+
+#### 🩺 Healthcheck del frontend usando una ruta que no existe
+`docker-compose.prod.yml` agregó healthchecks a `api` y `web` (con `depends_on: condition: service_healthy` para que Caddy no arranque contra un backend no listo), pero el de `web` probaba `GET /login`, que no existe en esta app (`404`) — la ruta real es `/iniciar-sesion`. Con el healthcheck fallando, Docker marcaba `web` como `unhealthy` y Caddy nunca llegaba a arrancar (esperaba `web` saludable). **Corregido en este commit** antes de reconciliar los demás cambios, verificando primero que `frontend/src/app/iniciar-sesion/page.tsx` existe y que ninguna ruta `/login` existe en el árbol de `frontend/src/app`.
+
+#### 🐳 Aislamiento adicional
+- Nueva red `gmm_storage` (interna) dedicada a Caddy↔MinIO, separada de `gmm_dmz`.
+- Subredes propias para las tres redes del proyecto (`172.31.77.0/24`, `.78.0/24`, `.79.0/24`) para no chocar con las redes Docker de otros proyectos del mismo VPS.
+- Imágenes renombradas a `gmm-independent-api`/`gmm-independent-web` (antes `gmm_api`/`gmm_web`) para no colisionar por nombre con imágenes de otros proyectos.
+- Se quitó `container_name` fijo de cada servicio — Docker exige nombres de contenedor únicos en todo el host, así que un nombre genérico (`gmm_postgres`, etc.) podía chocar con algo de otro proyecto; ahora Compose genera nombres con el prefijo del proyecto (`gmm-independent-...`).
+- Límite de logs por contenedor (`json-file`, 10 MB × 3 archivos) para que ningún servicio llene el disco del VPS compartido.
+- Mailpit propio (`mailpit:1025`, sin salida a Internet) para capturar correo de prueba mientras no haya SMTP real, con su interfaz web solo en loopback (`127.0.0.1:18025`, accesible por túnel SSH).
+- `scripts/deploy.sh`/`scripts/minio-init.sh` reescritos: resuelven su propio directorio (invocables desde cualquier ruta), esperan disponibilidad real con plazos en vez de bucles sin límite, corren `migrate deploy`/seed vía `compose run` antes de publicar `api`/`web`/`caddy`, y el init de MinIO revisa el estado real (usuario, política asignada) en vez de tragarse cualquier error como "ya existía".
+
+**Verificación realizada:** `tsc --noEmit` limpio en backend y frontend; `docker compose config --quiet` válido contra variables de entorno de prueba; `bash -n` limpio en ambos scripts; confirmado por el árbol de rutas de Next.js que `/iniciar-sesion` existe y `/login` no.
+
+**Pendiente (fuera del alcance de este repo, según el informe del usuario):** reanudar el despliegue en el VPS con el healthcheck corregido, validar el arranque de Caddy y el acceso público en `http://72.61.77.167:8088`, y completar las validaciones de la lista del informe (login/refresh/logout, subida y descarga firmada de archivos, correo de prueba, y una nueva comparación de los contenedores/hashes de `diario-mercantil`/`saas--mt`/`traefik-ivzc` tras el arranque completo). El informe del usuario también señaló que un directorio de despliegue en el VPS (`/docker/guiamedicamonagas`) desapareció sin causa identificada durante un intento anterior — no hay evidencia suficiente para atribuirlo a nada concreto; queda como aviso a vigilar, no como algo resuelto aquí.
+
+**Impacto:** el stack ahora arranca con el comando y la ruta de salida reales que produce el build (no los asumidos), el build del frontend ya no falla por una URL relativa en SSR, y el aislamiento de red/nombre de imagen/logs reduce el riesgo de colisión con los otros proyectos del mismo VPS más allá de solo el puerto.<br>
+**Archivos destacados:** [`backend/Dockerfile`](backend/Dockerfile), [`frontend/src/lib/server-fetch.ts`](frontend/src/lib/server-fetch.ts), [`docker-compose.prod.yml`](docker-compose.prod.yml), [`scripts/deploy.sh`](scripts/deploy.sh), [`scripts/minio-init.sh`](scripts/minio-init.sh), [`docs/DEPLOYMENT-INDEPENDENT.md`](docs/DEPLOYMENT-INDEPENDENT.md).
+
+</details>
+
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
 <a id="registro-por-area"></a>
@@ -399,7 +441,7 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | 🛠️ Administración | Médicos, pagos, SEO, cookies, especialidades, planes y verificaciones | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) |
 | 📊 Observabilidad | Auditoría, analítica, notificaciones y salud | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) |
 | 🎨 Experiencia | Directorios, dashboard, componentes UI, motion y legal | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) |
-| 🚢 Operación | Variables de entorno, Compose, almacenamiento, correo y proxy | [ACT-0001](#act-0001) · [ACT-0002](#act-0002) · [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0008](#act-0008) |
+| 🚢 Operación | Variables de entorno, Compose, almacenamiento, correo y proxy | [ACT-0001](#act-0001) · [ACT-0002](#act-0002) · [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0008](#act-0008) · [ACT-0009](#act-0009) |
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
@@ -428,6 +470,7 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | IMP-017 | Privacidad de pacientes: código pseudónimo y revelación auditada | 🟢 Completado | [`backend/src/patients`](backend/src/patients), [`frontend/src/app/dashboard/pacientes`](frontend/src/app/dashboard/pacientes) |
 | IMP-018 | Cadena de migraciones de Prisma corregida (verificada contra BD vacía real) | 🟢 Completado | [`backend/prisma/migrations/20260923093427_init`](backend/prisma/migrations/20260923093427_init) |
 | IMP-019 | Despliegue independiente en VPS compartido (puerto alterno, proxy de MinIO, aislamiento de proyecto) | 🟢 Completado | [`docker-compose.prod.yml`](docker-compose.prod.yml), [`Caddyfile`](Caddyfile), [`scripts/deploy.sh`](scripts/deploy.sh) |
+| IMP-020 | Correcciones de build/runtime del primer despliegue real (arranque backend, build frontend, healthchecks, redes propias) | 🟡 En revisión | [`backend/Dockerfile`](backend/Dockerfile), [`frontend/src/lib/server-fetch.ts`](frontend/src/lib/server-fetch.ts), [`docker-compose.prod.yml`](docker-compose.prod.yml) |
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
@@ -439,7 +482,9 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 
 | Prioridad | Actividad | Estado | Criterio de cierre |
 |---|---|---|---|
-| 🔴 Alta | Ejecutar el despliegue real en el VPS (`gmm-independent`, puerto 8088) y confirmar que diario-mercantil/saas--mt/traefik-ivzc quedan intactos | 🔵 Planificado | `docker ps` antes/después idéntico para los proyectos existentes; sitio nuevo responde en `:8088` |
+| 🔴 Alta | Reanudar el despliegue en el VPS con el healthcheck de `web` corregido (`/iniciar-sesion`) y confirmar que Caddy arranca | 🔵 Planificado | `docker compose -p gmm-independent ps` muestra `api`/`web`/`caddy` saludables |
+| 🔴 Alta | Validar de extremo a extremo tras el arranque: acceso externo a `:8088`, login/refresh/logout, subida y descarga firmada de MinIO, correo de prueba en Mailpit | 🔵 Planificado | Checklist §7 del informe del usuario (2026-09-23) completo |
+| 🔴 Alta | Nueva comparación de contenedores/hashes de `diario-mercantil`/`saas--mt`/`traefik-ivzc` tras el arranque completo (la primera comparación, hecha a mitad del despliegue, ya dio `Changes: []`) | 🔵 Planificado | `docker ps` antes/después idéntico; hashes de configuración sin cambios |
 | 🔴 Alta | Configurar credenciales reales de correo, S3/MinIO, WhatsApp y BCV en producción | 🔵 Planificado | Variables documentadas y prueba de cada integración fuera de dev |
 | 🔴 Alta | SEC-03 · Permisos granulares (eliminar el bypass universal de SUPERADMIN) | 🔵 Planificado | Matriz endpoint × rol verificada, sin permiso implícito por rol |
 | 🔴 Alta | SEC-05 · Cifrado de campos sensibles del paciente (cédula, teléfono) y de `ClinicalNote` | 🔴 Bloqueado | Habilita activar historia clínica — ver línea roja en [ACT-0007](#act-0007) |
@@ -504,6 +549,7 @@ Para cada cambio futuro, añadir una entrada en la línea de tiempo y actualizar
 | `2026-09-22 11:05:51 -04:00` | Creación de `README.md` con guía funcional, técnica, operativa y de contribución | 🟢 Completado |
 | `2026-09-22 20:07:57 -04:00` | Incorporación de ACT-0006 y ACT-0007 (badges/redes sociales/endurecimiento de infraestructura y Agenda/Citas/Pacientes), actualización de línea de tiempo, resumen cuantitativo, registro por área, control de implementaciones y próximas actividades | 🟢 Completado |
 | `2026-09-23 05:43:45 -04:00` | Incorporación de ACT-0008 (despliegue independiente en VPS compartido: migraciones, cookies, proxy de MinIO, aislamiento de Compose), actualización de línea de tiempo, resumen cuantitativo, registro por área, control de implementaciones y próximas actividades | 🟢 Completado |
+| `2026-09-23 06:30:00 -04:00` | Incorporación de ACT-0009 (correcciones del primer despliegue real en el VPS: arranque del backend, build del frontend, etiqueta de MinIO, healthcheck de `web` corregido, redes/nombres de imagen propios), actualización de línea de tiempo, resumen cuantitativo, registro por área, control de implementaciones y próximas actividades | 🟢 Completado |
 
 ---
 
