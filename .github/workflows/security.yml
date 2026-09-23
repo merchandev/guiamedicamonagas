@@ -65,14 +65,14 @@ jobs:
       - name: Construir imagen de la API
         run: docker build -t gmm-api:ci backend
       - name: Escaneo de la imagen (CRITICAL bloquea)
-        uses: aquasecurity/trivy-action@0.33.1
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: gmm-api:ci
           severity: CRITICAL
           ignore-unfixed: true
           exit-code: '1'
       - name: Escaneo de Dockerfiles y compose (informe)
-        uses: aquasecurity/trivy-action@0.33.1
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: config
           scan-ref: .
