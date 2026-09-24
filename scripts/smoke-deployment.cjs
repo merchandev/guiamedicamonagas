@@ -1,6 +1,8 @@
 // Run inside this project's API container after deployment, with the two
 // SEED_SUPERADMIN_* variables supplied by name. Never prints credentials.
 // Creates one temporary professional and removes only that account and its photo.
+// Session checks (password change, tokenVersion) run on that temporary account
+// only: the real administrator's sessions are never revoked.
 require('reflect-metadata');
 const assert = require('node:assert/strict');
 const { randomUUID } = require('node:crypto');
@@ -8,6 +10,7 @@ const { PrismaClient } = require('@prisma/client');
 const { PrismaPg } = require('@prisma/adapter-pg');
 const { ConfigService } = require('@nestjs/config');
 const { StorageService } = require('/app/dist/src/storage/storage.service');
+const { scanWithClamav } = require('/app/dist/src/uploads/clamav.scanner');
 
 assert.equal(new URL(process.env.DATABASE_URL).pathname, '/gmm_independent');
 assert.equal(process.env.SMTP_HOST, 'mailpit', 'Registration test requires this project\'s mail catcher');
@@ -17,6 +20,7 @@ const email = `deployment-${randomUUID()}@example.invalid`;
 const prisma = new PrismaClient({ adapter: new PrismaPg(process.env.DATABASE_URL) });
 const storage = new StorageService(new ConfigService({ ...process.env, S3_FORCE_PATH_STYLE: true }));
 const results = [];
+const initialPassword = `Gmm9-${randomUUID()}`;
 let mailId;
 
 async function request(path, { method = 'GET', body, token, cookie } = {}) {
@@ -72,7 +76,8 @@ async function main() {
   console.log('PASS Logged-out refresh rejected');
 
   const registered = ok(await request('/api/v1/auth/register', {
-    method: 'POST', body: { email, password: `Gmm9-${randomUUID()}`, role: 'PROFESSIONAL', firstName: 'Prueba', lastName: 'Despliegue' },
+    method: 'POST',
+    body: { email, password: initialPassword, role: 'PROFESSIONAL', firstName: 'Prueba', lastName: 'Despliegue', acceptLegal: true },
   }), 'Temporary professional registration');
   const token = registered.accessToken;
   assert.ok(token);
@@ -96,13 +101,35 @@ async function main() {
   assert.equal(new URL(photo.photoUrl).origin, new URL(base).origin);
   const download = await fetch(photo.photoUrl, { signal: AbortSignal.timeout(10000) });
   assert.equal(download.status, 200, 'Signed photo download');
-  assert.deepEqual(Buffer.from(await download.arrayBuffer()), bytes);
-  console.log('PASS Signed photo download and content');
+  // Las imágenes se re-codifican al subirse (sin metadatos): se comprueba que
+  // siga siendo un PNG, no que los bytes sean idénticos.
+  assert.equal(Buffer.from(await download.arrayBuffer()).subarray(0, 4).toString('hex'), '89504e47');
+  console.log('PASS Signed photo download (re-encoded PNG)');
   const unsigned = new URL(photo.photoUrl);
   unsigned.search = '';
   const denied = await fetch(unsigned, { signal: AbortSignal.timeout(10000) });
   assert.equal(denied.status, 403, 'Anonymous object access must be denied');
   console.log('PASS Anonymous photo access denied');
+
+  const changed = ok(await request('/api/v1/auth/change-password', {
+    method: 'POST', token, body: { currentPassword: initialPassword, newPassword: `Gmm9-${randomUUID()}` },
+  }), 'Password change renews this session');
+  const stale = await request('/api/v1/auth/me', { token });
+  assert.equal(stale.response.status, 401, 'Access token issued before the password change must be rejected');
+  console.log('PASS Previous access token rejected (tokenVersion)');
+  ok(await request('/api/v1/auth/me', { token: changed.accessToken }), 'Renewed access token accepted');
+
+  if (process.env.CLAMAV_HOST) {
+    const port = Number(process.env.CLAMAV_PORT || 3310);
+    // Archivo de prueba estándar EICAR (68 bytes, inofensivo): todo antivirus debe marcarlo.
+    const eicar = Buffer.from('X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*');
+    assert.equal(eicar.length, 68);
+    const verdict = await scanWithClamav(process.env.CLAMAV_HOST, port, eicar);
+    assert.ok(verdict && /eicar/i.test(verdict), `ClamAV must flag the EICAR test file (got ${verdict})`);
+    console.log(`PASS ClamAV detects EICAR (${verdict})`);
+    assert.equal(await scanWithClamav(process.env.CLAMAV_HOST, port, bytes), null, 'Clean file must pass ClamAV');
+    console.log('PASS ClamAV passes a clean file');
+  }
 }
 
 main().catch(error => {
