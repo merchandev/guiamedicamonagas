@@ -11,7 +11,6 @@
 # docker-compose.prod.yml (sin tocar la configuración de Traefik). El acceso
 # directo por IP a :8088 sigue funcionando. Por eso aquí no hay bloque TLS.
 # =============================================================================
-
 {
 	servers {
 		# Traefik usa la red del host y llega a este contenedor desde la puerta

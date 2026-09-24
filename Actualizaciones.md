@@ -3,7 +3,7 @@
 > Bitácora central de cambios, implementaciones, decisiones técnicas y tareas de evolución del sistema.
 >
 > **Repositorio:** [`merchandev/guiamedicamonagas`](https://github.com/merchandev/guiamedicamonagas) · **Rama:** `main`<br>
-> **Última actualización de esta bitácora:** `2026-09-24 10:40:26 -04:00` · **Estado:** 🟢 Registro activo
+> **Última actualización de esta bitácora:** `2026-09-24 06:53:13 -04:00` · **Estado:** 🟢 Registro activo
 
 ![Estado](https://img.shields.io/badge/estado-registro%20activo-16a34a?style=flat-square)
 ![Rama](https://img.shields.io/badge/rama-main-2563eb?style=flat-square)
@@ -118,9 +118,9 @@ flowchart LR
     M[📐 2026-09-23\n10:35:00\nACT-0013 · Ancho unificado\n80/10/10 en toda la web]
     N[🧾 2026-09-23\n10:45:00\nACT-0014 · Campos de formulario\nangostos corregidos]
     O[🔏 2026-09-23\n18:00:00\nACT-0015 · Auditoría: salud cifrada,\nconsentimiento y organizaciones]
-    P[🧰 2026-09-24\n01:45:00\nACT-0016 · Sesiones, identidad,\nimágenes seguras y antivirus]
-    Q[🩺 2026-09-24\n01:48:30\nACT-0017 · HEALTHCHECK en los\nDockerfiles (alertas de Trivy)]
-    R[🌐 2026-09-24\n10:40:26\nACT-0018 · Dominio propio vía\nTraefik del VPS (espera DNS)]
+    P[🧰 2026-09-23\n21:45:00\nACT-0016 · Sesiones, identidad,\nimágenes seguras y antivirus]
+    Q[🩺 2026-09-23\n21:48:30\nACT-0017 · HEALTHCHECK en los\nDockerfiles (alertas de Trivy)]
+    R[🌐 2026-09-24\n06:40:26\nACT-0018 · Dominio propio vía\nTraefik del VPS (espera DNS)]
 
     A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L --> M --> N --> O --> P --> Q --> R
 ```
@@ -628,7 +628,7 @@ El usuario compartió una auditoría estática externa del repositorio (arquitec
 ### 🧰 ACT-0016 · Configuraciones pendientes: sesiones con `tokenVersion`, verificación de identidad, imágenes endurecidas, CI y antivirus
 
 <details>
-<summary><strong>2026-09-24 01:45:00 -04:00</strong> · <code>c30c03d</code> · <code>7944698</code> · <code>db6c7aa</code> · 🟢 Completado</summary>
+<summary><strong>2026-09-23 21:45:00 -04:00</strong> · <code>c30c03d</code> · <code>7944698</code> · <code>db6c7aa</code> · 🟢 Completado</summary>
 
 **Responsable:** `Claude Opus 5.5` · **Tipo:** `security | feature | ops | ci` · **Commits:** [`c30c03d`](https://github.com/merchandev/guiamedicamonagas/commit/c30c03d) · [`7944698`](https://github.com/merchandev/guiamedicamonagas/commit/7944698) · [`db6c7aa`](https://github.com/merchandev/guiamedicamonagas/commit/db6c7aa)
 
@@ -649,7 +649,7 @@ El usuario pidió continuar con el resto de las configuraciones pendientes, actu
 **Verificación:** 31 unitarias; e2e **56/56** contra API + PostgreSQL reales (14 nuevas: cola de identidad sin cédulas, apertura auditada, rechazo sin motivo → 400, el rechazo borra la foto, el paciente ve el motivo, token anterior → 401 tras cambiar la contraseña y tras cerrar todas las sesiones); `next build` limpio; en el navegador se probaron la cola de identidad (verificar un caso: estado, auditoría y notificación), la página de seguridad (cambio de contraseña sin perder la sesión, cerrar todas → vuelve a «Iniciar sesión») y la reserva precargada.
 
 **Impacto:** una contraseña comprometida o una sesión robada se cortan al instante; la identidad del paciente se verifica sin exponer cédulas en listados y sin conservar documentos rechazados; las imágenes de producción ya no llevan herramientas ni dependencias que no usan.<br>
-**Desplegado en producción el 2026-09-24 (autorizado por el usuario):** respaldo previo de la BD (`backups/pre-act16-20260924-013039.dump`) y de `.env.prod`; imágenes anteriores etiquetadas `:pre-act16` para poder volver atrás; `api` y `web` reconstruidas con el builder dedicado (`api` pasó de 1,05 GB a 902 MB); migración `20260924012600_sessions_and_identity_review` aplicada con la CLI de Prisma de la imagen nueva (sin npm); reinicio solo de `api`/`web` y alta de `clamav`. Smoke test en producción **24/24**: páginas y catálogos, sesión del administrador, registro con verificación de correo, subida de foto re-codificada y analizada por ClamAV, descarga firmada, acceso anónimo denegado, token anterior rechazado tras cambiar la contraseña (`tokenVersion`), EICAR detectado; la cuenta temporal se eliminó. El smoke test también destapó que su propio PNG de prueba estaba dañado (la API lo rechazaba con razón); se reemplazó por uno válido. `diario-mercantil`, `saas--mt` y `traefik-ivzc` conservaron sus tiempos de actividad. GitHub: CI y Seguridad en verde, con Trivy sin CVE críticas en `api` ni en `web`.<br>
+**Desplegado en producción el 2026-09-23 por la noche (autorizado por el usuario):** respaldo previo de la BD (`backups/pre-act16-20260924-013039.dump`) y de `.env.prod`; imágenes anteriores etiquetadas `:pre-act16` para poder volver atrás; `api` y `web` reconstruidas con el builder dedicado (`api` pasó de 1,05 GB a 902 MB); migración `20260924012600_sessions_and_identity_review` aplicada con la CLI de Prisma de la imagen nueva (sin npm); reinicio solo de `api`/`web` y alta de `clamav`. Smoke test en producción **24/24**: páginas y catálogos, sesión del administrador, registro con verificación de correo, subida de foto re-codificada y analizada por ClamAV, descarga firmada, acceso anónimo denegado, token anterior rechazado tras cambiar la contraseña (`tokenVersion`), EICAR detectado; la cuenta temporal se eliminó. El smoke test también destapó que su propio PNG de prueba estaba dañado (la API lo rechazaba con razón); se reemplazó por uno válido. `diario-mercantil`, `saas--mt` y `traefik-ivzc` conservaron sus tiempos de actividad. GitHub: CI y Seguridad en verde, con Trivy sin CVE críticas en `api` ni en `web`.<br>
 **Archivos destacados:** [`backend/src/auth`](backend/src/auth), [`backend/src/patients/patient-identity-admin.controller.ts`](backend/src/patients/patient-identity-admin.controller.ts), [`backend/prisma/migrations/20260924012600_sessions_and_identity_review`](backend/prisma/migrations/20260924012600_sessions_and_identity_review), [`frontend/src/app/admin/identidades`](frontend/src/app/admin/identidades), [`frontend/src/app/cuenta/seguridad`](frontend/src/app/cuenta/seguridad), [`backend/Dockerfile`](backend/Dockerfile), [`frontend/Dockerfile`](frontend/Dockerfile), [`.github`](.github), [`docker-compose.prod.yml`](docker-compose.prod.yml).
 
 </details>
@@ -661,7 +661,7 @@ El usuario pidió continuar con el resto de las configuraciones pendientes, actu
 ### 🩺 ACT-0017 · `HEALTHCHECK` en los Dockerfiles: alertas de Trivy en «Security and quality»
 
 <details>
-<summary><strong>2026-09-24 01:48:30 -04:00</strong> · <code>ver commit de ACT-0017</code> · 🟢 Completado</summary>
+<summary><strong>2026-09-23 21:48:30 -04:00</strong> · <code>ver commit de ACT-0017</code> · 🟢 Completado</summary>
 
 **Responsable:** `Claude Opus 5.5` · **Tipo:** `security | ops`
 
@@ -684,7 +684,7 @@ El usuario compartió la portada del repositorio en GitHub, que mostraba **2 ale
 ### 🌐 ACT-0018 · Dominio `guiamedicamonagas.com` enrutado por el Traefik del VPS (a la espera del DNS)
 
 <details>
-<summary><strong>2026-09-24 10:40:26 -04:00</strong> · <code>78df3df</code> · 🟡 En revisión</summary>
+<summary><strong>2026-09-24 06:40:26 -04:00</strong> · <code>78df3df</code> · 🟡 En revisión</summary>
 
 **Responsable:** `Claude Opus 5.5` · **Tipo:** `ops` · **Commit:** [`78df3df`](https://github.com/merchandev/guiamedicamonagas/commit/78df3df)
 
@@ -692,7 +692,7 @@ El usuario pidió configurar el proxy del proyecto para que reconozca su dominio
 
 **Diagnóstico:**
 
-- **El DNS no está publicado.** El dominio está registrado en Hostinger (vence en 2028) y delega en `ns1/ns2.dns-parking.com`, pero esos mismos servidores responden `NXDOMAIN` y sin SOA para `guiamedicamonagas.com` y `www`: la zona DNS no existe en Hostinger. Horas después de la supuesta configuración, Cloudflare y Google siguen respondiendo lo mismo. No es propagación.
+- **El DNS no está publicado.** El dominio está registrado en Hostinger (vence en 2028) y delega en `ns1/ns2.dns-parking.com`, pero esos mismos servidores responden `NXDOMAIN` y sin SOA para `guiamedicamonagas.com` y `www`: la zona DNS no existe en Hostinger. Cloudflare y Google responden lo mismo. A las 06:52, más de 20 minutos después de la supuesta configuración (06:30), los propios servidores de Hostinger seguían sin la zona, cuando normalmente publican los cambios en pocos minutos.
 - Los puertos 80/443 son del Traefik del proyecto `traefik-ivzc` (red del host, Let's Encrypt por HTTP-01), que ya sirve `diariomercantil.com` y `transfersinbarcelona.com` leyendo etiquetas de sus contenedores. Caddy no puede emitir certificados propios en este VPS, y la configuración sugerida por el otro asistente (`handle_path /api/*`, `NEXT_PUBLIC_API_URL=…/api`) habría roto las rutas de la API.
 
 **Actividades ejecutadas:**
@@ -700,6 +700,7 @@ El usuario pidió configurar el proxy del proyecto para que reconozca su dominio
 - Etiquetas de Traefik en el servicio `caddy` de [`docker-compose.prod.yml`](docker-compose.prod.yml) (router `gmm`, `websecure`, resolver `letsencrypt`, `www` → dominio principal con 301), activadas desde `.env.prod` con `GMM_DOMAIN` y `GMM_TRAEFIK_ENABLE=true`. La configuración de Traefik no se tocó: descubre el contenedor igual que a los otros proyectos.
 - [`Caddyfile`](Caddyfile): solo acepta `X-Forwarded-*` de Traefik (la puerta de enlace `172.31.78.1` de `gmm_dmz`) y reenvía `{client_ip}`, porque si no todos los visitantes del dominio compartirían la IP del proxy en los límites de peticiones de login y registro.
 - En producción: respaldo de `.env.prod` (`backups/env.prod.pre-domain`), las dos variables nuevas y recreación **solo** de `caddy`.
+- **Análisis de los logs que compartió el usuario (06:50):** sin errores de aplicación. `api` arrancó limpio con todas las rutas y sincroniza la tasa BCV cada hora; `clamav` sano (sus dos «Eicar FOUND» son las pruebas del despliegue); el único `ERROR` de `postgres` es una consulta manual de verificación de [ACT-0015](#act-0015) con comillas mal escapadas; las advertencias de `redis` (*overcommit*, irrelevante sin persistencia) y `minio` (un solo disco) son esperables. Las peticiones al dominio que aparecen en `caddy` eran las pruebas forzadas de esta actividad (`curl` desde la IP del operador), no visitantes reales: otro asistente las interpretó como que el dominio ya funcionaba. Se corrigió además el aviso de formato de Caddy (una línea en blanco antes del bloque global).
 
 **Verificación** (forzando que el dominio resuelva a la IP del VPS, como hará el DNS): `https://guiamedicamonagas.com/`, `/medicos` y `/api/v1/health` → 200 con la app; `https://www…/x?y=1` → 301 a `https://guiamedicamonagas.com/x?y=1`; `http://` → 301 a HTTPS; `http://72.61.77.167:8088` sigue en 200. La API recibe la IP real del visitante y un `X-Forwarded-For` falso desde fuera se ignora. Traefik intenta el certificado y Let's Encrypt lo rechaza con `NXDOMAIN`, como se esperaba: mientras tanto se sirve el certificado temporal de Traefik.
 
@@ -870,9 +871,10 @@ Para cada cambio futuro, añadir una entrada en la línea de tiempo y actualizar
 | `2026-09-23 10:35:00 -04:00` | Incorporación de ACT-0013 (ancho unificado 80%/10%/10% en toda la web mediante un único cambio en `.container-page`), actualización de línea de tiempo, resumen cuantitativo, registro por área y control de implementaciones | 🟢 Completado |
 | `2026-09-23 10:45:00 -04:00` | Incorporación de ACT-0014 (campos `Input`/`Textarea` sin alto ni relleno propios corregidos en toda la web, `Button` alineado con `Select`), actualización de línea de tiempo, resumen cuantitativo, registro por área y control de implementaciones | 🟢 Completado |
 | `2026-09-23 18:00:00 -04:00` | Incorporación de ACT-0015 (respuesta a la auditoría externa: cifrado de datos de salud, consentimiento paciente → médico, textos legales versionados, analítica sin IP, subidas seguras, permisos granulares, organizaciones autogestionadas, geografía/bancos como datos, SEO y QA con CI), actualización de línea de tiempo, resumen cuantitativo, registro por área, control de implementaciones y próximas actividades | 🟢 Completado |
-| `2026-09-24 01:45:00 -04:00` | Incorporación de ACT-0016 (`tokenVersion` y cierre de todas las sesiones, cola de verificación de identidad del paciente, reserva con la ficha propia, imágenes de contenedor mínimas con Trivy en verde, CI actualizado con Dependabot y antivirus ClamAV), actualización de línea de tiempo, resumen cuantitativo, registro por área, control de implementaciones y próximas actividades | 🟢 Completado |
-| `2026-09-24 01:48:30 -04:00` | Incorporación de ACT-0017 (`HEALTHCHECK` en los Dockerfiles para cerrar las 2 alertas de Trivy), actualización de línea de tiempo, resumen cuantitativo, registro por área y próximas actividades | 🟢 Completado |
-| `2026-09-24 10:40:26 -04:00` | Incorporación de ACT-0018 (dominio propio enrutado por el Traefik del VPS con IP real del visitante; diagnóstico de la zona DNS inexistente en Hostinger), actualización de línea de tiempo, resumen cuantitativo, registro por área y próximas actividades | 🟢 Completado |
+| `2026-09-23 21:45:00 -04:00` | Incorporación de ACT-0016 (`tokenVersion` y cierre de todas las sesiones, cola de verificación de identidad del paciente, reserva con la ficha propia, imágenes de contenedor mínimas con Trivy en verde, CI actualizado con Dependabot y antivirus ClamAV), actualización de línea de tiempo, resumen cuantitativo, registro por área, control de implementaciones y próximas actividades | 🟢 Completado |
+| `2026-09-23 21:48:30 -04:00` | Incorporación de ACT-0017 (`HEALTHCHECK` en los Dockerfiles para cerrar las 2 alertas de Trivy), actualización de línea de tiempo, resumen cuantitativo, registro por área y próximas actividades | 🟢 Completado |
+| `2026-09-24 06:40:26 -04:00` | Incorporación de ACT-0018 (dominio propio enrutado por el Traefik del VPS con IP real del visitante; diagnóstico de la zona DNS inexistente en Hostinger), actualización de línea de tiempo, resumen cuantitativo, registro por área y próximas actividades | 🟢 Completado |
+| `2026-09-24 06:53:13 -04:00` | Corrección de horas: ACT-0016, ACT-0017 y ACT-0018 se habían registrado en UTC con la etiqueta `-04:00` (la consola usada ignoraba la zona horaria); se ajustaron a la hora real de Caracas según los commits. ACT-0018 incorpora el análisis de logs de producción | 🟢 Completado |
 
 ---
 
