@@ -1,12 +1,12 @@
 # Despliegue independiente de Guía Médica Monagas
 
-La instalación está preparada en `/docker/guiamedicamonagas`, dentro del proyecto Docker Compose `gmm-independent`. El acceso inicial previsto es [http://72.61.77.167:8088](http://72.61.77.167:8088). Dominio, HTTPS público y SMTP de entrega real están pendientes. La verificación final de disponibilidad y comparación de los proyectos anteriores debe registrarse al cerrar el despliegue.
+La instalación está preparada en `/opt/guiamedicamonagas`, dentro del proyecto Docker Compose `gmm-independent`. El acceso inicial previsto es [http://72.61.77.167:8088](http://72.61.77.167:8088). Dominio, HTTPS público y SMTP de entrega real están pendientes. La verificación final de disponibilidad y comparación de los proyectos anteriores debe registrarse al cerrar el despliegue.
 
 ## Aislamiento
 
 | Recurso | Configuración exclusiva |
 |---|---|
-| Directorio | `/docker/guiamedicamonagas` |
+| Directorio | `/opt/guiamedicamonagas` |
 | Proyecto Compose | `gmm-independent` |
 | Web y API públicas | Puerto `8088` mediante Caddy propio |
 | Datos y comunicaciones internas | `gmm-independent_gmm_internal`, `172.31.77.0/24` |
@@ -24,7 +24,7 @@ La configuración usa credenciales, contenedores, redes, volúmenes y proxy prop
 
 ## Archivos de acceso
 
-- `/docker/guiamedicamonagas/.env.prod`: configuración privada del proyecto, permisos `600`.
+- `/opt/guiamedicamonagas/.env.prod`: configuración privada del proyecto, permisos `600`.
 - `/var/lib/gmm-deploy-20260923/admin-access.txt`: acceso administrativo generado, permisos `600`.
 
 Estos archivos deben permanecer fuera de Git. No copiar sus valores a logs, documentación o comandos compartidos. El administrador inicial se crea con `SEED_SUPERADMIN_EMAIL` y `SEED_SUPERADMIN_PASSWORD`; el seed recibe las variables por nombre.
@@ -36,7 +36,7 @@ En el acceso HTTP temporal se configura `COOKIE_SECURE=false` y HSTS desactivado
 Ejecutar en el servidor:
 
 ```bash
-cd /docker/guiamedicamonagas
+cd /opt/guiamedicamonagas
 docker compose -p gmm-independent --env-file .env.prod -f docker-compose.prod.yml ps
 docker compose -p gmm-independent --env-file .env.prod -f docker-compose.prod.yml logs --tail=100 api web caddy
 curl --fail --max-time 15 http://127.0.0.1:8088/api/v1/health
@@ -46,10 +46,10 @@ Los logs tienen rotación configurada y los servicios límites de CPU y memoria.
 
 ## Actualización de este proyecto
 
-Revisar e integrar únicamente los cambios de este repositorio en `/docker/guiamedicamonagas`; conservar las correcciones locales y `.env.prod`. Antes de una actualización con cambios de esquema, crear la copia de PostgreSQL descrita abajo.
+Revisar e integrar únicamente los cambios de este repositorio en `/opt/guiamedicamonagas`; conservar las correcciones locales y `.env.prod`. Antes de una actualización con cambios de esquema, crear la copia de PostgreSQL descrita abajo.
 
 ```bash
-cd /docker/guiamedicamonagas
+cd /opt/guiamedicamonagas
 git status --short
 docker buildx inspect gmm-build-20260923
 GMM_BUILDER=gmm-build-20260923 bash scripts/deploy.sh
@@ -59,25 +59,29 @@ El builder dedicado está limitado a **2 GB de memoria y 1,5 CPU**. `scripts/bui
 
 `scripts/deploy.sh` resuelve su directorio independientemente del directorio de invocación y fija `--project-directory`, `--env-file .env.prod`, `-p gmm-independent` y `-f docker-compose.prod.yml` en cada comando. Su secuencia es:
 
-1. Validar variables y configuración; descargar solo las imágenes externas necesarias.
-2. Compilar las imágenes de API y web con el builder indicado.
-3. Iniciar los servicios de datos y el Mailpit propio; esperar su preparación con límites de tiempo.
-4. Inicializar el bucket privado, usuario y política de MinIO.
-5. Aplicar migraciones mediante `compose run --rm --no-deps api node_modules/.bin/prisma migrate deploy` (la imagen ya no incluye npm/npx) y ejecutar el seed compilado `node dist/prisma/seed.js`.
-6. Iniciar API, web y Caddy; mostrar el estado del proyecto.
+1. Validar variables: además de las obligatorias, exige `CLAMAV_HOST` y MFA de administradores (`ADMIN_MFA_ENABLED=true` o una excepción `ADMIN_MFA_WAIVER_UNTIL` vigente; vencida, el despliegue se detiene).
+2. Imprimir el informe **GO / NO-GO** para pacientes reales (HTTPS, cookies seguras, puerto 8088 publicado, MFA, respaldos externos, prueba de restauración). Con `GMM_REQUIRE_GO=true` cualquier NO-GO detiene el despliegue. Ver [operations/go-no-go.md](operations/go-no-go.md).
+3. Respaldo cifrado previo (`scripts/backup.sh --label pre-deploy`) y punto de retorno: imágenes `gmm-independent-{api,web}:rollback` y commit anterior en `/var/backups/guiamedicamonagas/deploys.log`.
+4. Descargar solo las imágenes externas necesarias y compilar API y web con el builder indicado.
+5. Iniciar los servicios de datos, Mailpit y ClamAV; inicializar MinIO.
+6. Aplicar migraciones con `compose run --rm --no-deps api node_modules/.bin/prisma migrate deploy` (la imagen no incluye npm/npx) y ejecutar el seed compilado `node dist/prisma/seed.js`.
+7. Esperar a que ClamAV cargue sus firmas (la API rechaza subidas sin antivirus) e iniciar API, web y Caddy.
+8. Verificar que la tabla temporal `_PatientPlaintextLegacy` ya no existe (si existe, el despliegue falla) y, con el Mailpit interno, ejecutar `scripts/smoke-deployment.cjs`.
 
 Validar después el endpoint de salud, inicio de sesión, páginas con renderizado del servidor y descarga de archivos mediante URLs firmadas. Si falla una etapa, resolver el error de este proyecto antes de continuar; los scripts no ejecutan limpieza o reinicios globales.
 
 ## Copia de PostgreSQL
 
+Los respaldos automáticos (diarios, cifrados, con prueba de restauración semanal) están descritos en [operations/respaldos-y-restauracion.md](operations/respaldos-y-restauracion.md). La copia manual de abajo sirve para una intervención puntual.
+
 El siguiente respaldo usa exclusivamente el servicio `postgres` del proyecto y obtiene sus credenciales dentro del contenedor:
 
 ```bash
-cd /docker/guiamedicamonagas
+cd /opt/guiamedicamonagas
 umask 077
-mkdir -p /docker/guiamedicamonagas/backups
-chmod 700 /docker/guiamedicamonagas/backups
-backup_path="/docker/guiamedicamonagas/backups/postgres-$(date -u +%Y%m%dT%H%M%SZ).dump"
+mkdir -p /opt/guiamedicamonagas/backups
+chmod 700 /opt/guiamedicamonagas/backups
+backup_path="/opt/guiamedicamonagas/backups/postgres-$(date -u +%Y%m%dT%H%M%SZ).dump"
 docker compose -p gmm-independent --env-file .env.prod -f docker-compose.prod.yml exec -T postgres \
   sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --format=custom' > "$backup_path"
 test -s "$backup_path"

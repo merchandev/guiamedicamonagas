@@ -3,9 +3,10 @@
 # =============================================================================
 # Principios de este archivo:
 #
-#   1. NINGÚN servicio interno (postgres, redis, minio, meilisearch) publica
-#      puertos al host.  Solo Caddy expone un puerto a Internet (CADDY_PORT,
-#      por defecto 8088 — ver Caddyfile).
+#   1. NINGÚN servicio interno (postgres, redis, minio, meilisearch, clamav)
+#      publica puertos al host. Caddy publica CADDY_PORT (8088) solo en
+#      127.0.0.1 salvo CADDY_BIND_ADDRESS; el acceso público es el Traefik del
+#      VPS con HTTPS (etiquetas del servicio caddy, ver Caddyfile).
 #
 #   2. Todos los servicios corren en la red interna gmm_internal.
 #      api y web también en gmm_dmz para poder hablar con Caddy.
@@ -310,15 +311,13 @@ services:
     cpus: 0.2
 
   # ---------------------------------------------------------------------------
-  # Antivirus de subidas — opcional (perfil "antivirus")
+  # Antivirus de subidas — obligatorio en producción
   # ---------------------------------------------------------------------------
-  # Se activa con COMPOSE_PROFILES=antivirus y CLAMAV_HOST=clamav en .env.prod.
-  # La API le envía cada archivo por TCP 3310 (INSTREAM) y falla cerrado: si
-  # clamd no responde, la subida se rechaza. ~1,3 GB de RAM con las firmas
-  # cargadas; ver scripts/clamd.conf (sin recarga concurrente).
+  # La API (CLAMAV_HOST=clamav) le envía cada archivo por TCP 3310 (INSTREAM) y
+  # falla cerrado: si clamd no responde, la subida se rechaza. ~1 GB de RAM con
+  # las firmas cargadas; ver scripts/clamd.conf (sin recarga concurrente).
   clamav:
     image: clamav/clamav:1.5.4
-    profiles: [antivirus]
     logging: *default-logging
     restart: unless-stopped
     volumes:
@@ -344,9 +343,11 @@ services:
       # El Caddyfile usa {$S3_BUCKET} para el path del proxy de archivos.
       S3_BUCKET: ${S3_BUCKET}
     ports:
-      # Puerto alterno: 80/443 son del Traefik compartido del VPS. Acceso
-      # directo por IP en HTTP simple — ver Caddyfile.
-      - "${CADDY_PORT:-8088}:8088"
+      # Solo en loopback por defecto: el tráfico público entra por el Traefik
+      # del VPS (80/443, HTTPS). CADDY_BIND_ADDRESS=0.0.0.0 lo publica a
+      # Internet por HTTP simple, solo mientras no haya dominio con HTTPS
+      # (deploy.sh lo marca como NO-GO para pacientes reales).
+      - "${CADDY_BIND_ADDRESS:-127.0.0.1}:${CADDY_PORT:-8088}:8088"
     # Dominio propio con HTTPS a través del Traefik del servidor (proyecto
     # traefik-ivzc, dueño de 80/443 y de los certificados Let's Encrypt): lo
     # descubre por estas etiquetas, igual que a los demás proyectos, sin

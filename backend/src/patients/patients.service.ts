@@ -217,7 +217,7 @@ export class PatientsService {
 
     await this.audit.record({
       userId: adminId,
-      action: 'PATIENT_IDENTITY_VIEWED',
+      action: 'PATIENT_IDENTITY_DOCUMENT_VIEWED',
       resource: 'PatientProfile',
       resourceId: patient.id,
       ipAddress,

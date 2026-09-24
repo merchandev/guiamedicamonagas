@@ -20,8 +20,8 @@ function OrgGate({ children }: { children: React.ReactNode }) {
   if (organizations.length === 0) {
     return (
       <EmptyState
-        title="Tu cuenta no administra ninguna organización"
-        description="Pide al dueño de la organización que te agregue a su equipo con este correo."
+        title="Tu cuenta no pertenece a ninguna organización"
+        description="Pide al dueño o a un administrador de la organización que te invite a su equipo con este correo."
       />
     );
   }
@@ -44,7 +44,9 @@ function OrgGate({ children }: { children: React.ReactNode }) {
 
 export default function OrganizacionLayout({ children }: { children: React.ReactNode }) {
   return (
-    <RequireAuth roles={['ORGANIZATION']}>
+    // Cualquier cuenta puede ser miembro de un equipo (invitación): lo que da
+    // acceso es la pertenencia, no el tipo de cuenta.
+    <RequireAuth>
       <OrganizationProvider>
         <DashboardShell title="Panel de la organización" links={LINKS}>
           <OrgGate>{children}</OrgGate>

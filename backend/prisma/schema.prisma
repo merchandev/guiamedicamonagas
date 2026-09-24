@@ -50,6 +50,8 @@ model User {
   pushSubscriptions   PushSubscription[]
   grantedPatientData  PatientDataGrant[]
   reviewedIdentities  PatientProfile[]       @relation("IdentityReviewer")
+  sentOrganizationInvitations     OrganizationInvitation[] @relation("OrganizationInvitationSender")
+  acceptedOrganizationInvitations OrganizationInvitation[] @relation("OrganizationInvitationAcceptor")
 
   @@index([role])
 }
@@ -409,6 +411,7 @@ model Organization {
   locations     OrganizationLocation[]
   socialLinks   OrganizationSocialLink[]
   members       OrganizationMember[]
+  invitations   OrganizationInvitation[]
   professionals OrganizationProfessional[]
   subscriptions Subscription[]
 
@@ -438,6 +441,30 @@ model OrganizationMember {
 
   @@unique([organizationId, userId])
   @@index([userId])
+}
+
+/// Invitación a formar parte del equipo de una organización. El rol global de
+/// la cuenta (User.role) no cambia: la pertenencia es OrganizationMember. Solo
+/// se guarda el hash del token; vence a las 72 h y sirve una sola vez.
+model OrganizationInvitation {
+  id             String                 @id @default(uuid())
+  organizationId String
+  organization   Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  /// Correo invitado (en minúsculas): solo esa cuenta puede aceptarla.
+  email          String
+  role           OrganizationMemberRole
+  tokenHash      String                 @unique
+  invitedById    String?
+  invitedBy      User?                  @relation("OrganizationInvitationSender", fields: [invitedById], references: [id], onDelete: SetNull)
+  expiresAt      DateTime
+  acceptedAt     DateTime?
+  acceptedById   String?
+  acceptedBy     User?                  @relation("OrganizationInvitationAcceptor", fields: [acceptedById], references: [id], onDelete: SetNull)
+  revokedAt      DateTime?
+  createdAt      DateTime               @default(now())
+
+  @@index([organizationId])
+  @@index([email])
 }
 
 enum AffiliationStatus {
@@ -1084,23 +1111,14 @@ model ClinicalNote {
   professionalId String
   professional   ProfessionalProfile @relation(fields: [professionalId], references: [id], onDelete: Cascade)
 
-  /// Motivo principal de consulta (desde la perspectiva clínica)
-  chiefComplaint String?
+  /// SEC-05: todo el contenido clínico (motivo, diagnóstico, tratamiento,
+  /// medicamentos y notas privadas) va cifrado en un solo campo con
+  /// ClinicalNoteCodec (AES-256-GCM, contexto "ClinicalNote.clinicalData").
+  /// No existen columnas en claro: una nota clínica no se puede guardar sin cifrar.
+  clinicalDataEnc String
 
-  /// Diagnóstico (texto libre o código CIE-10 en el futuro)
-  diagnosis String?
-
-  /// Plan de tratamiento
-  treatment String?
-
-  /// Medicamentos indicados: [{ name, dose, frequency, duration }]
-  medications Json?
-
-  /// Fecha sugerida para próxima cita
+  /// Fecha sugerida para próxima cita (no revela contenido clínico)
   followUpDate DateTime?
-
-  /// Notas privadas del médico — nunca visibles para el paciente
-  privateNotes String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

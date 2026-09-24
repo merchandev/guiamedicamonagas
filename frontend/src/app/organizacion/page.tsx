@@ -7,7 +7,7 @@ import { api, ApiError } from '@/lib/api';
 import { municipalityOptions, useMunicipalities } from '@/lib/catalogs';
 import { ORGANIZATION_TYPE_LABELS, PLAN_TIER_LABELS, ORG_VERIFICATION_LABELS } from '@/lib/labels';
 import { SOCIAL_PLATFORM_EXAMPLE, SOCIAL_PLATFORM_LABELS, SOCIAL_PLATFORMS, type SocialPlatform } from '@/lib/social';
-import { useOrganization, type OrgDetail, type OrgType } from '@/components/organization/OrgContext';
+import { can, useOrganization, type OrgDetail, type OrgType } from '@/components/organization/OrgContext';
 import { Alert } from '@/components/ui/Alert';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -71,6 +71,7 @@ export default function OrganizationProfilePage() {
   }, [org, reset]);
 
   if (!org) return null;
+  const identityEditable = can(org, 'EDIT_IDENTITY');
   const status = ORG_VERIFICATION_LABELS[org.verificationStatus];
   const hasPlan = org.planTier === 'ORGANIZATION';
 
@@ -181,13 +182,21 @@ export default function OrganizationProfilePage() {
         <section className="space-y-4">
           <h2 className="border-b border-ink-100 pb-2 text-lg font-semibold text-ink-900">Datos de la organización</h2>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Input label="Nombre" required {...register('name', { required: true })} />
+            {/* readOnly (no disabled): react-hook-form descarta los campos deshabilitados al enviar */}
+            <Input
+              label="Nombre"
+              required
+              readOnly={!identityEditable}
+              hint={identityEditable ? undefined : 'Solo el dueño puede cambiarlo'}
+              {...register('name', { required: true })}
+            />
             <Controller
               name="type"
               control={control}
               render={({ field }) => (
                 <Select
                   label="Tipo"
+                  disabled={!identityEditable}
                   value={field.value}
                   onChange={field.onChange}
                   options={(Object.keys(ORGANIZATION_TYPE_LABELS) as OrgType[]).map((t) => ({ value: t, label: ORGANIZATION_TYPE_LABELS[t] }))}
@@ -196,7 +205,13 @@ export default function OrganizationProfilePage() {
             />
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Input label="RIF" placeholder="J-12345678-9" {...register('rif')} />
+            <Input
+              label="RIF"
+              placeholder="J-12345678-9"
+              readOnly={!identityEditable}
+              hint={identityEditable ? undefined : 'Solo el dueño puede cambiarlo'}
+              {...register('rif')}
+            />
             <Input label="Horario de atención" placeholder="Lun–Sáb 8:00 a.m. – 8:00 p.m." {...register('openingHours')} />
           </div>
           <p className="text-xs text-ink-500">Cambiar nombre, tipo o RIF de una organización verificada la devuelve a revisión.</p>

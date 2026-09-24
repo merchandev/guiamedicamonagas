@@ -1,10 +1,8 @@
 import { BadRequestException, Body, Controller, Get, Param, Patch, Post, Put, Query, Req } from '@nestjs/common';
-import { Role } from '@prisma/client';
 import { plainToInstance } from 'class-transformer';
 import { validateOrReject } from 'class-validator';
 import type { FastifyRequest } from 'fastify';
 import { Public } from '../common/decorators/public.decorator';
-import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../common/types/authenticated-user';
 import { readMultipartFormWithFile } from '../common/utils/multipart';
@@ -36,7 +34,9 @@ export class PaymentsController {
     return this.payments.listBanks();
   }
 
-  @Roles(Role.PROFESSIONAL, Role.ORGANIZATION)
+  // Sin @Roles: lo que autoriza es ser titular de la suscripción (el médico, o
+  // dueño/admin de la organización), que el servicio comprueba. El rol global
+  // de la cuenta no decide la pertenencia a una organización.
   @Post()
   async report(@CurrentUser() user: AuthenticatedUser, @Req() req: FastifyRequest) {
     const { fields, file: raw } = await readMultipartFormWithFile(req, MAX_DOCUMENT_SIZE_BYTES);
@@ -65,8 +65,8 @@ export class PaymentsController {
 
   @RequirePermissions(Permission.REVIEW_PAYMENTS)
   @Get('admin/:id/receipt')
-  adminReceiptUrl(@Param('id') id: string) {
-    return this.payments.adminReceiptUrl(id);
+  adminReceiptUrl(@CurrentUser() admin: AuthenticatedUser, @Param('id') id: string, @Req() req: FastifyRequest) {
+    return this.payments.adminReceiptUrl(id, admin.id, req.ip);
   }
 
   @RequirePermissions(Permission.REVIEW_PAYMENTS)

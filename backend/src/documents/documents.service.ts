@@ -110,10 +110,20 @@ export class DocumentsService {
     return { items, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
-  async adminDownloadUrl(documentId: string) {
+  async adminDownloadUrl(documentId: string, adminId: string, ipAddress?: string) {
     const document = await this.prisma.professionalDocument.findUnique({ where: { id: documentId } });
     if (!document) throw new NotFoundException('Documento no encontrado');
-    return { url: await this.storage.getSignedDownloadUrl(document.fileKey) };
+    const url = await this.storage.getSignedDownloadUrl(document.fileKey);
+    // Títulos, cédulas y constancias de un tercero: cada descarga queda registrada.
+    await this.audit.record({
+      userId: adminId,
+      action: 'PROFESSIONAL_DOCUMENT_DOWNLOADED',
+      resource: 'ProfessionalDocument',
+      resourceId: document.id,
+      details: { professionalId: document.professionalId, type: document.type },
+      ipAddress,
+    });
+    return { url };
   }
 
   async adminReview(

@@ -1,11 +1,15 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useEffect, useState } from 'react';
+import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAuth, ApiError, homePathFor } from '@/lib/auth-context';
+import { api } from '@/lib/api';
+import { ORG_MEMBER_ROLE_LABELS, ORGANIZATION_TYPE_LABELS } from '@/lib/labels';
+import { PageSpinner } from '@/components/ui/Spinner';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Button } from '@/components/ui/Button';
@@ -32,6 +36,7 @@ const schema = z
     organizationName: z.string().optional(),
     organizationType: z.enum(['PHARMACY', 'LABORATORY', 'CLINIC']).optional(),
     organizationRif: z.string().optional(),
+    invitationToken: z.string().optional(),
     email: z.string().email('Correo inválido'),
     password: z
       .string()
@@ -55,11 +60,11 @@ const schema = z
     message: 'Cédula inválida (ej. V-12345678)',
     path: ['cedula'],
   })
-  .refine((data) => data.role !== 'ORGANIZATION' || (data.organizationName && data.organizationName.trim().length >= 2), {
+  .refine((data) => data.role !== 'ORGANIZATION' || !!data.invitationToken || (data.organizationName && data.organizationName.trim().length >= 2), {
     message: 'Indica el nombre de la organización',
     path: ['organizationName'],
   })
-  .refine((data) => data.role !== 'ORGANIZATION' || !!data.organizationType, {
+  .refine((data) => data.role !== 'ORGANIZATION' || !!data.invitationToken || !!data.organizationType, {
     message: 'Selecciona el tipo',
     path: ['organizationType'],
   })
@@ -70,9 +75,29 @@ const schema = z
 
 type FormValues = z.infer<typeof schema>;
 
+interface InvitationPreview {
+  organizationName: string;
+  organizationType: 'PHARMACY' | 'LABORATORY' | 'CLINIC';
+  role: 'OWNER' | 'ADMIN' | 'EDITOR';
+  email: string;
+  accountExists: boolean;
+}
+
 export default function RegisterPage() {
+  return (
+    <Suspense fallback={<PageSpinner />}>
+      <RegisterContent />
+    </Suspense>
+  );
+}
+
+function RegisterContent() {
   const { register: doRegister } = useAuth();
   const router = useRouter();
+  // ?invitacion=<token>: alta para unirse al equipo de una organización existente.
+  const invitationToken = useSearchParams().get('invitacion');
+  const [invitation, setInvitation] = useState<InvitationPreview | null>(null);
+  const [invitationError, setInvitationError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
@@ -82,7 +107,18 @@ export default function RegisterPage() {
     watch,
     setValue,
     formState: { errors, isSubmitting },
-  } = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: { role: 'PROFESSIONAL' } });
+  } = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: invitationToken ? { role: 'ORGANIZATION', invitationToken } : { role: 'PROFESSIONAL' },
+  });
+
+  useEffect(() => {
+    if (!invitationToken) return;
+    api
+      .get<InvitationPreview>(`/organizations/invitations/preview?token=${encodeURIComponent(invitationToken)}`)
+      .then(setInvitation)
+      .catch((e) => setInvitationError(e instanceof ApiError ? e.message : 'La invitación no es válida'));
+  }, [invitationToken]);
 
   const role = watch('role');
   const organizationType = watch('organizationType');
@@ -105,7 +141,12 @@ export default function RegisterPage() {
         organizationName: values.role === 'ORGANIZATION' ? values.organizationName : undefined,
         organizationType: values.role === 'ORGANIZATION' ? values.organizationType : undefined,
         organizationRif: values.role === 'ORGANIZATION' ? values.organizationRif || undefined : undefined,
+        invitationToken: values.invitationToken || undefined,
       });
+      if (values.invitationToken) {
+        router.push('/organizacion');
+        return;
+      }
       router.push(user.role === 'PROFESSIONAL' ? '/dashboard/documentos' : homePathFor(user.role));
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'No se pudo crear la cuenta');
@@ -122,7 +163,32 @@ export default function RegisterPage() {
 
       <form onSubmit={handleSubmit(onSubmit)} className="card mt-6 space-y-4 p-6">
         {error && <Alert tone="error">{error}</Alert>}
+        {invitationToken && invitationError && <Alert tone="error">{invitationError}</Alert>}
+        {invitationToken && invitation && (
+          <Alert tone={invitation.accountExists ? 'warning' : 'info'}>
+            {invitation.accountExists ? (
+              <>
+                Ya existe una cuenta con el correo invitado ({invitation.email}).{' '}
+                <Link
+                  href={`/iniciar-sesion?next=${encodeURIComponent(`/invitacion-organizacion?token=${invitationToken}`)}`}
+                  className="font-medium underline"
+                >
+                  Inicia sesión para aceptar la invitación
+                </Link>
+                .
+              </>
+            ) : (
+              <>
+                Te unirás a <strong>{invitation.organizationName}</strong> (
+                {ORGANIZATION_TYPE_LABELS[invitation.organizationType].toLowerCase()}) como{' '}
+                <strong>{ORG_MEMBER_ROLE_LABELS[invitation.role].toLowerCase()}</strong>. Usa el correo invitado:{' '}
+                {invitation.email}.
+              </>
+            )}
+          </Alert>
+        )}
 
+        {!invitationToken && (
         <div className="grid gap-2 sm:grid-cols-3">
           {ROLE_OPTIONS.map((option) => (
             <label
@@ -137,6 +203,7 @@ export default function RegisterPage() {
             </label>
           ))}
         </div>
+        )}
 
         {(role === 'PROFESSIONAL' || role === 'USER') && (
           <div className="grid gap-3 sm:grid-cols-2">
@@ -156,7 +223,7 @@ export default function RegisterPage() {
           />
         )}
 
-        {role === 'ORGANIZATION' && (
+        {role === 'ORGANIZATION' && !invitationToken && (
           <>
             <Input
               label="Nombre de la organización"

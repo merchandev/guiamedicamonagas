@@ -7,6 +7,15 @@ import type { SocialLink } from '@/lib/social';
 
 export type OrgType = 'PHARMACY' | 'LABORATORY' | 'CLINIC';
 export type OrgRole = 'OWNER' | 'ADMIN' | 'EDITOR';
+/** Acciones que el rol permite dentro de la organización (las decide el backend, organization-roles.ts). */
+export type OrgAction =
+  | 'VIEW'
+  | 'EDIT_CONTENT'
+  | 'EDIT_IDENTITY'
+  | 'MANAGE_PROFESSIONALS'
+  | 'INVITE_MEMBERS'
+  | 'MANAGE_BILLING'
+  | 'MANAGE_ROLES';
 
 export interface OrgSummary {
   id: string;
@@ -51,6 +60,8 @@ export interface OrgDetail {
     professional: { id: string; slug: string; firstName: string; lastName: string };
   }[];
   myRole: OrgRole;
+  myActions: OrgAction[];
+  invitableRoles: OrgRole[];
   maxLocations: number;
 }
 
@@ -119,4 +130,9 @@ export function useOrganization() {
 
 export function canManage(role: OrgRole | undefined) {
   return role === 'OWNER' || role === 'ADMIN';
+}
+
+/** La UI solo oculta lo que el rol no permite; el backend vuelve a comprobarlo. */
+export function can(org: Pick<OrgDetail, 'myActions'> | null | undefined, action: OrgAction) {
+  return !!org?.myActions?.includes(action);
 }

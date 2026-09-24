@@ -20,6 +20,8 @@ export function Header() {
   const [open, setOpen] = useState(false);
 
   const dashboardHref = user ? homePathFor(user.role) : '/iniciar-sesion';
+  // Miembros de un equipo cuya cuenta es de otro tipo (paciente, médico…).
+  const showOrgLink = !!user && user.role !== 'ORGANIZATION' && (user.organizationMemberships?.length ?? 0) > 0;
 
   return (
     <header className="sticky top-0 z-40 border-b border-ink-100 bg-canvas/90 backdrop-blur">
@@ -55,6 +57,11 @@ export function Header() {
               >
                 Mi panel
               </Link>
+              {showOrgLink && (
+                <Link href="/organizacion" className="rounded-lg px-3 py-2 text-sm font-medium text-ink-700 hover:bg-ink-100">
+                  Mi organización
+                </Link>
+              )}
               <Link
                 href="/cuenta/seguridad"
                 className="rounded-lg px-3 py-2 text-sm font-medium text-ink-700 hover:bg-ink-100"
@@ -116,6 +123,11 @@ export function Header() {
                 <Link href={dashboardHref} onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 text-sm font-medium text-ink-700 hover:bg-ink-100">
                   Mi panel
                 </Link>
+                {showOrgLink && (
+                  <Link href="/organizacion" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 text-sm font-medium text-ink-700 hover:bg-ink-100">
+                    Mi organización
+                  </Link>
+                )}
                 <Link href="/cuenta/seguridad" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 text-sm font-medium text-ink-700 hover:bg-ink-100">
                   Seguridad de la cuenta
                 </Link>

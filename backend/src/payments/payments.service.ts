@@ -10,6 +10,7 @@ import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { loadSubscriptionOwner, userManagesSubscription } from '../subscriptions/subscription-owner';
 import type { SecuredFile } from '../uploads/upload-security.service';
 import { recomputeDirectoryScore } from '../professionals/directory-score';
+import { isUniqueViolation } from '../common/utils/prisma-errors';
 import { ReportPaymentDto } from './dto/report-payment.dto';
 
 @Injectable()
@@ -82,20 +83,31 @@ export class PaymentsService {
     const key = this.storage.buildKey(`receipts/${ownerId}`, file.extension);
     await this.storage.uploadPrivateObject(key, file.buffer, file.mimetype);
 
-    return this.prisma.payment.create({
-      data: {
-        installmentId: installment.id,
-        amountBs: dto.amountBs,
-        method: 'PAGO_MOVIL',
-        senderBankCode: bank.code,
-        senderBankName: bank.name,
-        senderPhone: dto.senderPhone,
-        referenceNumber: dto.referenceNumber,
-        paidAt: new Date(dto.paidAt),
-        receiptFileKey: key,
-        status: 'PENDING',
-      },
-    });
+    try {
+      return await this.prisma.payment.create({
+        data: {
+          installmentId: installment.id,
+          amountBs: dto.amountBs,
+          method: 'PAGO_MOVIL',
+          senderBankCode: bank.code,
+          senderBankName: bank.name,
+          senderPhone: dto.senderPhone,
+          referenceNumber: dto.referenceNumber,
+          paidAt: new Date(dto.paidAt),
+          receiptFileKey: key,
+          status: 'PENDING',
+        },
+      });
+    } catch (error) {
+      // Dos reportes simultáneos con la misma referencia pasan la comprobación
+      // de arriba; el índice único parcial "Payment_reference_active_unique"
+      // deja entrar solo a uno. El comprobante del perdedor no se conserva.
+      if (isUniqueViolation(error)) {
+        await this.storage.deleteObject(key).catch(() => undefined);
+        throw new ConflictException('Esta referencia de Pago Móvil ya fue reportada');
+      }
+      throw error;
+    }
   }
 
   async adminQueue(params: { status?: string; page?: number; limit?: number }) {
@@ -127,10 +139,19 @@ export class PaymentsService {
     return { items, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
-  async adminReceiptUrl(paymentId: string) {
+  async adminReceiptUrl(paymentId: string, adminId: string, ipAddress?: string) {
     const payment = await this.prisma.payment.findUnique({ where: { id: paymentId } });
     if (!payment || !payment.receiptFileKey) throw new NotFoundException('Pago no encontrado');
-    return { url: await this.storage.getSignedDownloadUrl(payment.receiptFileKey) };
+    const url = await this.storage.getSignedDownloadUrl(payment.receiptFileKey);
+    // El comprobante trae datos bancarios del titular: cada apertura queda registrada.
+    await this.audit.record({
+      userId: adminId,
+      action: 'PAYMENT_RECEIPT_VIEWED',
+      resource: 'Payment',
+      resourceId: payment.id,
+      ipAddress,
+    });
+    return { url };
   }
 
   async adminReview(paymentId: string, adminId: string, approved: boolean, note: string | undefined, ipAddress?: string) {

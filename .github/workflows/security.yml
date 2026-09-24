@@ -15,7 +15,7 @@ jobs:
     name: Secretos en el repositorio (gitleaks)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
       - name: gitleaks
@@ -30,14 +30,13 @@ jobs:
       matrix:
         app: [backend, frontend]
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24
-      # Bloquea vulnerabilidades críticas de producción. Las "high" restantes del
-      # backend vienen del CLI de Prisma (mysql2, deepmerge-ts: sin corrección
-      # compatible); se revisan en cada actualización de Prisma.
-      - run: npm audit --omit=dev --audit-level=critical
+      # CRITICAL siempre bloquea; HIGH bloquea salvo excepción fechada y vigente en
+      # security/audit-exceptions.json (política: docs/security/vulnerabilidades.md).
+      - run: node ../scripts/audit-gate.mjs
         working-directory: ${{ matrix.app }}
 
   codeql:
@@ -47,12 +46,12 @@ jobs:
       contents: read
       security-events: write
     steps:
-      - uses: actions/checkout@v7
-      - uses: github/codeql-action/init@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: github/codeql-action/init@1c5b675653bb5c22dbe9b12b556ec555138e09fd # v4.38.1
         with:
           languages: javascript-typescript
           queries: security-extended
-      - uses: github/codeql-action/analyze@v4
+      - uses: github/codeql-action/analyze@1c5b675653bb5c22dbe9b12b556ec555138e09fd # v4.38.1
 
   images:
     name: Imagen ${{ matrix.image }} (Trivy)
@@ -71,13 +70,13 @@ jobs:
               --build-arg NEXT_PUBLIC_API_URL=http://localhost:4000/api/v1
               --build-arg NEXT_PUBLIC_SITE_URL=http://localhost:3000
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Construir la imagen
         run: docker build ${{ matrix.build_args }} -t gmm-${{ matrix.image }}:ci ${{ matrix.context }}
       # Solo CVE críticas con corrección publicada bloquean; el resto se revisa
       # en el escaneo semanal.
       - name: Escaneo de la imagen (CRITICAL bloquea)
-        uses: aquasecurity/trivy-action@v0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: gmm-${{ matrix.image }}:ci
           severity: CRITICAL
@@ -91,16 +90,16 @@ jobs:
       contents: read
       security-events: write
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Escaneo de configuración (informe)
-        uses: aquasecurity/trivy-action@v0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: config
           scan-ref: .
           format: sarif
           output: trivy-config.sarif
           exit-code: '0'
-      - uses: github/codeql-action/upload-sarif@v4
+      - uses: github/codeql-action/upload-sarif@1c5b675653bb5c22dbe9b12b556ec555138e09fd # v4.38.1
         if: always() && hashFiles('trivy-config.sarif') != ''
         with:
           sarif_file: trivy-config.sarif

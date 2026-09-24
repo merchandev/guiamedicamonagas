@@ -49,4 +49,15 @@ export class RegisterDto {
   @IsOptional()
   @Matches(/^[VEJPG]-?\d{8,9}-?\d$/i, { message: 'RIF inválido (ej. J-12345678-9)' })
   organizationRif?: string;
+
+  /**
+   * Alta por invitación al equipo de una organización (solo con role
+   * ORGANIZATION): la cuenta se une a esa organización en vez de crear una
+   * nueva. El correo debe ser el invitado.
+   */
+  @IsOptional()
+  @IsString()
+  @MinLength(20)
+  @MaxLength(100)
+  invitationToken?: string;
 }

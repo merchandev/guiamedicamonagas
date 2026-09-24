@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -10,6 +10,8 @@ import { useAuth, ApiError, homePathFor } from '@/lib/auth-context';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
+import { PageSpinner } from '@/components/ui/Spinner';
+import { safeInternalPath } from '@/lib/safe-redirect';
 
 const schema = z.object({
   email: z.string().email('Correo inválido'),
@@ -18,8 +20,18 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 
 export default function LoginPage() {
+  return (
+    <Suspense fallback={<PageSpinner />}>
+      <LoginContent />
+    </Suspense>
+  );
+}
+
+function LoginContent() {
   const { login, verifyMfa } = useAuth();
   const router = useRouter();
+  // p. ej. volver a la invitación de un equipo después de iniciar sesión
+  const next = safeInternalPath(useSearchParams().get('next'));
   const [error, setError] = useState<string | null>(null);
   const [challengeToken, setChallengeToken] = useState<string | null>(null);
   const [code, setCode] = useState('');
@@ -38,7 +50,7 @@ export default function LoginPage() {
         setChallengeToken(outcome.challengeToken);
         return;
       }
-      router.push(homePathFor(outcome.user.role));
+      router.push(next ?? homePathFor(outcome.user.role));
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'No se pudo iniciar sesión');
     }
@@ -51,7 +63,7 @@ export default function LoginPage() {
     setVerifying(true);
     try {
       const user = await verifyMfa(challengeToken, code.trim());
-      router.push(homePathFor(user.role));
+      router.push(next ?? homePathFor(user.role));
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'No se pudo verificar el código');
     } finally {

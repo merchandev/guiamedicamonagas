@@ -9,7 +9,7 @@ no solo el rol.
 * `GET /health` — estado de la API (público).
 
 ## Autenticación
-* `POST /auth/register` — registro de paciente, médico u organización; exige `acceptLegal: true` (público).
+* `POST /auth/register` — registro de paciente, médico u organización; exige `acceptLegal: true` (público). Con `invitationToken` (y `role: ORGANIZATION`) la cuenta se une al equipo que la invitó en vez de crear otra organización; el correo debe ser el invitado.
 * `POST /auth/login` — inicio de sesión; con `ADMIN_MFA_ENABLED` un administrador recibe `{ mfaRequired, challengeToken }` (público).
 * `POST /auth/mfa/verify` — código de 6 dígitos del segundo factor (público).
 * `POST /auth/refresh` · `POST /auth/logout` — sesión por cookie httpOnly; un refresh token reutilizado revoca todas las sesiones.
@@ -36,9 +36,15 @@ Cada access token lleva la versión de sesión del usuario (`tv`); si no coincid
 * `GET /professionals/sitemap?page=` · `GET /professionals/landing-pages` (públicos, SEO).
 * `GET|PATCH /professionals/me`, `POST /professionals/me/photo`, sedes y redes.
 
+## Documentos de verificación
+* Médico: `GET /documents/requirements`, `GET /documents/me`, `POST /documents` (subida verificada y analizada por ClamAV), `GET /documents/me/:id/download`.
+* Admin (`VERIFY_PROFESSIONALS`): `GET /documents/admin/queue`, `GET /documents/admin/:id/download` (descarga auditada: `PROFESSIONAL_DOCUMENT_DOWNLOADED`), `PATCH /documents/admin/:id/review`.
+
 ## Organizaciones
 * `GET /organizations` · `GET /organizations/:slug` (públicos; solo verificadas).
-* Autogestión (rol ORGANIZATION): `GET /organizations/me/list`, `GET|PUT /organizations/me/:id`, logo, miembros, médicos asociados, estadísticas.
+* Autogestión (cualquier cuenta que sea **miembro**; el rol dentro de la organización decide — OWNER/ADMIN/EDITOR, ver `organization-roles.ts`): `GET /organizations/me/list`, `GET|PUT /organizations/me/:id` (nombre/tipo/RIF solo OWNER), logo, médicos asociados, estadísticas.
+* Equipo: `GET /organizations/me/:id/members`, `PATCH /organizations/me/:id/members/:memberId` (`{ role }`, solo OWNER; transferir propiedad = ascender a otro a OWNER), `DELETE /organizations/me/:id/members/:memberId`.
+* Invitaciones: `GET|POST /organizations/me/:id/invitations` (`{ email, role }`; OWNER invita ADMIN/EDITOR, ADMIN solo EDITOR), `DELETE /organizations/me/:id/invitations/:invitationId`; `GET /organizations/invitations/preview?token=` (público: organización, rol y correo enmascarado); `POST /organizations/invitations/accept` (`{ token }`, con sesión de la cuenta invitada).
 * Médico: `GET /organizations/affiliations/me`, `PATCH /organizations/affiliations/me/:organizationId`.
 * Admin (`MANAGE_ORGANIZATIONS`): `GET /organizations/admin/list`, `PATCH /organizations/admin/:id/review`, CRUD.
 
@@ -49,8 +55,8 @@ Cada access token lleva la versión de sesión del usuario (`tv`); si no coincid
 ## Suscripciones y pagos
 * `GET /subscriptions/plans` · `GET /subscriptions/exchange-rate` (públicos).
 * `GET|POST /subscriptions/me` (médico) · `GET|POST /subscriptions/organizations/:id` (organización).
-* `POST /payments` — reporte de Pago Móvil con comprobante (médico u organización).
-* Admin: cola, comprobante y revisión (`REVIEW_PAYMENTS`); planes y tasa manual (`MANAGE_PLANS`).
+* `POST /payments` — reporte de Pago Móvil con comprobante (el médico, o dueño/admin de la organización). Una referencia del mismo banco no puede repetirse en pagos vigentes (409, garantizado por índice único).
+* Admin: cola, comprobante (apertura auditada: `PAYMENT_RECEIPT_VIEWED`) y revisión (`REVIEW_PAYMENTS`); planes y tasa manual (`MANAGE_PLANS`).
 
 ## Analítica
 * `POST /analytics/track` — el frontend solo lo llama con consentimiento de análisis; no se guarda IP ni user-agent.

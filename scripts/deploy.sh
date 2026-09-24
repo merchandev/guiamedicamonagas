@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 # Deploy only this project's services. Run from any working directory.
+#
+#   scripts/deploy.sh                    # despliegue normal (avisa los NO-GO)
+#   GMM_REQUIRE_GO=true scripts/deploy.sh   # falla ante cualquier NO-GO (pacientes reales)
+#
+# Ver docs/operations/go-no-go.md y docs/DEPLOYMENT-INDEPENDENT.md.
 set -euo pipefail
 
 PROJECT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -7,6 +12,8 @@ ENV_FILE="${PROJECT_DIR}/.env.prod"
 PROJECT_NAME="gmm-independent"
 COMPOSE=(docker compose --project-directory "${PROJECT_DIR}" --env-file "${ENV_FILE}" -p "${PROJECT_NAME}" -f "${PROJECT_DIR}/docker-compose.prod.yml")
 export COMPOSE_PARALLEL_LIMIT="${COMPOSE_PARALLEL_LIMIT:-1}"
+BACKUP_ROOT="${GMM_BACKUP_DIR:-/var/backups/guiamedicamonagas}"
+PASSPHRASE_FILE="${GMM_BACKUP_PASSPHRASE_FILE:-/root/.config/guiamedicamonagas/backup-passphrase}"
 
 if [[ ! -f "${ENV_FILE}" ]]; then
   echo "ERROR: configura ${ENV_FILE} con credenciales propias antes de desplegar." >&2
@@ -23,6 +30,7 @@ REQUIRED_VARS=(
   JWT_SECRET JWT_REFRESH_SECRET COOKIE_SECRET DATA_ENCRYPTION_KEYS DATA_LOOKUP_KEY
   FRONTEND_URL NEXT_PUBLIC_API_URL NEXT_PUBLIC_SITE_URL S3_PUBLIC_ENDPOINT
   MAIL_FROM SMTP_HOST SEED_SUPERADMIN_EMAIL SEED_SUPERADMIN_PASSWORD
+  CLAMAV_HOST
 )
 MISSING=()
 for var in "${REQUIRED_VARS[@]}"; do
@@ -46,14 +54,71 @@ for var in DB_PASSWORD REDIS_PASSWORD MINIO_ROOT_PASSWORD MEILI_MASTER_KEY S3_SE
   esac
 done
 
+# --- MFA de administradores: obligatorio, salvo excepción fechada y vigente ----
+TODAY="$(date -u +%F)"
+if [[ "${ADMIN_MFA_ENABLED:-false}" != "true" ]]; then
+  if [[ -z "${ADMIN_MFA_WAIVER_UNTIL:-}" ]]; then
+    echo "ERROR: ADMIN_MFA_ENABLED debe ser true (o declarar ADMIN_MFA_WAIVER_UNTIL=AAAA-MM-DD mientras se configura el SMTP)." >&2
+    exit 1
+  fi
+  if [[ "${ADMIN_MFA_WAIVER_UNTIL}" < "${TODAY}" ]]; then
+    echo "ERROR: la excepción de MFA venció el ${ADMIN_MFA_WAIVER_UNTIL}: configurar SMTP real y ADMIN_MFA_ENABLED=true." >&2
+    exit 1
+  fi
+fi
+
+# --- Informe GO / NO-GO para operar con pacientes reales -----------------------
+NO_GO=()
+[[ "${COOKIE_SECURE:-true}" == "true" ]] || NO_GO+=("COOKIE_SECURE no es true")
+for var in FRONTEND_URL NEXT_PUBLIC_SITE_URL NEXT_PUBLIC_API_URL S3_PUBLIC_ENDPOINT; do
+  [[ "${!var}" == https://* ]] || NO_GO+=("${var} no usa HTTPS")
+done
+[[ "${CADDY_BIND_ADDRESS:-127.0.0.1}" == "127.0.0.1" ]] || NO_GO+=("el puerto ${CADDY_PORT:-8088} está publicado a Internet (CADDY_BIND_ADDRESS=${CADDY_BIND_ADDRESS})")
+[[ "${ADMIN_MFA_ENABLED:-false}" == "true" ]] || NO_GO+=("MFA de administradores con excepción hasta ${ADMIN_MFA_WAIVER_UNTIL}")
+[[ -r "${PASSPHRASE_FILE}" ]] || NO_GO+=("sin frase de cifrado de respaldos (${PASSPHRASE_FILE})")
+[[ -n "${GMM_BACKUP_REMOTE:-}" ]] || NO_GO+=("respaldos sin copia fuera del servidor (GMM_BACKUP_REMOTE)")
+if ! grep -q ' OK ' "${BACKUP_ROOT}/restore-tests.log" 2>/dev/null; then
+  NO_GO+=("sin prueba de restauración correcta registrada")
+fi
+if (( ${#NO_GO[@]} )); then
+  echo "NO-GO para pacientes reales (el despliegue continúa salvo GMM_REQUIRE_GO=true):"
+  printf '  - %s\n' "${NO_GO[@]}"
+  if [[ "${GMM_REQUIRE_GO:-false}" == "true" ]]; then
+    echo "ERROR: GMM_REQUIRE_GO=true y hay puntos NO-GO." >&2
+    exit 1
+  fi
+else
+  echo "GO: todos los controles de producción en verde."
+fi
+
 "${COMPOSE[@]}" config --quiet
 SERVICES="$("${COMPOSE[@]}" config --services)"
 DATA_SERVICES=(postgres redis meilisearch minio)
-EXTERNAL_SERVICES=(postgres redis meilisearch minio caddy)
+EXTERNAL_SERVICES=(postgres redis meilisearch minio caddy clamav)
 if grep -qx mailpit <<< "${SERVICES}"; then
   DATA_SERVICES+=(mailpit)
   EXTERNAL_SERVICES+=(mailpit)
 fi
+
+# --- Respaldo previo y punto de retorno --------------------------------------
+PREVIOUS_SHA="$(git -C "${PROJECT_DIR}" rev-parse HEAD 2>/dev/null || echo desconocido)"
+if [[ -n "$(docker ps -q --filter "label=com.docker.compose.project=${PROJECT_NAME}" --filter label=com.docker.compose.service=postgres)" ]]; then
+  if [[ -r "${PASSPHRASE_FILE}" ]]; then
+    echo "Respaldo cifrado previo al despliegue..."
+    bash "${PROJECT_DIR}/scripts/backup.sh" --label pre-deploy
+  elif [[ "${GMM_SKIP_BACKUP:-false}" != "true" ]]; then
+    echo "ERROR: no se puede respaldar antes de desplegar (falta ${PASSPHRASE_FILE}). GMM_SKIP_BACKUP=true lo omite bajo tu responsabilidad." >&2
+    exit 1
+  fi
+fi
+for service in api web; do
+  image="gmm-independent-${service}:${GMM_IMAGE_TAG:-local}"
+  if docker image inspect "${image}" >/dev/null 2>&1; then
+    docker tag "${image}" "gmm-independent-${service}:rollback"
+  fi
+done
+mkdir -p "${BACKUP_ROOT}"
+echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) inicio desde=${PREVIOUS_SHA}" >> "${BACKUP_ROOT}/deploys.log"
 
 echo "Actualizando imágenes externas del proyecto ${PROJECT_NAME}..."
 "${COMPOSE[@]}" pull "${EXTERNAL_SERVICES[@]}"
@@ -64,8 +129,8 @@ if [[ -n "${GMM_BUILDER:-}" ]]; then
 fi
 "${COMPOSE[@]}" build "${BUILD_ARGS[@]}" api web
 
-echo "Arrancando los servicios de datos..."
-"${COMPOSE[@]}" up -d --no-deps "${DATA_SERVICES[@]}"
+echo "Arrancando los servicios de datos y el antivirus..."
+"${COMPOSE[@]}" up -d --no-deps "${DATA_SERVICES[@]}" clamav
 deadline=$((SECONDS + 180))
 until timeout 10 "${COMPOSE[@]}" exec -T postgres pg_isready -U "${DB_USER}" -d "${DB_NAME}" -t 5 -q; do
   if (( SECONDS >= deadline )); then
@@ -81,7 +146,38 @@ echo "Aplicando migraciones antes de publicar la aplicación..."
 echo "Inicializando catálogos y administrador..."
 "${COMPOSE[@]}" run --rm --no-deps -e SEED_SUPERADMIN_EMAIL -e SEED_SUPERADMIN_PASSWORD api node dist/prisma/seed.js
 
+# ClamAV necesita sus firmas cargadas antes de aceptar subidas (falla cerrado).
+echo "Esperando al antivirus..."
+deadline=$((SECONDS + 420))
+until [[ "$(docker inspect --format '{{.State.Health.Status}}' "$("${COMPOSE[@]}" ps -q clamav)")" == "healthy" ]]; do
+  if (( SECONDS >= deadline )); then
+    echo "ERROR: ClamAV no quedó sano en 7 minutos." >&2
+    exit 1
+  fi
+  sleep 5
+done
+
 echo "Arrancando API, web y proxy propios..."
 "${COMPOSE[@]}" up -d --wait --wait-timeout 180 api web caddy
+
+# La API cifra en su arranque cualquier dato heredado en claro y borra la tabla
+# temporal: si sigue existiendo, el despliegue NO está completo.
+LEGACY="$("${COMPOSE[@]}" exec -T postgres psql -U "${DB_USER}" -d "${DB_NAME}" -At \
+  -c "SELECT coalesce(to_regclass('public.\"_PatientPlaintextLegacy\"')::text, '')")"
+if [[ -n "${LEGACY}" ]]; then
+  echo "ERROR: la tabla _PatientPlaintextLegacy sigue existiendo: revisar los logs de la API antes de dar por bueno el despliegue." >&2
+  "${COMPOSE[@]}" logs --tail=100 api >&2
+  exit 1
+fi
+
+# Prueba de humo con cuenta temporal (solo con el Mailpit interno: con SMTP
+# real enviaría correos de verdad a un buzón inexistente).
+if [[ "${SMTP_HOST}" == "mailpit" ]]; then
+  echo "Prueba de humo..."
+  "${COMPOSE[@]}" exec -T -e SEED_SUPERADMIN_EMAIL -e SEED_SUPERADMIN_PASSWORD api node - < "${PROJECT_DIR}/scripts/smoke-deployment.cjs"
+fi
+
 "${COMPOSE[@]}" ps
+echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) ok desde=${PREVIOUS_SHA} hasta=$(git -C "${PROJECT_DIR}" rev-parse HEAD 2>/dev/null || echo desconocido)" >> "${BACKUP_ROOT}/deploys.log"
 echo "Despliegue completado: ${NEXT_PUBLIC_SITE_URL}"
+echo "Para volver atrás: git checkout ${PREVIOUS_SHA} e imágenes gmm-independent-{api,web}:rollback (ver docs/operations/go-no-go.md)."

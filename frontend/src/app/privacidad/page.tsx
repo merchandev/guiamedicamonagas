@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { LEGAL_EFFECTIVE_DATE_LABEL, PATIENT_CONSENT_VERSION, PRIVACY_VERSION } from '@/lib/legal';
+import { DATA_CONTROLLER, LEGAL_EFFECTIVE_DATE_LABEL, PATIENT_CONSENT_VERSION, PRIVACY_VERSION } from '@/lib/legal';
 
 export const metadata: Metadata = {
   title: 'Política de privacidad',
@@ -54,6 +54,36 @@ export default function PrivacyPage() {
             información sobre uno mismo, artículos 28 y 60) y a la normativa venezolana aplicable al secreto y la
             confidencialidad de la información médica.
           </p>
+          {DATA_CONTROLLER.legalName && (
+            <dl className="mt-3 grid gap-1 text-sm sm:grid-cols-[max-content_1fr] sm:gap-x-4">
+              <dt className="font-medium text-ink-900">Responsable</dt>
+              <dd>{DATA_CONTROLLER.legalName}</dd>
+              {DATA_CONTROLLER.rif && (
+                <>
+                  <dt className="font-medium text-ink-900">RIF</dt>
+                  <dd>{DATA_CONTROLLER.rif}</dd>
+                </>
+              )}
+              {DATA_CONTROLLER.address && (
+                <>
+                  <dt className="font-medium text-ink-900">Domicilio</dt>
+                  <dd>{DATA_CONTROLLER.address}</dd>
+                </>
+              )}
+              {DATA_CONTROLLER.privacyEmail && (
+                <>
+                  <dt className="font-medium text-ink-900">Privacidad</dt>
+                  <dd>{DATA_CONTROLLER.privacyEmail}</dd>
+                </>
+              )}
+              {DATA_CONTROLLER.supportEmail && (
+                <>
+                  <dt className="font-medium text-ink-900">Soporte</dt>
+                  <dd>{DATA_CONTROLLER.supportEmail}</dd>
+                </>
+              )}
+            </dl>
+          )}
         </section>
 
         <section id="datos">

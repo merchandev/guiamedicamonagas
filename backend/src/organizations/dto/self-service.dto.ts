@@ -77,13 +77,26 @@ export class UpdateOwnOrganizationDto {
   socialLinks?: SocialLinkDto[];
 }
 
-export class AddMemberDto {
+/** Invitación al equipo: la persona acepta desde el enlace que recibe por correo. */
+export class InviteMemberDto {
   @IsEmail()
   @MaxLength(180)
   email!: string;
 
   @IsIn(['ADMIN', 'EDITOR'])
   role!: 'ADMIN' | 'EDITOR';
+}
+
+export class ChangeMemberRoleDto {
+  @IsIn(['OWNER', 'ADMIN', 'EDITOR'])
+  role!: 'OWNER' | 'ADMIN' | 'EDITOR';
+}
+
+export class AcceptInvitationDto {
+  @IsString()
+  @MinLength(20)
+  @MaxLength(100)
+  token!: string;
 }
 
 export class InviteProfessionalDto {

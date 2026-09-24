@@ -306,3 +306,25 @@ export function identityReviewedTemplate(rawName: string, approved: boolean, raw
      ${button(profileUrl, 'Ver mi perfil')}`,
   );
 }
+
+export function organizationInvitationTemplate(
+  rawOrganizationName: string,
+  rawRoleLabel: string,
+  acceptUrl: string,
+  expiresInHours: number,
+) {
+  const organization = escapeHtml(rawOrganizationName);
+  const role = escapeHtml(rawRoleLabel);
+  return layout(
+    'Invitación a un equipo',
+    `<h1 style="font-size:20px;margin:0 0 12px;">Te invitaron a ${organization}</h1>
+     <p style="font-size:14px;line-height:1.6;color:#3a3a3a;">
+       Te invitaron a unirte al equipo de <strong>${organization}</strong> en ${BRAND_NAME} con el rol de <strong>${role}</strong>.
+       Inicia sesión o crea tu cuenta con este mismo correo para aceptar.
+     </p>
+     ${button(acceptUrl, 'Ver la invitación')}
+     <p style="font-size:13px;line-height:1.6;color:#8a8a8a;margin-top:16px;">
+       El enlace vence en ${expiresInHours} horas y sirve una sola vez. Si no esperabas esta invitación, ignora este correo.
+     </p>`,
+  );
+}

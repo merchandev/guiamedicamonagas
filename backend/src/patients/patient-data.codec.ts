@@ -40,7 +40,8 @@ export const EMPTY_HEALTH_DATA: PatientHealthData = {
   treatingDoctors: [],
 };
 
-const CTX = {
+/** Contextos AAD de cada campo cifrado (también los usa la rotación de claves). */
+export const PATIENT_DATA_CONTEXTS = {
   cedula: 'PatientProfile.cedula',
   phone: 'PatientProfile.phone',
   health: 'PatientProfile.healthData',
@@ -48,6 +49,7 @@ const CTX = {
   lookupPhone: 'patient.phone',
   appointmentReason: 'Appointment.reason',
 } as const;
+const CTX = PATIENT_DATA_CONTEXTS;
 
 const ENCRYPTED_PREFIX = 'gmm1.';
 

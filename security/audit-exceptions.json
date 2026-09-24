@@ -1,0 +1,27 @@
+{
+  "$comment": "Excepciones temporales de vulnerabilidades HIGH (política: docs/security/vulnerabilidades.md). Cada una vence; una excepción vencida vuelve a bloquear el CI. Las CRITICAL nunca admiten excepción.",
+  "exceptions": [
+    {
+      "id": "GHSA-ggr8-5vv4-36mx",
+      "app": "backend",
+      "package": "deepmerge-ts (vía prisma → @prisma/config)",
+      "reason": "La única corrección que ofrece npm es bajar la CLI de Prisma a 6.19.3 (cambio mayor hacia atrás, incompatible con el cliente 7.10).",
+      "component": "CLI de Prisma: carga de prisma.config.ts al ejecutar `prisma migrate deploy`",
+      "exposure": "No alcanzable con datos externos: solo fusiona la configuración propia del repositorio; la API en ejecución no usa esta librería.",
+      "mitigation": "La CLI solo corre en el despliegue, dentro del contenedor, con configuración versionada en Git.",
+      "expires": "2026-12-31",
+      "owner": "merchandev"
+    },
+    {
+      "id": "GHSA-3f6p-5ww8-9rcr",
+      "app": "backend",
+      "package": "mysql2 (vía prisma)",
+      "reason": "Dependencia del conector MySQL de la CLI de Prisma; npm solo lo corrige bajando Prisma a 6.19.3.",
+      "component": "Controlador MySQL incluido en la CLI de Prisma",
+      "exposure": "No alcanzable: el proyecto usa PostgreSQL; el código de mysql2 nunca se ejecuta.",
+      "mitigation": "Sin conexiones MySQL en ningún entorno; se revisa en cada actualización de Prisma.",
+      "expires": "2026-12-31",
+      "owner": "merchandev"
+    }
+  ]
+}

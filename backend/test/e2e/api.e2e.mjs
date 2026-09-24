@@ -1,6 +1,7 @@
 // Suite de extremo a extremo contra una API real y su PostgreSQL.
 //   E2E_API_URL=http://127.0.0.1:4000/api/v1 DATABASE_URL=postgresql://... npm run test:e2e
 // Crea sus propios usuarios (sufijo aleatorio), así que puede correr varias veces.
+import { createHash, randomBytes } from 'node:crypto';
 import pg from 'pg';
 import argon2 from 'argon2';
 
@@ -159,7 +160,7 @@ r = await call('GET', '/patients/admin/identity', null, ad);
 check('cola de identidad sin cédula', r.status === 200 && r.data.items.some((i) => i.id === patientRow.id) && !JSON.stringify(r.data).includes(cedula));
 r = await call('GET', `/patients/admin/identity/${patientRow.id}`, null, ad);
 check('caso de identidad: cédula descifrada y foto firmada', r.status === 200 && r.data.cedula === cedula && !!r.data.idPhotoUrl);
-check('apertura del caso auditada', (await db.query(`select count(*)::int n from "AuditLog" where action='PATIENT_IDENTITY_VIEWED' and "resourceId"=$1`, [patientRow.id])).rows[0].n === 1);
+check('apertura del caso auditada', (await db.query(`select count(*)::int n from "AuditLog" where action='PATIENT_IDENTITY_DOCUMENT_VIEWED' and "resourceId"=$1`, [patientRow.id])).rows[0].n === 1);
 check('rechazo sin motivo → 400', (await call('PATCH', `/patients/admin/identity/${patientRow.id}/review`, { approved: false }, ad)).status === 400);
 r = await call('PATCH', `/patients/admin/identity/${patientRow.id}/review`, { approved: false, note: 'Foto borrosa' }, ad);
 row = (await db.query(`select "idPhotoKey", "identityStatus" from "PatientProfile" where id=$1`, [patientRow.id])).rows[0];
@@ -176,6 +177,88 @@ check('access token nuevo funciona', (await call('GET', '/auth/me', null, renewe
 check('logout-all', (await call('POST', '/auth/logout-all', null, renewed)).status === 200);
 check('tras logout-all el token → 401', (await call('GET', '/auth/me', null, renewed)).status === 401);
 check('login con la contraseña nueva', (await call('POST', '/auth/login', { email: `p-${run}@t.local`, password: 'Nueva12345x' })).status === 200);
+const patientToken2 = (await call('POST', '/auth/login', { email: `p-${run}@t.local`, password: 'Nueva12345x' })).data.accessToken;
+
+// 13. Equipo de organizaciones: invitaciones y roles (el rol global de la cuenta no decide)
+// El token solo viaja por correo (en la BD queda su hash): la prueba fija un token conocido en la invitación creada.
+const sha256 = (t) => createHash('sha256').update(t).digest('hex');
+async function inviteWithKnownToken(token, email, role, as = orgToken) {
+  const res = await call('POST', `/organizations/me/${orgId}/invitations`, { email, role }, as);
+  if (res.status === 201) {
+    await db.query(`update "OrganizationInvitation" set "tokenHash"=$1 where "organizationId"=$2 and email=$3 and "acceptedAt" is null and "revokedAt" is null`, [sha256(token), orgId, email]);
+  }
+  return res;
+}
+const edToken = randomBytes(32).toString('base64url');
+r = await inviteWithKnownToken(edToken, `ed-${run}@t.local`, 'EDITOR');
+// Prisma guarda UTC en columnas sin zona horaria: las horas se calculan en SQL, no con el reloj local.
+const invRow = (await db.query(`select "tokenHash", round(extract(epoch from ("expiresAt" - (now() at time zone 'utc'))) / 3600)::int hours from "OrganizationInvitation" where email=$1`, [`ed-${run}@t.local`])).rows[0];
+check('dueño invita a un editor (72 h, solo hash en BD)', r.status === 201 && invRow.tokenHash.length === 64 && invRow.hours === 72, `${r.status} ${invRow.hours} h`);
+r = await call('GET', `/organizations/invitations/preview?token=${edToken}`);
+check('vista previa pública con correo enmascarado', r.status === 200 && r.data.email === 'e***@t.local' && r.data.role === 'EDITOR' && r.data.accountExists === false);
+const orgsBefore = (await db.query(`select count(*)::int n from "Organization"`)).rows[0].n;
+r = await call('POST', '/auth/register', { email: `ed-${run}@t.local`, password: pw, role: 'ORGANIZATION', acceptLegal: true, invitationToken: edToken });
+const edTokenAuth = r.data?.accessToken;
+const orgsAfter = (await db.query(`select count(*)::int n from "Organization"`)).rows[0].n;
+check('alta por invitación: se une sin crear otra organización', r.status === 201 && orgsAfter === orgsBefore, `${r.status} ${orgsBefore}→${orgsAfter}`);
+check('el editor ve la organización con su rol', (await call('GET', '/organizations/me/list', null, edTokenAuth)).data?.[0]?.role === 'EDITOR');
+check('el enlace sirve una sola vez', (await call('GET', `/organizations/invitations/preview?token=${edToken}`)).status === 404);
+
+const orgNow = (await call('GET', `/organizations/me/${orgId}`, null, edTokenAuth)).data;
+const editBody = { type: orgNow.type, name: orgNow.name, rif: orgNow.rif ?? undefined, locations: orgNow.locations.map(({ name, address, municipality }) => ({ name, address, municipality })) };
+check('editor: cambiar el nombre (identidad) → 403', (await call('PUT', `/organizations/me/${orgId}`, { ...editBody, name: 'Otro nombre' }, edTokenAuth)).status === 403);
+r = await call('PUT', `/organizations/me/${orgId}`, { ...editBody, description: 'Abierto 24 horas' }, edTokenAuth);
+check('editor: editar contenido → 200', r.status === 200 && r.data.description === 'Abierto 24 horas', String(r.status));
+check('editor: invitar miembros → 403', (await call('POST', `/organizations/me/${orgId}/invitations`, { email: `z-${run}@t.local`, role: 'EDITOR' }, edTokenAuth)).status === 403);
+check('editor: gestionar el plan → 403', (await call('GET', `/subscriptions/organizations/${orgId}`, null, edTokenAuth)).status === 403);
+check('editor: asociar médicos → 403', (await call('POST', `/organizations/me/${orgId}/professionals`, { professionalId: doc.id }, edTokenAuth)).status === 403);
+
+const pInvite = randomBytes(32).toString('base64url');
+await inviteWithKnownToken(pInvite, `x-${run}@t.local`, 'EDITOR');
+check('aceptar con otra cuenta → 403', (await call('POST', '/organizations/invitations/accept', { token: pInvite }, patientToken2)).status === 403);
+const pOwn = randomBytes(32).toString('base64url');
+await inviteWithKnownToken(pOwn, `p-${run}@t.local`, 'ADMIN');
+r = await call('POST', '/organizations/invitations/accept', { token: pOwn }, patientToken2);
+check('una cuenta de paciente acepta y queda como ADMIN (rol global intacto)', r.status === 200 && r.data.role === 'ADMIN' && (await call('GET', '/auth/me', null, patientToken2)).data.role === 'USER', String(r.status));
+check('admin: invitar a otro admin → 403', (await call('POST', `/organizations/me/${orgId}/invitations`, { email: `a2-${run}@t.local`, role: 'ADMIN' }, patientToken2)).status === 403);
+r = await call('POST', `/organizations/me/${orgId}/invitations`, { email: `e2-${run}@t.local`, role: 'EDITOR' }, patientToken2);
+check('admin: invitar editores → 201', r.status === 201, String(r.status));
+check('admin: revocar invitación → 200', (await call('DELETE', `/organizations/me/${orgId}/invitations/${r.data[0].id}`, null, patientToken2)).status === 200);
+const members = (await call('GET', `/organizations/me/${orgId}/members`, null, orgToken)).data;
+const ownerMember = members.find((m) => m.role === 'OWNER');
+const adminMember = members.find((m) => m.role === 'ADMIN');
+check('admin: cambiar roles → 403', (await call('PATCH', `/organizations/me/${orgId}/members/${adminMember.id}`, { role: 'OWNER' }, patientToken2)).status === 403);
+check('el único dueño no puede degradarse → 400', (await call('PATCH', `/organizations/me/${orgId}/members/${ownerMember.id}`, { role: 'EDITOR' }, orgToken)).status === 400);
+r = await call('PATCH', `/organizations/me/${orgId}/members/${adminMember.id}`, { role: 'OWNER' }, orgToken);
+check('dueño transfiere la propiedad', r.status === 200 && r.data.filter((m) => m.role === 'OWNER').length === 2, String(r.status));
+check('invitaciones y cambios auditados', (await db.query(`select count(distinct action)::int n from "AuditLog" where "resourceId"=$1 and action in ('ORGANIZATION_INVITATION_SENT','ORGANIZATION_INVITATION_ACCEPTED','ORGANIZATION_INVITATION_REVOKED','ORGANIZATION_MEMBER_ROLE_CHANGED')`, [orgId])).rows[0].n === 4);
+
+// 14. Concurrencia: citas y referencias de Pago Móvil
+const freeSlots = (await call('GET', `/appointments/availability?professionalId=${doc.id}&from=${in3}&to=${in3}`)).data;
+const raceSlot = freeSlots[freeSlots.length - 1];
+const bookings = await Promise.all(Array.from({ length: 10 }, () => call('POST', '/appointments', { professionalId: doc.id, startsAt: raceSlot }, patientToken2)));
+check('10 reservas simultáneas del mismo horario → 1 creada', bookings.filter((b) => b.status === 201).length === 1 && bookings.filter((b) => b.status === 409).length === 9, bookings.map((b) => b.status).join(','));
+const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL, max: 10 });
+const ref = `9${Date.now()}`.slice(0, 12);
+const inserts = await Promise.allSettled(Array.from({ length: 10 }, (_, i) => pool.query(
+  `insert into "Payment"(id,"installmentId","amountBs","senderBankCode","referenceNumber","receiptFileKey","updatedAt") values ($1,$2,100,'0134',$3,'receipts/e2e.png',now())`,
+  [`race-${run}-${i}`, inst.id, ref],
+)));
+await pool.end();
+check('10 pagos simultáneos con la misma referencia → 1 guardado (índice único parcial)', inserts.filter((x) => x.status === 'fulfilled').length === 1 && inserts.filter((x) => x.reason?.code === '23505').length === 9);
+await db.query(`update "Payment" set status='REJECTED' where "referenceNumber"=$1`, [ref]);
+check('una referencia rechazada puede volver a reportarse', !!(await db.query(`insert into "Payment"(id,"installmentId","amountBs","senderBankCode","referenceNumber","updatedAt") values ($1,$2,100,'0134',$3,now()) returning id`, [`retry-${run}`, inst.id, ref])).rows[0]);
+
+// 15. Descargas sensibles auditadas
+const racePayment = (await db.query(`select id from "Payment" where "referenceNumber"=$1 and "receiptFileKey" is not null limit 1`, [ref])).rows[0];
+r = await call('GET', `/payments/admin/${racePayment.id}/receipt`, null, ad);
+check('comprobante de pago: apertura auditada', r.status === 200 && (await db.query(`select count(*)::int n from "AuditLog" where action='PAYMENT_RECEIPT_VIEWED' and "resourceId"=$1`, [racePayment.id])).rows[0].n === 1);
+await db.query(`insert into "ProfessionalDocument"(id,"professionalId",type,"fileKey","originalFileName","mimeType","fileSizeBytes","updatedAt") values ($1,$2,'TITULO_MEDICO','documents/e2e.pdf','titulo.pdf','application/pdf',1000,now())`, [`doc-${run}`, doc.id]);
+r = await call('GET', `/documents/admin/doc-${run}/download`, null, ad);
+check('documento profesional: descarga auditada', r.status === 200 && (await db.query(`select count(*)::int n from "AuditLog" where action='PROFESSIONAL_DOCUMENT_DOWNLOADED' and "resourceId"=$1`, [`doc-${run}`])).rows[0].n === 1);
+
+// 16. Migración de datos heredados completa
+check('_PatientPlaintextLegacy no existe', (await db.query(`select to_regclass('public."_PatientPlaintextLegacy"') t`)).rows[0].t === null);
 
 console.log(failures === 0 ? '\nTODO OK' : `\n${failures} FALLO(S)`);
 await db.end();

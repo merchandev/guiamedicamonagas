@@ -12,6 +12,7 @@ export default function robots(): MetadataRoute.Robots {
           '/admin',
           '/paciente',
           '/cuenta',
+          '/invitacion-organizacion',
           // No un prefijo simple: '/organizacion' bloquearía también '/organizaciones/...'.
           '/organizacion$',
           '/organizacion/',

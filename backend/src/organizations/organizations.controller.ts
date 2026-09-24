@@ -1,4 +1,5 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query, Req } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post, Put, Query, Req } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { Role } from '@prisma/client';
 import type { FastifyRequest } from 'fastify';
 import { Public } from '../common/decorators/public.decorator';
@@ -12,7 +13,9 @@ import { IMAGE_TYPES, UploadSecurityService } from '../uploads/upload-security.s
 import { OrganizationsService } from './organizations.service';
 import { UpsertOrganizationDto } from './dto/upsert-organization.dto';
 import {
-  AddMemberDto,
+  AcceptInvitationDto,
+  ChangeMemberRoleDto,
+  InviteMemberDto,
   InviteProfessionalDto,
   RespondAffiliationDto,
   ReviewOrganizationDto,
@@ -38,27 +41,41 @@ export class OrganizationsController {
     return this.organizations.findAll(type, municipality);
   }
 
-  // --- Autogestión (cuenta de organización) ---------------------------------
+  // --- Autogestión (miembros del equipo) --------------------------------------
+  // Sin @Roles: autoriza la pertenencia a la organización y el rol que se
+  // tiene en ella (organization-roles.ts), no el tipo de cuenta.
 
-  @Roles(Role.ORGANIZATION)
   @Get('me/list')
   listOwn(@CurrentUser() user: AuthenticatedUser) {
     return this.organizations.listOwn(user.id);
   }
 
-  @Roles(Role.ORGANIZATION)
+  // Invitaciones: vista previa pública del enlace y aceptación con sesión.
+  // Van antes de 'me/:id' para no confundirse con un id.
+
+  @Public()
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  @Get('invitations/preview')
+  previewInvitation(@Query('token') token: string) {
+    return this.organizations.previewInvitation(token);
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Post('invitations/accept')
+  acceptInvitation(@CurrentUser() user: AuthenticatedUser, @Body() dto: AcceptInvitationDto, @Req() req: FastifyRequest) {
+    return this.organizations.acceptInvitation(user, dto.token, req.ip);
+  }
+
   @Get('me/:id')
   getOwn(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
     return this.organizations.getOwn(user.id, id);
   }
 
-  @Roles(Role.ORGANIZATION)
   @Put('me/:id')
   updateOwn(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string, @Body() dto: UpdateOwnOrganizationDto) {
     return this.organizations.updateOwn(user.id, id, dto);
   }
 
-  @Roles(Role.ORGANIZATION)
   @Post('me/:id/logo')
   async uploadLogo(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string, @Req() req: FastifyRequest) {
     const raw = await readSingleUploadedFile(req, MAX_LOGO_SIZE);
@@ -68,37 +85,68 @@ export class OrganizationsController {
     return this.organizations.updateOwnLogo(user.id, id, key);
   }
 
-  @Roles(Role.ORGANIZATION)
   @Get('me/:id/members')
   listMembers(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
     return this.organizations.listMembers(user.id, id);
   }
 
-  @Roles(Role.ORGANIZATION)
-  @Post('me/:id/members')
-  addMember(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string, @Body() dto: AddMemberDto) {
-    return this.organizations.addMember(user.id, id, dto);
+  @Patch('me/:id/members/:memberId')
+  changeMemberRole(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Param('memberId') memberId: string,
+    @Body() dto: ChangeMemberRoleDto,
+    @Req() req: FastifyRequest,
+  ) {
+    return this.organizations.changeMemberRole(user.id, id, memberId, dto.role, req.ip);
   }
 
-  @Roles(Role.ORGANIZATION)
   @Delete('me/:id/members/:memberId')
-  removeMember(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string, @Param('memberId') memberId: string) {
-    return this.organizations.removeMember(user.id, id, memberId);
+  removeMember(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Param('memberId') memberId: string,
+    @Req() req: FastifyRequest,
+  ) {
+    return this.organizations.removeMember(user.id, id, memberId, req.ip);
   }
 
-  @Roles(Role.ORGANIZATION)
+  @Get('me/:id/invitations')
+  listInvitations(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
+    return this.organizations.listInvitations(user.id, id);
+  }
+
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Post('me/:id/invitations')
+  inviteMember(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() dto: InviteMemberDto,
+    @Req() req: FastifyRequest,
+  ) {
+    return this.organizations.inviteMember(user.id, id, dto, req.ip);
+  }
+
+  @Delete('me/:id/invitations/:invitationId')
+  revokeInvitation(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Param('invitationId') invitationId: string,
+    @Req() req: FastifyRequest,
+  ) {
+    return this.organizations.revokeInvitation(user.id, id, invitationId, req.ip);
+  }
+
   @Get('me/:id/professionals/search')
   searchProfessionals(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string, @Query('q') q: string) {
     return this.organizations.searchProfessionals(user.id, id, q);
   }
 
-  @Roles(Role.ORGANIZATION)
   @Post('me/:id/professionals')
   inviteProfessional(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string, @Body() dto: InviteProfessionalDto) {
     return this.organizations.inviteProfessional(user.id, id, dto.professionalId);
   }
 
-  @Roles(Role.ORGANIZATION)
   @Delete('me/:id/professionals/:professionalId')
   removeProfessional(
     @CurrentUser() user: AuthenticatedUser,
@@ -108,7 +156,6 @@ export class OrganizationsController {
     return this.organizations.removeProfessional(user.id, id, professionalId);
   }
 
-  @Roles(Role.ORGANIZATION)
   @Get('me/:id/stats')
   stats(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
     return this.organizations.stats(user.id, id);

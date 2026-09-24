@@ -49,13 +49,13 @@ export class SubscriptionsController {
     return this.subscriptions.subscribe(user.id, planId);
   }
 
-  @Roles(Role.ORGANIZATION)
+  // Sin @Roles: autoriza la pertenencia (dueño o admin) a la organización,
+  // no el rol global de la cuenta — ver assertOrgManager.
   @Get('organizations/:organizationId')
   getOrganizationSubscription(@CurrentUser() user: AuthenticatedUser, @Param('organizationId') organizationId: string) {
     return this.subscriptions.getOrganizationSubscription(user.id, organizationId);
   }
 
-  @Roles(Role.ORGANIZATION)
   @Post('organizations/:organizationId')
   subscribeOrganization(@CurrentUser() user: AuthenticatedUser, @Param('organizationId') organizationId: string) {
     return this.subscriptions.subscribeOrganization(user.id, organizationId);

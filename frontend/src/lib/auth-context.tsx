@@ -57,6 +57,8 @@ export interface RegisterPayload {
   organizationName?: string;
   organizationType?: 'PHARMACY' | 'LABORATORY' | 'CLINIC';
   organizationRif?: string;
+  /** Alta para unirse al equipo de una organización existente (enlace de invitación). */
+  invitationToken?: string;
 }
 
 /** Con el segundo factor activo, el login de un administrador devuelve un desafío en vez de sesión. */

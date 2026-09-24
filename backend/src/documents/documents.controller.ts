@@ -69,8 +69,8 @@ export class DocumentsController {
 
   @RequirePermissions(Permission.VERIFY_PROFESSIONALS)
   @Get('admin/:id/download')
-  adminDownloadUrl(@Param('id') id: string) {
-    return this.documents.adminDownloadUrl(id);
+  adminDownloadUrl(@CurrentUser() admin: AuthenticatedUser, @Param('id') id: string, @Req() req: FastifyRequest) {
+    return this.documents.adminDownloadUrl(id, admin.id, req.ip);
   }
 
   @RequirePermissions(Permission.VERIFY_PROFESSIONALS)

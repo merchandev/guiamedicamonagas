@@ -18,6 +18,7 @@ import { slugify } from '../common/utils/slugify';
 import { hashPassword, verifyPassword } from '../common/utils/password.util';
 import { generatePatientCode } from '../patients/patient-code.util';
 import { PatientDataCodec } from '../patients/patient-data.codec';
+import { consumeInvitation } from '../organizations/organization-invitations';
 import { PRIVACY_VERSION, TERMS_VERSION } from '../common/legal-versions';
 import { ROLE_PERMISSIONS } from '../common/permissions';
 import { RegisterDto } from './dto/register.dto';
@@ -83,7 +84,10 @@ export class AuthService {
     if (dto.role === 'USER' && (!dto.firstName || !dto.lastName || !dto.cedula)) {
       throw new BadRequestException('Nombre, apellido y cédula son obligatorios para registrarte como paciente');
     }
-    if (dto.role === 'ORGANIZATION' && (!dto.organizationName || !dto.organizationType)) {
+    if (dto.invitationToken && dto.role !== 'ORGANIZATION') {
+      throw new BadRequestException('Las invitaciones de equipo se aceptan con una cuenta de organización');
+    }
+    if (dto.role === 'ORGANIZATION' && !dto.invitationToken && (!dto.organizationName || !dto.organizationType)) {
       throw new BadRequestException('Nombre y tipo de organización son obligatorios');
     }
     if (dto.role === 'USER') {
@@ -98,6 +102,7 @@ export class AuthService {
     const passwordHash = await hashPassword(dto.password);
 
     let user: Awaited<ReturnType<typeof this.prisma.user.create>>;
+    let joinedOrganizationId: string | null = null;
     try {
       user = await this.prisma.$transaction(async (tx) => {
         const created = await tx.user.create({
@@ -137,7 +142,12 @@ export class AuthService {
           });
         }
 
-        if (dto.role === 'ORGANIZATION') {
+        if (dto.role === 'ORGANIZATION' && dto.invitationToken) {
+          // Alta por invitación: se une al equipo existente, sin crear otra
+          // organización. Un token inválido o de otro correo deshace el alta.
+          const joined = await consumeInvitation(tx, dto.invitationToken, created);
+          joinedOrganizationId = joined.organizationId;
+        } else if (dto.role === 'ORGANIZATION') {
           // Nace sin publicar y pendiente: un administrador la verifica antes
           // de que aparezca en el directorio (igual que los médicos).
           await tx.organization.create({
@@ -167,9 +177,23 @@ export class AuthService {
       action: 'REGISTER',
       resource: 'User',
       resourceId: user.id,
-      details: { termsVersion: TERMS_VERSION, privacyVersion: PRIVACY_VERSION },
+      details: {
+        termsVersion: TERMS_VERSION,
+        privacyVersion: PRIVACY_VERSION,
+        ...(joinedOrganizationId ? { joinedOrganizationId } : {}),
+      },
       ipAddress,
     });
+    if (joinedOrganizationId) {
+      await this.audit.record({
+        userId: user.id,
+        action: 'ORGANIZATION_INVITATION_ACCEPTED',
+        resource: 'Organization',
+        resourceId: joinedOrganizationId,
+        details: { viaRegistration: true },
+        ipAddress,
+      });
+    }
 
     await this.sendVerificationEmail(user.id, user.email, dto.firstName ?? dto.organizationName ?? user.email);
 

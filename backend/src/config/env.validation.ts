@@ -32,7 +32,7 @@ function noInsecureDefault(fieldName: string) {
   });
 }
 
-export const envSchema = z.object({
+const baseEnvSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().default(4000),
   FRONTEND_URL: z.string().url(),
@@ -87,11 +87,19 @@ export const envSchema = z.object({
   DATA_ENCRYPTION_ACTIVE_KEY: z.string().default('v1'),
   DATA_LOOKUP_KEY: z.string().min(1),
 
-  // Segundo factor por correo para ADMIN/SUPERADMIN. Solo activarlo con un
-  // SMTP real: con el Mailpit interno el código nunca llegaría al buzón.
+  // Segundo factor por correo para ADMIN/SUPERADMIN. Obligatorio en
+  // producción (ver productionRules); requiere un SMTP real: con el Mailpit
+  // interno el código nunca llegaría al buzón.
   ADMIN_MFA_ENABLED: envBoolean(false),
+  // Única excepción: fecha límite (AAAA-MM-DD) mientras se configura el SMTP.
+  // scripts/deploy.sh bloquea el despliegue cuando vence.
+  ADMIN_MFA_WAIVER_UNTIL: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'formato AAAA-MM-DD')
+    .optional(),
 
-  // SEC-04: antivirus opcional (clamd, protocolo INSTREAM por TCP).
+  // SEC-04: antivirus de subidas (clamd, protocolo INSTREAM por TCP).
+  // Obligatorio en producción; vacío solo en desarrollo y pruebas.
   CLAMAV_HOST: z.string().optional().default(''),
   CLAMAV_PORT: z.coerce.number().default(3310),
 
@@ -101,7 +109,54 @@ export const envSchema = z.object({
   PAGO_MOVIL_ID: z.string().default(''),
 });
 
+/**
+ * Reglas que solo aplican a NODE_ENV=production: la API no arranca sin
+ * antivirus ni, salvo excepción fechada y explícita, sin segundo factor para
+ * administradores.
+ */
+export const envSchema = baseEnvSchema.superRefine((env, ctx) => {
+  if (env.NODE_ENV !== 'production') return;
+  if (!env.CLAMAV_HOST) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['CLAMAV_HOST'],
+      message: 'es obligatorio en producción: todo archivo subido pasa por el antivirus',
+    });
+  }
+  if (!env.ADMIN_MFA_ENABLED && !env.ADMIN_MFA_WAIVER_UNTIL) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['ADMIN_MFA_ENABLED'],
+      message:
+        'debe ser true en producción. Mientras no haya SMTP real, declarar ADMIN_MFA_WAIVER_UNTIL=AAAA-MM-DD (excepción temporal)',
+    });
+  }
+});
+
 export type EnvConfig = z.infer<typeof envSchema>;
+
+/**
+ * Avisos de producción que no impiden arrancar (un reinicio del servidor no
+ * debe tumbar el sitio), pero que deploy.sh sí trata como bloqueantes.
+ */
+export function productionWarnings(
+  env: Pick<EnvConfig, 'NODE_ENV' | 'ADMIN_MFA_ENABLED' | 'ADMIN_MFA_WAIVER_UNTIL' | 'COOKIE_SECURE' | 'FRONTEND_URL'>,
+  today = new Date(),
+): string[] {
+  if (env.NODE_ENV !== 'production') return [];
+  const warnings: string[] = [];
+  if (!env.ADMIN_MFA_ENABLED && env.ADMIN_MFA_WAIVER_UNTIL) {
+    const expired = env.ADMIN_MFA_WAIVER_UNTIL < today.toISOString().slice(0, 10);
+    warnings.push(
+      expired
+        ? `La excepción de MFA para administradores venció el ${env.ADMIN_MFA_WAIVER_UNTIL}: configurar SMTP real y ADMIN_MFA_ENABLED=true`
+        : `Administradores sin segundo factor hasta el ${env.ADMIN_MFA_WAIVER_UNTIL} (excepción temporal): configurar SMTP real`,
+    );
+  }
+  if (!env.COOKIE_SECURE) warnings.push('COOKIE_SECURE=false: la sesión viaja sin HTTPS (NO-GO para pacientes reales)');
+  if (!env.FRONTEND_URL.startsWith('https://')) warnings.push('FRONTEND_URL no usa HTTPS (NO-GO para pacientes reales)');
+  return warnings;
+}
 
 export function validateEnv(config: Record<string, unknown>): EnvConfig {
   const parsed = envSchema.safeParse(config);
