@@ -53,7 +53,7 @@ export default function DocumentsPage() {
       <div>
         <h1 className="text-2xl">Documentos de verificación</h1>
         <p className="mt-1 text-ink-600">
-          La verificación es gratuita y la misma para todos los planes. Cada requisito indica su naturaleza (legal, gremial,
+          La verificación es gratuita y la misma para todos los planes. Cada requisito indica su naturaleza (legal, de habilitación,
           fiscal o de la plataforma). Un administrador revisa cada documento manualmente. Aceptamos PDF, JPG, PNG o WebP;
           los PDF con scripts o archivos incrustados se rechazan.
         </p>

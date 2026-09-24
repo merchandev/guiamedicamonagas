@@ -6,7 +6,7 @@ export const DOCUMENT_LABELS: Record<DocumentType, string> = {
   ARTICULO_8: 'Constancia de Cumplimiento del Artículo 8 (servicio rural / internado)',
   MATRICULA_COLEGIO_MONAGAS: 'N° de Matrícula — Colegio de Médicos del Estado Monagas',
   INPREMEDICO: 'Registro complementario (histórico)',
-  SOLVENCIA_DEONTOLOGICA: 'Solvencia Deontológica vigente — Colegio de Médicos de Monagas',
+  SOLVENCIA_DEONTOLOGICA: 'Solvencia Deontológica (ya no se exige)',
   TITULO_POSTGRADO: 'Título de Postgrado / Especialización',
   CREDENCIAL_ESPECIALIDAD: 'Credencial de Reconocimiento de Especialidad (Colegio de Médicos de Monagas)',
   CEDULA_IDENTIDAD: 'Cédula de Identidad laminada vigente',
@@ -56,7 +56,6 @@ export const BASE_REQUIRED_DOCUMENTS: DocumentType[] = [
   'REGISTRO_MPPS_SACS',
   'ARTICULO_8',
   'MATRICULA_COLEGIO_MONAGAS',
-  'SOLVENCIA_DEONTOLOGICA',
   'CEDULA_IDENTIDAD',
   'RIF',
 ];
@@ -67,8 +66,14 @@ export const SPECIALIST_REQUIRED_DOCUMENTS: DocumentType[] = [
   'CREDENCIAL_ESPECIALIDAD',
 ];
 
-/** Documentos cuya vigencia debe renovarse periódicamente. */
-export const EXPIRING_DOCUMENT_TYPES: DocumentType[] = ['SOLVENCIA_DEONTOLOGICA'];
+/** Documentos cuya vigencia debe renovarse periódicamente (hoy ninguno). */
+export const EXPIRING_DOCUMENT_TYPES: DocumentType[] = [];
+
+/**
+ * Tipos que ya no se piden ni se aceptan. Se conservan en el enum solo para
+ * los documentos que se hubieran subido antes.
+ */
+export const RETIRED_DOCUMENT_TYPES: DocumentType[] = ['SOLVENCIA_DEONTOLOGICA'];
 
 export function requiredDocumentsFor(isSpecialist: boolean): DocumentType[] {
   return isSpecialist

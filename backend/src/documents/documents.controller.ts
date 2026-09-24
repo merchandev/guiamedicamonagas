@@ -8,7 +8,12 @@ import { readSingleUploadedFile } from '../common/utils/multipart';
 import { DOCUMENT_TYPES, UploadSecurityService } from '../uploads/upload-security.service';
 import { DocumentsService } from './documents.service';
 import { ReviewDocumentDto } from './dto/review-document.dto';
-import { DOCUMENT_CATEGORY, DOCUMENT_CATEGORY_LABELS, DOCUMENT_LABELS } from './document-requirements';
+import {
+  DOCUMENT_CATEGORY,
+  DOCUMENT_CATEGORY_LABELS,
+  DOCUMENT_LABELS,
+  RETIRED_DOCUMENT_TYPES,
+} from './document-requirements';
 import { Permission, RequirePermissions } from '../common/permissions';
 
 @Controller('documents')
@@ -21,12 +26,14 @@ export class DocumentsController {
   @Roles(Role.PROFESSIONAL)
   @Get('requirements')
   requirements() {
-    return Object.values(DocumentType).map((type) => ({
-      type,
-      label: DOCUMENT_LABELS[type],
-      category: DOCUMENT_CATEGORY[type],
-      categoryLabel: DOCUMENT_CATEGORY_LABELS[DOCUMENT_CATEGORY[type]],
-    }));
+    return Object.values(DocumentType)
+      .filter((type) => !RETIRED_DOCUMENT_TYPES.includes(type))
+      .map((type) => ({
+        type,
+        label: DOCUMENT_LABELS[type],
+        category: DOCUMENT_CATEGORY[type],
+        categoryLabel: DOCUMENT_CATEGORY_LABELS[DOCUMENT_CATEGORY[type]],
+      }));
   }
 
   @Roles(Role.PROFESSIONAL)

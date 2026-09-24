@@ -11,6 +11,8 @@ import { Permission, roleHasPermissions, ROLE_PERMISSIONS } from '../../src/comm
 import { computeCompleteness, PLAN_BOOST } from '../../src/professionals/directory-score';
 import { shapeForScopes } from '../../src/patients/patients.service';
 import { EMPTY_HEALTH_DATA } from '../../src/patients/patient-data.codec';
+import { requiredDocumentsFor, RETIRED_DOCUMENT_TYPES } from '../../src/documents/document-requirements';
+import { DocumentsService } from '../../src/documents/documents.service';
 
 describe('agenda en America/Caracas', () => {
   it('Caracas es UTC-4', () => {
@@ -128,5 +130,35 @@ describe('consentimiento: recorte por alcance', () => {
     expect(shaped.identity).toEqual({ firstName: 'Luis', lastName: 'Gómez', identityVerified: true });
     expect(shaped.contact?.phone).toBe('0414-1111111');
     expect(shaped.health).toBeNull();
+  });
+});
+
+describe('requisitos de verificación del médico', () => {
+  it('la solvencia deontológica ya no se exige, ni a generales ni a especialistas', () => {
+    expect(requiredDocumentsFor(true)).not.toContain('SOLVENCIA_DEONTOLOGICA');
+    expect(requiredDocumentsFor(false)).toEqual([
+      'TITULO_MEDICO',
+      'REGISTRO_MPPS_SACS',
+      'ARTICULO_8',
+      'MATRICULA_COLEGIO_MONAGAS',
+      'CEDULA_IDENTIDAD',
+      'RIF',
+    ]);
+  });
+
+  it('un tipo retirado se rechaza al subir, antes de tocar la base o el almacenamiento', async () => {
+    expect(RETIRED_DOCUMENT_TYPES).toContain('SOLVENCIA_DEONTOLOGICA');
+    const untouched = new Proxy(
+      {},
+      {
+        get: () => {
+          throw new Error('no debería usarse');
+        },
+      },
+    ) as never;
+    const service = new DocumentsService(untouched, untouched, untouched, untouched, untouched);
+    await expect(service.upload('user-1', 'SOLVENCIA_DEONTOLOGICA', {} as never, 'solvencia.pdf')).rejects.toThrow(
+      'Este documento ya no se exige',
+    );
   });
 });

@@ -41,7 +41,7 @@ export const DOCUMENT_TYPE_LABELS: Record<string, string> = {
   ARTICULO_8: 'Constancia Artículo 8',
   MATRICULA_COLEGIO_MONAGAS: 'Matrícula Colegio de Médicos Monagas',
   INPREMEDICO: 'Registro complementario (histórico)',
-  SOLVENCIA_DEONTOLOGICA: 'Solvencia Deontológica',
+  SOLVENCIA_DEONTOLOGICA: 'Solvencia Deontológica (ya no se exige)',
   TITULO_POSTGRADO: 'Título de Postgrado',
   CREDENCIAL_ESPECIALIDAD: 'Credencial de Especialidad',
   CEDULA_IDENTIDAD: 'Cédula de Identidad',

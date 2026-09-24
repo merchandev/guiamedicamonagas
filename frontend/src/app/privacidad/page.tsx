@@ -103,7 +103,7 @@ export default function PrivacyPage() {
             <li>
               <strong>Perfil profesional:</strong> nombre, biografía, especialidades, datos de contacto y de consulta,
               números de registro (MPPS, Colegio de Médicos) y los documentos de verificación (título, constancias,
-              solvencia, cédula y RIF).
+              cédula y RIF).
             </li>
             <li>
               <strong>Organizaciones</strong> (farmacias, laboratorios y clínicas): datos de la entidad, RIF, sedes,

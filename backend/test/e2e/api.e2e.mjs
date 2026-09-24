@@ -38,7 +38,7 @@ const patientToken = r.data?.accessToken;
 r = await call('POST', '/auth/register', { email: `p2-${run}@t.local`, password: pw, role: 'USER', firstName: 'X', lastName: 'Y', cedula: cedula.replace('-', '').toLowerCase(), acceptLegal: true });
 check('cédula duplicada (normalizada) → 409', r.status === 409, String(r.status));
 r = await call('GET', '/auth/me', null, patientToken);
-check('me: versiones legales aceptadas', r.data?.needsLegalAcceptance === false && r.data?.termsVersionAccepted === '2.0');
+check('me: versiones legales aceptadas', r.data?.needsLegalAcceptance === false && r.data?.termsVersionAccepted === '2.1');
 
 // 2. Ficha cifrada
 r = await call('PATCH', '/patients/me', { phone: phone, bloodType: 'A+', allergies: 'Ninguna', conditionSummary: 'Asma leve', medications: [{ name: 'Salbutamol', schedule: 'SOS' }] }, patientToken);
@@ -256,6 +256,12 @@ check('comprobante de pago: apertura auditada', r.status === 200 && (await db.qu
 await db.query(`insert into "ProfessionalDocument"(id,"professionalId",type,"fileKey","originalFileName","mimeType","fileSizeBytes","updatedAt") values ($1,$2,'TITULO_MEDICO','documents/e2e.pdf','titulo.pdf','application/pdf',1000,now())`, [`doc-${run}`, doc.id]);
 r = await call('GET', `/documents/admin/doc-${run}/download`, null, ad);
 check('documento profesional: descarga auditada', r.status === 200 && (await db.query(`select count(*)::int n from "AuditLog" where action='PROFESSIONAL_DOCUMENT_DOWNLOADED' and "resourceId"=$1`, [`doc-${run}`])).rows[0].n === 1);
+
+// 15b. Requisitos de verificación: la solvencia deontológica ya no se pide
+r = await call('GET', '/documents/me', null, doctorToken);
+check('requisitos del médico sin solvencia deontológica', r.status === 200 && r.data.required.length === 6 && !r.data.required.some((x) => x.type === 'SOLVENCIA_DEONTOLOGICA'), r.data?.required?.map((x) => x.type).join(','));
+r = await call('GET', '/documents/requirements', null, doctorToken);
+check('catálogo de documentos sin tipos retirados', r.status === 200 && !r.data.some((x) => x.type === 'SOLVENCIA_DEONTOLOGICA'));
 
 // 16. Migración de datos heredados completa
 check('_PatientPlaintextLegacy no existe', (await db.query(`select to_regclass('public."_PatientPlaintextLegacy"') t`)).rows[0].t === null);

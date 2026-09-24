@@ -45,11 +45,6 @@ const REQUIREMENTS: { category: string; nature: string; items: string[] }[] = [
     items: ['Título de postgrado o especialización.', 'Credencial de reconocimiento de la especialidad.'],
   },
   {
-    category: 'Requisito gremial',
-    nature: 'Exigencia del Colegio de Médicos, según corresponda; la plataforma la usa para confirmar que el registro está activo.',
-    items: ['Solvencia deontológica vigente (se renueva periódicamente).'],
-  },
-  {
     category: 'Identidad y fiscal',
     nature: 'Política de verificación de Guía Médica Monagas para confirmar identidad e identidad fiscal.',
     items: ['Cédula de identidad vigente.', 'RIF actualizado.'],
@@ -118,7 +113,7 @@ export default function TermsPage() {
           <h2 className="text-xl font-semibold text-ink-900">4. Requisitos documentales</h2>
           <p className="mt-2">
             Para verificar a un médico solicitamos los siguientes documentos. Indicamos la naturaleza de cada uno para
-            distinguir lo que exige la ley de lo que es requisito gremial o política interna de la plataforma:
+            distinguir lo que exige la ley de lo que es habilitación profesional o política interna de la plataforma:
           </p>
           <div className="mt-4 space-y-4">
             {REQUIREMENTS.map((group) => (

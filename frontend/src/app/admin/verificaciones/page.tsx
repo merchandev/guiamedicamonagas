@@ -21,7 +21,8 @@ interface QueueItem {
   professional: { firstName: string; lastName: string; slug: string; isSpecialist: boolean };
 }
 
-const EXPIRING_TYPES: DocumentType[] = ['SOLVENCIA_DEONTOLOGICA'];
+// Tipos con vigencia periódica: hoy ninguno (debe coincidir con EXPIRING_DOCUMENT_TYPES del backend).
+const EXPIRING_TYPES: DocumentType[] = [];
 
 export default function VerificationsQueuePage() {
   const [items, setItems] = useState<QueueItem[] | null>(null);

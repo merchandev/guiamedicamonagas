@@ -9,7 +9,7 @@ export class ReviewDocumentDto {
   @MaxLength(500)
   note?: string;
 
-  /** Solo aplica a documentos con vigencia (p.ej. Solvencia Deontológica). */
+  /** Solo aplica a documentos con vigencia (EXPIRING_DOCUMENT_TYPES). */
   @IsOptional()
   @IsISO8601()
   expiresAt?: string;

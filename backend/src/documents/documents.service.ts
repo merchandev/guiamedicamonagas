@@ -13,6 +13,7 @@ import {
   DOCUMENT_CATEGORY_LABELS,
   DOCUMENT_LABELS,
   EXPIRING_DOCUMENT_TYPES,
+  RETIRED_DOCUMENT_TYPES,
   requiredDocumentsFor,
 } from './document-requirements';
 import type { SecuredFile } from '../uploads/upload-security.service';
@@ -33,6 +34,9 @@ export class DocumentsService {
   async upload(userId: string, type: DocumentType, file: SecuredFile, originalFileName: string, issuedAt?: string) {
     if (!Object.values(DocumentType).includes(type)) {
       throw new BadRequestException('Tipo de documento inválido');
+    }
+    if (RETIRED_DOCUMENT_TYPES.includes(type)) {
+      throw new BadRequestException('Este documento ya no se exige');
     }
     const profile = await this.prisma.professionalProfile.findUnique({ where: { userId } });
     if (!profile) throw new NotFoundException('No tienes un perfil profesional');
@@ -263,7 +267,7 @@ export class DocumentsService {
     }
   }
 
-  /** Expira documentos vencidos (p.ej. Solvencia Deontológica anual) cada día a las 6am. */
+  /** Expira cada día a las 6am los documentos aprobados cuya vigencia venció. */
   @Cron(CronExpression.EVERY_DAY_AT_6AM)
   async expireOutdatedDocuments() {
     const now = new Date();

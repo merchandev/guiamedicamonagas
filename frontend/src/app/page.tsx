@@ -36,7 +36,7 @@ const VERIFICATION_STEPS = [
   },
   {
     title: 'Subes tus documentos',
-    body: 'Título, registro MPPS (SACS), Artículo 8, matrícula del Colegio de Monagas y solvencia deontológica.',
+    body: 'Título, registro MPPS (SACS), Artículo 8, matrícula del Colegio de Monagas, cédula y RIF.',
     icon: FileCheckIcon,
   },
   {
@@ -55,7 +55,7 @@ const FAQ_ITEMS = [
   {
     question: '¿Cómo verifican a los médicos?',
     answer:
-      'Cada médico debe entregar su título universitario, registro ante el MPPS (SACS), constancia del Artículo 8, matrícula del Colegio de Médicos de Monagas y solvencia deontológica vigente. Un administrador revisa cada documento manualmente antes de publicar el perfil.',
+      'Cada médico debe entregar su título universitario, registro ante el MPPS (SACS), constancia del Artículo 8, matrícula del Colegio de Médicos de Monagas, cédula y RIF. Un administrador revisa cada documento manualmente antes de publicar el perfil.',
   },
   {
     question: '¿Es gratis buscar un médico en el directorio?',
@@ -70,11 +70,6 @@ const FAQ_ITEMS = [
     question: '¿Cómo se registra un médico en la guía?',
     answer:
       'Desde "Soy médico, quiero registrarme": creas tu cuenta, completas tu perfil, subes tus documentos y activas tu suscripción por Pago Móvil. Tu perfil se publica cuando un administrador aprueba todos tus documentos.',
-  },
-  {
-    question: '¿Qué pasa si la solvencia deontológica de un médico vence?',
-    answer:
-      'La solvencia deontológica se exige de forma anual. Si vence y no se renueva, el perfil deja de mostrarse públicamente hasta que el médico suba una nueva constancia vigente.',
   },
 ];
 
