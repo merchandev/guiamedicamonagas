@@ -123,7 +123,18 @@ mkdir -p "${BACKUP_ROOT}"
 echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) inicio desde=${PREVIOUS_SHA}" >> "${BACKUP_ROOT}/deploys.log"
 
 echo "Actualizando imágenes externas del proyecto ${PROJECT_NAME}..."
-"${COMPOSE[@]}" pull "${EXTERNAL_SERVICES[@]}"
+# Las imágenes van fijadas por etiqueta: si un registro no responde (quay.io ya
+# no sirve la de MinIO sin autenticación), basta la copia local. Solo se
+# detiene si alguna imagen no está en el servidor.
+"${COMPOSE[@]}" pull --ignore-pull-failures "${EXTERNAL_SERVICES[@]}" || true
+MISSING_IMAGES=()
+while read -r external_image; do
+  docker image inspect "${external_image}" >/dev/null 2>&1 || MISSING_IMAGES+=("${external_image}")
+done < <("${COMPOSE[@]}" config --images "${EXTERNAL_SERVICES[@]}")
+if (( ${#MISSING_IMAGES[@]} )); then
+  printf 'ERROR: imagen no disponible ni en el registro ni en el servidor: %s\n' "${MISSING_IMAGES[@]}" >&2
+  exit 1
+fi
 echo "Construyendo API y web..."
 BUILD_ARGS=()
 if [[ -n "${GMM_BUILDER:-}" ]]; then
