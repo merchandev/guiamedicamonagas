@@ -146,6 +146,11 @@ echo "Aplicando migraciones antes de publicar la aplicación..."
 echo "Inicializando catálogos y administrador..."
 "${COMPOSE[@]}" run --rm --no-deps -e SEED_SUPERADMIN_EMAIL -e SEED_SUPERADMIN_PASSWORD api node dist/prisma/seed.js
 
+# La imagen nueva valida su configuración ANTES de reemplazar los contenedores
+# en marcha: un error de entorno detiene aquí el despliegue sin tumbar el sitio.
+echo "Validando la configuración de producción con la imagen nueva..."
+"${COMPOSE[@]}" run --rm --no-deps api node -e "require('./dist/src/config/env.validation').validateEnv(process.env); console.log('Configuración válida')"
+
 # ClamAV necesita sus firmas cargadas antes de aceptar subidas (falla cerrado).
 echo "Esperando al antivirus..."
 deadline=$((SECONDS + 420))

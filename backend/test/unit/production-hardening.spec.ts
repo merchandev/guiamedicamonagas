@@ -56,6 +56,13 @@ describe('producción: MFA y antivirus obligatorios', () => {
     expect(productionWarnings(env, new Date('2026-11-01'))[0]).toMatch(/venció/);
   });
 
+  it('una excepción vacía (compose sin la variable) cuenta como inexistente', () => {
+    expect(() => validateEnv({ ...production, ADMIN_MFA_WAIVER_UNTIL: '' })).not.toThrow();
+    expect(() => validateEnv({ ...production, ADMIN_MFA_ENABLED: 'false', ADMIN_MFA_WAIVER_UNTIL: '' })).toThrow(
+      /ADMIN_MFA_ENABLED/,
+    );
+  });
+
   it('sin HTTPS se avisa como NO-GO', () => {
     const env = validateEnv({ ...production, COOKIE_SECURE: 'false' });
     expect(productionWarnings(env).join(' ')).toMatch(/COOKIE_SECURE=false.*FRONTEND_URL no usa HTTPS/);

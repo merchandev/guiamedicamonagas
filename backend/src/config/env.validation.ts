@@ -93,10 +93,11 @@ const baseEnvSchema = z.object({
   ADMIN_MFA_ENABLED: envBoolean(false),
   // Única excepción: fecha límite (AAAA-MM-DD) mientras se configura el SMTP.
   // scripts/deploy.sh bloquea el despliegue cuando vence.
-  ADMIN_MFA_WAIVER_UNTIL: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, 'formato AAAA-MM-DD')
-    .optional(),
+  // Compose pasa "" cuando la variable no está en .env.prod: vacío = sin excepción.
+  ADMIN_MFA_WAIVER_UNTIL: z.preprocess(
+    (value) => (value === '' ? undefined : value),
+    z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'formato AAAA-MM-DD').optional(),
+  ),
 
   // SEC-04: antivirus de subidas (clamd, protocolo INSTREAM por TCP).
   // Obligatorio en producción; vacío solo en desarrollo y pruebas.
