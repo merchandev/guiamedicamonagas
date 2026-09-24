@@ -53,7 +53,8 @@ export default function DocumentsPage() {
       <div>
         <h1 className="text-2xl">Documentos de verificación</h1>
         <p className="mt-1 text-ink-600">
-          La verificación es gratuita y la misma para todos los planes. Cada requisito indica su naturaleza (legal, de habilitación,
+          La verificación es gratuita y la misma para todos los planes. Los requisitos siguen el orden en que se obtienen:
+          primero tu identidad y después tus títulos y registros. Cada uno indica su naturaleza (legal, de habilitación,
           fiscal o de la plataforma). Un administrador revisa cada documento manualmente. Aceptamos PDF, JPG, PNG o WebP;
           los PDF con scripts o archivos incrustados se rechazan.
         </p>
@@ -62,13 +63,15 @@ export default function DocumentsPage() {
       {error && <Alert tone="error">{error}</Alert>}
 
       <div className="space-y-3">
-        {data.required.map((req) => {
+        {data.required.map((req, index) => {
           const doc = latestByType(req.type);
           const status = doc ? DOCUMENT_STATUS_LABELS[doc.status] : null;
           return (
             <div key={req.type} className="card flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="font-medium text-ink-900">{DOCUMENT_TYPE_LABELS[req.type] ?? req.label}</p>
+                <p className="font-medium text-ink-900">
+                  <span className="text-ink-400">{index + 1}.</span> {DOCUMENT_TYPE_LABELS[req.type] ?? req.label}
+                </p>
                 <p className="text-xs text-ink-400">{req.categoryLabel}</p>
                 {doc ? (
                   <div className="mt-1 flex items-center gap-2">

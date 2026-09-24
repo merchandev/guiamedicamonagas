@@ -22,39 +22,24 @@ const SECTIONS = [
   { id: 'cambios', title: '11. Cambios y versiones' },
 ];
 
-const REQUIREMENTS: { category: string; nature: string; items: string[] }[] = [
+const LAW = 'Requisito legal (Ley de Ejercicio de la Medicina)';
+const QUALIFICATION = 'Habilitación profesional';
+const PLATFORM = 'Política de verificación de Guía Médica Monagas';
+
+// En el orden en que un médico los obtiene en Venezuela (mismo orden que el panel del médico).
+const REQUIREMENTS: { item: string; nature: string }[] = [
+  { item: 'Cédula de identidad vigente.', nature: `Identidad · ${PLATFORM}` },
+  { item: 'RIF actualizado.', nature: `Fiscal · ${PLATFORM}` },
+  { item: 'Título de Médico Cirujano, registrado ante el Registro Principal.', nature: LAW },
+  { item: 'Registro del título ante el Ministerio del Poder Popular para la Salud (MPPS / SACS).', nature: QUALIFICATION },
   {
-    category: 'Requisito legal',
-    nature: 'Exigido por la Ley de Ejercicio de la Medicina para ejercer en Venezuela.',
-    items: [
-      'Título de Médico Cirujano, registrado ante el Registro Principal.',
-      'Constancia de cumplimiento del Artículo 8 (servicio rural o internado rotatorio).',
-    ],
+    item: 'Inscripción en el Colegio de Médicos (u organización médico-gremial) del estado donde ejerce.',
+    nature: QUALIFICATION,
   },
-  {
-    category: 'Habilitación profesional',
-    nature: 'Inscripciones que habilitan el ejercicio y que la ley contempla.',
-    items: [
-      'Registro del título ante el Ministerio del Poder Popular para la Salud (MPPS / SACS).',
-      'Inscripción en el Colegio de Médicos (u organización médico-gremial) del estado donde ejerce.',
-    ],
-  },
-  {
-    category: 'Especialidad',
-    nature: 'Solo si el profesional se anuncia como especialista.',
-    items: ['Título de postgrado o especialización.', 'Credencial de reconocimiento de la especialidad.'],
-  },
-  {
-    category: 'Identidad y fiscal',
-    nature: 'Política de verificación de Guía Médica Monagas para confirmar identidad e identidad fiscal.',
-    items: ['Cédula de identidad vigente.', 'RIF actualizado.'],
-  },
-  {
-    category: 'Complementario (opcional)',
-    nature: 'No es requisito para publicarse.',
-    items: ['Registro INPREMÉDICO u otros registros históricos.'],
-  },
+  { item: 'Constancia de cumplimiento del Artículo 8 (servicio rural o internado rotatorio).', nature: LAW },
 ];
+
+const SPECIALIST_REQUIREMENTS = ['Título de postgrado o especialización.', 'Credencial de reconocimiento de la especialidad.'];
 
 export default function TermsPage() {
   return (
@@ -112,22 +97,30 @@ export default function TermsPage() {
         <section id="documentos">
           <h2 className="text-xl font-semibold text-ink-900">4. Requisitos documentales</h2>
           <p className="mt-2">
-            Para verificar a un médico solicitamos los siguientes documentos. Indicamos la naturaleza de cada uno para
-            distinguir lo que exige la ley de lo que es habilitación profesional o política interna de la plataforma:
+            Para verificar a un médico solicitamos los siguientes documentos, en el orden en que se obtienen. Indicamos la
+            naturaleza de cada uno para distinguir lo que exige la ley de lo que es habilitación profesional o política
+            interna de la plataforma:
           </p>
-          <div className="mt-4 space-y-4">
-            {REQUIREMENTS.map((group) => (
-              <div key={group.category} className="rounded-lg border border-ink-100 p-4">
-                <h3 className="font-semibold text-ink-800">{group.category}</h3>
-                <p className="mt-1 text-sm text-ink-500">{group.nature}</p>
-                <ul className="mt-2 list-disc space-y-1 pl-5">
-                  {group.items.map((item) => (
-                    <li key={item}>{item}</li>
-                  ))}
-                </ul>
-              </div>
+          <ol className="mt-4 list-decimal space-y-2 rounded-lg border border-ink-100 p-4 pl-9">
+            {REQUIREMENTS.map((requirement) => (
+              <li key={requirement.item}>
+                {requirement.item}
+                <span className="block text-sm text-ink-500">{requirement.nature}</span>
+              </li>
             ))}
+          </ol>
+          <div className="mt-4 rounded-lg border border-ink-100 p-4">
+            <h3 className="font-semibold text-ink-800">Especialidad</h3>
+            <p className="mt-1 text-sm text-ink-500">Solo si el profesional se anuncia como especialista, además:</p>
+            <ol className="mt-2 list-decimal space-y-1 pl-5" start={REQUIREMENTS.length + 1}>
+              {SPECIALIST_REQUIREMENTS.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ol>
           </div>
+          <p className="mt-4 text-sm text-ink-500">
+            Opcional: el registro INPREMÉDICO u otros registros históricos; no son requisito para publicarse.
+          </p>
           <p className="mt-4">
             El perfil público de cada médico muestra sus números de registro (MPPS y Colegio de Médicos) como práctica de
             transparencia. Un profesional puede registrar matrículas de Colegios de distintos estados.

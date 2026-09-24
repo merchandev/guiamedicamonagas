@@ -259,7 +259,7 @@ check('documento profesional: descarga auditada', r.status === 200 && (await db.
 
 // 15b. Requisitos de verificación: la solvencia deontológica ya no se pide
 r = await call('GET', '/documents/me', null, doctorToken);
-check('requisitos del médico sin solvencia deontológica', r.status === 200 && r.data.required.length === 6 && !r.data.required.some((x) => x.type === 'SOLVENCIA_DEONTOLOGICA'), r.data?.required?.map((x) => x.type).join(','));
+check('requisitos del médico en orden de obtención y sin solvencia deontológica', r.status === 200 && r.data.required.map((x) => x.type).join(',') === 'CEDULA_IDENTIDAD,RIF,TITULO_MEDICO,REGISTRO_MPPS_SACS,MATRICULA_COLEGIO_MONAGAS,ARTICULO_8' && !r.data.required.some((x) => x.type === 'SOLVENCIA_DEONTOLOGICA'), r.data?.required?.map((x) => x.type).join(','));
 r = await call('GET', '/documents/requirements', null, doctorToken);
 check('catálogo de documentos sin tipos retirados', r.status === 200 && !r.data.some((x) => x.type === 'SOLVENCIA_DEONTOLOGICA'));
 

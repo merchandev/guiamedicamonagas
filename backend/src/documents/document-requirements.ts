@@ -50,17 +50,26 @@ export const DOCUMENT_CATEGORY: Record<DocumentType, DocumentCategory> = {
   RIF: 'FISCAL',
 };
 
-/** Documentos que la plataforma exige para verificar a cualquier médico general. */
+/**
+ * Documentos que la plataforma exige para verificar a cualquier médico general,
+ * en el orden en que un médico los obtiene en Venezuela: identidad (cédula y
+ * RIF), título universitario, su registro ante el MPPS, la inscripción en el
+ * Colegio de Médicos y, tras el servicio rural, la constancia del Artículo 8.
+ * El panel del médico los muestra en este mismo orden.
+ */
 export const BASE_REQUIRED_DOCUMENTS: DocumentType[] = [
-  'TITULO_MEDICO',
-  'REGISTRO_MPPS_SACS',
-  'ARTICULO_8',
-  'MATRICULA_COLEGIO_MONAGAS',
   'CEDULA_IDENTIDAD',
   'RIF',
+  'TITULO_MEDICO',
+  'REGISTRO_MPPS_SACS',
+  'MATRICULA_COLEGIO_MONAGAS',
+  'ARTICULO_8',
 ];
 
-/** Documentos adicionales exigidos cuando el profesional se promociona como especialista. */
+/**
+ * Documentos adicionales cuando el profesional se promociona como especialista,
+ * también en orden: el título de postgrado y luego la credencial del Colegio.
+ */
 export const SPECIALIST_REQUIRED_DOCUMENTS: DocumentType[] = [
   'TITULO_POSTGRADO',
   'CREDENCIAL_ESPECIALIDAD',

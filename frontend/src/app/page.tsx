@@ -36,7 +36,7 @@ const VERIFICATION_STEPS = [
   },
   {
     title: 'Subes tus documentos',
-    body: 'Título, registro MPPS (SACS), Artículo 8, matrícula del Colegio de Monagas, cédula y RIF.',
+    body: 'Cédula, RIF, título, registro MPPS (SACS), matrícula del Colegio de Monagas y Artículo 8.',
     icon: FileCheckIcon,
   },
   {
@@ -55,7 +55,7 @@ const FAQ_ITEMS = [
   {
     question: '¿Cómo verifican a los médicos?',
     answer:
-      'Cada médico debe entregar su título universitario, registro ante el MPPS (SACS), constancia del Artículo 8, matrícula del Colegio de Médicos de Monagas, cédula y RIF. Un administrador revisa cada documento manualmente antes de publicar el perfil.',
+      'Cada médico debe entregar su cédula, su RIF, su título universitario, el registro del título ante el MPPS (SACS), la matrícula del Colegio de Médicos de Monagas y la constancia del Artículo 8. Un administrador revisa cada documento manualmente antes de publicar el perfil.',
   },
   {
     question: '¿Es gratis buscar un médico en el directorio?',

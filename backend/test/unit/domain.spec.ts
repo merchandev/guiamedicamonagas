@@ -134,16 +134,20 @@ describe('consentimiento: recorte por alcance', () => {
 });
 
 describe('requisitos de verificación del médico', () => {
-  it('la solvencia deontológica ya no se exige, ni a generales ni a especialistas', () => {
-    expect(requiredDocumentsFor(true)).not.toContain('SOLVENCIA_DEONTOLOGICA');
+  it('en orden de obtención: identidad, título, MPPS, Colegio y Artículo 8; sin solvencia deontológica', () => {
     expect(requiredDocumentsFor(false)).toEqual([
-      'TITULO_MEDICO',
-      'REGISTRO_MPPS_SACS',
-      'ARTICULO_8',
-      'MATRICULA_COLEGIO_MONAGAS',
       'CEDULA_IDENTIDAD',
       'RIF',
+      'TITULO_MEDICO',
+      'REGISTRO_MPPS_SACS',
+      'MATRICULA_COLEGIO_MONAGAS',
+      'ARTICULO_8',
     ]);
+  });
+
+  it('el especialista agrega postgrado y luego la credencial, al final', () => {
+    expect(requiredDocumentsFor(true).slice(-2)).toEqual(['TITULO_POSTGRADO', 'CREDENCIAL_ESPECIALIDAD']);
+    expect(requiredDocumentsFor(true)).not.toContain('SOLVENCIA_DEONTOLOGICA');
   });
 
   it('un tipo retirado se rechaza al subir, antes de tocar la base o el almacenamiento', async () => {
