@@ -344,9 +344,26 @@ services:
       # El Caddyfile usa {$S3_BUCKET} para el path del proxy de archivos.
       S3_BUCKET: ${S3_BUCKET}
     ports:
-      # Puerto alterno: 80/443 ya están ocupados por otros proyectos del
-      # mismo VPS. HTTP simple por ahora — ver Caddyfile.
+      # Puerto alterno: 80/443 son del Traefik compartido del VPS. Acceso
+      # directo por IP en HTTP simple — ver Caddyfile.
       - "${CADDY_PORT:-8088}:8088"
+    # Dominio propio con HTTPS a través del Traefik del servidor (proyecto
+    # traefik-ivzc, dueño de 80/443 y de los certificados Let's Encrypt): lo
+    # descubre por estas etiquetas, igual que a los demás proyectos, sin
+    # cambiar su configuración. Se activa con GMM_DOMAIN y
+    # GMM_TRAEFIK_ENABLE=true en .env.prod; www redirige al dominio principal.
+    labels:
+      traefik.enable: "${GMM_TRAEFIK_ENABLE:-false}"
+      traefik.docker.network: gmm-independent_gmm_dmz
+      traefik.http.routers.gmm.rule: "Host(`${GMM_DOMAIN:-gmm.invalid}`) || Host(`www.${GMM_DOMAIN:-gmm.invalid}`)"
+      traefik.http.routers.gmm.entrypoints: websecure
+      traefik.http.routers.gmm.tls: "true"
+      traefik.http.routers.gmm.tls.certresolver: letsencrypt
+      traefik.http.routers.gmm.middlewares: gmm-www-to-apex
+      traefik.http.middlewares.gmm-www-to-apex.redirectregex.regex: "^https://www\\.(.+)"
+      traefik.http.middlewares.gmm-www-to-apex.redirectregex.replacement: "https://$${1}"
+      traefik.http.middlewares.gmm-www-to-apex.redirectregex.permanent: "true"
+      traefik.http.services.gmm.loadbalancer.server.port: "8088"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data

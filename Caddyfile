@@ -1,13 +1,26 @@
 # =============================================================================
-# Caddyfile · Lanzamiento HTTP independiente (sin dominio/HTTPS todavía)
+# Caddyfile · proxy interno del proyecto (HTTP en :8088)
 # =============================================================================
-# Este proyecto corre aislado junto a otros servicios en el mismo VPS/IP, cuyos
-# puertos 80/443/3000/25/587 ya están ocupados. Por eso Caddy escucha en un
-# puerto alterno (8088) sin bloque ACME/TLS: es HTTP simple a propósito. La
-# migración a HTTPS con dominio propio (segunda IP, DNS-01 challenge o
-# certificado manual) es un paso posterior que no debería requerir tocar la
-# app — solo este archivo y el mapeo de puertos en docker-compose.prod.yml.
+# Este proyecto comparte VPS/IP con otros servicios; los puertos 80/443 son del
+# Traefik del servidor (proyecto traefik-ivzc), que termina HTTPS con Let's
+# Encrypt para cada dominio. El dominio propio (GMM_DOMAIN) llega así:
+#
+#   navegador ─HTTPS─▶ Traefik :443 ─HTTP─▶ este Caddy :8088 ─▶ web / api / minio
+#
+# Traefik encuentra este Caddy por las etiquetas del servicio `caddy` en
+# docker-compose.prod.yml (sin tocar la configuración de Traefik). El acceso
+# directo por IP a :8088 sigue funcionando. Por eso aquí no hay bloque TLS.
 # =============================================================================
+
+{
+	servers {
+		# Traefik usa la red del host y llega a este contenedor desde la puerta
+		# de enlace de gmm_dmz. Solo de esa dirección se aceptan los
+		# X-Forwarded-*: así la API ve la IP real del visitante (límites de
+		# peticiones por IP) sin que un cliente pueda inventarla.
+		trusted_proxies static 172.31.78.1/32
+	}
+}
 
 :8088 {
 	# Headers de seguridad que sí aplican sin HTTPS (HSTS se omite a propósito:
@@ -23,9 +36,7 @@
 	# API — solo /api/* llega al backend NestJS
 	handle /api/* {
 		reverse_proxy api:4000 {
-			header_up X-Real-IP {remote_host}
-			header_up X-Forwarded-For {remote_host}
-			header_up X-Forwarded-Proto {scheme}
+			header_up X-Real-IP {client_ip}
 		}
 	}
 
@@ -36,18 +47,14 @@
 	# header Host original por defecto, que es lo que la firma cubre.
 	handle /{$S3_BUCKET}/* {
 		reverse_proxy minio:9000 {
-			header_up X-Real-IP {remote_host}
-			header_up X-Forwarded-For {remote_host}
-			header_up X-Forwarded-Proto {scheme}
+			header_up X-Real-IP {client_ip}
 		}
 	}
 
 	# Todo lo demás va al frontend Next.js
 	handle /* {
 		reverse_proxy web:3000 {
-			header_up X-Real-IP {remote_host}
-			header_up X-Forwarded-For {remote_host}
-			header_up X-Forwarded-Proto {scheme}
+			header_up X-Real-IP {client_ip}
 		}
 	}
 

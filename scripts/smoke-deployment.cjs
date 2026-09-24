@@ -65,7 +65,9 @@ async function main() {
   const setCookie = admin.response.headers.get('set-cookie');
   assert.match(setCookie, /^gmm_refresh_token=/);
   assert.match(setCookie, /httponly/i);
-  assert.doesNotMatch(setCookie, /;\s*secure/i);
+  // Con HTTPS (dominio propio) la cookie debe ser "secure"; por HTTP simple, no.
+  if (process.env.COOKIE_SECURE === 'true') assert.match(setCookie, /;\s*secure/i);
+  else assert.doesNotMatch(setCookie, /;\s*secure/i);
   const me = ok(await request('/api/v1/auth/me', { token: adminData.accessToken }), 'Administrator identity');
   assert.equal(me.role, 'SUPERADMIN');
   const refreshed = await request('/api/v1/auth/refresh', { method: 'POST', cookie: setCookie.split(';')[0] });
