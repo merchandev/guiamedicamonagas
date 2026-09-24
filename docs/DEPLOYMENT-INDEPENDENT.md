@@ -48,12 +48,17 @@ Los logs tienen rotación configurada y los servicios límites de CPU y memoria.
 
 Revisar e integrar únicamente los cambios de este repositorio en `/opt/guiamedicamonagas`; conservar las correcciones locales y `.env.prod`. Antes de una actualización con cambios de esquema, crear la copia de PostgreSQL descrita abajo.
 
+El checkout del VPS está en la rama local `codex/bcv-content-fix`, sin rama remota asociada: `git pull` no trae nada. El código se adelanta explícitamente a `origin/main`:
+
 ```bash
 cd /opt/guiamedicamonagas
 git status --short
+git fetch origin && git merge --ff-only origin/main
 docker buildx inspect gmm-build-20260923
 GMM_BUILDER=gmm-build-20260923 bash scripts/deploy.sh
 ```
+
+Las imágenes externas van fijadas por etiqueta. Si un registro no responde, `deploy.sh` usa la copia local y solo se detiene si falta alguna. La de MinIO (`quay.io/minio/minio`) ya no se puede descargar sin autenticación: el servidor conserva su copia, pero un servidor nuevo no podría obtenerla.
 
 El builder dedicado está limitado a **2 GB de memoria y 1,5 CPU**. `scripts/buildkitd.toml` fija `max-parallelism = 1`; el script también limita las operaciones Compose paralelas. Se debe conservar ese builder para compilar en el VPS compartido. No usar compilaciones globales ni sustituir el builder de otras aplicaciones.
 

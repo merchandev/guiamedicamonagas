@@ -3,7 +3,7 @@
 > Bitácora central de cambios, implementaciones, decisiones técnicas y tareas de evolución del sistema.
 >
 > **Repositorio:** [`merchandev/guiamedicamonagas`](https://github.com/merchandev/guiamedicamonagas) · **Rama:** `main`<br>
-> **Última actualización de esta bitácora:** `2026-09-24 08:36:50 -04:00` · **Estado:** 🟢 Registro activo
+> **Última actualización de esta bitácora:** `2026-09-24 17:52:22 -04:00` · **Estado:** 🟢 Registro activo
 
 ![Estado](https://img.shields.io/badge/estado-registro%20activo-16a34a?style=flat-square)
 ![Rama](https://img.shields.io/badge/rama-main-2563eb?style=flat-square)
@@ -122,8 +122,9 @@ flowchart LR
     Q[🩺 2026-09-23\n21:48:30\nACT-0017 · HEALTHCHECK en los\nDockerfiles (alertas de Trivy)]
     R[🌐 2026-09-24\n06:40:26\nACT-0018 · Dominio propio vía\nTraefik del VPS (espera DNS)]
     S[🛡️ 2026-09-24\n08:36:50\nACT-0019 · Plan de producción:\nMFA, ClamAV, equipos y respaldos]
+    T[📄 2026-09-24\n17:39:26\nACT-0020 · Requisitos del médico:\nsin solvencia y en orden de obtención]
 
-    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L --> M --> N --> O --> P --> Q --> R --> S
+    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L --> M --> N --> O --> P --> Q --> R --> S --> T
 ```
 
 ### Resumen cuantitativo
@@ -131,8 +132,8 @@ flowchart LR
 | Indicador | Resultado |
 |---|---:|
 | Actividades históricas importadas desde Git | `3` |
-| Actividades documentales añadidas con esta bitácora | `16` |
-| Actividades registradas en total | `19` |
+| Actividades documentales añadidas con esta bitácora | `17` |
+| Actividades registradas en total | `20` |
 | Rama de referencia | `main` |
 | Commit base consultado | [`81b1091`](https://github.com/merchandev/guiamedicamonagas/commit/81b1091) |
 | Zona horaria de control | `America/Caracas` (`-04:00`) |
@@ -754,6 +755,40 @@ El usuario compartió un plan de acción completo de producción (segunda audito
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
+<a id="act-0020"></a>
+
+### 📄 ACT-0020 · Requisitos de verificación del médico: sin Solvencia Deontológica y en orden de obtención
+
+<details>
+<summary><strong>2026-09-24 17:39:26 -04:00</strong> · <code>93410dc</code> · <code>8150634</code> · <code>f6eb21e</code> · 🟢 Completado</summary>
+
+**Responsable:** `Claude Opus 5.5` · **Tipo:** `feature | legal | ops` · **Commit:** [`93410dc`](https://github.com/merchandev/guiamedicamonagas/commit/93410dc)
+
+El titular pidió quitar la **Solvencia Deontológica** de los documentos que se piden al médico («no aplica»). Aparecía en su panel de documentos como «Requisito gremial (Colegio de Médicos)» y además bloqueaba la verificación: sin ella aprobada, el perfil no se publicaba.
+
+**Cambios:**
+
+- **Backend:** sale de los requisitos base (`BASE_REQUIRED_DOCUMENTS`), así que la verificación se completa con título, MPPS/SACS, Artículo 8, matrícula del Colegio de Monagas, cédula y RIF (más postgrado y credencial para especialistas). Deja de ser un documento con vigencia anual (`EXPIRING_DOCUMENT_TYPES` queda vacío) y pasa a `RETIRED_DOCUMENT_TYPES`: no aparece en el catálogo de documentos y la API rechaza subirla (400 «Este documento ya no se exige»). El valor se conserva en el enum de PostgreSQL solo por datos históricos, igual que INPREMEDICO en [ACT-0010](#act-0010); no hace falta migración.
+- **Panel de administración:** la revisión ya no pide fecha de vigencia para ese tipo.
+- **Textos:** se quitó de la página de inicio (paso «Subes tus documentos», respuesta de las preguntas frecuentes y la pregunta sobre su vencimiento), de los **Términos** (bloque «Requisito gremial») y de la lista de documentos de la **Política de privacidad**.
+- **Versiones legales:** según la regla del proyecto (todo cambio de un texto legal sube su versión), Términos y Privacidad pasan a **v2.1**, vigentes desde el 24 de septiembre de 2026. Cada usuario verá el aviso para aceptar la nueva versión al volver a entrar; en producción hay 2 cuentas.
+
+**Orden de obtención.** Después, y con miras a segmentar la verificación, el titular pidió ordenar los requisitos como se obtienen en Venezuela, empezando por la cédula y el RIF. Quedan así en `BASE_REQUIRED_DOCUMENTS`, en el panel del médico (numerados) y en los Términos (lista numerada con la naturaleza de cada uno):
+
+1. Cédula de identidad · 2. RIF · 3. Título de Médico Cirujano · 4. Registro del título ante el MPPS (SACS) · 5. Inscripción en el Colegio de Médicos · 6. Constancia del Artículo 8 (tras el servicio rural). Especialistas, además: 7. Título de postgrado · 8. Credencial de la especialidad del Colegio.
+
+La página de inicio usa el mismo orden. Como la versión 2.1 de los Términos aún no se había publicado, este cambio entra en la misma versión.
+
+**Efecto en producción:** hay 1 médico registrado, en estado `PENDING` y sin documentos subidos: no hay perfiles que recalcular ni solvencias guardadas.
+
+**Verificación:** 54 pruebas unitarias en local, más las de ClamAV real en CI. CI y Seguridad en verde para `93410dc` y `8150634`, con dos comprobaciones e2e nuevas: los requisitos del médico llegan en orden de obtención y sin solvencia, y el catálogo no ofrece tipos retirados. En el navegador (build local): Términos v2.1 con la lista numerada del 1 al 8, Privacidad v2.1 y página de inicio sin mención a la solvencia.<br>
+**Desplegado en producción el 2026-09-24:** el primer intento se detuvo después del respaldo cifrado previo y antes de cambiar nada, por dos motivos. El checkout del VPS está en una rama local sin remota (`codex/bcv-content-fix`), así que `git pull` no trajo los commits; y `quay.io` respondió 401 al volver a descargar la imagen fijada de MinIO, que el servidor ya tenía. `deploy.sh` usa ahora la copia local cuando un registro no responde y solo se detiene si falta una imagen (`f6eb21e`). La guía de despliegue documenta la actualización con `git merge --ff-only origin/main`. El segundo intento fue limpio: `api` y `web` reconstruidos, prueba de humo **23/23** y, en la IP pública, Términos y Privacidad v2.1, sin solvencia y con el nuevo orden. Los otros proyectos del VPS no se tocaron.<br>
+**Archivos destacados:** [`backend/src/documents/document-requirements.ts`](backend/src/documents/document-requirements.ts), [`backend/src/documents/documents.service.ts`](backend/src/documents/documents.service.ts), [`frontend/src/app/terminos-y-condiciones/page.tsx`](frontend/src/app/terminos-y-condiciones/page.tsx), [`frontend/src/lib/legal.ts`](frontend/src/lib/legal.ts).
+
+</details>
+
+<p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
+
 <a id="registro-por-area"></a>
 
 ## 🧩 Registro por área
@@ -764,7 +799,7 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 |---|---|---|
 | 🧱 Fundación técnica | NestJS, Next.js, Prisma, Docker, Caddy, Tailwind | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) |
 | 🔐 Auth y seguridad | JWT, refresh cookie, roles, correo, recuperación, throttling, Argon2id, permisos granulares, reuso de tokens, `tokenVersion`, cerrar todas las sesiones, MFA obligatorio en producción, subidas seguras, antivirus obligatorio y rotación de claves | [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0012](#act-0012) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0019](#act-0019) |
-| 👨‍⚕️ Profesionales | Perfiles, ubicaciones, documentos, verificación legal, redes sociales, badges | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0006](#act-0006) |
+| 👨‍⚕️ Profesionales | Perfiles, ubicaciones, documentos, verificación legal (sin solvencia deontológica), redes sociales, badges | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0020](#act-0020) |
 | 🏥 Organizaciones | Farmacias, laboratorios, clínicas, ubicaciones, autogestión, equipo con invitaciones y roles internos, médicos asociados y plan propio | [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0015](#act-0015) · [ACT-0019](#act-0019) |
 | 💳 Monetización | Planes, Pago Móvil, aprobación, tasa BCV, evidencia de tasa por cuota, catálogo de bancos y referencia única atómica | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0010](#act-0010) · [ACT-0011](#act-0011) · [ACT-0015](#act-0015) · [ACT-0019](#act-0019) |
 | 📅 Agenda y citas | Horarios, disponibilidad, reservas, máquina de estados, anti-doble-reserva, zona America/Caracas | [ACT-0007](#act-0007) · [ACT-0015](#act-0015) |
@@ -826,6 +861,7 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | IMP-042 | Pago Móvil con referencia única atómica y notas clínicas solo cifradas | 🟢 Completado | [`backend/prisma/migrations/20260924114150_production_hardening`](backend/prisma/migrations/20260924114150_production_hardening), [`backend/src/clinical`](backend/src/clinical) |
 | IMP-043 | Respaldos cifrados, prueba de restauración semanal, monitoreo y rollback | 🟢 Completado | [`scripts/backup.sh`](scripts/backup.sh), [`scripts/restore-test.sh`](scripts/restore-test.sh), [`docs/operations`](docs/operations) |
 | IMP-044 | CI endurecido: acciones por SHA, puerta de vulnerabilidades con excepciones fechadas, ClamAV real en CI, 80 comprobaciones e2e | 🟢 Completado | [`.github/workflows`](.github/workflows), [`scripts/audit-gate.mjs`](scripts/audit-gate.mjs) |
+| IMP-045 | Requisitos del médico en orden de obtención (cédula, RIF, título, MPPS, Colegio, Artículo 8), solvencia deontológica retirada (rechazada al subir) y textos legales v2.1 | 🟢 Completado | [`backend/src/documents/document-requirements.ts`](backend/src/documents/document-requirements.ts), [`frontend/src/app/terminos-y-condiciones/page.tsx`](frontend/src/app/terminos-y-condiciones/page.tsx) |
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
@@ -853,6 +889,7 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | 🔴 Alta | Copia de los respaldos fuera del VPS (`GMM_BACKUP_REMOTE`) y guardar fuera del servidor la frase de cifrado de respaldos | 🔴 Bloqueado | Regla 3-2-1; ver [`docs/operations/respaldos-y-restauracion.md`](docs/operations/respaldos-y-restauracion.md) |
 | 🟠 Media | Datos del responsable legal (razón social, RIF, domicilio, correos) para la Política de privacidad | 🔴 Bloqueado | `DATA_CONTROLLER` en `frontend/src/lib/legal.ts` + nueva versión de la política |
 | 🟡 Baja | Canal de alertas del monitoreo (`GMM_ALERT_WEBHOOK_URL`) | 🔵 Planificado | Avisos de caída, disco, respaldos y certificado fuera del log |
+| 🟠 Media | Imagen de MinIO: `quay.io` ya no la sirve sin autenticación ([ACT-0020](#act-0020)). Guardar una copia (`docker save`) fuera del servidor o planificar su reemplazo | 🔵 Planificado | Un servidor nuevo puede levantar el almacenamiento sin depender de ese registro |
 | 🟠 Media | Pagos C2P/P2C o API bancaria autorizada en lugar del reporte manual de Pago Móvil | 🔵 Planificado | Conciliación automática con evidencia del banco |
 | 🟡 Baja | Agenda: duración por servicio, consulta online, precio, política de cancelación, feriados, varias agendas y lista de espera | 🔵 Planificado | Sugeridos por la auditoría de [ACT-0015](#act-0015) |
 | 🟠 Media | Fase 3a · Finanzas: `FinanceRecord` + auto-generación de ingreso al completar cita | 🔵 Planificado | Gated a plan Premium; usa `ExchangeRateService` ya existente |
@@ -928,6 +965,8 @@ Para cada cambio futuro, añadir una entrada en la línea de tiempo y actualizar
 | `2026-09-24 06:40:26 -04:00` | Incorporación de ACT-0018 (dominio propio enrutado por el Traefik del VPS con IP real del visitante; diagnóstico de la zona DNS inexistente en Hostinger), actualización de línea de tiempo, resumen cuantitativo, registro por área y próximas actividades | 🟢 Completado |
 | `2026-09-24 06:53:13 -04:00` | Corrección de horas: ACT-0016, ACT-0017 y ACT-0018 se habían registrado en UTC con la etiqueta `-04:00` (la consola usada ignoraba la zona horaria); se ajustaron a la hora real de Caracas según los commits. ACT-0018 incorpora el análisis de logs de producción | 🟢 Completado |
 | `2026-09-24 08:36:50 -04:00` | Incorporación de ACT-0019 (plan de producción sin dominio: MFA y ClamAV obligatorios, invitaciones y roles de organizaciones, Pago Móvil atómico, notas clínicas cifradas, rotación de claves, respaldos cifrados con prueba de restauración, monitoreo, CI endurecido), actualización de línea de tiempo, resumen cuantitativo, registro por área, control de implementaciones y próximas actividades | 🟢 Completado |
+| `2026-09-24 17:39:26 -04:00` | Incorporación de ACT-0020 (solvencia deontológica retirada y requisitos del médico en orden de obtención, a pedido del titular; Términos y Privacidad v2.1), actualización de línea de tiempo, resumen cuantitativo, registro por área y control de implementaciones | 🟢 Completado |
+| `2026-09-24 17:52:22 -04:00` | Cierre de ACT-0020 con su despliegue (primer intento detenido sin impacto; `deploy.sh` tolera un registro caído si la imagen está en el servidor) y nuevo pendiente sobre la imagen de MinIO | 🟢 Completado |
 
 ---
 
