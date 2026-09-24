@@ -9,6 +9,7 @@ import { ORGANIZATION_TYPE_LABELS, PLAN_TIER_LABELS, ORG_VERIFICATION_LABELS } f
 import { SOCIAL_PLATFORM_EXAMPLE, SOCIAL_PLATFORM_LABELS, SOCIAL_PLATFORMS, type SocialPlatform } from '@/lib/social';
 import { can, useOrganization, type OrgDetail, type OrgType } from '@/components/organization/OrgContext';
 import { Alert } from '@/components/ui/Alert';
+import { FileButton } from '@/components/ui/FileButton';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Input, Textarea } from '@/components/ui/Input';
@@ -150,28 +151,23 @@ export default function OrganizationProfilePage() {
         </Alert>
       )}
 
-      <div className="card flex items-center gap-4 p-6">
+      <div className="card flex flex-wrap items-center gap-x-5 gap-y-3 p-6">
         {org.logoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={org.logoUrl} alt={`Logo de ${org.name}`} className="h-20 w-20 rounded-lg object-cover" />
+          <img src={org.logoUrl} alt={`Logo de ${org.name}`} className="h-20 w-20 flex-shrink-0 rounded-lg object-cover" />
         ) : (
-          <div className="flex h-20 w-20 items-center justify-center rounded-lg bg-ink-100 text-xs text-ink-400">Sin logo</div>
+          <div className="flex h-20 w-20 flex-shrink-0 items-center justify-center rounded-lg bg-ink-100 text-xs text-ink-500">Sin logo</div>
         )}
-        <div>
-          <label className="cursor-pointer rounded-lg border border-ink-200 px-3 py-2 text-sm font-medium text-ink-700 hover:bg-ink-50">
+        <div className="space-y-2">
+          <FileButton
+            accept="image/jpeg,image/png,image/webp"
+            disabled={uploadingLogo}
+            onFile={(file) => void onLogo(file)}
+            describedBy="organizacion-logo-ayuda"
+          >
             {uploadingLogo ? 'Subiendo…' : 'Cambiar logo'}
-            <input
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              className="hidden"
-              disabled={uploadingLogo}
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) void onLogo(file);
-              }}
-            />
-          </label>
-          <p className="mt-1 text-xs text-ink-400">JPG, PNG o WebP. Máx. 3MB.</p>
+          </FileButton>
+          <p id="organizacion-logo-ayuda" className="text-xs text-ink-500">JPG, PNG o WebP. Máx. 3 MB.</p>
         </div>
       </div>
 

@@ -147,13 +147,16 @@ export function PagoMovilReportForm({
           />
         </div>
         <div>
-          <label className="field-label">Comprobante de pago (captura o PDF)</label>
+          <label htmlFor="pago-comprobante" className="field-label">
+            Comprobante de pago (captura o PDF)
+          </label>
           <input
+            id="pago-comprobante"
             type="file"
             name="file"
             accept="application/pdf,image/jpeg,image/png,image/webp"
             required
-            className="block w-full text-sm"
+            className="block w-full text-sm text-ink-600 file:mr-3 file:cursor-pointer file:rounded-lg file:border file:border-solid file:border-ink-300 file:bg-white file:px-3.5 file:py-2 file:text-sm file:font-medium file:text-ink-800 hover:file:bg-ink-50"
           />
         </div>
         <Button type="submit" loading={submitting} disabled={!bankCode} className="w-full">

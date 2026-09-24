@@ -189,13 +189,16 @@ function RegisterContent() {
         )}
 
         {!invitationToken && (
-        <div className="grid gap-2 sm:grid-cols-3">
+        <div role="radiogroup" aria-label="Tipo de cuenta" className="grid gap-3 sm:grid-cols-3">
           {ROLE_OPTIONS.map((option) => (
             <label
               key={option.value}
               className={cn(
-                'flex cursor-pointer items-center justify-center rounded-lg border px-3 py-2 text-center text-sm font-medium',
-                role === option.value ? 'border-pine-700 bg-pine-50 text-pine-800' : 'border-ink-200 text-ink-600',
+                'flex min-h-[2.75rem] cursor-pointer items-center justify-center rounded-lg border px-3 py-2 text-center text-sm font-medium transition-colors',
+                'has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-pine-600 has-[:focus-visible]:ring-offset-2',
+                role === option.value
+                  ? 'border-pine-700 bg-pine-50 text-pine-800'
+                  : 'border-ink-300 bg-white text-ink-700 hover:border-ink-400 hover:bg-ink-50',
               )}
             >
               <input type="radio" value={option.value} className="sr-only" {...register('role')} />

@@ -40,8 +40,22 @@ export default function MessagesPage() {
       ) : (
         <div className="space-y-3">
           {messages.map((m) => (
-            <div key={m.id} className="card p-5" onClick={() => !m.isRead && markRead(m.id)}>
-              <div className="flex items-center justify-between">
+            <div
+              key={m.id}
+              className="card p-5"
+              // Un mensaje nuevo se marca como leído con clic o con Enter/Espacio.
+              role={m.isRead ? undefined : 'button'}
+              tabIndex={m.isRead ? undefined : 0}
+              aria-label={m.isRead ? undefined : `Mensaje nuevo de ${m.senderName}: marcar como leído`}
+              onClick={() => !m.isRead && markRead(m.id)}
+              onKeyDown={(e) => {
+                if (!m.isRead && (e.key === 'Enter' || e.key === ' ')) {
+                  e.preventDefault();
+                  markRead(m.id);
+                }
+              }}
+            >
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="font-semibold text-ink-900">{m.senderName}</p>
                 <div className="flex items-center gap-2">
                   {!m.isRead && <Badge tone="gold">Nuevo</Badge>}

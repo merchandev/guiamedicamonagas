@@ -17,6 +17,12 @@ import { PLAN_TIER_LABELS } from '@/lib/labels';
 import { ExtraLocationsManager } from '@/components/ExtraLocationsManager';
 import { SocialLinksManager } from '@/components/SocialLinksManager';
 import type { SocialLink } from '@/lib/social';
+import { FileButton } from '@/components/ui/FileButton';
+import { cn } from '@/lib/cn';
+
+// Separación uniforme entre secciones y campos: ningún campo queda pegado al de al lado.
+const SECTION_TITLE = 'border-b border-ink-100 pb-3 text-lg font-semibold text-ink-900';
+const FIELD_GRID = 'grid gap-x-6 gap-y-5 sm:grid-cols-2';
 
 interface OwnProfileForm {
   firstName: string;
@@ -86,9 +92,7 @@ export default function EditProfilePage() {
     }
   };
 
-  const onPhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const onPhotoChange = async (file: File) => {
     setUploadingPhoto(true);
     const formData = new FormData();
     formData.append('file', file);
@@ -106,52 +110,65 @@ export default function EditProfilePage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <h1 className="text-2xl">Mi perfil profesional</h1>
         {PLAN_TIER_LABELS[planTier] && <Badge tone={PLAN_TIER_LABELS[planTier].tone}>{PLAN_TIER_LABELS[planTier].label}</Badge>}
       </div>
 
       {completeness !== null && (
-        <div className="card p-5">
-          <div className="flex items-center justify-between text-sm">
+        <div className="card p-5 sm:p-6">
+          <div className="flex flex-col gap-1 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-4">
             <span className="font-medium text-ink-900">Perfil completo al {completeness}%</span>
             <span className="text-ink-500">Es el criterio principal de orden en el directorio</span>
           </div>
-          <div className="mt-2 h-2 overflow-hidden rounded-full bg-ink-100">
+          <div
+            className="mt-3 h-2 overflow-hidden rounded-full bg-ink-100"
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={completeness}
+            aria-label="Completitud del perfil"
+          >
             <div className="h-full rounded-full bg-pine-600" style={{ width: `${completeness}%` }} />
           </div>
-          <p className="mt-2 text-xs text-ink-500">
+          <p className="mt-3 text-xs leading-relaxed text-ink-500">
             Suma puntos con foto, biografía (80+ caracteres), especialidades, teléfono, dirección, municipio, números MPPS y
             de Colegio, agenda y ubicación.
           </p>
         </div>
       )}
 
-      <form onSubmit={handleSubmit(onSubmit)} className="card space-y-8 p-6">
+      <form onSubmit={handleSubmit(onSubmit)} className="card space-y-10 p-6 sm:p-8">
         {error && <Alert tone="error">{error}</Alert>}
         {success && <Alert tone="success">Perfil actualizado correctamente.</Alert>}
 
-        <section>
-          <div className="flex items-center gap-4">
+        <section aria-labelledby="perfil-foto" className="space-y-4">
+          <h2 id="perfil-foto" className={SECTION_TITLE}>
+            Foto de perfil
+          </h2>
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
             {photoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={photoUrl} alt="Foto de perfil" className="h-20 w-20 rounded-full object-cover" />
+              <img src={photoUrl} alt="Tu foto de perfil" className="h-20 w-20 flex-shrink-0 rounded-full object-cover" />
             ) : (
-              <div className="h-20 w-20 rounded-full bg-ink-100" />
+              <div className="h-20 w-20 flex-shrink-0 rounded-full bg-ink-100" aria-hidden="true" />
             )}
-            <div>
-              <label className="cursor-pointer rounded-lg border border-ink-200 px-3 py-2 text-sm font-medium text-ink-700 hover:bg-ink-50">
-                {uploadingPhoto ? 'Subiendo…' : 'Cambiar foto'}
-                <input type="file" accept="image/*" className="hidden" onChange={onPhotoChange} disabled={uploadingPhoto} />
-              </label>
-              <p className="mt-1 text-xs text-ink-400">Obligatoria para publicarte. JPG, PNG o WebP. Máx. 5MB.</p>
+            <div className="space-y-2">
+              <FileButton accept="image/jpeg,image/png,image/webp" disabled={uploadingPhoto} onFile={onPhotoChange} describedBy="perfil-foto-ayuda">
+                {uploadingPhoto ? 'Subiendo…' : photoUrl ? 'Cambiar foto' : 'Subir foto'}
+              </FileButton>
+              <p id="perfil-foto-ayuda" className="text-xs text-ink-500">
+                Obligatoria para publicarte. JPG, PNG o WebP. Máx. 5 MB.
+              </p>
             </div>
           </div>
         </section>
 
-        <section className="space-y-4">
-          <h2 className="border-b border-ink-100 pb-2 text-lg font-semibold text-ink-900">Información básica</h2>
-          <div className="grid gap-4 sm:grid-cols-2">
+        <section aria-labelledby="perfil-basica" className="space-y-5">
+          <h2 id="perfil-basica" className={SECTION_TITLE}>
+            Información básica
+          </h2>
+          <div className={FIELD_GRID}>
             <Input label="Nombres" required {...register('firstName')} />
             <Input label="Apellidos" required {...register('lastName')} />
           </div>
@@ -161,53 +178,67 @@ export default function EditProfilePage() {
             {...register('bio')}
             hint="Obligatoria para publicarte (mínimo 80 caracteres). Cuéntale a los pacientes sobre tu experiencia."
           />
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className={FIELD_GRID}>
             <Input label="Cédula de identidad" placeholder="V-12345678" {...register('cedula')} />
             <Input label="RIF" placeholder="V-12345678-9" {...register('rif')} />
           </div>
         </section>
 
-        <section className="space-y-4">
-          <h2 className="border-b border-pine-100 pb-2 text-lg font-semibold text-pine-800">
+        <section aria-labelledby="perfil-avales" className="space-y-5">
+          <h2 id="perfil-avales" className={cn(SECTION_TITLE, 'border-pine-100 text-pine-800')}>
             Avales legales y gremiales (Monagas)
           </h2>
-          <p className="text-sm text-ink-600">
+          <p className="text-sm leading-relaxed text-ink-600">
             Estos números se muestran públicamente en tu perfil verificado, según las normativas del MPPS y el
             Colegio de Médicos de Monagas.
           </p>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className={FIELD_GRID}>
             <Input label="N° Registro MPPS (SACS)" {...register('mppsNumber')} />
             <Input label="N° Colegio de Médicos Monagas" {...register('colmedMonagasNumber')} />
           </div>
         </section>
 
-        <section className="space-y-4">
-          <h2 className="border-b border-ink-100 pb-2 text-lg font-semibold text-ink-900">Especialidades</h2>
-          <p className="text-sm text-ink-600">
-            Si seleccionas alguna especialidad, deberás subir tu título de postgrado y credencial de especialidad en
-            la sección de documentos.
+        <section aria-labelledby="perfil-especialidades" className="space-y-5">
+          <h2 id="perfil-especialidades" className={SECTION_TITLE}>
+            Especialidades
+          </h2>
+          <p id="perfil-especialidades-ayuda" className="text-sm leading-relaxed text-ink-600">
+            «Medicina General» no pide documentos extra; cualquier otra especialidad requiere tu título de postgrado y la
+            credencial de especialidad en la sección de documentos.
           </p>
-          <div className="flex flex-wrap gap-2">
-            {specialties.map((s) => (
-              <button
-                type="button"
-                key={s.id}
-                onClick={() => toggleSpecialty(s.id)}
-                className={`rounded-full border px-3 py-1.5 text-sm ${
-                  selectedSpecialties.includes(s.id)
-                    ? 'border-pine-700 bg-pine-700 text-white'
-                    : 'border-ink-200 text-ink-600 hover:bg-ink-50'
-                }`}
-              >
-                {s.name}
-              </button>
-            ))}
+          <div
+            role="group"
+            aria-labelledby="perfil-especialidades"
+            aria-describedby="perfil-especialidades-ayuda"
+            className="flex flex-wrap gap-2.5"
+          >
+            {specialties.map((s) => {
+              const active = selectedSpecialties.includes(s.id);
+              return (
+                <button
+                  type="button"
+                  key={s.id}
+                  aria-pressed={active}
+                  onClick={() => toggleSpecialty(s.id)}
+                  className={cn(
+                    'min-h-[2.25rem] rounded-full border px-3.5 py-1.5 text-sm transition-colors',
+                    active
+                      ? 'border-pine-700 bg-pine-700 text-white hover:bg-pine-800'
+                      : 'border-ink-300 bg-white text-ink-700 hover:border-ink-400 hover:bg-ink-50',
+                  )}
+                >
+                  {s.name}
+                </button>
+              );
+            })}
           </div>
         </section>
 
-        <section className="space-y-4">
-          <h2 className="border-b border-ink-100 pb-2 text-lg font-semibold text-ink-900">Contacto y ubicación</h2>
-          <div className="grid gap-4 sm:grid-cols-2">
+        <section aria-labelledby="perfil-contacto" className="space-y-5">
+          <h2 id="perfil-contacto" className={SECTION_TITLE}>
+            Contacto y ubicación
+          </h2>
+          <div className={FIELD_GRID}>
             <Input label="Teléfono" placeholder="0414-1234567" {...register('phone')} />
             <Input label="WhatsApp" placeholder="0414-1234567" {...register('whatsapp')} />
             <Controller
@@ -226,8 +257,10 @@ export default function EditProfilePage() {
           <Input label="Dirección de consulta" {...register('address')} />
         </section>
 
-        <section className="space-y-4">
-          <h2 className="border-b border-ink-100 pb-2 text-lg font-semibold text-ink-900">Resumen y SEO</h2>
+        <section aria-labelledby="perfil-resumen" className="space-y-5">
+          <h2 id="perfil-resumen" className={SECTION_TITLE}>
+            Resumen y SEO
+          </h2>
           <Input label="Título SEO" hint="Máx. 70 caracteres" {...register('seoTitle')} />
           <Textarea
             label="Resumen corto (extracto)"
@@ -237,9 +270,11 @@ export default function EditProfilePage() {
           />
         </section>
 
-        <Button type="submit" loading={saving} className="w-full sm:w-auto">
-          Guardar cambios
-        </Button>
+        <div className="border-t border-ink-100 pt-6">
+          <Button type="submit" loading={saving} className="w-full sm:w-auto">
+            Guardar cambios
+          </Button>
+        </div>
       </form>
 
       <SocialLinksManager planTier={planTier} initialLinks={socialLinks} />

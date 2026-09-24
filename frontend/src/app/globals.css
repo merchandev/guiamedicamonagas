@@ -48,10 +48,10 @@
   }
 
   .field-hint {
-    @apply mt-1 text-xs text-ink-500;
+    @apply mt-1.5 text-xs leading-relaxed text-ink-500;
   }
 
   .field-error {
-    @apply mt-1 text-xs font-medium text-red-600;
+    @apply mt-1.5 text-xs font-medium text-red-600;
   }
 }

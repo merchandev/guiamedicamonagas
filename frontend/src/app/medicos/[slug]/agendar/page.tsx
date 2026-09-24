@@ -139,17 +139,18 @@ export default function AgendarCitaPage({ params }: { params: Promise<{ slug: st
             {error && <Alert tone="error">{error}</Alert>}
 
             <div>
-              <p className="field-label">Fecha</p>
-              <div className="flex gap-2 overflow-x-auto pb-1">
+              <p id="agendar-fecha" className="field-label">Fecha</p>
+              <div role="group" aria-labelledby="agendar-fecha" className="flex gap-2 overflow-x-auto p-1">
                 {days.map((d) => {
                   const key = dateKey(d);
                   return (
                     <button
                       key={key}
                       type="button"
+                      aria-pressed={selectedDay === key}
                       onClick={() => setSelectedDay(key)}
-                      className={`flex-shrink-0 rounded-lg border px-3 py-2 text-xs ${
-                        selectedDay === key ? 'border-pine-700 bg-pine-700 text-white' : 'border-ink-200 text-ink-600'
+                      className={`flex-shrink-0 rounded-lg border px-3 py-2 text-xs transition-colors ${
+                        selectedDay === key ? 'border-pine-700 bg-pine-700 text-white' : 'border-ink-300 bg-white text-ink-700 hover:bg-ink-50'
                       }`}
                     >
                       {d.toLocaleDateString('es-VE', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'America/Caracas' })}
@@ -160,20 +161,21 @@ export default function AgendarCitaPage({ params }: { params: Promise<{ slug: st
             </div>
 
             <div>
-              <p className="field-label">Hora</p>
+              <p id="agendar-hora" className="field-label">Hora</p>
               {slots === null ? (
                 <PageSpinner />
               ) : slots.length === 0 ? (
                 <p className="text-sm text-ink-500">No hay horarios disponibles ese día.</p>
               ) : (
-                <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                <div role="group" aria-labelledby="agendar-hora" className="grid grid-cols-3 gap-2 sm:grid-cols-4">
                   {slots.map((slot) => (
                     <button
                       key={slot}
                       type="button"
+                      aria-pressed={selectedSlot === slot}
                       onClick={() => setSelectedSlot(slot)}
-                      className={`rounded-lg border px-2 py-2 text-sm ${
-                        selectedSlot === slot ? 'border-pine-700 bg-pine-700 text-white' : 'border-ink-200 text-ink-700'
+                      className={`rounded-lg border px-2 py-2 text-sm transition-colors ${
+                        selectedSlot === slot ? 'border-pine-700 bg-pine-700 text-white' : 'border-ink-300 bg-white text-ink-700 hover:bg-ink-50'
                       }`}
                     >
                       {new Date(slot).toLocaleTimeString('es-VE', { timeStyle: 'short', timeZone: 'America/Caracas' })}

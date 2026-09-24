@@ -11,6 +11,7 @@ import { Select } from '@/components/ui/Select';
 import { Switch } from '@/components/ui/Switch';
 import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
+import { FileButton } from '@/components/ui/FileButton';
 import { PageSpinner } from '@/components/ui/Spinner';
 import { Badge } from '@/components/ui/Badge';
 
@@ -246,28 +247,25 @@ export default function PatientProfilePage() {
 
         <section className="space-y-4">
           <h2 className="border-b border-ink-100 pb-2 text-lg font-semibold text-ink-900">Foto de perfil</h2>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
             {photoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={photoUrl} alt="Foto de perfil" className="h-20 w-20 rounded-full object-cover" />
+              <img src={photoUrl} alt="Tu foto de perfil" className="h-20 w-20 flex-shrink-0 rounded-full object-cover" />
             ) : (
-              <div className="h-20 w-20 rounded-full bg-ink-100" />
+              <div className="h-20 w-20 flex-shrink-0 rounded-full bg-ink-100" aria-hidden="true" />
             )}
-            <div>
-              <label className="cursor-pointer rounded-lg border border-ink-200 px-3 py-2 text-sm font-medium text-ink-700 hover:bg-ink-50">
-                {uploadingPhoto ? 'Subiendo…' : 'Cambiar foto'}
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  className="hidden"
-                  disabled={uploadingPhoto}
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) void upload('/patients/me/photo', file, setUploadingPhoto, 'No se pudo subir la foto');
-                  }}
-                />
-              </label>
-              <p className="mt-1 text-xs text-ink-400">JPG, PNG o WebP. Máx. 5MB. Se eliminan los metadatos (incluida la ubicación).</p>
+            <div className="space-y-2">
+              <FileButton
+                accept="image/jpeg,image/png,image/webp"
+                disabled={uploadingPhoto}
+                onFile={(file) => void upload('/patients/me/photo', file, setUploadingPhoto, 'No se pudo subir la foto')}
+                describedBy="paciente-foto-ayuda"
+              >
+                {uploadingPhoto ? 'Subiendo…' : photoUrl ? 'Cambiar foto' : 'Subir foto'}
+              </FileButton>
+              <p id="paciente-foto-ayuda" className="text-xs text-ink-500">
+                JPG, PNG o WebP. Máx. 5 MB. Se eliminan los metadatos (incluida la ubicación).
+              </p>
             </div>
           </div>
         </section>
@@ -289,30 +287,25 @@ export default function PatientProfilePage() {
               {identityReviewNote ? <>: {identityReviewNote}</> : null}. Por tu privacidad la eliminamos; sube una nueva.
             </Alert>
           )}
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
             {idPhotoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={idPhotoUrl} alt="Foto de identificación" className="h-20 w-28 rounded-lg border border-ink-200 object-cover" />
+              <img src={idPhotoUrl} alt="Tu foto de identificación" className="h-20 w-28 flex-shrink-0 rounded-lg border border-ink-200 object-cover" />
             ) : (
-              <div className="h-20 w-28 rounded-lg border border-dashed border-ink-200 bg-ink-50" />
+              <div className="h-20 w-28 flex-shrink-0 rounded-lg border border-dashed border-ink-300 bg-ink-50" aria-hidden="true" />
             )}
-            <div>
-              <label className="cursor-pointer rounded-lg border border-ink-200 px-3 py-2 text-sm font-medium text-ink-700 hover:bg-ink-50">
+            <div className="space-y-2">
+              <FileButton
+                accept="image/jpeg,image/png,image/webp"
+                disabled={uploadingIdPhoto}
+                onFile={(file) =>
+                  void upload('/patients/me/id-photo', file, setUploadingIdPhoto, 'No se pudo subir la foto de identificación')
+                }
+                describedBy="paciente-identidad-ayuda"
+              >
                 {uploadingIdPhoto ? 'Subiendo…' : idPhotoUrl ? 'Cambiar foto' : 'Subir foto de identificación'}
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  className="hidden"
-                  disabled={uploadingIdPhoto}
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      void upload('/patients/me/id-photo', file, setUploadingIdPhoto, 'No se pudo subir la foto de identificación');
-                    }
-                  }}
-                />
-              </label>
-              <p className="mt-1 text-xs text-ink-400">JPG, PNG o WebP. Máx. 5MB.</p>
+              </FileButton>
+              <p id="paciente-identidad-ayuda" className="text-xs text-ink-500">JPG, PNG o WebP. Máx. 5 MB.</p>
             </div>
           </div>
         </section>

@@ -6,6 +6,7 @@ import { Alert } from '@/components/ui/Alert';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { PageSpinner } from '@/components/ui/Spinner';
+import { FileButton } from '@/components/ui/FileButton';
 import { DOCUMENT_STATUS_LABELS, DOCUMENT_TYPE_LABELS } from '@/lib/labels';
 import { DocumentType, ProfessionalDocument } from '@/lib/types';
 
@@ -69,47 +70,40 @@ export default function DocumentsPage() {
           const doc = latestByType(req.type);
           const status = doc ? DOCUMENT_STATUS_LABELS[doc.status] : null;
           return (
-            <div key={req.type} className="card flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="font-medium text-ink-900">
+            <div key={req.type} className="card flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+              <div className="min-w-0 space-y-1">
+                <p id={`documento-${req.type}`} className="font-medium text-ink-900">
                   <span className="text-ink-400">{index + 1}.</span> {DOCUMENT_TYPE_LABELS[req.type] ?? req.label}
                 </p>
-                <p className="text-xs text-ink-400">{req.categoryLabel}</p>
+                <p className="text-xs text-ink-500">{req.categoryLabel}</p>
                 {doc ? (
-                  <div className="mt-1 flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
                     {status && <Badge tone={status.tone}>{status.label}</Badge>}
-                    <span className="text-xs text-ink-400">{doc.originalFileName}</span>
+                    <span className="break-all text-xs text-ink-500">{doc.originalFileName}</span>
                   </div>
                 ) : (
-                  <p className="mt-1 text-xs text-ink-400">Aún no has subido este documento</p>
+                  <p className="pt-1 text-xs text-ink-500">Aún no has subido este documento</p>
                 )}
                 {doc?.status === 'REJECTED' && doc.reviewNote && (
-                  <p className="mt-1 text-xs text-red-600">Motivo: {doc.reviewNote}</p>
+                  <p className="text-xs text-red-600">Motivo: {doc.reviewNote}</p>
                 )}
                 {doc?.status === 'EXPIRED' && (
-                  <p className="mt-1 text-xs text-red-600">Este documento venció, debes renovarlo.</p>
+                  <p className="text-xs text-red-600">Este documento venció, debes renovarlo.</p>
                 )}
               </div>
-              <label>
-                <span className="cursor-pointer rounded-lg border border-ink-200 px-3 py-2 text-sm font-medium text-ink-700 hover:bg-ink-50">
-                  {uploadingType === req.type
-                    ? 'Subiendo…'
-                    : doc && doc.status !== 'REJECTED' && doc.status !== 'EXPIRED'
-                      ? 'Reemplazar'
-                      : 'Subir documento'}
-                </span>
-                <input
-                  type="file"
-                  accept="application/pdf,image/jpeg,image/png,image/webp"
-                  className="hidden"
-                  disabled={uploadingType === req.type}
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) handleUpload(req.type, file);
-                    e.target.value = '';
-                  }}
-                />
-              </label>
+              <FileButton
+                accept="application/pdf,image/jpeg,image/png,image/webp"
+                disabled={uploadingType === req.type}
+                onFile={(file) => handleUpload(req.type, file)}
+                describedBy={`documento-${req.type}`}
+                className="flex-shrink-0 self-start sm:self-center"
+              >
+                {uploadingType === req.type
+                  ? 'Subiendo…'
+                  : doc && doc.status !== 'REJECTED' && doc.status !== 'EXPIRED'
+                    ? 'Reemplazar'
+                    : 'Subir documento'}
+              </FileButton>
             </div>
           );
         })}

@@ -9,11 +9,38 @@ interface FieldWrapperProps {
 }
 
 // Mismo alto/relleno que el trigger de <Select> (h-11 px-3) para que un
-// input de texto y un dropdown en la misma fila se vean del mismo tamaño —
-// antes este campo no tenía ni alto ni relleno propios y se veía angosto y
-// aplastado junto a cualquier <Select>.
+// input de texto y un dropdown en la misma fila se vean del mismo tamaño.
+// Borde ink-300 (no ink-200): sobre una tarjeta blanca, el campo debe verse
+// como un campo y no fundirse con el fondo ni con el campo de al lado.
 const fieldBase =
-  'block w-full rounded-lg border-ink-200 bg-white px-3.5 py-2.5 text-sm text-ink-900 shadow-sm placeholder:text-ink-400 focus:border-pine-600 focus:ring-pine-600 disabled:bg-ink-50 disabled:text-ink-400';
+  'block w-full rounded-lg border border-ink-300 bg-white px-3.5 py-2.5 text-sm text-ink-900 shadow-sm transition-colors placeholder:text-ink-400 hover:border-ink-400 focus:border-pine-600 focus:ring-pine-600 disabled:cursor-not-allowed disabled:bg-ink-50 disabled:text-ink-400';
+
+const errorClasses = 'border-red-400 hover:border-red-500 focus:border-red-500 focus:ring-red-500';
+
+/** ids de ayuda/error para `aria-describedby`: el lector de pantalla los lee al enfocar el campo. */
+function describedBy(fieldId: string | undefined, hint?: string, error?: string) {
+  if (!fieldId) return undefined;
+  if (error) return `${fieldId}-error`;
+  if (hint) return `${fieldId}-hint`;
+  return undefined;
+}
+
+function FieldMessages({ fieldId, hint, error }: { fieldId?: string; hint?: string; error?: string }) {
+  return (
+    <>
+      {hint && !error && (
+        <p id={fieldId ? `${fieldId}-hint` : undefined} className="field-hint">
+          {hint}
+        </p>
+      )}
+      {error && (
+        <p id={fieldId ? `${fieldId}-error` : undefined} className="field-error" role="alert">
+          {error}
+        </p>
+      )}
+    </>
+  );
+}
 
 type InputProps = InputHTMLAttributes<HTMLInputElement> & FieldWrapperProps;
 
@@ -31,11 +58,13 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         <input
           ref={ref}
           id={inputId}
-          className={cn(fieldBase, 'h-11', error && 'border-red-400 focus:border-red-500 focus:ring-red-500', className)}
+          aria-invalid={error ? true : undefined}
+          aria-required={required || undefined}
+          aria-describedby={describedBy(inputId, hint, error)}
+          className={cn(fieldBase, 'h-11', error && errorClasses, className)}
           {...props}
         />
-        {hint && !error && <p className="field-hint">{hint}</p>}
-        {error && <p className="field-error">{error}</p>}
+        <FieldMessages fieldId={inputId} hint={hint} error={error} />
       </div>
     );
   },
@@ -58,11 +87,13 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
         <textarea
           ref={ref}
           id={inputId}
-          className={cn(fieldBase, error && 'border-red-400 focus:border-red-500 focus:ring-red-500', className)}
+          aria-invalid={error ? true : undefined}
+          aria-required={required || undefined}
+          aria-describedby={describedBy(inputId, hint, error)}
+          className={cn(fieldBase, 'leading-relaxed', error && errorClasses, className)}
           {...props}
         />
-        {hint && !error && <p className="field-hint">{hint}</p>}
-        {error && <p className="field-error">{error}</p>}
+        <FieldMessages fieldId={inputId} hint={hint} error={error} />
       </div>
     );
   },
