@@ -34,7 +34,8 @@ Las claves `DATA_ENCRYPTION_KEYS` y `DATA_LOOKUP_KEY` viven solo en el entorno d
 
 ## Límites conocidos
 
-- La detección de contenido activo en PDF no descomprime flujos de objetos; se compensa sirviendo siempre los documentos como descarga y con ClamAV cuando esté habilitado (`CLAMAV_HOST`). Un contenedor ClamAV necesita ~1 GB de RAM: evaluarlo antes de activarlo en el VPS compartido.
+- La detección de contenido activo en PDF no descomprime flujos de objetos; se compensa sirviendo siempre los documentos como descarga y con ClamAV.
+- ClamAV está activo en producción desde ACT-0016 (servicio `clamav`, perfil `antivirus`, ~970 MB de RAM medidos, tope 2 GB, recarga de firmas no concurrente). La API falla cerrado: si clamd no responde, la subida se rechaza con un mensaje hasta que vuelva. Para desactivarlo, quitar `CLAMAV_HOST` y `COMPOSE_PROFILES=antivirus` de `.env.prod` y recrear `api`.
 - El segundo factor por correo está desactivado mientras producción use el Mailpit interno (el código no llegaría a ningún buzón). Activar con SMTP real.
 - Nombre y apellido del paciente no se cifran (se usan en saludos de correo); no se muestran al médico sin grant `IDENTITY`.
 - `ClinicalNote` y `FinanceRecord` siguen sin endpoints: cualquier módulo futuro de historia clínica debe cifrar sus campos con `FieldEncryptionService` y apoyarse en `PatientDataGrant`.

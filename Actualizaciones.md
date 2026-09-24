@@ -3,7 +3,7 @@
 > Bitácora central de cambios, implementaciones, decisiones técnicas y tareas de evolución del sistema.
 >
 > **Repositorio:** [`merchandev/guiamedicamonagas`](https://github.com/merchandev/guiamedicamonagas) · **Rama:** `main`<br>
-> **Última actualización de esta bitácora:** `2026-09-23 18:00:00 -04:00` · **Estado:** 🟢 Registro activo
+> **Última actualización de esta bitácora:** `2026-09-24 01:45:00 -04:00` · **Estado:** 🟢 Registro activo
 
 ![Estado](https://img.shields.io/badge/estado-registro%20activo-16a34a?style=flat-square)
 ![Rama](https://img.shields.io/badge/rama-main-2563eb?style=flat-square)
@@ -118,8 +118,9 @@ flowchart LR
     M[📐 2026-09-23\n10:35:00\nACT-0013 · Ancho unificado\n80/10/10 en toda la web]
     N[🧾 2026-09-23\n10:45:00\nACT-0014 · Campos de formulario\nangostos corregidos]
     O[🔏 2026-09-23\n18:00:00\nACT-0015 · Auditoría: salud cifrada,\nconsentimiento y organizaciones]
+    P[🧰 2026-09-24\n01:45:00\nACT-0016 · Sesiones, identidad,\nimágenes seguras y antivirus]
 
-    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L --> M --> N --> O
+    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L --> M --> N --> O --> P
 ```
 
 ### Resumen cuantitativo
@@ -127,10 +128,10 @@ flowchart LR
 | Indicador | Resultado |
 |---|---:|
 | Actividades históricas importadas desde Git | `3` |
-| Actividades documentales añadidas con esta bitácora | `12` |
-| Actividades registradas en total | `15` |
+| Actividades documentales añadidas con esta bitácora | `13` |
+| Actividades registradas en total | `16` |
 | Rama de referencia | `main` |
-| Commit base consultado | [`2d51c56`](https://github.com/merchandev/guiamedicamonagas/commit/2d51c56) |
+| Commit base consultado | [`c30c03d`](https://github.com/merchandev/guiamedicamonagas/commit/c30c03d) |
 | Zona horaria de control | `America/Caracas` (`-04:00`) |
 
 <a id="act-0001"></a>
@@ -620,6 +621,39 @@ El usuario compartió una auditoría estática externa del repositorio (arquitec
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
+<a id="act-0016"></a>
+
+### 🧰 ACT-0016 · Configuraciones pendientes: sesiones con `tokenVersion`, verificación de identidad, imágenes endurecidas, CI y antivirus
+
+<details>
+<summary><strong>2026-09-24 01:45:00 -04:00</strong> · <code>c30c03d</code> · <code>7944698</code> · <code>db6c7aa</code> · 🟢 Completado</summary>
+
+**Responsable:** `Claude Opus 5.5` · **Tipo:** `security | feature | ops | ci` · **Commits:** [`c30c03d`](https://github.com/merchandev/guiamedicamonagas/commit/c30c03d) · [`7944698`](https://github.com/merchandev/guiamedicamonagas/commit/7944698) · [`db6c7aa`](https://github.com/merchandev/guiamedicamonagas/commit/db6c7aa)
+
+El usuario pidió continuar con el resto de las configuraciones pendientes, actualizar el repositorio y esta bitácora y subir los cambios a producción.
+
+**Actividades ejecutadas:**
+
+- **Pipeline de seguridad en verde.** El job de Trivy de [ACT-0015](#act-0015) fallaba por CVE críticas reales en la imagen de la API: OpenSSL 3.5.4 de la base Alpine (CVE-2026-31789), el `tar` del npm que trae la imagen de Node (CVE-2026-59873) y `vitest`, que llegaba a producción porque el runtime copiaba también las dependencias de desarrollo. Corrección: base `node:24.21.0-alpine3.24`, `apk upgrade` en el build, runtime **sin npm/yarn/corepack**, `npm prune --omit=dev` (la CLI de Prisma pasó a dependencias porque el contenedor aplica las migraciones, ahora con `node_modules/.bin/prisma`) y `vitest` 3.2.7. Lo mismo en la imagen `web`, que ahora también se escanea.
+- **CI al día:** `actions/checkout@v7`, `actions/setup-node@v7` y `github/codeql-action@v4` (la v3 queda obsoleta en diciembre de 2026); el SARIF de configuración ya no rompe el job cuando no existe; Dependabot con actualizaciones mensuales agrupadas (npm de backend y frontend, Docker y Actions).
+- **SEC-02 completo: `tokenVersion`.** Cada access token lleva la versión de sesión del usuario. Cambiar o restablecer la contraseña, «cerrar sesión en todos los dispositivos» y el reuso de un refresh token la incrementan, y la API rechaza al instante los tokens anteriores (antes seguían valiendo hasta 15 minutos). El rol y el estado de la cuenta se leen de la base en cada petición. Cambiar la contraseña mantiene conectado el dispositivo actual con una sesión nueva.
+- **Página «Seguridad de la cuenta»** (`/cuenta/seguridad`, enlazada en la cabecera para todos los roles): cambiar la contraseña y cerrar todas las sesiones, con confirmación dentro de la página.
+- **Cola de verificación de identidad del paciente** (pendiente desde [ACT-0012](#act-0012)): permiso nuevo `VERIFY_PATIENT_IDENTITY` (ADMIN y SUPERADMIN). La lista no muestra cédulas; abrir un caso descifra la cédula y firma la foto por 5 minutos, y queda auditado (`PATIENT_IDENTITY_VIEWED`). Rechazar exige motivo, **borra la foto** y avisa al paciente (notificación y correo), que ve el motivo en su perfil. El médico con autorización de identidad ve «Identidad verificada».
+- **Reserva de cita con la ficha del paciente** (pendiente desde [ACT-0012](#act-0012)): ya no vuelve a pedir nombre y teléfono; esos campos solo aparecen en una primera reserva sin ficha.
+- **Antivirus de subidas (ClamAV).** Servicio `clamav` 1.5.4 opcional (perfil `antivirus`) en la red interna, más una red propia de salida solo para descargar firmas, con tope de 2 GB y recarga de firmas no concurrente para no duplicar la RAM en el VPS compartido ([`scripts/clamd.conf`](scripts/clamd.conf)). **Activado en producción:** con el VPS en 7,9 GB de RAM y ~5 GB disponibles, clamd quedó sano con ~970 MB (tope de 2 GB) y detecta EICAR desde el contenedor de la API por la red interna; basta con `COMPOSE_PROFILES=antivirus` y `CLAMAV_HOST=clamav` en `.env.prod`. La API falla cerrado: si clamd no responde, las subidas se rechazan con un mensaje hasta que vuelva.
+- `.gitignore` excluye `backups/` y `*.dump`: los respaldos de base de datos del VPS no pueden terminar en Git. El smoke test de despliegue se actualizó (aceptación legal, imágenes re-codificadas, `tokenVersion` sobre la cuenta temporal y EICAR si hay antivirus).
+- El checkout del VPS quedó sin divergencias de line endings (`git status` solo muestra archivos no versionados), así que ese pendiente se cierra.
+
+**Verificación:** 31 unitarias; e2e **56/56** contra API + PostgreSQL reales (14 nuevas: cola de identidad sin cédulas, apertura auditada, rechazo sin motivo → 400, el rechazo borra la foto, el paciente ve el motivo, token anterior → 401 tras cambiar la contraseña y tras cerrar todas las sesiones); `next build` limpio; en el navegador se probaron la cola de identidad (verificar un caso: estado, auditoría y notificación), la página de seguridad (cambio de contraseña sin perder la sesión, cerrar todas → vuelve a «Iniciar sesión») y la reserva precargada.
+
+**Impacto:** una contraseña comprometida o una sesión robada se cortan al instante; la identidad del paciente se verifica sin exponer cédulas en listados y sin conservar documentos rechazados; las imágenes de producción ya no llevan herramientas ni dependencias que no usan.<br>
+**Desplegado en producción el 2026-09-24 (autorizado por el usuario):** respaldo previo de la BD (`backups/pre-act16-20260924-013039.dump`) y de `.env.prod`; imágenes anteriores etiquetadas `:pre-act16` para poder volver atrás; `api` y `web` reconstruidas con el builder dedicado (`api` pasó de 1,05 GB a 902 MB); migración `20260924012600_sessions_and_identity_review` aplicada con la CLI de Prisma de la imagen nueva (sin npm); reinicio solo de `api`/`web` y alta de `clamav`. Smoke test en producción **24/24**: páginas y catálogos, sesión del administrador, registro con verificación de correo, subida de foto re-codificada y analizada por ClamAV, descarga firmada, acceso anónimo denegado, token anterior rechazado tras cambiar la contraseña (`tokenVersion`), EICAR detectado; la cuenta temporal se eliminó. El smoke test también destapó que su propio PNG de prueba estaba dañado (la API lo rechazaba con razón); se reemplazó por uno válido. `diario-mercantil`, `saas--mt` y `traefik-ivzc` conservaron sus tiempos de actividad. GitHub: CI y Seguridad en verde, con Trivy sin CVE críticas en `api` ni en `web`.<br>
+**Archivos destacados:** [`backend/src/auth`](backend/src/auth), [`backend/src/patients/patient-identity-admin.controller.ts`](backend/src/patients/patient-identity-admin.controller.ts), [`backend/prisma/migrations/20260924012600_sessions_and_identity_review`](backend/prisma/migrations/20260924012600_sessions_and_identity_review), [`frontend/src/app/admin/identidades`](frontend/src/app/admin/identidades), [`frontend/src/app/cuenta/seguridad`](frontend/src/app/cuenta/seguridad), [`backend/Dockerfile`](backend/Dockerfile), [`frontend/Dockerfile`](frontend/Dockerfile), [`.github`](.github), [`docker-compose.prod.yml`](docker-compose.prod.yml).
+
+</details>
+
+<p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
+
 <a id="registro-por-area"></a>
 
 ## 🧩 Registro por área
@@ -629,16 +663,16 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | Área | Implementaciones registradas | Actividades relacionadas |
 |---|---|---|
 | 🧱 Fundación técnica | NestJS, Next.js, Prisma, Docker, Caddy, Tailwind | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) |
-| 🔐 Auth y seguridad | JWT, refresh cookie, roles, correo, recuperación, throttling, Argon2id, permisos granulares, reuso de tokens, MFA por correo, subidas seguras | [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0012](#act-0012) · [ACT-0015](#act-0015) |
+| 🔐 Auth y seguridad | JWT, refresh cookie, roles, correo, recuperación, throttling, Argon2id, permisos granulares, reuso de tokens, `tokenVersion`, cerrar todas las sesiones, MFA por correo, subidas seguras y antivirus | [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0012](#act-0012) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) |
 | 👨‍⚕️ Profesionales | Perfiles, ubicaciones, documentos, verificación legal, redes sociales, badges | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0006](#act-0006) |
 | 🏥 Organizaciones | Farmacias, laboratorios, clínicas, ubicaciones, autogestión, equipo, médicos asociados y plan propio | [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0015](#act-0015) |
 | 💳 Monetización | Planes, Pago Móvil, aprobación, tasa BCV, evidencia de tasa por cuota y catálogo de bancos | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0010](#act-0010) · [ACT-0011](#act-0011) · [ACT-0015](#act-0015) |
 | 📅 Agenda y citas | Horarios, disponibilidad, reservas, máquina de estados, anti-doble-reserva, zona America/Caracas | [ACT-0007](#act-0007) · [ACT-0015](#act-0015) |
-| 🔒 Pacientes | Código pseudónimo, cifrado de datos de salud, consentimiento por alcance y tiempo, lecturas auditadas, registro propio y foto de identificación | [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0015](#act-0015) |
-| 🛠️ Administración | Médicos, pagos, SEO, cookies, especialidades, planes, verificaciones, organizaciones, bancos y geografía | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0015](#act-0015) |
-| 📊 Observabilidad | Auditoría, analítica con consentimiento y sin IP, notificaciones, salud, pruebas y CI | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0015](#act-0015) |
-| 🎨 Experiencia | Directorios, dashboard, componentes UI, motion y legal | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0013](#act-0013) · [ACT-0014](#act-0014) · [ACT-0015](#act-0015) |
-| 🚢 Operación | Variables de entorno, Compose, almacenamiento, correo y proxy | [ACT-0001](#act-0001) · [ACT-0002](#act-0002) · [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0008](#act-0008) · [ACT-0009](#act-0009) · [ACT-0011](#act-0011) |
+| 🔒 Pacientes | Código pseudónimo, cifrado de datos de salud, consentimiento por alcance y tiempo, lecturas auditadas, registro propio, foto de identificación verificada por un admin y reserva con la ficha propia | [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) |
+| 🛠️ Administración | Médicos, pagos, SEO, cookies, especialidades, planes, verificaciones, organizaciones, bancos, geografía e identidad de pacientes | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) |
+| 📊 Observabilidad | Auditoría, analítica con consentimiento y sin IP, notificaciones, salud, pruebas, CI, escaneo de imágenes y Dependabot | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) |
+| 🎨 Experiencia | Directorios, dashboard, componentes UI, motion y legal | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0013](#act-0013) · [ACT-0014](#act-0014) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) |
+| 🚢 Operación | Variables de entorno, Compose, almacenamiento, correo, proxy, imágenes mínimas y antivirus | [ACT-0001](#act-0001) · [ACT-0002](#act-0002) · [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0008](#act-0008) · [ACT-0009](#act-0009) · [ACT-0011](#act-0011) · [ACT-0016](#act-0016) |
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
@@ -682,6 +716,11 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | IMP-032 | Geografía y catálogos como datos (estados/municipios/parroquias, registros profesionales por jurisdicción, bancos) | 🟢 Completado | [`backend/src/geo`](backend/src/geo), [`frontend/src/app/admin/catalogos`](frontend/src/app/admin/catalogos) |
 | IMP-033 | Directorio justo y SEO: orden por completitud + impulso acotado, «Destacado» patrocinado, sitemap completo y landings especialidad+municipio | 🟢 Completado | [`backend/src/professionals/directory-score.ts`](backend/src/professionals/directory-score.ts), [`frontend/src/app/sitemap.ts`](frontend/src/app/sitemap.ts) |
 | IMP-034 | QA: 31 unitarias, 42 comprobaciones e2e y pipelines de CI y seguridad | 🟢 Completado | [`backend/test`](backend/test), [`.github/workflows`](.github/workflows) |
+| IMP-035 | SEC-02: `tokenVersion` (invalidación inmediata de access tokens), «cerrar todas las sesiones» y página de seguridad de la cuenta | 🟢 Completado | [`backend/src/auth/strategies/jwt.strategy.ts`](backend/src/auth/strategies/jwt.strategy.ts), [`frontend/src/app/cuenta/seguridad/page.tsx`](frontend/src/app/cuenta/seguridad/page.tsx) |
+| IMP-036 | Cola administrativa de verificación de identidad del paciente (auditada, sin cédulas en la lista, borrado de la foto al rechazar) | 🟢 Completado | [`backend/src/patients/patient-identity-admin.controller.ts`](backend/src/patients/patient-identity-admin.controller.ts), [`frontend/src/app/admin/identidades/page.tsx`](frontend/src/app/admin/identidades/page.tsx) |
+| IMP-037 | Imágenes de contenedor mínimas (sin npm/yarn ni dependencias de desarrollo, parches de Alpine) y Trivy en `api` y `web` | 🟢 Completado | [`backend/Dockerfile`](backend/Dockerfile), [`frontend/Dockerfile`](frontend/Dockerfile), [`.github/workflows/security.yml`](.github/workflows/security.yml) |
+| IMP-038 | Antivirus ClamAV para subidas (servicio opcional con límites de memoria y red de salida propia) | 🟢 Completado | [`docker-compose.prod.yml`](docker-compose.prod.yml), [`scripts/clamd.conf`](scripts/clamd.conf) |
+| IMP-039 | Reserva de cita con la ficha del paciente logueado y QA ampliada a 56 comprobaciones e2e | 🟢 Completado | [`frontend/src/app/medicos/[slug]/agendar/page.tsx`](frontend/src/app/medicos/%5Bslug%5D/agendar/page.tsx), [`backend/test/e2e/api.e2e.mjs`](backend/test/e2e/api.e2e.mjs) |
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
@@ -697,14 +736,14 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | 🟢 Continua | ~~Validar de extremo a extremo tras el arranque~~ — hecho vía `scripts/smoke-deployment.cjs`: login/refresh/logout, registro, correo de prueba en Mailpit, subida/descarga firmada y rechazo anónimo | 🟢 Completado | Ver [ACT-0011](#act-0011), [`scripts/smoke-deployment.cjs`](scripts/smoke-deployment.cjs) |
 | 🟢 Continua | ~~Nueva comparación de contenedores/hashes de los proyectos existentes tras el arranque completo~~ — hecho, sin diferencias | 🟢 Completado | Ver [ACT-0011](#act-0011) |
 | 🔴 Alta | Configurar dominio/HTTPS real, SMTP real y datos reales de Pago Móvil en producción (BCV ya es automático desde [ACT-0011](#act-0011)) | 🔵 Planificado | Variables documentadas y prueba de cada integración fuera de dev |
-| 🟠 Media | Limpiar la divergencia de line endings (CRLF/LF) entre el checkout de `/opt/guiamedicamonagas` en el VPS y `origin/main` — no afecta a los contenedores en ejecución | 🔵 Planificado | `git status` limpio en el checkout del VPS tras confirmar con el usuario antes de descartar cambios locales |
-| 🟠 Media | Cola de administración para revisar `identityStatus` (foto de identificación del paciente) — hoy queda en `PENDING` visible solo en el propio perfil, sin flujo de aprobar/rechazar | 🔵 Planificado | Endpoint admin + UI, mismo patrón que [`admin/verificaciones`](frontend/src/app/admin/verificaciones/page.tsx) para documentos profesionales |
-| 🟡 Baja | Precargar el formulario de reserva de cita (`medicos/[slug]/agendar`) con nombre/teléfono del `PatientProfile` del paciente logueado, en vez de pedirlos de nuevo en cada reserva | 🔵 Planificado | Ver [ACT-0012](#act-0012) |
+| 🟢 Continua | ~~Limpiar la divergencia de line endings del checkout del VPS~~ — ya no existe: `git status` solo muestra archivos no versionados | 🟢 Completado | Ver [ACT-0016](#act-0016) |
+| 🟢 Continua | ~~Cola de administración para revisar `identityStatus`~~ | 🟢 Completado | Ver [ACT-0016](#act-0016) |
+| 🟢 Continua | ~~Precargar el formulario de reserva con la ficha del paciente~~ | 🟢 Completado | Ver [ACT-0016](#act-0016) |
 | 🟢 Continua | ~~SEC-03 · Permisos granulares (eliminar el bypass universal de SUPERADMIN)~~ | 🟢 Completado | Ver [ACT-0015](#act-0015) |
 | 🟢 Continua | ~~SEC-05 · Cifrado de campos sensibles del paciente~~ — hecho para el perfil y las citas; `ClinicalNote` deberá usar el mismo servicio al implementarse | 🟢 Completado | Ver [ACT-0015](#act-0015) |
-| 🟠 Media | SEC-02 (resto) · ~~detección de reuso de refresh tokens~~ (hecho en [ACT-0015](#act-0015)); falta `tokenVersion` para invalidar access tokens vigentes ante cambio de rol | 🔵 Planificado | Access token rechazado tras cambio de rol/contraseña |
+| 🟢 Continua | ~~SEC-02 (resto) · `tokenVersion` para invalidar access tokens vigentes~~ | 🟢 Completado | Ver [ACT-0016](#act-0016) |
 | 🔴 Alta | Respaldar fuera del VPS las claves `DATA_ENCRYPTION_KEYS`/`DATA_LOOKUP_KEY` de producción (sin ellas los datos cifrados son irrecuperables) | 🔴 Bloqueado | Copia en una bóveda del usuario, separada de los respaldos de la BD — ver [`docs/security/sec-02-05-privacidad-y-acceso.md`](docs/security/sec-02-05-privacidad-y-acceso.md) |
-| 🟠 Media | Activar `ADMIN_MFA_ENABLED` y evaluar ClamAV (`CLAMAV_HOST`) cuando haya SMTP real y RAM disponible en el VPS | 🔵 Planificado | Login de administrador con código por correo en producción |
+| 🟠 Media | Activar `ADMIN_MFA_ENABLED` cuando haya SMTP real (ClamAV: ver [ACT-0016](#act-0016)) | 🔴 Bloqueado | Login de administrador con código por correo en producción; requiere las credenciales SMTP del usuario |
 | 🟠 Media | Pagos C2P/P2C o API bancaria autorizada en lugar del reporte manual de Pago Móvil | 🔵 Planificado | Conciliación automática con evidencia del banco |
 | 🟡 Baja | Agenda: duración por servicio, consulta online, precio, política de cancelación, feriados, varias agendas y lista de espera | 🔵 Planificado | Sugeridos por la auditoría de [ACT-0015](#act-0015) |
 | 🟠 Media | Fase 3a · Finanzas: `FinanceRecord` + auto-generación de ingreso al completar cita | 🔵 Planificado | Gated a plan Premium; usa `ExchangeRateService` ya existente |
@@ -774,6 +813,7 @@ Para cada cambio futuro, añadir una entrada en la línea de tiempo y actualizar
 | `2026-09-23 10:35:00 -04:00` | Incorporación de ACT-0013 (ancho unificado 80%/10%/10% en toda la web mediante un único cambio en `.container-page`), actualización de línea de tiempo, resumen cuantitativo, registro por área y control de implementaciones | 🟢 Completado |
 | `2026-09-23 10:45:00 -04:00` | Incorporación de ACT-0014 (campos `Input`/`Textarea` sin alto ni relleno propios corregidos en toda la web, `Button` alineado con `Select`), actualización de línea de tiempo, resumen cuantitativo, registro por área y control de implementaciones | 🟢 Completado |
 | `2026-09-23 18:00:00 -04:00` | Incorporación de ACT-0015 (respuesta a la auditoría externa: cifrado de datos de salud, consentimiento paciente → médico, textos legales versionados, analítica sin IP, subidas seguras, permisos granulares, organizaciones autogestionadas, geografía/bancos como datos, SEO y QA con CI), actualización de línea de tiempo, resumen cuantitativo, registro por área, control de implementaciones y próximas actividades | 🟢 Completado |
+| `2026-09-24 01:45:00 -04:00` | Incorporación de ACT-0016 (`tokenVersion` y cierre de todas las sesiones, cola de verificación de identidad del paciente, reserva con la ficha propia, imágenes de contenedor mínimas con Trivy en verde, CI actualizado con Dependabot y antivirus ClamAV), actualización de línea de tiempo, resumen cuantitativo, registro por área, control de implementaciones y próximas actividades | 🟢 Completado |
 
 ---
 

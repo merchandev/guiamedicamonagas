@@ -11,6 +11,7 @@ const { PrismaPg } = require('@prisma/adapter-pg');
 const { ConfigService } = require('@nestjs/config');
 const { StorageService } = require('/app/dist/src/storage/storage.service');
 const { scanWithClamav } = require('/app/dist/src/uploads/clamav.scanner');
+const sharp = require('sharp');
 
 assert.equal(new URL(process.env.DATABASE_URL).pathname, '/gmm_independent');
 assert.equal(process.env.SMTP_HOST, 'mailpit', 'Registration test requires this project\'s mail catcher');
@@ -93,7 +94,9 @@ async function main() {
   assert.ok(match, 'Verification link must contain a token');
   ok(await request(`/api/v1/auth/verify-email?token=${match[1]}`), 'Email verification');
 
-  const bytes = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aXWQAAAAASUVORK5CYII=', 'base64');
+  // PNG válido generado aquí mismo: la API verifica y re-codifica cada imagen,
+  // y un PNG con CRC dañado se rechaza (422) como corresponde.
+  const bytes = await sharp({ create: { width: 32, height: 32, channels: 3, background: '#0f6e5c' } }).png().toBuffer();
   const form = new FormData();
   form.append('file', new Blob([bytes], { type: 'image/png' }), 'deployment-test.png');
   const photo = ok(await request('/api/v1/professionals/me/photo', { method: 'POST', body: form, token }), 'Private photo upload');
