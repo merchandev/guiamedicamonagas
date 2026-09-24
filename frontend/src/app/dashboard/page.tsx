@@ -7,12 +7,15 @@ import { useAuth } from '@/lib/auth-context';
 import { Badge } from '@/components/ui/Badge';
 import { PageSpinner } from '@/components/ui/Spinner';
 import { VERIFICATION_LABELS } from '@/lib/labels';
+import { ProfessionalProgressCard } from '@/components/ProfessionalProgressCard';
+import type { ProfessionalProgress } from '@/lib/types';
 
 interface OwnProfile {
   slug: string;
   verificationStatus: string;
   isPublished: boolean;
   documents: { status: string }[];
+  progress: ProfessionalProgress;
 }
 
 export default function DashboardHome() {
@@ -57,13 +60,15 @@ export default function DashboardHome() {
               ? `Tienes ${rejectedDocs} documento(s) rechazado(s). Revísalos y vuelve a subirlos.`
               : pendingDocs > 0
                 ? `Tienes ${pendingDocs} documento(s) en revisión. Te avisaremos por correo y WhatsApp.`
-                : 'Sube tus documentos legales y gremiales para activar tu perfil público.'}
+                : `Sube tus documentos: con ${profile.progress.documents.minimumToPublish} de ${profile.progress.documents.required} aprobados, tu biografía y tu foto, tu perfil aparece en el directorio.`}
             <Link href="/dashboard/documentos" className="ml-2 font-semibold underline">
               Ir a documentos
             </Link>
           </div>
         )}
       </div>
+
+      {profile.progress && <ProfessionalProgressCard progress={profile.progress} isPublished={profile.isPublished} />}
 
       <div className="grid gap-4 sm:grid-cols-3">
         <Link href="/dashboard/perfil" className="card p-5 hover:shadow-card">

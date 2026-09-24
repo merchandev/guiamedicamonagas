@@ -91,7 +91,12 @@ export default function TermsPage() {
             pago nunca sustituye ni acelera la verificación. La insignia de verificado indica que confirmamos las
             credenciales del profesional; su color (gris, azul o dorado) solo refleja el nivel de perfil elegido.
           </p>
-          <p className="mt-2">Mientras un perfil no esté verificado, no aparece en el directorio público.</p>
+          <p className="mt-2">
+            Un perfil aparece en el directorio público cuando un administrador aprobó al menos el{' '}
+            <strong>60% de sus documentos requeridos</strong> y el profesional cargó su biografía y su foto de perfil.
+            Mientras no tenga el 100% aprobado, se muestra como <strong>«verificación en curso»</strong>, sin la insignia
+            de verificado. Si no cumple esos requisitos, no aparece en el directorio.
+          </p>
         </section>
 
         <section id="documentos">
@@ -142,6 +147,10 @@ export default function TermsPage() {
             <li>
               <strong>La verificación y el perfil básico son gratuitos.</strong> Los planes pagos añaden herramientas
               (agenda, fotos, publicaciones, estadísticas, sedes, redes) y visibilidad.
+            </li>
+            <li>
+              Los planes <strong>Profesional Plus y Premium</strong> solo se contratan con el 100% de los documentos
+              requeridos aprobados.
             </li>
             <li>
               El orden del directorio prioriza perfiles completos y relevantes. Un plan pago suma un impulso acotado y, en el

@@ -38,7 +38,7 @@ const PUBLIC_INCLUDE = {
   locations: true,
   socialLinks: true,
   professionals: {
-    where: { status: 'ACCEPTED' as const, professional: { isPublished: true, verificationStatus: 'VERIFIED' as const } },
+    where: { status: 'ACCEPTED' as const, professional: { isPublished: true } },
     select: {
       professional: {
         select: {

@@ -18,6 +18,8 @@ import {
 } from './document-requirements';
 import type { SecuredFile } from '../uploads/upload-security.service';
 import { recomputeDirectoryScore } from '../professionals/directory-score';
+import { recomputeProfessionalStatus } from '../professionals/publication-rules';
+import { notifyProfilePublished } from '../professionals/publication-notice';
 
 @Injectable()
 export class DocumentsService {
@@ -194,47 +196,19 @@ export class DocumentsService {
     return { message: 'Documento revisado' };
   }
 
-  /** Recalcula el estado de verificación del perfil según sus documentos vigentes. */
+  /**
+   * Recalcula el estado de verificación (VERIFIED solo con el 100% aprobado) y
+   * la publicación (60% aprobado + biografía + foto, ver publication-rules.ts).
+   * Un perfil suspendido sigue suspendido: solo un administrador lo reactiva.
+   */
   private async recomputeVerification(professionalId: string) {
     const profile = await this.prisma.professionalProfile.findUniqueOrThrow({
       where: { id: professionalId },
-      include: { documents: true, user: true },
+      include: { user: true },
     });
-
-    const required = requiredDocumentsFor(profile.isSpecialist);
-    const now = new Date();
-
-    const latestByType = new Map<DocumentType, (typeof profile.documents)[number]>();
-    for (const doc of profile.documents) {
-      const current = latestByType.get(doc.type);
-      if (!current || doc.createdAt > current.createdAt) {
-        latestByType.set(doc.type, doc);
-      }
-    }
-
-    const missingOrInvalid: DocumentType[] = [];
-    let anyRejected = false;
-    for (const type of required) {
-      const doc = latestByType.get(type);
-      if (!doc || doc.status !== 'APPROVED' || (doc.expiresAt && doc.expiresAt < now)) {
-        missingOrInvalid.push(type);
-      }
-      if (doc?.status === 'REJECTED') anyRejected = true;
-    }
-
-    const allApproved = missingOrInvalid.length === 0;
-    const wasVerified = profile.verificationStatus === 'VERIFIED';
-
-    const nextStatus = allApproved ? 'VERIFIED' : anyRejected ? 'REJECTED' : 'IN_REVIEW';
-
-    await this.prisma.professionalProfile.update({
-      where: { id: professionalId },
-      data: {
-        verificationStatus: nextStatus,
-        isPublished: allApproved,
-        verifiedAt: allApproved ? new Date() : profile.verifiedAt,
-      },
-    });
+    const result = await recomputeProfessionalStatus(this.prisma, professionalId);
+    if (!result) return;
+    const allApproved = result.documents.approved === result.documents.required;
 
     // Los números de registro quedan verificados junto con los documentos que los respaldan.
     await this.prisma.professionalRegistration.updateMany({
@@ -243,13 +217,24 @@ export class DocumentsService {
     });
     await recomputeDirectoryScore(this.prisma, professionalId);
 
-    if (allApproved && !wasVerified) {
-      const profileUrl = `${this.config.get('FRONTEND_URL', { infer: true })}/medicos/${profile.slug}`;
+    const profileUrl = `${this.config.get('FRONTEND_URL', { infer: true })}/medicos/${profile.slug}`;
+    if (result.becamePublic && !result.becameVerified) {
+      await notifyProfilePublished(this.notifications, { ...profile, email: profile.user.email }, profileUrl, result.documents);
+    }
+    if (result.becameVerified && !result.isPublished) {
+      await this.notifications.notify({
+        userId: profile.userId,
+        type: 'PROFILE_VERIFIED',
+        title: '¡Tus documentos fueron aprobados!',
+        content: 'Completa tu biografía y tu foto de perfil para aparecer en el directorio con el sello «Verificado».',
+      });
+    }
+    if (result.becameVerified && result.isPublished) {
       await this.notifications.notify({
         userId: profile.userId,
         type: 'PROFILE_VERIFIED',
         title: '¡Tu perfil fue verificado!',
-        content: 'Todos tus documentos fueron aprobados. Tu perfil ya es público.',
+        content: 'Todos tus documentos fueron aprobados: tu perfil es público con el sello «Verificado».',
         email: {
           to: profile.user.email,
           subject: '¡Tu perfil fue verificado! — Guía Médica Monagas',

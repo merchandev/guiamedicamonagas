@@ -24,6 +24,8 @@ export interface ProfessionalListItem {
   whatsapp: string | null;
   isSpecialist: boolean;
   planTier: PlanTier;
+  /** VERIFIED = 100% de documentos aprobados; si no, el perfil está público con verificación en curso. */
+  verificationStatus: 'PENDING' | 'IN_REVIEW' | 'VERIFIED' | 'REJECTED' | 'SUSPENDED';
   isFeatured: boolean;
   canReceiveMessages: boolean;
   specialties: { specialty: Specialty }[];
@@ -139,4 +141,25 @@ export interface ProfessionalDocument {
   reviewNote: string | null;
   expiresAt: string | null;
   createdAt: string;
+}
+
+/** Barra de progreso del registro del médico (GET /professionals/me → progress). */
+export interface ProfessionalProgressItem {
+  key: string;
+  label: string;
+  done: boolean;
+  fraction?: number;
+  detail?: string;
+  href?: string;
+  requiredToPublish?: boolean;
+  lockedUntil?: PlanTier;
+}
+
+export interface ProfessionalProgress {
+  percent: number;
+  items: ProfessionalProgressItem[];
+  publication: { key: string; label: string; done: boolean }[];
+  canPublish: boolean;
+  fullDocuments: boolean;
+  documents: { approved: number; required: number; minimumToPublish: number };
 }

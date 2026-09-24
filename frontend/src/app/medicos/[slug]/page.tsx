@@ -78,7 +78,7 @@ export default async function DoctorProfilePage({ params }: { params: Promise<{ 
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-2xl text-ink-950">{fullName}</h1>
-              <VerificationBadge kind="doctor" tier={doctor.planTier} />
+              <VerificationBadge kind="doctor" tier={doctor.planTier} verified={doctor.verificationStatus === 'VERIFIED'} />
               {doctor.isFeatured && <Badge tone="gold">Destacado</Badge>}
             </div>
             <p className="mt-1 text-pine-700">
@@ -94,8 +94,9 @@ export default async function DoctorProfilePage({ params }: { params: Promise<{ 
             Transparencia médica y legal
           </h2>
           <p className="mb-4 text-sm text-pine-800">
-            Credenciales verificadas por Guía Médica Monagas contra los documentos presentados. La verificación es la misma
-            para todos los planes.
+            {doctor.verificationStatus === 'VERIFIED'
+              ? 'Credenciales verificadas por Guía Médica Monagas contra los documentos presentados. La verificación es la misma para todos los planes.'
+              : 'Verificación en curso: un administrador ya aprobó parte de sus documentos y revisa el resto. El sello de verificado se otorga con todos aprobados.'}
           </p>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {doctor.registrations && doctor.registrations.length > 0 ? (

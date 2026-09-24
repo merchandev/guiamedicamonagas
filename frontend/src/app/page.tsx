@@ -41,12 +41,12 @@ const VERIFICATION_STEPS = [
   },
   {
     title: 'Revisión manual',
-    body: 'Un administrador humano revisa cada documento. Ningún perfil se publica automáticamente.',
+    body: 'Un administrador humano revisa cada documento. Con el 60% aprobado, tu biografía y tu foto, tu perfil sale al directorio.',
     icon: ClockIcon,
   },
   {
     title: 'Perfil público',
-    body: 'Tu perfil se activa mostrando siempre tu N° MPPS y Colegio de Médicos de Monagas.',
+    body: 'Con el 100% aprobado recibes el sello de verificado y puedes contratar Profesional Plus o Premium.',
     icon: BadgeCheckIcon,
   },
 ];
@@ -69,7 +69,7 @@ const FAQ_ITEMS = [
   {
     question: '¿Cómo se registra un médico en la guía?',
     answer:
-      'Desde "Soy médico, quiero registrarme": creas tu cuenta, completas tu perfil, subes tus documentos y activas tu suscripción por Pago Móvil. Tu perfil se publica cuando un administrador aprueba todos tus documentos.',
+      'Desde "Soy médico, quiero registrarme": creas tu cuenta, completas tu perfil, subes tus documentos y activas tu suscripción por Pago Móvil. Tu perfil se publica cuando un administrador aprueba al menos el 60% de tus documentos y cargas tu biografía y tu foto; el sello de verificado llega con el 100%.',
   },
 ];
 

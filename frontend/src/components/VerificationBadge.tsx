@@ -31,26 +31,46 @@ const ORG_TYPE_TITLES: Record<OrgType, string> = {
   CLINIC: 'Clínica verificada',
 };
 
+const SEAL_PATH =
+  'M12 2.5l2.2 1.3 2.5-.2 1 2.3 2.3 1-.2 2.5 1.3 2.2-1.3 2.2.2 2.5-2.3 1-1 2.3-2.5-.2L12 21.5l-2.2-1.3-2.5.2-1-2.3-2.3-1 .2-2.5L3 12l1.3-2.2-.2-2.5 2.3-1 1-2.3 2.5.2L12 2.5Z';
+
 type Props =
-  | { kind: 'doctor'; tier: PlanTier; className?: string }
+  | {
+      kind: 'doctor';
+      tier: PlanTier;
+      /** false: publicado con el 60% aprobado, sin el 100% todavía. */
+      verified?: boolean;
+      className?: string;
+    }
   | { kind: 'organization'; type: OrgType; className?: string };
 
 /**
- * Ícono de verificación. Todos los perfiles publicados pasaron la MISMA
- * verificación de credenciales; el color solo indica el nivel de perfil
+ * Ícono de verificación. El sello lleno significa credenciales verificadas al
+ * 100%, igual para todos los planes: el color solo indica el nivel de perfil
  * (gris Básico, azul Profesional, dorado Premium) o el tipo de organización.
+ * Un médico público con documentos aún en revisión lleva el sello en contorno.
  */
 export function VerificationBadge(props: Props) {
+  if (props.kind === 'doctor' && props.verified === false) {
+    const title = 'Verificación en curso: parte de sus documentos ya fue aprobada';
+    return (
+      <span title={title} className={cn('inline-flex flex-shrink-0 text-ink-400', props.className)}>
+        <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
+          <path fill="none" stroke="currentColor" strokeWidth="1.5" d={SEAL_PATH} />
+          <path d="M12 8v4.2l2.6 1.6" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+        </svg>
+        <span className="sr-only">{title}</span>
+      </span>
+    );
+  }
+
   const color = props.kind === 'doctor' ? DOCTOR_TIER_COLORS[props.tier] : ORG_TYPE_COLORS[props.type];
   const title = props.kind === 'doctor' ? DOCTOR_TIER_TITLES[props.tier] : ORG_TYPE_TITLES[props.type];
 
   return (
     <span title={title} className={cn('inline-flex flex-shrink-0', color, props.className)}>
       <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
-        <path
-          fill="currentColor"
-          d="M12 2.5l2.2 1.3 2.5-.2 1 2.3 2.3 1-.2 2.5 1.3 2.2-1.3 2.2.2 2.5-2.3 1-1 2.3-2.5-.2L12 21.5l-2.2-1.3-2.5.2-1-2.3-2.3-1 .2-2.5L3 12l1.3-2.2-.2-2.5 2.3-1 1-2.3 2.5.2L12 2.5Z"
-        />
+        <path fill="currentColor" d={SEAL_PATH} />
         <path d="M8.3 12.1l2.4 2.4 4.9-5.2" fill="none" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
       <span className="sr-only">{title}</span>

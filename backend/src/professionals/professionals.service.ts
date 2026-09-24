@@ -3,13 +3,20 @@ import { Prisma, RegistrationType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import { profileVerifiedTemplate } from '../mail/mail.templates';
+import { profilePublishedTemplate, profileVerifiedTemplate } from '../mail/mail.templates';
 import { AGENDA_MIN_TIER, assertValidSocialLinks, SOCIAL_LINK_LIMITS, tierAtLeast } from '../subscriptions/plan-tiers';
 import { UpdateProfessionalProfileDto } from './dto/update-professional-profile.dto';
 import { UpsertLocationDto } from './dto/upsert-location.dto';
 import { UpsertSocialLinksDto } from '../common/dto/social-link.dto';
 import { GeoService } from '../geo/geo.service';
 import { recomputeDirectoryScore } from './directory-score';
+import {
+  documentProgress,
+  GENERAL_MEDICINE_SLUG,
+  professionalChecklist,
+  recomputeProfessionalStatus,
+} from './publication-rules';
+import { notifyProfilePublished } from './publication-notice';
 
 // Emisor de cada número que el médico carga en su perfil (ver ProfessionalRegistration).
 const REGISTRATION_SOURCES: {
@@ -25,6 +32,9 @@ const REGISTRATION_SOURCES: {
 
 const SITEMAP_PAGE_SIZE = 1000;
 
+// Datos que respaldan los documentos: si cambian, el perfil vuelve a revisión.
+const IDENTITY_FIELDS = ['firstName', 'lastName', 'cedula', 'rif', 'mppsNumber', 'colmedMonagasNumber'] as const;
+
 const PUBLIC_LIST_SELECT = {
   id: true,
   slug: true,
@@ -39,6 +49,7 @@ const PUBLIC_LIST_SELECT = {
   whatsapp: true,
   isSpecialist: true,
   planTier: true,
+  verificationStatus: true,
   specialties: { select: { specialty: { select: { id: true, name: true, slug: true } } } },
 } satisfies Prisma.ProfessionalProfileSelect;
 
@@ -107,7 +118,6 @@ export class ProfessionalsService implements OnApplicationBootstrap {
 
     const where: Prisma.ProfessionalProfileWhereInput = {
       isPublished: true,
-      verificationStatus: 'VERIFIED',
       municipality: params.municipality || undefined,
       specialties: params.specialtySlug
         ? { some: { specialty: { slug: params.specialtySlug } } }
@@ -184,7 +194,7 @@ export class ProfessionalsService implements OnApplicationBootstrap {
         },
       },
     });
-    if (!profile || !profile.isPublished || profile.verificationStatus !== 'VERIFIED') {
+    if (!profile || !profile.isPublished) {
       throw new NotFoundException('Profesional no encontrado');
     }
 
@@ -223,10 +233,19 @@ export class ProfessionalsService implements OnApplicationBootstrap {
           orderBy: { createdAt: 'desc' },
           take: 1,
         },
+        user: { select: { isEmailVerified: true } },
       },
     });
     if (!profile) throw new NotFoundException('No tienes un perfil profesional');
-    return this.signPhoto(profile);
+    const { user, ...rest } = profile;
+    const progress = professionalChecklist({
+      ...rest,
+      isEmailVerified: user.isEmailVerified,
+      specialtyCount: profile.specialties.length,
+      socialPlatforms: profile.socialLinks.map((link) => link.platform),
+      documents: documentProgress(profile.isSpecialist, profile.documents),
+    });
+    return { ...(await this.signPhoto(rest)), progress };
   }
 
   async updateOwnProfile(userId: string, dto: UpdateProfessionalProfileDto) {
@@ -234,7 +253,18 @@ export class ProfessionalsService implements OnApplicationBootstrap {
     if (!profile) throw new NotFoundException('No tienes un perfil profesional');
 
     const { specialtyIds, ...rest } = dto;
-    const isSpecialist = (specialtyIds?.length ?? 0) > 0;
+    // «Medicina General» no exige título de postgrado: solo cuenta como
+    // especialista quien elige otra especialidad.
+    const isSpecialist = specialtyIds
+      ? (await this.prisma.specialty.count({
+          where: { id: { in: specialtyIds }, slug: { not: GENERAL_MEDICINE_SLUG } },
+        })) > 0
+      : profile.isSpecialist;
+    // Solo un cambio de identidad o de números de registro vuelve a revisión;
+    // editar la biografía, el contacto o el resumen no despublica el perfil.
+    const identityChanged = IDENTITY_FIELDS.some(
+      (field) => dto[field] !== undefined && (dto[field] ?? '').trim() !== (profile[field] ?? '').trim(),
+    );
     await this.geo.assertValidMunicipality(dto.municipality);
 
     const updated = await this.prisma.$transaction(async (tx) => {
@@ -253,9 +283,9 @@ export class ProfessionalsService implements OnApplicationBootstrap {
         data: {
           ...rest,
           isSpecialist,
-          // Cualquier edición sustancial vuelve a poner el perfil en revisión
-          // si ya estaba verificado, para que un admin confirme los cambios.
-          ...(profile.verificationStatus === 'VERIFIED'
+          // Un cambio de identidad en un perfil ya público o verificado espera
+          // a que un administrador vuelva a revisar sus documentos.
+          ...(identityChanged && (profile.isPublished || profile.verificationStatus === 'VERIFIED')
             ? { verificationStatus: 'IN_REVIEW' as const, isPublished: false }
             : {}),
         },
@@ -264,8 +294,25 @@ export class ProfessionalsService implements OnApplicationBootstrap {
     });
 
     await this.syncRegistrations(profile.id, dto);
+    if (!identityChanged) await this.recomputeStatusAndNotify(profile.id);
     await recomputeDirectoryScore(this.prisma, profile.id);
     return this.signPhoto(updated);
+  }
+
+  /** Aplica las reglas de publicación tras un cambio del médico y avisa si quedó público. */
+  private async recomputeStatusAndNotify(professionalId: string) {
+    const result = await recomputeProfessionalStatus(this.prisma, professionalId);
+    if (!result?.becamePublic) return;
+    const profile = await this.prisma.professionalProfile.findUniqueOrThrow({
+      where: { id: professionalId },
+      include: { user: { select: { email: true } } },
+    });
+    await notifyProfilePublished(
+      this.notifications,
+      { ...profile, email: profile.user.email },
+      `${process.env.FRONTEND_URL}/medicos/${profile.slug}`,
+      result.documents,
+    );
   }
 
   async updateOwnPhoto(userId: string, key: string) {
@@ -279,6 +326,7 @@ export class ProfessionalsService implements OnApplicationBootstrap {
     if (previousKey) {
       await this.storage.deleteObject(previousKey).catch(() => undefined);
     }
+    await this.recomputeStatusAndNotify(profile.id);
     await recomputeDirectoryScore(this.prisma, profile.id);
     return this.signPhoto(updated);
   }
@@ -370,7 +418,7 @@ export class ProfessionalsService implements OnApplicationBootstrap {
 
   async sitemapEntries(page: number) {
     const safePage = Math.max(1, Math.floor(page) || 1);
-    const where: Prisma.ProfessionalProfileWhereInput = { isPublished: true, verificationStatus: 'VERIFIED', noIndex: false };
+    const where: Prisma.ProfessionalProfileWhereInput = { isPublished: true, noIndex: false };
     const [items, total] = await this.prisma.$transaction([
       this.prisma.professionalProfile.findMany({
         where,
@@ -390,7 +438,7 @@ export class ProfessionalsService implements OnApplicationBootstrap {
    */
   async landingPages() {
     const rows = await this.prisma.professionalSpecialty.findMany({
-      where: { professional: { isPublished: true, verificationStatus: 'VERIFIED', municipality: { not: null } } },
+      where: { professional: { isPublished: true, municipality: { not: null } } },
       select: { specialty: { select: { slug: true, name: true } }, professional: { select: { municipality: true } } },
     });
     const municipalities = await this.geo.listMunicipalities();
@@ -464,27 +512,47 @@ export class ProfessionalsService implements OnApplicationBootstrap {
   async adminSetSuspended(id: string, suspended: boolean, note: string | undefined, adminId: string) {
     const profile = await this.prisma.professionalProfile.findUnique({ where: { id }, include: { user: true } });
     if (!profile) throw new NotFoundException('Perfil no encontrado');
-    if (suspended && profile.verificationStatus !== 'VERIFIED' && profile.verificationStatus !== 'SUSPENDED') {
-      throw new ForbiddenException('Solo se pueden suspender perfiles verificados');
+    if (
+      suspended &&
+      !profile.isPublished &&
+      profile.verificationStatus !== 'VERIFIED' &&
+      profile.verificationStatus !== 'SUSPENDED'
+    ) {
+      throw new ForbiddenException('Solo se pueden suspender perfiles publicados o verificados');
     }
 
-    const updated = await this.prisma.professionalProfile.update({
+    let updated = await this.prisma.professionalProfile.update({
       where: { id },
       data: suspended
         ? { verificationStatus: 'SUSPENDED', isPublished: false, rejectionReason: note }
-        : { verificationStatus: 'VERIFIED', isPublished: true, rejectionReason: null },
+        : { verificationStatus: 'IN_REVIEW', rejectionReason: null },
     });
+    // Al reactivar, la verificación y la publicación salen de sus documentos
+    // y de su perfil, igual que para cualquier otro médico.
+    const status = suspended ? null : await recomputeProfessionalStatus(this.prisma, id);
+    if (status) updated = await this.prisma.professionalProfile.findUniqueOrThrow({ where: { id } });
+    const visible = !suspended && updated.isPublished;
+    const profileUrl = `${process.env.FRONTEND_URL}/medicos/${profile.slug}`;
 
     await this.notifications.notify({
       userId: profile.userId,
       type: suspended ? 'PROFILE_SUSPENDED' : 'PROFILE_REINSTATED',
       title: suspended ? 'Tu perfil fue suspendido' : 'Tu perfil fue reactivado',
-      content: note ?? (suspended ? 'Tu perfil fue suspendido por el equipo de Guía Médica Monagas.' : 'Tu perfil fue reactivado y vuelve a estar visible.'),
-      email: !suspended
+      content:
+        note ??
+        (suspended
+          ? 'Tu perfil fue suspendido por el equipo de Guía Médica Monagas.'
+          : visible
+            ? 'Tu perfil fue reactivado y vuelve a estar visible.'
+            : 'Tu perfil fue reactivado. Completa los requisitos de tu panel para volver al directorio.'),
+      email: visible
         ? {
             to: profile.user.email,
             subject: 'Tu perfil fue reactivado — Guía Médica Monagas',
-            html: profileVerifiedTemplate(profile.firstName, `${process.env.FRONTEND_URL}/medicos/${profile.slug}`),
+            html:
+              updated.verificationStatus === 'VERIFIED' || !status
+                ? profileVerifiedTemplate(profile.firstName, profileUrl)
+                : profilePublishedTemplate(profile.firstName, profileUrl, status.documents.approved, status.documents.required),
             template: 'profile_reinstated',
           }
         : undefined,

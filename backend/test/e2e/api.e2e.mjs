@@ -38,7 +38,7 @@ const patientToken = r.data?.accessToken;
 r = await call('POST', '/auth/register', { email: `p2-${run}@t.local`, password: pw, role: 'USER', firstName: 'X', lastName: 'Y', cedula: cedula.replace('-', '').toLowerCase(), acceptLegal: true });
 check('cédula duplicada (normalizada) → 409', r.status === 409, String(r.status));
 r = await call('GET', '/auth/me', null, patientToken);
-check('me: versiones legales aceptadas', r.data?.needsLegalAcceptance === false && r.data?.termsVersionAccepted === '2.1');
+check('me: versiones legales aceptadas', r.data?.needsLegalAcceptance === false && r.data?.termsVersionAccepted === '2.2');
 
 // 2. Ficha cifrada
 r = await call('PATCH', '/patients/me', { phone: phone, bloodType: 'A+', allergies: 'Ninguna', conditionSummary: 'Asma leve', medications: [{ name: 'Salbutamol', schedule: 'SOS' }] }, patientToken);
@@ -262,6 +262,27 @@ r = await call('GET', '/documents/me', null, doctorToken);
 check('requisitos del médico en orden de obtención y sin solvencia deontológica', r.status === 200 && r.data.required.map((x) => x.type).join(',') === 'CEDULA_IDENTIDAD,RIF,TITULO_MEDICO,REGISTRO_MPPS_SACS,MATRICULA_COLEGIO_MONAGAS,ARTICULO_8' && !r.data.required.some((x) => x.type === 'SOLVENCIA_DEONTOLOGICA'), r.data?.required?.map((x) => x.type).join(','));
 r = await call('GET', '/documents/requirements', null, doctorToken);
 check('catálogo de documentos sin tipos retirados', r.status === 200 && !r.data.some((x) => x.type === 'SOLVENCIA_DEONTOLOGICA'));
+
+// 15c. Publicación: 60% de documentos aprobados + biografía + foto; Plus/Premium con el 100%
+r = await call('POST', '/auth/register', { email: `pub-${run}@t.local`, password: pw, role: 'PROFESSIONAL', firstName: 'Paula', lastName: 'Mora', acceptLegal: true });
+const pubToken = r.data?.accessToken;
+const pub = (await db.query(`select p.id, p.slug from "ProfessionalProfile" p join "User" u on u.id=p."userId" where u.email=$1`, [`pub-${run}@t.local`])).rows[0];
+const pubDoc = async (type, status) => db.query(`insert into "ProfessionalDocument"(id,"professionalId",type,"fileKey","originalFileName","mimeType","fileSizeBytes",status,"updatedAt") values ($1,$2,$3,'documents/e2e.pdf','doc.pdf','application/pdf',1000,$4,now())`, [`pub-${run}-${type}`, pub.id, type, status]);
+for (const type of ['CEDULA_IDENTIDAD', 'RIF', 'TITULO_MEDICO']) await pubDoc(type, 'APPROVED');
+await pubDoc('REGISTRO_MPPS_SACS', 'PENDING');
+await db.query(`update "ProfessionalProfile" set "photoUrl"='professionals/e2e.png' where id=$1`, [pub.id]);
+r = await call('PATCH', '/professionals/me', { bio: 'Médico cirujano con diez años de experiencia en atención primaria y medicina familiar en Maturín.' }, pubToken);
+check('3 de 6 aprobados + biografía + foto → no se publica', r.status === 200 && (await call('GET', `/professionals/${pub.slug}`)).status === 404, String(r.status));
+r = await call('GET', '/professionals/me', null, pubToken);
+check('barra de progreso: incluye documentos, redes y web bloqueadas por plan', r.status === 200 && typeof r.data.progress?.percent === 'number' && r.data.progress.items.some((i) => i.key === 'documents' && i.detail?.startsWith('3 de 6')) && r.data.progress.items.find((i) => i.key === 'website')?.lockedUntil === 'PREMIUM' && r.data.progress.canPublish === false);
+r = await call('PATCH', `/documents/admin/pub-${run}-REGISTRO_MPPS_SACS/review`, { approved: true }, ad);
+const pubPublic = await call('GET', `/professionals/${pub.slug}`);
+check('4 de 6 aprobados + biografía + foto → público, aún sin sello «Verificado»', r.status === 200 && pubPublic.status === 200 && pubPublic.data?.verificationStatus === 'IN_REVIEW', `${r.status}/${pubPublic.status}/${pubPublic.data?.verificationStatus}`);
+const plans = (await call('GET', '/subscriptions/plans')).data ?? [];
+r = await call('POST', '/subscriptions/me', { planId: plans.find((p) => p.tier === 'PROFESSIONAL_PLUS')?.id }, pubToken);
+check('Profesional Plus sin el 100% de documentos → 403', r.status === 403, String(r.status));
+r = await call('PATCH', '/professionals/me', { bio: 'Corta' }, pubToken);
+check('sin biografía completa deja de ser público', r.status === 200 && (await call('GET', `/professionals/${pub.slug}`)).status === 404);
 
 // 16. Migración de datos heredados completa
 check('_PatientPlaintextLegacy no existe', (await db.query(`select to_regclass('public."_PatientPlaintextLegacy"') t`)).rows[0].t === null);

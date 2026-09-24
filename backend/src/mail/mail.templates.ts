@@ -109,6 +109,20 @@ export function profileVerifiedTemplate(rawName: string, profileUrl: string) {
   );
 }
 
+export function profilePublishedTemplate(rawName: string, profileUrl: string, approved: number, required: number) {
+  const name = escapeHtml(rawName);
+  return layout(
+    'Tu perfil ya es público',
+    `<h1 style="font-size:20px;margin:0 0 12px;">Hola, ${name}</h1>
+     <p style="font-size:14px;line-height:1.6;color:#3a3a3a;">
+       Tu perfil ya aparece en el directorio de ${BRAND_NAME}: tienes ${approved} de ${required} documentos aprobados,
+       tu biografía y tu foto de perfil. Mientras terminamos de revisar el resto, se muestra como «verificación en curso».
+       Con todos tus documentos aprobados obtienes el sello «Verificado» y puedes contratar Profesional Plus o Premium.
+     </p>
+     ${button(profileUrl, 'Ver mi perfil público')}`,
+  );
+}
+
 export function paymentReviewedTemplate(
   rawName: string,
   approved: boolean,

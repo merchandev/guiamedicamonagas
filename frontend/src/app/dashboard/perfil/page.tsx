@@ -144,7 +144,7 @@ export default function EditProfilePage() {
                 {uploadingPhoto ? 'Subiendo…' : 'Cambiar foto'}
                 <input type="file" accept="image/*" className="hidden" onChange={onPhotoChange} disabled={uploadingPhoto} />
               </label>
-              <p className="mt-1 text-xs text-ink-400">JPG, PNG o WebP. Máx. 5MB.</p>
+              <p className="mt-1 text-xs text-ink-400">Obligatoria para publicarte. JPG, PNG o WebP. Máx. 5MB.</p>
             </div>
           </div>
         </section>
@@ -155,7 +155,12 @@ export default function EditProfilePage() {
             <Input label="Nombres" required {...register('firstName')} />
             <Input label="Apellidos" required {...register('lastName')} />
           </div>
-          <Textarea label="Biografía" rows={4} {...register('bio')} hint="Cuéntale a los pacientes sobre tu experiencia" />
+          <Textarea
+            label="Biografía"
+            rows={4}
+            {...register('bio')}
+            hint="Obligatoria para publicarte (mínimo 80 caracteres). Cuéntale a los pacientes sobre tu experiencia."
+          />
           <div className="grid gap-4 sm:grid-cols-2">
             <Input label="Cédula de identidad" placeholder="V-12345678" {...register('cedula')} />
             <Input label="RIF" placeholder="V-12345678-9" {...register('rif')} />
@@ -222,9 +227,14 @@ export default function EditProfilePage() {
         </section>
 
         <section className="space-y-4">
-          <h2 className="border-b border-ink-100 pb-2 text-lg font-semibold text-ink-900">SEO del perfil</h2>
+          <h2 className="border-b border-ink-100 pb-2 text-lg font-semibold text-ink-900">Resumen y SEO</h2>
           <Input label="Título SEO" hint="Máx. 70 caracteres" {...register('seoTitle')} />
-          <Textarea label="Meta descripción" rows={2} hint="Máx. 160 caracteres" {...register('seoDescription')} />
+          <Textarea
+            label="Resumen corto (extracto)"
+            rows={2}
+            hint="1 o 2 líneas sobre tu práctica; se muestra en Google. Máx. 160 caracteres."
+            {...register('seoDescription')}
+          />
         </section>
 
         <Button type="submit" loading={saving} className="w-full sm:w-auto">

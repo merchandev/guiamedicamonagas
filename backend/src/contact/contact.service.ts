@@ -22,7 +22,7 @@ export class ContactService {
       where: { slug: dto.professionalSlug },
       include: { user: true },
     });
-    if (!professional || !professional.isPublished || professional.verificationStatus !== 'VERIFIED') {
+    if (!professional || !professional.isPublished) {
       throw new NotFoundException('Profesional no encontrado');
     }
 

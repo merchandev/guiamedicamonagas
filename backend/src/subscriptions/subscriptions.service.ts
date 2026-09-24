@@ -9,6 +9,7 @@ import { UpsertPlanDto } from './dto/upsert-plan.dto';
 import { UpdateExchangeRateDto } from './dto/exchange-rate.dto';
 import { loadSubscriptionOwner } from './subscription-owner';
 import { recomputeDirectoryScore } from '../professionals/directory-score';
+import { canSubscribeToTier, documentProgress } from '../professionals/publication-rules';
 
 const SUBSCRIPTION_INCLUDE = {
   plan: true,
@@ -117,12 +118,21 @@ export class SubscriptionsService {
   }
 
   async subscribe(userId: string, planId: string) {
-    const profile = await this.prisma.professionalProfile.findUnique({ where: { userId } });
+    const profile = await this.prisma.professionalProfile.findUnique({
+      where: { userId },
+      include: { documents: { select: { type: true, status: true, createdAt: true, expiresAt: true } } },
+    });
     if (!profile) throw new NotFoundException('No tienes un perfil profesional');
 
     const plan = await this.activePlanOrThrow(planId);
     if (plan.tier === 'ORGANIZATION') {
       throw new BadRequestException('Este plan es exclusivo para organizaciones');
+    }
+    const documents = documentProgress(profile.isSpecialist, profile.documents);
+    if (!canSubscribeToTier(plan.tier, documents)) {
+      throw new ForbiddenException(
+        `Para contratar ${plan.name} necesitas el 100% de tus documentos aprobados (tienes ${documents.approved} de ${documents.required})`,
+      );
     }
 
     const active = await this.prisma.subscription.findFirst({

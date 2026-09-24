@@ -43,7 +43,7 @@ export function DoctorCard({ doctor }: { doctor: ProfessionalListItem }) {
             <h3 className="truncate font-semibold text-ink-900">
               Dr(a). {doctor.firstName} {doctor.lastName}
             </h3>
-            <VerificationBadge kind="doctor" tier={doctor.planTier} />
+            <VerificationBadge kind="doctor" tier={doctor.planTier} verified={doctor.verificationStatus === 'VERIFIED'} />
           </div>
           <p className="mt-0.5 truncate text-sm text-ink-600">
             {doctor.specialties.map((s) => s.specialty.name).join(', ') || 'Medicina General'}

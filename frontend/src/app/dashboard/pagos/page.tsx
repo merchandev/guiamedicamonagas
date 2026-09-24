@@ -8,11 +8,14 @@ import { Button } from '@/components/ui/Button';
 import { PageSpinner } from '@/components/ui/Spinner';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { PAYMENT_STATUS_LABELS, PLAN_TIER_LABELS, SUBSCRIPTION_STATUS_LABELS } from '@/lib/labels';
-import { SubscriptionPlan } from '@/lib/types';
+import { ProfessionalProgress, SubscriptionPlan } from '@/lib/types';
 import { BcvRateBadge, useExchangeRate } from '@/components/BcvRateBadge';
 import { PagoMovilReportForm, type PendingInstallment } from '@/components/PagoMovilReportForm';
 
 type Plan = SubscriptionPlan;
+
+// Deben coincidir con FULL_DOCUMENTS_TIERS del backend (publication-rules.ts).
+const FULL_DOCUMENTS_TIERS = ['PROFESSIONAL_PLUS', 'PREMIUM'];
 
 interface Installment extends PendingInstallment {
   id: string;
@@ -34,6 +37,7 @@ export default function PaymentsPage() {
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [documents, setDocuments] = useState<ProfessionalProgress['documents'] | null>(null);
   const rate = useExchangeRate();
   const exchangeRate = rate?.usdToBs ?? null;
 
@@ -41,8 +45,12 @@ export default function PaymentsPage() {
     const sub = await api.get<Subscription | null>('/subscriptions/me').catch(() => null);
     setSubscription(sub);
     if (!sub) {
-      const allPlans = await api.get<Plan[]>('/subscriptions/plans').catch(() => []);
+      const [allPlans, own] = await Promise.all([
+        api.get<Plan[]>('/subscriptions/plans').catch(() => []),
+        api.get<{ progress?: ProfessionalProgress }>('/professionals/me').catch(() => null),
+      ]);
       setPlans(allPlans.filter((p) => p.tier !== 'FREE' && p.tier !== 'ORGANIZATION'));
+      setDocuments(own?.progress?.documents ?? null);
     }
     setLoading(false);
   };
@@ -95,9 +103,20 @@ export default function PaymentsPage() {
                     <li key={f}>• {f}</li>
                   ))}
                 </ul>
-                <Button className="mt-4 w-full" onClick={() => subscribe(plan.id)}>
-                  Elegir este plan
-                </Button>
+                {FULL_DOCUMENTS_TIERS.includes(plan.tier) && documents && documents.approved < documents.required ? (
+                  <>
+                    <Button className="mt-4 w-full" variant="outline" disabled>
+                      Requiere el 100% de tus documentos
+                    </Button>
+                    <p className="mt-2 text-xs text-ink-500">
+                      Tienes {documents.approved} de {documents.required} documentos aprobados.
+                    </p>
+                  </>
+                ) : (
+                  <Button className="mt-4 w-full" onClick={() => subscribe(plan.id)}>
+                    Elegir este plan
+                  </Button>
+                )}
               </div>
             ))
           )}

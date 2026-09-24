@@ -49,7 +49,8 @@ export class AppointmentsService {
     }
 
     const profile = await this.prisma.professionalProfile.findUnique({ where: { id: professionalId } });
-    if (!profile || !tierAtLeast(profile.planTier, AGENDA_MIN_TIER)) {
+    // Solo se reserva con médicos visibles en el directorio.
+    if (!profile || !profile.isPublished || !tierAtLeast(profile.planTier, AGENDA_MIN_TIER)) {
       return [];
     }
 
@@ -98,6 +99,13 @@ export class AppointmentsService {
   // --- Crear cita ---------------------------------------------------------
 
   async create(userId: string, dto: CreateAppointmentDto) {
+    const professional = await this.prisma.professionalProfile.findUnique({
+      where: { id: dto.professionalId },
+      select: { isPublished: true, planTier: true },
+    });
+    if (!professional?.isPublished || !tierAtLeast(professional.planTier, AGENDA_MIN_TIER)) {
+      throw new NotFoundException('Este profesional no recibe reservas en línea');
+    }
     const { startsAt, endsAt, autoConfirm } = await this.resolveSlot(dto.professionalId, dto.startsAt);
     const patient = await this.patients.getOrCreateForUser(userId, {
       firstName: dto.firstName ?? '',
