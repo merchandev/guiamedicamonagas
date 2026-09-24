@@ -271,7 +271,7 @@ const pubDoc = async (type, status) => db.query(`insert into "ProfessionalDocume
 for (const type of ['CEDULA_IDENTIDAD', 'RIF', 'TITULO_MEDICO']) await pubDoc(type, 'APPROVED');
 await pubDoc('REGISTRO_MPPS_SACS', 'PENDING');
 await db.query(`update "ProfessionalProfile" set "photoUrl"='professionals/e2e.png' where id=$1`, [pub.id]);
-r = await call('PATCH', '/professionals/me', { bio: 'Médico cirujano con diez años de experiencia en atención primaria y medicina familiar en Maturín.' }, pubToken);
+r = await call('PATCH', '/professionals/me', { firstName: 'Paula', lastName: 'Mora', bio: 'Médico cirujano con diez años de experiencia en atención primaria y medicina familiar en Maturín.' }, pubToken);
 check('3 de 6 aprobados + biografía + foto → no se publica', r.status === 200 && (await call('GET', `/professionals/${pub.slug}`)).status === 404, String(r.status));
 r = await call('GET', '/professionals/me', null, pubToken);
 check('barra de progreso: incluye documentos, redes y web bloqueadas por plan', r.status === 200 && typeof r.data.progress?.percent === 'number' && r.data.progress.items.some((i) => i.key === 'documents' && i.detail?.startsWith('3 de 6')) && r.data.progress.items.find((i) => i.key === 'website')?.lockedUntil === 'PREMIUM' && r.data.progress.canPublish === false);
@@ -281,7 +281,7 @@ check('4 de 6 aprobados + biografía + foto → público, aún sin sello «Verif
 const plans = (await call('GET', '/subscriptions/plans')).data ?? [];
 r = await call('POST', '/subscriptions/me', { planId: plans.find((p) => p.tier === 'PROFESSIONAL_PLUS')?.id }, pubToken);
 check('Profesional Plus sin el 100% de documentos → 403', r.status === 403, String(r.status));
-r = await call('PATCH', '/professionals/me', { bio: 'Corta' }, pubToken);
+r = await call('PATCH', '/professionals/me', { firstName: 'Paula', lastName: 'Mora', bio: 'Corta' }, pubToken);
 check('sin biografía completa deja de ser público', r.status === 200 && (await call('GET', `/professionals/${pub.slug}`)).status === 404);
 
 // 16. Migración de datos heredados completa
