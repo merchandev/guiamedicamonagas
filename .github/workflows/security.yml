@@ -63,12 +63,17 @@ jobs:
         include:
           - image: api
             context: backend
+            build_args: ''
           - image: web
             context: frontend
+            # El build de Next necesita URLs válidas (metadataBase); en CI da igual cuáles.
+            build_args: >-
+              --build-arg NEXT_PUBLIC_API_URL=http://localhost:4000/api/v1
+              --build-arg NEXT_PUBLIC_SITE_URL=http://localhost:3000
     steps:
       - uses: actions/checkout@v7
       - name: Construir la imagen
-        run: docker build -t gmm-${{ matrix.image }}:ci ${{ matrix.context }}
+        run: docker build ${{ matrix.build_args }} -t gmm-${{ matrix.image }}:ci ${{ matrix.context }}
       # Solo CVE críticas con corrección publicada bloquean; el resto se revisa
       # en el escaneo semanal.
       - name: Escaneo de la imagen (CRITICAL bloquea)

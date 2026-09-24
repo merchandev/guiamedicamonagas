@@ -75,6 +75,14 @@ networks:
       config:
         - subnet: 172.31.79.0/24
 
+  # Salida a Internet solo para que el antivirus descargue firmas (freshclam).
+  # Ningún otro servicio está en esta red.
+  gmm_av_egress:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.31.80.0/24
+
 services:
   # ---------------------------------------------------------------------------
   # Servicios de datos — SOLO red interna, sin puertos al host
@@ -302,6 +310,29 @@ services:
     cpus: 0.2
 
   # ---------------------------------------------------------------------------
+  # Antivirus de subidas — opcional (perfil "antivirus")
+  # ---------------------------------------------------------------------------
+  # Se activa con COMPOSE_PROFILES=antivirus y CLAMAV_HOST=clamav en .env.prod.
+  # La API le envía cada archivo por TCP 3310 (INSTREAM) y falla cerrado: si
+  # clamd no responde, la subida se rechaza. ~1,3 GB de RAM con las firmas
+  # cargadas; ver scripts/clamd.conf (sin recarga concurrente).
+  clamav:
+    image: clamav/clamav:1.5.4
+    profiles: [antivirus]
+    logging: *default-logging
+    restart: unless-stopped
+    volumes:
+      - clamavdata:/var/lib/clamav
+      - ./scripts/clamd.conf:/etc/clamav/clamd.conf:ro
+    networks:
+      - gmm_internal
+      - gmm_av_egress
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 2g
+    cpus: 1.0
+
+  # ---------------------------------------------------------------------------
   # Proxy inverso — única entrada desde Internet
   # ---------------------------------------------------------------------------
 
@@ -341,3 +372,4 @@ volumes:
   caddy_data:
   caddy_config:
   maildata:
+  clamavdata:
