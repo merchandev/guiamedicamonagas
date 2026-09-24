@@ -3,7 +3,7 @@
 > Bitácora central de cambios, implementaciones, decisiones técnicas y tareas de evolución del sistema.
 >
 > **Repositorio:** [`merchandev/guiamedicamonagas`](https://github.com/merchandev/guiamedicamonagas) · **Rama:** `main`<br>
-> **Última actualización de esta bitácora:** `2026-09-24 06:53:13 -04:00` · **Estado:** 🟢 Registro activo
+> **Última actualización de esta bitácora:** `2026-09-24 08:36:50 -04:00` · **Estado:** 🟢 Registro activo
 
 ![Estado](https://img.shields.io/badge/estado-registro%20activo-16a34a?style=flat-square)
 ![Rama](https://img.shields.io/badge/rama-main-2563eb?style=flat-square)
@@ -121,8 +121,9 @@ flowchart LR
     P[🧰 2026-09-23\n21:45:00\nACT-0016 · Sesiones, identidad,\nimágenes seguras y antivirus]
     Q[🩺 2026-09-23\n21:48:30\nACT-0017 · HEALTHCHECK en los\nDockerfiles (alertas de Trivy)]
     R[🌐 2026-09-24\n06:40:26\nACT-0018 · Dominio propio vía\nTraefik del VPS (espera DNS)]
+    S[🛡️ 2026-09-24\n08:36:50\nACT-0019 · Plan de producción:\nMFA, ClamAV, equipos y respaldos]
 
-    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L --> M --> N --> O --> P --> Q --> R
+    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L --> M --> N --> O --> P --> Q --> R --> S
 ```
 
 ### Resumen cuantitativo
@@ -130,10 +131,10 @@ flowchart LR
 | Indicador | Resultado |
 |---|---:|
 | Actividades históricas importadas desde Git | `3` |
-| Actividades documentales añadidas con esta bitácora | `15` |
-| Actividades registradas en total | `18` |
+| Actividades documentales añadidas con esta bitácora | `16` |
+| Actividades registradas en total | `19` |
 | Rama de referencia | `main` |
-| Commit base consultado | [`c30c03d`](https://github.com/merchandev/guiamedicamonagas/commit/c30c03d) |
+| Commit base consultado | [`81b1091`](https://github.com/merchandev/guiamedicamonagas/commit/81b1091) |
 | Zona horaria de control | `America/Caracas` (`-04:00`) |
 
 <a id="act-0001"></a>
@@ -710,6 +711,49 @@ El usuario pidió configurar el proxy del proyecto para que reconozca su dominio
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
+<a id="act-0019"></a>
+
+### 🛡️ ACT-0019 · Plan de producción (sin dominio): MFA y ClamAV obligatorios, equipos de organizaciones, notas clínicas cifradas, respaldos y CI endurecido
+
+<details>
+<summary><strong>2026-09-24 08:36:50 -04:00</strong> · <code>81b1091</code> · <code>7d7d68c</code> · <code>2db43df</code> · 🟢 Completado</summary>
+
+**Responsable:** `Claude Opus 5.5` · **Tipo:** `security | feature | ops | ci` · **Commit:** [`81b1091`](https://github.com/merchandev/guiamedicamonagas/commit/81b1091)
+
+El usuario compartió un plan de acción completo de producción (segunda auditoría, commit de referencia `bca1528`) y pidió aplicarlo todo **excepto la configuración del dominio**. El enrutamiento del dominio ya estaba listo desde [ACT-0018](#act-0018); aquí no se tocaron DNS, TLS, HSTS, las URL públicas ni `COOKIE_SECURE`.
+
+**P0 / P1 — hecho**
+
+- **MFA obligatorio para ADMIN/SUPERADMIN en producción (P0-02).** La API no arranca con `NODE_ENV=production` sin `ADMIN_MFA_ENABLED=true`. Única salida: una excepción **fechada** (`ADMIN_MFA_WAIVER_UNTIL`), porque producción aún usa el Mailpit interno y el código de acceso no llegaría a ningún buzón. `deploy.sh` se niega a desplegar cuando vence. Se fijó hasta el 2026-10-24. Sin Google Authenticator, respetando la instrucción del usuario.
+- **ClamAV obligatorio (P1-01).** Sin `CLAMAV_HOST` la API no arranca en producción. El servicio `clamav` deja de ser un perfil opcional y `deploy.sh` espera a que tenga las firmas cargadas antes de levantar la API.
+- **Puerto 8088 (P0-01, parte de código).** Caddy se publica por defecto solo en `127.0.0.1`; el acceso público es el Traefik del VPS. Mientras el dominio no tenga HTTPS, `.env.prod` declara `CADDY_BIND_ADDRESS=0.0.0.0`, porque hoy es el único acceso, y el despliegue lo marca como NO-GO.
+- **Equipos de organizaciones (P1-02).** La pertenencia (`OrganizationMember`) ya no depende del rol global de la cuenta: un paciente o un médico puede ser editor de una clínica. Invitaciones por correo (`OrganizationInvitation`): token de 32 bytes del que solo se guarda el hash, 72 h, un solo uso, atado al correo invitado. Registrarse desde la invitación une la cuenta al equipo **sin crear otra organización** (antes era imposible sumar a alguien sin que se creara una organización nueva).
+- **Roles internos (P1-03).** Matriz única OWNER / ADMIN / EDITOR (`organization-roles.ts`): el editor solo edita contenido; nombre, tipo y RIF solo el dueño; admin gestiona equipo, médicos y plan; nadie invita por encima de su rol; transferir la propiedad y no quedarse nunca sin dueño. El panel oculta lo que el rol no permite y el backend lo vuelve a comprobar.
+- **Pago Móvil atómico (P1-04).** Índice único parcial `Payment_reference_active_unique` (banco emisor + referencia en pagos no rechazados). Dos reportes simultáneos: uno se guarda y el otro recibe 409, y su comprobante se borra.
+- **Notas clínicas (P1-05).** `ClinicalNote` pierde sus columnas en claro: todo el contenido va en `clinicalDataEnc` mediante `ClinicalNoteCodec`. La migración se detiene si hubiera notas, en vez de borrarlas; en producción había 0. Un test garantiza que ningún controlador expone notas clínicas.
+- **Tabla heredada en claro (P1-06).** Verificado en producción que `_PatientPlaintextLegacy` no existe; `deploy.sh` falla si reaparece, y el e2e también lo comprueba.
+
+**P2 — hecho**
+
+- **Rotación de claves (P2-02).** Script `rotate-encryption-keys` (simulación / `--apply`, escrituras que exigen que el valor no haya cambiado, idempotente, solo conteos). Probado con datos reales en local: 54 valores de v1 a v2 y de vuelta; si falta una clave, se niega y avisa que no se retire ninguna.
+- **Respaldos cifrados y restauración (P2-03).** `backup.sh`: `pg_dump` directo a gpg AES-256, sin archivo en claro. Diario, más los archivos de MinIO semanales, con manifiesto de conteos y retención. `restore-test.sh` semanal: restaura en un PostgreSQL desechable aislado, compara conteos, descifra **todos** los campos con las claves reales y comprueba que con claves al azar no se lee ninguno. Cron en `/etc/cron.d/guiamedicamonagas`.
+- **CI (P2-04, P2-05, P2-06).** Acciones fijadas por SHA. Puerta de dependencias: las CRITICAL nunca pasan; las HIGH solo con excepción fechada en `security/audit-exceptions.json`, y una excepción vencida vuelve a bloquear. ClamAV real en CI para las pruebas de subida (EICAR, archivo limpio, subida completa, antivirus caído → rechazo).
+- **Concurrencia (P2-07):** 10 reservas simultáneas del mismo horario → 1; 10 pagos con la misma referencia → 1.
+- **Auditoría de descargas (P2-08):** `PROFESSIONAL_DOCUMENT_DOWNLOADED`, `PAYMENT_RECEIPT_VIEWED` y `PATIENT_IDENTITY_DOCUMENT_VIEWED`, sin contenido sensible en el registro.
+- **Monitoreo mínimo:** `healthcheck.sh` cada 5 minutos (API, contenedores, disco, memoria, antigüedad de respaldos y restauraciones, certificado cuando exista). Registra solo los cambios de estado y admite un webhook opcional.
+- **Despliegue:** `deploy.sh` hace un respaldo previo, etiqueta `:rollback` las imágenes anteriores, deja registro en `deploys.log`, imprime el informe GO/NO-GO (`GMM_REQUIRE_GO=true` lo hace bloqueante), comprueba la tabla heredada y corre la prueba de humo. La guía de despliegue apuntaba a una ruta inexistente (`/docker/...`): corregida a `/opt/guiamedicamonagas`.
+- WhatsApp revisado: solo avisa a médicos y organizaciones (verificación y pagos), nunca datos médicos de pacientes.
+
+**Queda del plan (depende del titular):** dominio y HTTPS ([ACT-0018](#act-0018)), SMTP real (luego activar MFA y retirar la excepción), copia de respaldos fuera del VPS, canal de alertas, y los datos del responsable legal para la Política de privacidad (la estructura `DATA_CONTROLLER` está lista, sin inventar datos). Ver [`docs/operations/go-no-go.md`](docs/operations/go-no-go.md).
+
+**Verificación:** 50 pruebas unitarias en local (+4 contra ClamAV real en CI); e2e **80/80** (invitaciones, roles, concurrencia, descargas auditadas, tabla heredada); `next build` limpio; en el navegador: enlace de invitación → alta sin selector de tipo → panel como editor con identidad bloqueada; vista del dueño con roles, invitaciones pendientes y `?next=` tras iniciar sesión.<br>
+**Desplegado en producción el 2026-09-24 (autorizado por el usuario):** frase de cifrado de respaldos generada en el propio VPS (no se imprimió); `.env.prod` respaldado (`backups/env.prod.pre-act19`) y ajustado: sin perfil de antivirus, excepción de MFA hasta el 2026-10-24 y `CADDY_BIND_ADDRESS=0.0.0.0` mientras no haya dominio. Primer despliegue con el nuevo `deploy.sh`: respaldo cifrado previo y migración `20260924114150_production_hardening` aplicada (en producción había 0 notas clínicas y 0 pagos: ningún dato afectado). **Incidente:** la API no arrancó porque `docker-compose.prod.yml` no le pasaba `ADMIN_MFA_WAIVER_UNTIL`, y la validación nueva hizo lo que debía (negarse a arrancar sin MFA). El sitio estuvo caído unos 5 minutos (08:21–08:26 de Caracas) hasta el arreglo (`7d7d68c`). Para que no se repita, `deploy.sh` valida ahora la configuración con la imagen nueva **antes** de reemplazar los contenedores, y una excepción vacía cuenta como inexistente (`2db43df`). Segundo despliegue limpio: configuración válida, ClamAV sano, tabla heredada inexistente y prueba de humo **24/24**. Respaldos probados: base de datos diaria y archivos semanal (cifrados, sha256 correcto, descifrables). Prueba de restauración aislada con un paciente temporal: conteos idénticos, **3/3** campos cifrados legibles con las claves reales y 0 con claves al azar; el paciente y ese respaldo se eliminaron. Cron instalado (`/etc/cron.d/guiamedicamonagas`) y monitoreo sin alertas. El barrido de logs de producción no encontró contraseñas, tokens, cédulas ni datos de salud. Aparte: el VPS se reinició a las 07:20 de Caracas, después de una actualización automática del kernel instalada a las 02:23; todos los proyectos volvieron solos y no lo causó este trabajo. GitHub: CI (54 unitarias con ClamAV real, e2e 80/80) y Seguridad en verde.<br>
+**Archivos destacados:** [`backend/src/config/env.validation.ts`](backend/src/config/env.validation.ts), [`backend/src/organizations`](backend/src/organizations), [`backend/src/clinical/clinical-note.codec.ts`](backend/src/clinical/clinical-note.codec.ts), [`backend/src/scripts/rotate-encryption-keys.ts`](backend/src/scripts/rotate-encryption-keys.ts), [`backend/prisma/migrations/20260924114150_production_hardening`](backend/prisma/migrations/20260924114150_production_hardening), [`scripts`](scripts), [`docs/operations`](docs/operations), [`docs/security/vulnerabilidades.md`](docs/security/vulnerabilidades.md), [`.github/workflows`](.github/workflows).
+
+</details>
+
+<p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
+
 <a id="registro-por-area"></a>
 
 ## 🧩 Registro por área
@@ -719,16 +763,16 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | Área | Implementaciones registradas | Actividades relacionadas |
 |---|---|---|
 | 🧱 Fundación técnica | NestJS, Next.js, Prisma, Docker, Caddy, Tailwind | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) |
-| 🔐 Auth y seguridad | JWT, refresh cookie, roles, correo, recuperación, throttling, Argon2id, permisos granulares, reuso de tokens, `tokenVersion`, cerrar todas las sesiones, MFA por correo, subidas seguras y antivirus | [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0012](#act-0012) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) |
+| 🔐 Auth y seguridad | JWT, refresh cookie, roles, correo, recuperación, throttling, Argon2id, permisos granulares, reuso de tokens, `tokenVersion`, cerrar todas las sesiones, MFA obligatorio en producción, subidas seguras, antivirus obligatorio y rotación de claves | [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0012](#act-0012) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0019](#act-0019) |
 | 👨‍⚕️ Profesionales | Perfiles, ubicaciones, documentos, verificación legal, redes sociales, badges | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0006](#act-0006) |
-| 🏥 Organizaciones | Farmacias, laboratorios, clínicas, ubicaciones, autogestión, equipo, médicos asociados y plan propio | [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0015](#act-0015) |
-| 💳 Monetización | Planes, Pago Móvil, aprobación, tasa BCV, evidencia de tasa por cuota y catálogo de bancos | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0010](#act-0010) · [ACT-0011](#act-0011) · [ACT-0015](#act-0015) |
+| 🏥 Organizaciones | Farmacias, laboratorios, clínicas, ubicaciones, autogestión, equipo con invitaciones y roles internos, médicos asociados y plan propio | [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0015](#act-0015) · [ACT-0019](#act-0019) |
+| 💳 Monetización | Planes, Pago Móvil, aprobación, tasa BCV, evidencia de tasa por cuota, catálogo de bancos y referencia única atómica | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0010](#act-0010) · [ACT-0011](#act-0011) · [ACT-0015](#act-0015) · [ACT-0019](#act-0019) |
 | 📅 Agenda y citas | Horarios, disponibilidad, reservas, máquina de estados, anti-doble-reserva, zona America/Caracas | [ACT-0007](#act-0007) · [ACT-0015](#act-0015) |
 | 🔒 Pacientes | Código pseudónimo, cifrado de datos de salud, consentimiento por alcance y tiempo, lecturas auditadas, registro propio, foto de identificación verificada por un admin y reserva con la ficha propia | [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) |
 | 🛠️ Administración | Médicos, pagos, SEO, cookies, especialidades, planes, verificaciones, organizaciones, bancos, geografía e identidad de pacientes | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) |
 | 📊 Observabilidad | Auditoría, analítica con consentimiento y sin IP, notificaciones, salud, pruebas, CI, escaneo de imágenes y Dependabot | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) |
-| 🎨 Experiencia | Directorios, dashboard, componentes UI, motion y legal | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0013](#act-0013) · [ACT-0014](#act-0014) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0017](#act-0017) |
-| 🚢 Operación | Variables de entorno, Compose, almacenamiento, correo, proxy, imágenes mínimas y antivirus | [ACT-0001](#act-0001) · [ACT-0002](#act-0002) · [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0008](#act-0008) · [ACT-0009](#act-0009) · [ACT-0011](#act-0011) · [ACT-0016](#act-0016) · [ACT-0017](#act-0017) · [ACT-0018](#act-0018) |
+| 🎨 Experiencia | Directorios, dashboard, componentes UI, motion y legal | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0013](#act-0013) · [ACT-0014](#act-0014) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0017](#act-0017) · [ACT-0019](#act-0019) |
+| 🚢 Operación | Variables de entorno, Compose, almacenamiento, correo, proxy, imágenes mínimas y antivirus | [ACT-0001](#act-0001) · [ACT-0002](#act-0002) · [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0008](#act-0008) · [ACT-0009](#act-0009) · [ACT-0011](#act-0011) · [ACT-0016](#act-0016) · [ACT-0017](#act-0017) · [ACT-0018](#act-0018) · [ACT-0019](#act-0019) |
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
@@ -777,6 +821,11 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | IMP-037 | Imágenes de contenedor mínimas (sin npm/yarn ni dependencias de desarrollo, parches de Alpine) y Trivy en `api` y `web` | 🟢 Completado | [`backend/Dockerfile`](backend/Dockerfile), [`frontend/Dockerfile`](frontend/Dockerfile), [`.github/workflows/security.yml`](.github/workflows/security.yml) |
 | IMP-038 | Antivirus ClamAV para subidas (servicio opcional con límites de memoria y red de salida propia) | 🟢 Completado | [`docker-compose.prod.yml`](docker-compose.prod.yml), [`scripts/clamd.conf`](scripts/clamd.conf) |
 | IMP-039 | Reserva de cita con la ficha del paciente logueado y QA ampliada a 56 comprobaciones e2e | 🟢 Completado | [`frontend/src/app/medicos/[slug]/agendar/page.tsx`](frontend/src/app/medicos/%5Bslug%5D/agendar/page.tsx), [`backend/test/e2e/api.e2e.mjs`](backend/test/e2e/api.e2e.mjs) |
+| IMP-040 | MFA y ClamAV obligatorios en producción (validación de entorno + deploy.sh), con excepción de MFA fechada | 🟢 Completado | [`backend/src/config/env.validation.ts`](backend/src/config/env.validation.ts), [`scripts/deploy.sh`](scripts/deploy.sh) |
+| IMP-041 | Equipos de organizaciones: invitaciones de un solo uso y matriz de roles OWNER/ADMIN/EDITOR independiente del rol de la cuenta | 🟢 Completado | [`backend/src/organizations/organization-roles.ts`](backend/src/organizations/organization-roles.ts), [`frontend/src/app/organizacion/miembros/page.tsx`](frontend/src/app/organizacion/miembros/page.tsx) |
+| IMP-042 | Pago Móvil con referencia única atómica y notas clínicas solo cifradas | 🟢 Completado | [`backend/prisma/migrations/20260924114150_production_hardening`](backend/prisma/migrations/20260924114150_production_hardening), [`backend/src/clinical`](backend/src/clinical) |
+| IMP-043 | Respaldos cifrados, prueba de restauración semanal, monitoreo y rollback | 🟢 Completado | [`scripts/backup.sh`](scripts/backup.sh), [`scripts/restore-test.sh`](scripts/restore-test.sh), [`docs/operations`](docs/operations) |
+| IMP-044 | CI endurecido: acciones por SHA, puerta de vulnerabilidades con excepciones fechadas, ClamAV real en CI, 80 comprobaciones e2e | 🟢 Completado | [`.github/workflows`](.github/workflows), [`scripts/audit-gate.mjs`](scripts/audit-gate.mjs) |
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
@@ -800,7 +849,10 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | 🟢 Continua | ~~SEC-05 · Cifrado de campos sensibles del paciente~~ — hecho para el perfil y las citas; `ClinicalNote` deberá usar el mismo servicio al implementarse | 🟢 Completado | Ver [ACT-0015](#act-0015) |
 | 🟢 Continua | ~~SEC-02 (resto) · `tokenVersion` para invalidar access tokens vigentes~~ | 🟢 Completado | Ver [ACT-0016](#act-0016) |
 | 🔴 Alta | Respaldar fuera del VPS las claves `DATA_ENCRYPTION_KEYS`/`DATA_LOOKUP_KEY` de producción (sin ellas los datos cifrados son irrecuperables) | 🔴 Bloqueado | Copia en una bóveda del usuario, separada de los respaldos de la BD — ver [`docs/security/sec-02-05-privacidad-y-acceso.md`](docs/security/sec-02-05-privacidad-y-acceso.md) |
-| 🟠 Media | Activar `ADMIN_MFA_ENABLED` cuando haya SMTP real (ClamAV: ver [ACT-0016](#act-0016)) | 🔴 Bloqueado | Login de administrador con código por correo en producción; requiere las credenciales SMTP del usuario |
+| 🔴 Alta | SMTP real → `ADMIN_MFA_ENABLED=true` y retirar `ADMIN_MFA_WAIVER_UNTIL` (vence el 2026-10-24; después `deploy.sh` no despliega) | 🔴 Bloqueado | Login de administrador con código por correo en producción; requiere las credenciales SMTP del usuario |
+| 🔴 Alta | Copia de los respaldos fuera del VPS (`GMM_BACKUP_REMOTE`) y guardar fuera del servidor la frase de cifrado de respaldos | 🔴 Bloqueado | Regla 3-2-1; ver [`docs/operations/respaldos-y-restauracion.md`](docs/operations/respaldos-y-restauracion.md) |
+| 🟠 Media | Datos del responsable legal (razón social, RIF, domicilio, correos) para la Política de privacidad | 🔴 Bloqueado | `DATA_CONTROLLER` en `frontend/src/lib/legal.ts` + nueva versión de la política |
+| 🟡 Baja | Canal de alertas del monitoreo (`GMM_ALERT_WEBHOOK_URL`) | 🔵 Planificado | Avisos de caída, disco, respaldos y certificado fuera del log |
 | 🟠 Media | Pagos C2P/P2C o API bancaria autorizada en lugar del reporte manual de Pago Móvil | 🔵 Planificado | Conciliación automática con evidencia del banco |
 | 🟡 Baja | Agenda: duración por servicio, consulta online, precio, política de cancelación, feriados, varias agendas y lista de espera | 🔵 Planificado | Sugeridos por la auditoría de [ACT-0015](#act-0015) |
 | 🟠 Media | Fase 3a · Finanzas: `FinanceRecord` + auto-generación de ingreso al completar cita | 🔵 Planificado | Gated a plan Premium; usa `ExchangeRateService` ya existente |
@@ -875,6 +927,7 @@ Para cada cambio futuro, añadir una entrada en la línea de tiempo y actualizar
 | `2026-09-23 21:48:30 -04:00` | Incorporación de ACT-0017 (`HEALTHCHECK` en los Dockerfiles para cerrar las 2 alertas de Trivy), actualización de línea de tiempo, resumen cuantitativo, registro por área y próximas actividades | 🟢 Completado |
 | `2026-09-24 06:40:26 -04:00` | Incorporación de ACT-0018 (dominio propio enrutado por el Traefik del VPS con IP real del visitante; diagnóstico de la zona DNS inexistente en Hostinger), actualización de línea de tiempo, resumen cuantitativo, registro por área y próximas actividades | 🟢 Completado |
 | `2026-09-24 06:53:13 -04:00` | Corrección de horas: ACT-0016, ACT-0017 y ACT-0018 se habían registrado en UTC con la etiqueta `-04:00` (la consola usada ignoraba la zona horaria); se ajustaron a la hora real de Caracas según los commits. ACT-0018 incorpora el análisis de logs de producción | 🟢 Completado |
+| `2026-09-24 08:36:50 -04:00` | Incorporación de ACT-0019 (plan de producción sin dominio: MFA y ClamAV obligatorios, invitaciones y roles de organizaciones, Pago Móvil atómico, notas clínicas cifradas, rotación de claves, respaldos cifrados con prueba de restauración, monitoreo, CI endurecido), actualización de línea de tiempo, resumen cuantitativo, registro por área, control de implementaciones y próximas actividades | 🟢 Completado |
 
 ---
 

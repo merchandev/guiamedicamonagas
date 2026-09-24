@@ -101,7 +101,9 @@ if grep -qx mailpit <<< "${SERVICES}"; then
 fi
 
 # --- Respaldo previo y punto de retorno --------------------------------------
-PREVIOUS_SHA="$(git -C "${PROJECT_DIR}" rev-parse HEAD 2>/dev/null || echo desconocido)"
+# El código se actualiza (git pull) antes de ejecutar este script, así que el
+# commit que estaba en marcha se lee de deployed-sha, no de HEAD.
+PREVIOUS_SHA="$(cat "${BACKUP_ROOT}/deployed-sha" 2>/dev/null || git -C "${PROJECT_DIR}" rev-parse HEAD 2>/dev/null || echo desconocido)"
 if [[ -n "$(docker ps -q --filter "label=com.docker.compose.project=${PROJECT_NAME}" --filter label=com.docker.compose.service=postgres)" ]]; then
   if [[ -r "${PASSPHRASE_FILE}" ]]; then
     echo "Respaldo cifrado previo al despliegue..."
@@ -183,6 +185,8 @@ if [[ "${SMTP_HOST}" == "mailpit" ]]; then
 fi
 
 "${COMPOSE[@]}" ps
-echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) ok desde=${PREVIOUS_SHA} hasta=$(git -C "${PROJECT_DIR}" rev-parse HEAD 2>/dev/null || echo desconocido)" >> "${BACKUP_ROOT}/deploys.log"
+DEPLOYED_SHA="$(git -C "${PROJECT_DIR}" rev-parse HEAD 2>/dev/null || echo desconocido)"
+echo "${DEPLOYED_SHA}" > "${BACKUP_ROOT}/deployed-sha"
+echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) ok desde=${PREVIOUS_SHA} hasta=${DEPLOYED_SHA}" >> "${BACKUP_ROOT}/deploys.log"
 echo "Despliegue completado: ${NEXT_PUBLIC_SITE_URL}"
 echo "Para volver atrás: git checkout ${PREVIOUS_SHA} e imágenes gmm-independent-{api,web}:rollback (ver docs/operations/go-no-go.md)."
