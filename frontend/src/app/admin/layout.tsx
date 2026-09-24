@@ -8,6 +8,7 @@ import { useAuth, type Permission } from '@/lib/auth-context';
 const LINKS: { href: string; label: string; permission: Permission }[] = [
   { href: '/admin', label: 'Resumen', permission: 'VIEW_ADMIN_STATS' },
   { href: '/admin/verificaciones', label: 'Verificaciones', permission: 'VERIFY_PROFESSIONALS' },
+  { href: '/admin/identidades', label: 'Identidad de pacientes', permission: 'VERIFY_PATIENT_IDENTITY' },
   { href: '/admin/pagos', label: 'Pagos', permission: 'REVIEW_PAYMENTS' },
   { href: '/admin/medicos', label: 'Médicos', permission: 'VERIFY_PROFESSIONALS' },
   { href: '/admin/organizaciones', label: 'Farmacias y clínicas', permission: 'MANAGE_ORGANIZATIONS' },

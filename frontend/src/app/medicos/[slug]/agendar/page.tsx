@@ -1,6 +1,7 @@
 'use client';
 
 import { use, useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { api, ApiError } from '@/lib/api';
 import { RequireAuth } from '@/components/RequireAuth';
@@ -26,6 +27,13 @@ function dateKey(d: Date) {
   return d.toLocaleDateString('en-CA', { timeZone: 'America/Caracas' });
 }
 
+interface OwnPatientProfile {
+  firstName: string | null;
+  lastName: string | null;
+  patientCode: string;
+  phone: string | null;
+}
+
 export default function AgendarCitaPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
   const router = useRouter();
@@ -42,6 +50,16 @@ export default function AgendarCitaPage({ params }: { params: Promise<{ slug: st
   // Consentimiento opcional: nada viene marcado por defecto.
   const [shareScopes, setShareScopes] = useState<PatientDataScope[]>([]);
   const [shareDays, setShareDays] = useState(30);
+  // Ficha de paciente ya creada (al registrarse o en una reserva anterior):
+  // undefined = cargando, null = primera reserva sin ficha.
+  const [ownProfile, setOwnProfile] = useState<OwnPatientProfile | null | undefined>(undefined);
+
+  useEffect(() => {
+    api
+      .get<OwnPatientProfile>('/patients/me')
+      .then(setOwnProfile)
+      .catch(() => setOwnProfile(null));
+  }, []);
 
   useEffect(() => {
     api
@@ -172,27 +190,42 @@ export default function AgendarCitaPage({ params }: { params: Promise<{ slug: st
               onChange={(e) => setForm({ ...form, reason: e.target.value })}
             />
 
-            <div className="space-y-3 border-t border-ink-100 pt-4">
-              <p className="text-sm text-ink-600">Solo si es tu primera reserva con nosotros:</p>
-              <div className="grid gap-3 sm:grid-cols-2">
+            {ownProfile ? (
+              <div className="rounded-lg border border-ink-100 bg-ink-50 p-4 text-sm text-ink-700">
+                Reservas como{' '}
+                <strong>
+                  {ownProfile.firstName} {ownProfile.lastName}
+                </strong>{' '}
+                ({ownProfile.patientCode}){ownProfile.phone ? <> · {ownProfile.phone}</> : null}. Para cambiar tu teléfono u
+                otros datos, ve a{' '}
+                <Link href="/paciente" className="font-medium text-pine-700 underline">
+                  tu perfil
+                </Link>
+                .
+              </div>
+            ) : ownProfile === null ? (
+              <div className="space-y-3 border-t border-ink-100 pt-4">
+                <p className="text-sm text-ink-600">Es tu primera reserva: ¿a nombre de quién va la cita?</p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Input
+                    label="Nombres"
+                    value={form.firstName}
+                    onChange={(e) => setForm({ ...form, firstName: e.target.value })}
+                  />
+                  <Input
+                    label="Apellidos"
+                    value={form.lastName}
+                    onChange={(e) => setForm({ ...form, lastName: e.target.value })}
+                  />
+                </div>
                 <Input
-                  label="Nombres"
-                  value={form.firstName}
-                  onChange={(e) => setForm({ ...form, firstName: e.target.value })}
-                />
-                <Input
-                  label="Apellidos"
-                  value={form.lastName}
-                  onChange={(e) => setForm({ ...form, lastName: e.target.value })}
+                  label="Teléfono"
+                  placeholder="0414-1234567"
+                  value={form.phone}
+                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
                 />
               </div>
-              <Input
-                label="Teléfono"
-                placeholder="0414-1234567"
-                value={form.phone}
-                onChange={(e) => setForm({ ...form, phone: e.target.value })}
-              />
-            </div>
+            ) : null}
 
             <fieldset className="space-y-2 border-t border-ink-100 pt-4">
               <legend className="field-label">

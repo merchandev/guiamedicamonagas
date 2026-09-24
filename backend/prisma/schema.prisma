@@ -24,6 +24,11 @@ model User {
   lastLoginAt         DateTime?
   lastLoginIp         String?
 
+  /// Va en cada access token (`tv`). Subirlo invalida al instante todos los
+  /// access tokens emitidos (cambio de contraseña, "cerrar todas las sesiones",
+  /// reuso de refresh token), sin esperar a que expiren.
+  tokenVersion        Int       @default(0)
+
   /// Versión exacta de los Términos y de la Política de privacidad que el
   /// usuario aceptó (ver frontend/src/lib/legal.ts) y cuándo lo hizo.
   termsVersionAccepted   String?
@@ -44,6 +49,7 @@ model User {
   reviewedPayments    Payment[]              @relation("PaymentReviewer")
   pushSubscriptions   PushSubscription[]
   grantedPatientData  PatientDataGrant[]
+  reviewedIdentities  PatientProfile[]       @relation("IdentityReviewer")
 
   @@index([role])
 }
@@ -930,6 +936,12 @@ model PatientProfile {
   photoKey       String?               // foto de perfil (clave privada en storage)
   idPhotoKey     String?               // foto de cédula/identificación (clave privada)
   identityStatus IdentityStatus @default(PENDING)
+  /// Revisión administrativa de la foto de identificación. Al rechazarla se
+  /// borra el archivo (minimización): el paciente sube una nueva.
+  identityReviewNote   String?
+  identityReviewedAt   DateTime?
+  identityReviewedById String?
+  identityReviewedBy   User?     @relation("IdentityReviewer", fields: [identityReviewedById], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -939,6 +951,7 @@ model PatientProfile {
   dataGrants     PatientDataGrant[]
 
   @@index([patientCode])
+  @@index([identityStatus])
 }
 
 enum PatientDataScope {

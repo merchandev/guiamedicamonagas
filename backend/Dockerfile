@@ -1,4 +1,4 @@
-FROM node:24.9-alpine AS builder
+FROM node:24.21.0-alpine3.24 AS builder
 
 WORKDIR /app
 COPY package.json package-lock.json ./
@@ -8,14 +8,28 @@ COPY . .
 RUN DATABASE_URL="postgresql://placeholder:placeholder@localhost:5432/placeholder" \
     npx prisma generate
 RUN npm run build
+# Solo dependencias de producción en la imagen final (vitest, TypeScript, la CLI
+# de Nest, etc. se quedan en esta etapa). La CLI de Prisma es dependencia de
+# producción porque el contenedor aplica las migraciones; se regenera el cliente
+# por si el prune tocara node_modules/.prisma.
+RUN npm prune --omit=dev --ignore-scripts \
+ && DATABASE_URL="postgresql://placeholder:placeholder@localhost:5432/placeholder" \
+    node_modules/.bin/prisma generate
 
 # ---------------------------------------------------------------------------
 # Runtime — imagen mínima, usuario sin privilegios
 # ---------------------------------------------------------------------------
-FROM node:24.9-alpine AS runtime
+FROM node:24.21.0-alpine3.24 AS runtime
 
-# Instalar dumb-init para señales correctas en contenedores
-RUN apk add --no-cache dumb-init
+# Parches de seguridad de Alpine publicados después de la imagen base (OpenSSL,
+# musl…), dumb-init para las señales, y fuera npm/yarn/corepack: la API no
+# instala paquetes en tiempo de ejecución y sus dependencias (tar, etc.) solo
+# suman CVE. Las migraciones usan node_modules/.bin/prisma, no npx.
+RUN apk upgrade --no-cache \
+ && apk add --no-cache dumb-init \
+ && rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
+           /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack \
+           /opt/yarn-* /usr/local/bin/yarn /usr/local/bin/yarnpkg
 
 WORKDIR /app
 ENV NODE_ENV=production

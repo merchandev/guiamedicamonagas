@@ -60,6 +60,7 @@ describe('agenda en America/Caracas', () => {
 describe('permisos (SEC-03)', () => {
   it('ADMIN opera verificación y pagos pero no precios ni SEO', () => {
     expect(roleHasPermissions('ADMIN', [Permission.VERIFY_PROFESSIONALS, Permission.REVIEW_PAYMENTS])).toBe(true);
+    expect(roleHasPermissions('ADMIN', [Permission.VERIFY_PATIENT_IDENTITY])).toBe(true);
     expect(roleHasPermissions('ADMIN', [Permission.MANAGE_PLANS])).toBe(false);
     expect(roleHasPermissions('ADMIN', [Permission.MANAGE_SITE])).toBe(false);
   });
@@ -111,6 +112,7 @@ describe('consentimiento: recorte por alcance', () => {
     phone: '0414-1111111',
     bloodType: 'O+',
     emergencyMedicalPhone: '0424-2222222',
+    identityStatus: 'VERIFIED',
   } as never;
 
   it('solo HEALTH: nada de identidad ni contacto; la cédula nunca sale', () => {
@@ -123,7 +125,7 @@ describe('consentimiento: recorte por alcance', () => {
 
   it('IDENTITY + CONTACT', () => {
     const shaped = shapeForScopes(patient, ['IDENTITY', 'CONTACT']);
-    expect(shaped.identity).toEqual({ firstName: 'Luis', lastName: 'Gómez' });
+    expect(shaped.identity).toEqual({ firstName: 'Luis', lastName: 'Gómez', identityVerified: true });
     expect(shaped.contact?.phone).toBe('0414-1111111');
     expect(shaped.health).toBeNull();
   });

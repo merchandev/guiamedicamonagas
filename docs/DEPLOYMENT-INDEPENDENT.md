@@ -63,7 +63,7 @@ El builder dedicado está limitado a **2 GB de memoria y 1,5 CPU**. `scripts/bui
 2. Compilar las imágenes de API y web con el builder indicado.
 3. Iniciar los servicios de datos y el Mailpit propio; esperar su preparación con límites de tiempo.
 4. Inicializar el bucket privado, usuario y política de MinIO.
-5. Aplicar migraciones mediante `compose run --rm --no-deps api npx prisma migrate deploy` y ejecutar el seed compilado `node dist/prisma/seed.js`.
+5. Aplicar migraciones mediante `compose run --rm --no-deps api node_modules/.bin/prisma migrate deploy` (la imagen ya no incluye npm/npx) y ejecutar el seed compilado `node dist/prisma/seed.js`.
 6. Iniciar API, web y Caddy; mostrar el estado del proyecto.
 
 Validar después el endpoint de salud, inicio de sesión, páginas con renderizado del servidor y descarga de archivos mediante URLs firmadas. Si falla una etapa, resolver el error de este proyecto antes de continuar; los scripts no ejecutan limpieza o reinicios globales.

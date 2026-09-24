@@ -1,0 +1,45 @@
+# Actualizaciones de dependencias agrupadas (una PR por ecosistema y carpeta)
+# para no llenar el repositorio de PRs sueltas. Las alertas de seguridad de
+# Dependabot siguen llegando aparte en cuanto se publica una CVE.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /backend
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 3
+    groups:
+      backend-minor-patch:
+        update-types: [minor, patch]
+    ignore:
+      # Prisma CLI y cliente deben moverse juntos y con migración revisada.
+      - dependency-name: 'prisma'
+        update-types: [version-update:semver-major]
+      - dependency-name: '@prisma/*'
+        update-types: [version-update:semver-major]
+
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 3
+    groups:
+      frontend-minor-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: docker
+    directories: [/backend, /frontend]
+    schedule:
+      interval: monthly
+    ignore:
+      # Node se mantiene en la línea LTS 24 hasta planificar el salto.
+      - dependency-name: node
+        update-types: [version-update:semver-major]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ['*']

@@ -1,4 +1,4 @@
-FROM node:24.9-alpine AS builder
+FROM node:24.21.0-alpine3.24 AS builder
 
 WORKDIR /app
 COPY package.json package-lock.json ./
@@ -16,9 +16,15 @@ RUN npm run build
 # ---------------------------------------------------------------------------
 # Runtime — imagen mínima, usuario sin privilegios
 # ---------------------------------------------------------------------------
-FROM node:24.9-alpine AS runtime
+FROM node:24.21.0-alpine3.24 AS runtime
 
-RUN apk add --no-cache dumb-init
+# Parches de Alpine posteriores a la imagen base y fuera npm/yarn/corepack
+# (el servidor standalone de Next no los usa y solo suman CVE).
+RUN apk upgrade --no-cache \
+ && apk add --no-cache dumb-init \
+ && rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
+           /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack \
+           /opt/yarn-* /usr/local/bin/yarn /usr/local/bin/yarnpkg
 
 WORKDIR /app
 ENV NODE_ENV=production

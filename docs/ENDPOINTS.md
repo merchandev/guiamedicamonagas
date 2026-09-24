@@ -15,12 +15,17 @@ no solo el rol.
 * `POST /auth/refresh` · `POST /auth/logout` — sesión por cookie httpOnly; un refresh token reutilizado revoca todas las sesiones.
 * `GET /auth/me` — usuario, permisos, organizaciones y si debe re-aceptar los textos legales.
 * `POST /auth/accept-legal` — acepta las versiones vigentes de Términos y Privacidad.
+* `POST /auth/change-password` — cambia la contraseña, cierra las demás sesiones y devuelve un access token nuevo para este dispositivo.
+* `POST /auth/logout-all` — cierra todas las sesiones (refresh y access tokens) al instante.
+
+Cada access token lleva la versión de sesión del usuario (`tv`); si no coincide con la de la base de datos, o la cuenta está inactiva, la API responde 401.
 
 ## Pacientes (ficha propia, cifrada)
 * `GET /patients/me` · `PATCH /patients/me` — ficha y datos de salud.
 * `POST /patients/me/photo` · `POST /patients/me/id-photo` — fotos (verificadas y re-codificadas).
 * `GET /patients/me/grants` · `POST /patients/me/grants` · `DELETE /patients/me/grants/:id` — autorizaciones a médicos.
 * `GET /patients/me/professionals` — médicos con los que tuvo citas.
+* Admin (`VERIFY_PATIENT_IDENTITY`): `GET /patients/admin/identity?status=PENDING|VERIFIED|REJECTED` (sin cédulas), `GET /patients/admin/identity/:id` (cédula + foto firmada 5 min, auditado), `PATCH /patients/admin/identity/:id/review` (`{ approved, note }`; rechazar exige nota y borra la foto).
 
 ## Citas
 * `GET /appointments/availability` (público) · `POST /appointments` (acepta `shareScopes`/`shareDays`) · `GET /appointments/me`.

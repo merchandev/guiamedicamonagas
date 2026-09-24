@@ -24,7 +24,7 @@ interface PatientData {
   patientCode: string;
   scopes: PatientDataScope[];
   expiresAt: string | null;
-  identity: { firstName: string | null; lastName: string | null } | null;
+  identity: { firstName: string | null; lastName: string | null; identityVerified?: boolean } | null;
   contact: { phone: string | null; emergencyMedicalPhone: string | null; emergencyAddress: string | null } | null;
   health: {
     birthDate: string | null;
@@ -168,6 +168,9 @@ export default function PacientesPage() {
                       <div>
                         <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-400">Identidad</p>
                         <Field label="Nombre" value={`${shown.identity.firstName ?? ''} ${shown.identity.lastName ?? ''}`.trim()} />
+                        {shown.identity.identityVerified && (
+                          <p className="mt-1 text-xs font-medium text-pine-700">✓ Identidad verificada por Guía Médica Monagas</p>
+                        )}
                       </div>
                     )}
                     {shown.contact && (

@@ -38,6 +38,14 @@ interface IssuedTokens {
 
 export type LoginResult = ({ kind: 'TOKENS' } & IssuedTokens) | { kind: 'MFA_REQUIRED'; challengeToken: string };
 
+/** Lo necesario para emitir una sesión: la versión va dentro del access token. */
+interface SessionUser {
+  id: string;
+  email: string;
+  role: Role;
+  tokenVersion: number;
+}
+
 function hashToken(token: string): string {
   return createHash('sha256').update(token).digest('hex');
 }
@@ -165,7 +173,7 @@ export class AuthService {
 
     await this.sendVerificationEmail(user.id, user.email, dto.firstName ?? dto.organizationName ?? user.email);
 
-    return this.issueTokens(user.id, user.email, user.role, ipAddress);
+    return this.issueTokens(user, ipAddress);
   }
 
   private async sendVerificationEmail(userId: string, email: string, name: string) {
@@ -256,7 +264,7 @@ export class AuthService {
   }
 
   private async completeLogin(
-    user: { id: string; email: string; role: Role },
+    user: SessionUser,
     ipAddress?: string,
     userAgent?: string,
     mfa = false,
@@ -270,7 +278,7 @@ export class AuthService {
       details: mfa ? { mfa: 'EMAIL_CODE' } : undefined,
       ipAddress,
     });
-    return { kind: 'TOKENS', ...(await this.issueTokens(user.id, user.email, user.role, ipAddress, userAgent)) };
+    return { kind: 'TOKENS', ...(await this.issueTokens(user, ipAddress, userAgent)) };
   }
 
   /**
@@ -326,8 +334,9 @@ export class AuthService {
     return this.completeLogin(token.user, ipAddress, userAgent, true);
   }
 
-  async issueTokens(userId: string, email: string, role: Role, ipAddress?: string, userAgent?: string): Promise<IssuedTokens> {
-    const accessToken = await this.jwt.signAsync({ sub: userId, email, role });
+  async issueTokens(user: SessionUser, ipAddress?: string, userAgent?: string): Promise<IssuedTokens> {
+    const userId = user.id;
+    const accessToken = await this.jwt.signAsync({ sub: userId, email: user.email, role: user.role, tv: user.tokenVersion });
 
     const rawRefreshToken = randomBytes(48).toString('hex');
     const expiresAt = new Date(Date.now() + this.refreshExpirationDays * 24 * 60 * 60 * 1000);
@@ -358,10 +367,7 @@ export class AuthService {
     // token legítimamente; eso no es un robo.
     const reuseGraceMs = 30_000;
     if (existing?.revokedAt && existing.replacedByTokenHash && Date.now() - existing.revokedAt.getTime() > reuseGraceMs) {
-      await this.prisma.refreshToken.updateMany({
-        where: { userId: existing.userId, revokedAt: null },
-        data: { revokedAt: new Date() },
-      });
+      await this.prisma.$transaction(this.revokeAllSessionsOps(existing.userId));
       await this.audit.record({
         userId: existing.userId,
         action: 'REFRESH_TOKEN_REUSE_DETECTED',
@@ -376,7 +382,7 @@ export class AuthService {
       throw new UnauthorizedException('Sesión inválida, inicia sesión de nuevo');
     }
 
-    const tokens = await this.issueTokens(existing.user.id, existing.user.email, existing.user.role, ipAddress, userAgent);
+    const tokens = await this.issueTokens(existing.user, ipAddress, userAgent);
 
     await this.prisma.refreshToken.update({
       where: { id: existing.id },
@@ -384,6 +390,26 @@ export class AuthService {
     });
 
     return tokens;
+  }
+
+  /**
+   * Revoca todos los refresh tokens y sube la versión de sesión: los access
+   * tokens ya emitidos dejan de valer en la siguiente petición.
+   */
+  private revokeAllSessionsOps(userId: string) {
+    const revokeRefresh = this.prisma.refreshToken.updateMany({
+      where: { userId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+    const bumpVersion = this.prisma.user.update({ where: { id: userId }, data: { tokenVersion: { increment: 1 } } });
+    return [revokeRefresh, bumpVersion] as [typeof revokeRefresh, typeof bumpVersion];
+  }
+
+  /** "Cerrar sesión en todos los dispositivos", incluido este. */
+  async logoutAll(userId: string, ipAddress?: string) {
+    await this.prisma.$transaction(this.revokeAllSessionsOps(userId));
+    await this.audit.record({ userId, action: 'LOGOUT_ALL_SESSIONS', resource: 'User', resourceId: userId, ipAddress });
+    return { message: 'Cerraste sesión en todos tus dispositivos' };
   }
 
   async logout(rawRefreshToken?: string) {
@@ -435,30 +461,33 @@ export class AuthService {
         data: { passwordHash, failedLoginAttempts: 0, lockedUntil: null },
       }),
       this.prisma.verificationToken.update({ where: { id: token.id }, data: { usedAt: new Date() } }),
-      this.prisma.refreshToken.updateMany({
-        where: { userId: token.userId, revokedAt: null },
-        data: { revokedAt: new Date() },
-      }),
+      ...this.revokeAllSessionsOps(token.userId),
     ]);
+    await this.audit.record({ userId: token.userId, action: 'PASSWORD_RESET', resource: 'User', resourceId: token.userId });
 
     return { message: 'Contraseña actualizada correctamente' };
   }
 
-  async changePassword(userId: string, dto: ChangePasswordDto) {
+  /**
+   * Cierra todas las demás sesiones (refresh y access tokens) y devuelve una
+   * sesión nueva para este dispositivo, que así sigue conectado.
+   */
+  async changePassword(userId: string, dto: ChangePasswordDto, ipAddress?: string, userAgent?: string) {
     const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
     const verification = await verifyPassword(dto.currentPassword, user.passwordHash);
     if (!verification.valid) {
       throw new BadRequestException('La contraseña actual no es correcta');
     }
+    if (dto.currentPassword === dto.newPassword) {
+      throw new BadRequestException('La nueva contraseña debe ser distinta de la actual');
+    }
     const passwordHash = await hashPassword(dto.newPassword);
-    await this.prisma.$transaction([
+    const [, , updated] = await this.prisma.$transaction([
+      ...this.revokeAllSessionsOps(userId),
       this.prisma.user.update({ where: { id: userId }, data: { passwordHash } }),
-      this.prisma.refreshToken.updateMany({
-        where: { userId, revokedAt: null },
-        data: { revokedAt: new Date() },
-      }),
     ]);
-    return { message: 'Contraseña actualizada correctamente' };
+    await this.audit.record({ userId, action: 'PASSWORD_CHANGED', resource: 'User', resourceId: userId, ipAddress });
+    return this.issueTokens(updated, ipAddress, userAgent);
   }
 
   /** Registra que el usuario aceptó las versiones vigentes de los textos legales. */

@@ -55,6 +55,12 @@ export function Header() {
               >
                 Mi panel
               </Link>
+              <Link
+                href="/cuenta/seguridad"
+                className="rounded-lg px-3 py-2 text-sm font-medium text-ink-700 hover:bg-ink-100"
+              >
+                Seguridad
+              </Link>
               <button
                 onClick={async () => {
                   await logout();
@@ -109,6 +115,9 @@ export function Header() {
               <>
                 <Link href={dashboardHref} onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 text-sm font-medium text-ink-700 hover:bg-ink-100">
                   Mi panel
+                </Link>
+                <Link href="/cuenta/seguridad" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 text-sm font-medium text-ink-700 hover:bg-ink-100">
+                  Seguridad de la cuenta
                 </Link>
                 <button
                   onClick={async () => {

@@ -7,13 +7,13 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { PatientDataScope, PatientProfile, Prisma } from '@prisma/client';
+import { IdentityStatus, PatientDataScope, PatientProfile, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { StorageService } from '../storage/storage.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PATIENT_CONSENT_VERSION } from '../common/legal-versions';
-import { patientDataAccessRequestedTemplate } from '../mail/mail.templates';
+import { identityReviewedTemplate, patientDataAccessRequestedTemplate } from '../mail/mail.templates';
 import { generatePatientCode } from './patient-code.util';
 import { UpdatePatientProfileDto } from './dto/update-patient-profile.dto';
 import { CreatePatientDataGrantDto, DEFAULT_GRANT_DAYS } from './dto/patient-data-grant.dto';
@@ -99,7 +99,7 @@ export class PatientsService {
       profile.photoKey ? this.storage.getSignedDownloadUrl(profile.photoKey, 3600, false).catch(() => null) : null,
       profile.idPhotoKey ? this.storage.getSignedDownloadUrl(profile.idPhotoKey, 3600, false).catch(() => null) : null,
     ]);
-    const { photoKey: _p, idPhotoKey, createdByProfessionalId: _c, ...rest } = decoded;
+    const { photoKey: _p, idPhotoKey, createdByProfessionalId: _c, identityReviewedById: _r, ...rest } = decoded;
     return { ...rest, hasIdPhoto: !!idPhotoKey, photoUrl, idPhotoUrl };
   }
 
@@ -162,10 +162,131 @@ export class PatientsService {
     const profile = await this.ownProfileOrThrow(userId);
     const updated = await this.prisma.patientProfile.update({
       where: { id: profile.id },
-      data: { idPhotoKey: key, identityStatus: 'PENDING' },
+      data: { idPhotoKey: key, identityStatus: 'PENDING', identityReviewNote: null, identityReviewedAt: null },
     });
     if (profile.idPhotoKey) await this.storage.deleteObject(profile.idPhotoKey).catch(() => undefined);
     return this.present(updated);
+  }
+
+  // --- Verificación de identidad (administración) --------------------------
+
+  /**
+   * Cola de revisión: solo código, nombre y fechas. La cédula y la foto se
+   * ven al abrir cada caso, y esa lectura queda auditada.
+   */
+  async identityQueue(params: { status?: IdentityStatus; page?: number; limit?: number }) {
+    const page = Math.max(1, params.page ?? 1);
+    const limit = Math.min(50, Math.max(1, params.limit ?? 20));
+    const status = params.status ?? 'PENDING';
+    // PENDING también cubre fichas que nunca subieron foto: esas no son parte de la cola.
+    const where: Prisma.PatientProfileWhereInput = {
+      userId: { not: null },
+      identityStatus: status,
+      ...(status === 'PENDING' ? { idPhotoKey: { not: null } } : {}),
+    };
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.patientProfile.findMany({
+        where,
+        select: {
+          id: true,
+          patientCode: true,
+          firstName: true,
+          lastName: true,
+          identityStatus: true,
+          identityReviewNote: true,
+          identityReviewedAt: true,
+          updatedAt: true,
+        },
+        orderBy: { updatedAt: status === 'PENDING' ? 'asc' : 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.patientProfile.count({ where }),
+    ]);
+    return { items, total, page, limit, totalPages: Math.ceil(total / limit) };
+  }
+
+  async identityCase(patientId: string, adminId: string, ipAddress?: string) {
+    const patient = await this.prisma.patientProfile.findUnique({ where: { id: patientId } });
+    if (!patient?.userId) throw new NotFoundException('Paciente no encontrado');
+    const decoded = this.codec.decode(patient);
+    // URL de 5 minutos: suficiente para revisar, inútil si se filtra después.
+    const idPhotoUrl = patient.idPhotoKey
+      ? await this.storage.getSignedDownloadUrl(patient.idPhotoKey, 300, false).catch(() => null)
+      : null;
+
+    await this.audit.record({
+      userId: adminId,
+      action: 'PATIENT_IDENTITY_VIEWED',
+      resource: 'PatientProfile',
+      resourceId: patient.id,
+      ipAddress,
+    });
+
+    return {
+      id: patient.id,
+      patientCode: patient.patientCode,
+      firstName: patient.firstName,
+      lastName: patient.lastName,
+      cedula: decoded.cedula,
+      identityStatus: patient.identityStatus,
+      identityReviewNote: patient.identityReviewNote,
+      identityReviewedAt: patient.identityReviewedAt,
+      createdAt: patient.createdAt,
+      idPhotoUrl,
+    };
+  }
+
+  /**
+   * Aprueba o rechaza la foto de identificación. Al rechazar se borra el
+   * archivo: no se conserva un documento de identidad que no sirvió.
+   */
+  async reviewIdentity(patientId: string, adminId: string, approved: boolean, note: string | undefined, ipAddress?: string) {
+    const patient = await this.prisma.patientProfile.findUnique({
+      where: { id: patientId },
+      include: { user: { select: { email: true } } },
+    });
+    if (!patient?.userId || !patient.user) throw new NotFoundException('Paciente no encontrado');
+    if (!patient.idPhotoKey) throw new BadRequestException('Este paciente no tiene una foto de identificación para revisar');
+    if (!approved && !note?.trim()) throw new BadRequestException('Indica el motivo del rechazo');
+
+    const updated = await this.prisma.patientProfile.update({
+      where: { id: patient.id },
+      data: {
+        identityStatus: approved ? 'VERIFIED' : 'REJECTED',
+        identityReviewNote: note?.trim() || null,
+        identityReviewedAt: new Date(),
+        identityReviewedById: adminId,
+        ...(approved ? {} : { idPhotoKey: null }),
+      },
+    });
+    if (!approved) await this.storage.deleteObject(patient.idPhotoKey).catch(() => undefined);
+
+    await this.audit.record({
+      userId: adminId,
+      action: approved ? 'PATIENT_IDENTITY_VERIFIED' : 'PATIENT_IDENTITY_REJECTED',
+      resource: 'PatientProfile',
+      resourceId: patient.id,
+      details: note ? { note } : undefined,
+      ipAddress,
+    });
+
+    await this.notifications.notify({
+      userId: patient.userId,
+      type: approved ? 'PATIENT_IDENTITY_VERIFIED' : 'PATIENT_IDENTITY_REJECTED',
+      title: approved ? 'Identidad verificada' : 'No pudimos verificar tu identidad',
+      content: approved
+        ? 'Tu ficha de paciente quedó verificada.'
+        : `Sube una nueva foto de tu cédula desde tu perfil.${note ? ` Nota: ${note}` : ''}`,
+      email: {
+        to: patient.user.email,
+        subject: approved ? 'Identidad verificada — Guía Médica Monagas' : 'Revisa tu foto de identificación — Guía Médica Monagas',
+        template: approved ? 'patient_identity_verified' : 'patient_identity_rejected',
+        html: identityReviewedTemplate(patient.firstName ?? 'Paciente', approved, note, `${FRONTEND_URL}/paciente`),
+      },
+    });
+
+    return { id: updated.id, identityStatus: updated.identityStatus, identityReviewNote: updated.identityReviewNote };
   }
 
   // --- Consentimientos (paciente) ----------------------------------------
@@ -452,7 +573,13 @@ export function shapeForScopes(patient: DecodedPatient, scopes: PatientDataScope
   return {
     patientId: patient.id,
     patientCode: patient.patientCode,
-    identity: has('IDENTITY') ? { firstName: patient.firstName, lastName: patient.lastName } : null,
+    identity: has('IDENTITY')
+      ? {
+          firstName: patient.firstName,
+          lastName: patient.lastName,
+          identityVerified: patient.identityStatus === 'VERIFIED',
+        }
+      : null,
     contact: has('CONTACT')
       ? {
           phone: patient.phone,

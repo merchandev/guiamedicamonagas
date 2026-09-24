@@ -8,6 +8,8 @@ import { Role } from '@prisma/client';
  */
 export enum Permission {
   VERIFY_PROFESSIONALS = 'VERIFY_PROFESSIONALS',
+  /** Ver la foto de identificación y la cédula de un paciente para verificarlo (auditado). */
+  VERIFY_PATIENT_IDENTITY = 'VERIFY_PATIENT_IDENTITY',
   REVIEW_PAYMENTS = 'REVIEW_PAYMENTS',
   MANAGE_ORGANIZATIONS = 'MANAGE_ORGANIZATIONS',
   MANAGE_CATALOG = 'MANAGE_CATALOG',
@@ -22,6 +24,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
   ORGANIZATION: [],
   ADMIN: [
     Permission.VERIFY_PROFESSIONALS,
+    Permission.VERIFY_PATIENT_IDENTITY,
     Permission.REVIEW_PAYMENTS,
     Permission.MANAGE_ORGANIZATIONS,
     Permission.MANAGE_CATALOG,

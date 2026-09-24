@@ -56,6 +56,7 @@ interface PatientProfileResponse {
   idPhotoUrl: string | null;
   hasIdPhoto: boolean;
   identityStatus: 'PENDING' | 'VERIFIED' | 'REJECTED';
+  identityReviewNote: string | null;
 }
 
 const IDENTITY_BADGE: Record<PatientProfileResponse['identityStatus'], { label: string; tone: 'neutral' | 'amber' | 'pine' | 'red' }> = {
@@ -82,6 +83,7 @@ export default function PatientProfilePage() {
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [idPhotoUrl, setIdPhotoUrl] = useState<string | null>(null);
   const [identityStatus, setIdentityStatus] = useState<PatientProfileResponse['identityStatus']>('PENDING');
+  const [identityReviewNote, setIdentityReviewNote] = useState<string | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [uploadingIdPhoto, setUploadingIdPhoto] = useState(false);
 
@@ -118,6 +120,7 @@ export default function PatientProfilePage() {
     setPhotoUrl(profile.photoUrl);
     setIdPhotoUrl(profile.idPhotoUrl);
     setIdentityStatus(profile.identityStatus);
+    setIdentityReviewNote(profile.identityReviewNote);
   };
 
   useEffect(() => {
@@ -180,6 +183,7 @@ export default function PatientProfilePage() {
       setPhotoUrl(updated.photoUrl);
       setIdPhotoUrl(updated.idPhotoUrl);
       setIdentityStatus(updated.identityStatus);
+      setIdentityReviewNote(updated.identityReviewNote);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : fallbackMessage);
     } finally {
@@ -271,12 +275,20 @@ export default function PatientProfilePage() {
         <section className="space-y-4">
           <div className="flex flex-wrap items-center gap-2 border-b border-ink-100 pb-2">
             <h2 className="text-lg font-semibold text-ink-900">Foto de identificación</h2>
-            {idPhotoUrl && <Badge tone={IDENTITY_BADGE[identityStatus].tone}>{IDENTITY_BADGE[identityStatus].label}</Badge>}
+            {(idPhotoUrl || identityStatus === 'REJECTED') && (
+              <Badge tone={IDENTITY_BADGE[identityStatus].tone}>{IDENTITY_BADGE[identityStatus].label}</Badge>
+            )}
           </div>
           <p className="text-sm text-ink-600">
-            Una foto legible de tu cédula u otro documento de identidad. Se guarda en almacenamiento privado y ningún médico
-            la ve.
+            Una foto legible de tu cédula u otro documento de identidad. Se guarda en almacenamiento privado: solo el equipo
+            de verificación la revisa (cada apertura queda registrada) y ningún médico la ve.
           </p>
+          {identityStatus === 'REJECTED' && (
+            <Alert tone="error">
+              No pudimos verificar tu identidad con la foto anterior
+              {identityReviewNote ? <>: {identityReviewNote}</> : null}. Por tu privacidad la eliminamos; sube una nueva.
+            </Alert>
+          )}
           <div className="flex items-center gap-4">
             {idPhotoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element

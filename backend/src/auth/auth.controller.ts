@@ -141,10 +141,36 @@ export class AuthController {
     return this.auth.resetPassword(dto.token, dto.newPassword);
   }
 
+  /** Cambia la contraseña, cierra las demás sesiones y renueva la de este dispositivo. */
+  @Throttle({ default: { limit: 5, ttl: 300_000 } })
   @HttpCode(HttpStatus.OK)
   @Post('change-password')
-  changePassword(@CurrentUser() user: AuthenticatedUser, @Body() dto: ChangePasswordDto) {
-    return this.auth.changePassword(user.id, dto);
+  async changePassword(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: ChangePasswordDto,
+    @Req() req: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ) {
+    const { accessToken, refreshToken, refreshTokenExpiresAt } = await this.auth.changePassword(
+      user.id,
+      dto,
+      req.ip,
+      req.headers['user-agent'],
+    );
+    this.setRefreshCookie(reply, refreshToken, refreshTokenExpiresAt);
+    return { message: 'Contraseña actualizada; cerramos tus otras sesiones', accessToken };
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Post('logout-all')
+  async logoutAll(
+    @CurrentUser() user: AuthenticatedUser,
+    @Req() req: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ) {
+    const result = await this.auth.logoutAll(user.id, req.ip);
+    this.clearRefreshCookie(reply);
+    return result;
   }
 
   @Get('me')

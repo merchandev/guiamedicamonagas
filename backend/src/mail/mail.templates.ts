@@ -288,3 +288,21 @@ export function mfaCodeTemplate(code: string) {
      <p style="font-size:13px;line-height:1.6;color:#8a8a8a;">Si no intentaste iniciar sesión, cambia tu contraseña de inmediato.</p>`,
   );
 }
+
+export function identityReviewedTemplate(rawName: string, approved: boolean, rawNote: string | undefined, profileUrl: string) {
+  const name = escapeHtml(rawName);
+  const note = rawNote ? escapeHtml(rawNote) : undefined;
+  return layout(
+    approved ? 'Identidad verificada' : 'Revisa tu foto de identificación',
+    `<h1 style="font-size:20px;margin:0 0 12px;">Hola, ${name}</h1>
+     <p style="font-size:14px;line-height:1.6;color:#3a3a3a;">
+       ${
+         approved
+           ? 'Verificamos tu identidad. Tu ficha de paciente queda marcada como verificada.'
+           : 'No pudimos verificar tu identidad con la foto que enviaste. Por tu privacidad la eliminamos; puedes subir una nueva desde tu perfil.'
+       }
+     </p>
+     ${note ? `<p style="font-size:13px;background:#f7f7f5;border-radius:8px;padding:12px 14px;color:#4a4a4a;">Nota del revisor: ${note}</p>` : ''}
+     ${button(profileUrl, 'Ver mi perfil')}`,
+  );
+}

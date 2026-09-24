@@ -77,7 +77,7 @@ done
 
 bash "${PROJECT_DIR}/scripts/minio-init.sh"
 echo "Aplicando migraciones antes de publicar la aplicación..."
-"${COMPOSE[@]}" run --rm --no-deps api npx prisma migrate deploy
+"${COMPOSE[@]}" run --rm --no-deps api node_modules/.bin/prisma migrate deploy
 echo "Inicializando catálogos y administrador..."
 "${COMPOSE[@]}" run --rm --no-deps -e SEED_SUPERADMIN_EMAIL -e SEED_SUPERADMIN_PASSWORD api node dist/prisma/seed.js
 

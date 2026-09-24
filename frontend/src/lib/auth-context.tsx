@@ -7,6 +7,7 @@ export type Role = 'USER' | 'PROFESSIONAL' | 'ORGANIZATION' | 'ADMIN' | 'SUPERAD
 
 export type Permission =
   | 'VERIFY_PROFESSIONALS'
+  | 'VERIFY_PATIENT_IDENTITY'
   | 'REVIEW_PAYMENTS'
   | 'MANAGE_ORGANIZATIONS'
   | 'MANAGE_CATALOG'
@@ -69,6 +70,10 @@ interface AuthContextValue {
   register: (payload: RegisterPayload) => Promise<AuthUser>;
   acceptLegal: () => Promise<void>;
   logout: () => Promise<void>;
+  /** Cambia la contraseña; el servidor cierra las demás sesiones y renueva esta. */
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
+  /** Cierra la sesión en todos los dispositivos, incluido este. */
+  logoutAll: () => Promise<void>;
   refreshMe: () => Promise<void>;
 }
 
@@ -145,8 +150,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
   }, []);
 
+  const changePassword = useCallback(
+    async (currentPassword: string, newPassword: string) => {
+      const { accessToken } = await api.post<{ accessToken: string }>('/auth/change-password', { currentPassword, newPassword });
+      await startSession(accessToken);
+    },
+    [startSession],
+  );
+
+  const logoutAll = useCallback(async () => {
+    await api.post('/auth/logout-all');
+    setAccessToken(null);
+    setUser(null);
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, verifyMfa, register, acceptLegal, logout, refreshMe: loadMe }}>
+    <AuthContext.Provider value={{ user, loading, login, verifyMfa, register, acceptLegal, logout, changePassword, logoutAll, refreshMe: loadMe }}>
       {children}
     </AuthContext.Provider>
   );

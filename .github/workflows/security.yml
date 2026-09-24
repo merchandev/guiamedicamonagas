@@ -15,7 +15,7 @@ jobs:
     name: Secretos en el repositorio (gitleaks)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: gitleaks
@@ -30,8 +30,8 @@ jobs:
       matrix:
         app: [backend, frontend]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
       # Bloquea vulnerabilidades críticas de producción. Las "high" restantes del
@@ -47,31 +47,47 @@ jobs:
       contents: read
       security-events: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: github/codeql-action/init@v3
+      - uses: actions/checkout@v7
+      - uses: github/codeql-action/init@v4
         with:
           languages: javascript-typescript
           queries: security-extended
-      - uses: github/codeql-action/analyze@v3
+      - uses: github/codeql-action/analyze@v4
 
-  containers:
-    name: Imágenes y configuración (Trivy)
+  images:
+    name: Imagen ${{ matrix.image }} (Trivy)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: api
+            context: backend
+          - image: web
+            context: frontend
+    steps:
+      - uses: actions/checkout@v7
+      - name: Construir la imagen
+        run: docker build -t gmm-${{ matrix.image }}:ci ${{ matrix.context }}
+      # Solo CVE críticas con corrección publicada bloquean; el resto se revisa
+      # en el escaneo semanal.
+      - name: Escaneo de la imagen (CRITICAL bloquea)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: gmm-${{ matrix.image }}:ci
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+
+  config:
+    name: Dockerfiles y compose (Trivy)
     runs-on: ubuntu-latest
     permissions:
       contents: read
       security-events: write
     steps:
-      - uses: actions/checkout@v4
-      - name: Construir imagen de la API
-        run: docker build -t gmm-api:ci backend
-      - name: Escaneo de la imagen (CRITICAL bloquea)
-        uses: aquasecurity/trivy-action@v0.36.0
-        with:
-          image-ref: gmm-api:ci
-          severity: CRITICAL
-          ignore-unfixed: true
-          exit-code: '1'
-      - name: Escaneo de Dockerfiles y compose (informe)
+      - uses: actions/checkout@v7
+      - name: Escaneo de configuración (informe)
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: config
@@ -79,8 +95,8 @@ jobs:
           format: sarif
           output: trivy-config.sarif
           exit-code: '0'
-      - uses: github/codeql-action/upload-sarif@v3
-        if: always()
+      - uses: github/codeql-action/upload-sarif@v4
+        if: always() && hashFiles('trivy-config.sarif') != ''
         with:
           sarif_file: trivy-config.sarif
           category: trivy-config

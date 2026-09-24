@@ -1,6 +1,6 @@
 # SEC-02 a SEC-05 — Privacidad del paciente, acceso y archivos
 
-Estado: implementado · Fecha: 2026-09-23 · Origen: auditoría externa del 2026-09-23 (ver `Actualizaciones.md`, ACT-0015)
+Estado: implementado · Fecha: 2026-09-23 (ampliado el 2026-09-24, ACT-0016) · Origen: auditoría externa del 2026-09-23 (ver `Actualizaciones.md`, ACT-0015 y ACT-0016)
 
 ## Resumen de controles
 
@@ -11,7 +11,9 @@ Estado: implementado · Fecha: 2026-09-23 · Origen: auditoría externa del 2026
 | Analítica sin rastreo | Solo con consentimiento de análisis del visitante; el servidor ya no guarda IP ni user-agent. | `frontend/src/lib/analytics.ts`, `backend/src/analytics` |
 | SEC-04 Subidas | Tipo real por magic bytes, re-codificación de imágenes con sharp (sin EXIF/GPS ni datos anexados), PDF con contenido activo rechazados, antivirus ClamAV opcional (falla cerrado). | `backend/src/uploads` |
 | SEC-03 Autorización | Permisos por función (`VERIFY_PROFESSIONALS`, `REVIEW_PAYMENTS`, `MANAGE_PLANS`, …); sin bypass universal de SUPERADMIN. | `backend/src/common/permissions.ts`, `backend/src/common/guards/roles.guard.ts` |
-| SEC-02 Sesiones | Detección de reutilización de refresh tokens (revoca todas las sesiones), segundo factor por correo para ADMIN/SUPERADMIN (activable con `ADMIN_MFA_ENABLED=true`). | `backend/src/auth/auth.service.ts` |
+| SEC-02 Sesiones | Detección de reutilización de refresh tokens (revoca todas las sesiones), segundo factor por correo para ADMIN/SUPERADMIN (activable con `ADMIN_MFA_ENABLED=true`). `tokenVersion` en cada access token: cambio o restablecimiento de contraseña, "cerrar todas las sesiones" y reuso de refresh token invalidan al instante los access tokens vigentes; el rol se lee de la base de datos en cada petición. | `backend/src/auth/auth.service.ts`, `backend/src/auth/strategies/jwt.strategy.ts` |
+| Identidad del paciente | Cola administrativa con permiso `VERIFY_PATIENT_IDENTITY`: la lista no muestra cédulas; abrir un caso descifra la cédula y firma la foto 5 minutos (auditado `PATIENT_IDENTITY_VIEWED`). Rechazar exige motivo y borra la foto. | `backend/src/patients/patient-identity-admin.controller.ts` |
+| Imágenes de contenedor | Runtime sin npm/yarn/corepack ni dependencias de desarrollo, parches de Alpine aplicados en el build; Trivy bloquea CVE críticas corregibles en `api` y `web`. | `backend/Dockerfile`, `frontend/Dockerfile`, `.github/workflows/security.yml` |
 | Legal versionado | Versión de Términos/Privacidad aceptada por usuario; re-aceptación obligatoria al cambiar la versión. | `backend/src/common/legal-versions.ts`, `frontend/src/lib/legal.ts` |
 
 ## Custodia de claves (LEER ANTES DE TOCAR `.env.prod`)

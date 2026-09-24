@@ -151,6 +151,32 @@ check('catálogo de bancos desde API', r.status === 200 && r.data.length === 23)
 r = await call('GET', '/professionals?limit=12');
 check('listado incluye franja featured', r.status === 200 && Array.isArray(r.data.featured));
 
+// 11. Verificación de identidad del paciente (la subida real necesita S3: se simula la clave)
+const patientRow = (await db.query(`select p.id from "PatientProfile" p join "User" u on u.id=p."userId" where u.email=$1`, [`p-${run}@t.local`])).rows[0];
+await db.query(`update "PatientProfile" set "idPhotoKey"='patient-id-documents/e2e.jpg', "identityStatus"='PENDING' where id=$1`, [patientRow.id]);
+check('paciente NO ve la cola de identidad', (await call('GET', '/patients/admin/identity', null, patientToken)).status === 403);
+r = await call('GET', '/patients/admin/identity', null, ad);
+check('cola de identidad sin cédula', r.status === 200 && r.data.items.some((i) => i.id === patientRow.id) && !JSON.stringify(r.data).includes(cedula));
+r = await call('GET', `/patients/admin/identity/${patientRow.id}`, null, ad);
+check('caso de identidad: cédula descifrada y foto firmada', r.status === 200 && r.data.cedula === cedula && !!r.data.idPhotoUrl);
+check('apertura del caso auditada', (await db.query(`select count(*)::int n from "AuditLog" where action='PATIENT_IDENTITY_VIEWED' and "resourceId"=$1`, [patientRow.id])).rows[0].n === 1);
+check('rechazo sin motivo → 400', (await call('PATCH', `/patients/admin/identity/${patientRow.id}/review`, { approved: false }, ad)).status === 400);
+r = await call('PATCH', `/patients/admin/identity/${patientRow.id}/review`, { approved: false, note: 'Foto borrosa' }, ad);
+row = (await db.query(`select "idPhotoKey", "identityStatus" from "PatientProfile" where id=$1`, [patientRow.id])).rows[0];
+check('rechazo borra la foto', r.status === 200 && row.identityStatus === 'REJECTED' && row.idPhotoKey === null);
+r = await call('GET', '/patients/me', null, patientToken);
+check('paciente ve el motivo del rechazo', r.data?.identityStatus === 'REJECTED' && r.data?.identityReviewNote === 'Foto borrosa' && !('identityReviewedById' in r.data));
+
+// 12. Sesiones: tokenVersion invalida access tokens vigentes
+r = await call('POST', '/auth/change-password', { currentPassword: pw, newPassword: 'Nueva12345x' }, patientToken);
+const renewed = r.data?.accessToken;
+check('cambio de contraseña renueva la sesión actual', r.status === 200 && !!renewed, String(r.status));
+check('access token anterior → 401 al instante', (await call('GET', '/auth/me', null, patientToken)).status === 401);
+check('access token nuevo funciona', (await call('GET', '/auth/me', null, renewed)).status === 200);
+check('logout-all', (await call('POST', '/auth/logout-all', null, renewed)).status === 200);
+check('tras logout-all el token → 401', (await call('GET', '/auth/me', null, renewed)).status === 401);
+check('login con la contraseña nueva', (await call('POST', '/auth/login', { email: `p-${run}@t.local`, password: 'Nueva12345x' })).status === 200);
+
 console.log(failures === 0 ? '\nTODO OK' : `\n${failures} FALLO(S)`);
 await db.end();
 process.exit(failures ? 1 : 0);

@@ -44,3 +44,7 @@ coverage/
 
 # TypeScript build info
 *.tsbuildinfo
+
+# Respaldos de base de datos y de .env en el servidor: nunca al repositorio
+backups/
+*.dump
