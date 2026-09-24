@@ -49,6 +49,11 @@ USER node
 
 EXPOSE 4000
 
+# El mismo chequeo que define docker-compose.prod.yml (que tiene prioridad);
+# este cubre un `docker run` directo y lo exige el escaneo de Trivy (DS-0026).
+HEALTHCHECK --interval=20s --timeout=5s --start-period=40s --retries=5 \
+  CMD ["node", "-e", "fetch('http://127.0.0.1:4000/api/v1/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+
 # dumb-init garantiza que las señales SIGTERM/SIGINT lleguen al proceso node
 ENTRYPOINT ["dumb-init", "--"]
 CMD ["node", "dist/src/main.js"]
