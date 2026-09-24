@@ -3,7 +3,7 @@
 > Bitácora central de cambios, implementaciones, decisiones técnicas y tareas de evolución del sistema.
 >
 > **Repositorio:** [`merchandev/guiamedicamonagas`](https://github.com/merchandev/guiamedicamonagas) · **Rama:** `main`<br>
-> **Última actualización de esta bitácora:** `2026-09-24 01:48:30 -04:00` · **Estado:** 🟢 Registro activo
+> **Última actualización de esta bitácora:** `2026-09-24 10:40:26 -04:00` · **Estado:** 🟢 Registro activo
 
 ![Estado](https://img.shields.io/badge/estado-registro%20activo-16a34a?style=flat-square)
 ![Rama](https://img.shields.io/badge/rama-main-2563eb?style=flat-square)
@@ -120,8 +120,9 @@ flowchart LR
     O[🔏 2026-09-23\n18:00:00\nACT-0015 · Auditoría: salud cifrada,\nconsentimiento y organizaciones]
     P[🧰 2026-09-24\n01:45:00\nACT-0016 · Sesiones, identidad,\nimágenes seguras y antivirus]
     Q[🩺 2026-09-24\n01:48:30\nACT-0017 · HEALTHCHECK en los\nDockerfiles (alertas de Trivy)]
+    R[🌐 2026-09-24\n10:40:26\nACT-0018 · Dominio propio vía\nTraefik del VPS (espera DNS)]
 
-    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L --> M --> N --> O --> P --> Q
+    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L --> M --> N --> O --> P --> Q --> R
 ```
 
 ### Resumen cuantitativo
@@ -129,8 +130,8 @@ flowchart LR
 | Indicador | Resultado |
 |---|---:|
 | Actividades históricas importadas desde Git | `3` |
-| Actividades documentales añadidas con esta bitácora | `14` |
-| Actividades registradas en total | `17` |
+| Actividades documentales añadidas con esta bitácora | `15` |
+| Actividades registradas en total | `18` |
 | Rama de referencia | `main` |
 | Commit base consultado | [`c30c03d`](https://github.com/merchandev/guiamedicamonagas/commit/c30c03d) |
 | Zona horaria de control | `America/Caracas` (`-04:00`) |
@@ -678,6 +679,36 @@ El usuario compartió la portada del repositorio en GitHub, que mostraba **2 ale
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
+<a id="act-0018"></a>
+
+### 🌐 ACT-0018 · Dominio `guiamedicamonagas.com` enrutado por el Traefik del VPS (a la espera del DNS)
+
+<details>
+<summary><strong>2026-09-24 10:40:26 -04:00</strong> · <code>78df3df</code> · 🟡 En revisión</summary>
+
+**Responsable:** `Claude Opus 5.5` · **Tipo:** `ops` · **Commit:** [`78df3df`](https://github.com/merchandev/guiamedicamonagas/commit/78df3df)
+
+El usuario pidió configurar el proxy del proyecto para que reconozca su dominio. Otro asistente le había dicho que el DNS ya apuntaba al VPS y le sugería servir el dominio desde Caddy: se revisó el servidor antes de cambiar nada.
+
+**Diagnóstico:**
+
+- **El DNS no está publicado.** El dominio está registrado en Hostinger (vence en 2028) y delega en `ns1/ns2.dns-parking.com`, pero esos mismos servidores responden `NXDOMAIN` y sin SOA para `guiamedicamonagas.com` y `www`: la zona DNS no existe en Hostinger. Horas después de la supuesta configuración, Cloudflare y Google siguen respondiendo lo mismo. No es propagación.
+- Los puertos 80/443 son del Traefik del proyecto `traefik-ivzc` (red del host, Let's Encrypt por HTTP-01), que ya sirve `diariomercantil.com` y `transfersinbarcelona.com` leyendo etiquetas de sus contenedores. Caddy no puede emitir certificados propios en este VPS, y la configuración sugerida por el otro asistente (`handle_path /api/*`, `NEXT_PUBLIC_API_URL=…/api`) habría roto las rutas de la API.
+
+**Actividades ejecutadas:**
+
+- Etiquetas de Traefik en el servicio `caddy` de [`docker-compose.prod.yml`](docker-compose.prod.yml) (router `gmm`, `websecure`, resolver `letsencrypt`, `www` → dominio principal con 301), activadas desde `.env.prod` con `GMM_DOMAIN` y `GMM_TRAEFIK_ENABLE=true`. La configuración de Traefik no se tocó: descubre el contenedor igual que a los otros proyectos.
+- [`Caddyfile`](Caddyfile): solo acepta `X-Forwarded-*` de Traefik (la puerta de enlace `172.31.78.1` de `gmm_dmz`) y reenvía `{client_ip}`, porque si no todos los visitantes del dominio compartirían la IP del proxy en los límites de peticiones de login y registro.
+- En producción: respaldo de `.env.prod` (`backups/env.prod.pre-domain`), las dos variables nuevas y recreación **solo** de `caddy`.
+
+**Verificación** (forzando que el dominio resuelva a la IP del VPS, como hará el DNS): `https://guiamedicamonagas.com/`, `/medicos` y `/api/v1/health` → 200 con la app; `https://www…/x?y=1` → 301 a `https://guiamedicamonagas.com/x?y=1`; `http://` → 301 a HTTPS; `http://72.61.77.167:8088` sigue en 200. La API recibe la IP real del visitante y un `X-Forwarded-For` falso desde fuera se ignora. Traefik intenta el certificado y Let's Encrypt lo rechaza con `NXDOMAIN`, como se esperaba: mientras tanto se sirve el certificado temporal de Traefik.
+
+**Queda (🟡):** (1) el usuario debe crear la zona DNS en Hostinger con `A @` y `A www` → `72.61.77.167`; (2) confirmar el certificado de Let's Encrypt (si Traefik no reintenta solo, basta con recrear `caddy`); (3) pasar las URL públicas al dominio (`FRONTEND_URL`, `NEXT_PUBLIC_*`, `S3_PUBLIC_ENDPOINT`), activar `COOKIE_SECURE=true`, reconstruir `web` y decidir si el acceso por IP redirige al dominio.
+
+</details>
+
+<p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
+
 <a id="registro-por-area"></a>
 
 ## 🧩 Registro por área
@@ -696,7 +727,7 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | 🛠️ Administración | Médicos, pagos, SEO, cookies, especialidades, planes, verificaciones, organizaciones, bancos, geografía e identidad de pacientes | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) |
 | 📊 Observabilidad | Auditoría, analítica con consentimiento y sin IP, notificaciones, salud, pruebas, CI, escaneo de imágenes y Dependabot | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) |
 | 🎨 Experiencia | Directorios, dashboard, componentes UI, motion y legal | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0013](#act-0013) · [ACT-0014](#act-0014) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0017](#act-0017) |
-| 🚢 Operación | Variables de entorno, Compose, almacenamiento, correo, proxy, imágenes mínimas y antivirus | [ACT-0001](#act-0001) · [ACT-0002](#act-0002) · [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0008](#act-0008) · [ACT-0009](#act-0009) · [ACT-0011](#act-0011) · [ACT-0016](#act-0016) · [ACT-0017](#act-0017) |
+| 🚢 Operación | Variables de entorno, Compose, almacenamiento, correo, proxy, imágenes mínimas y antivirus | [ACT-0001](#act-0001) · [ACT-0002](#act-0002) · [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0008](#act-0008) · [ACT-0009](#act-0009) · [ACT-0011](#act-0011) · [ACT-0016](#act-0016) · [ACT-0017](#act-0017) · [ACT-0018](#act-0018) |
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
@@ -759,7 +790,8 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | 🟢 Continua | ~~Reanudar el despliegue en el VPS con el healthcheck de `web` corregido~~ — hecho: `api`/`web`/`caddy` saludables, `:8088` responde | 🟢 Completado | Ver [ACT-0011](#act-0011) |
 | 🟢 Continua | ~~Validar de extremo a extremo tras el arranque~~ — hecho vía `scripts/smoke-deployment.cjs`: login/refresh/logout, registro, correo de prueba en Mailpit, subida/descarga firmada y rechazo anónimo | 🟢 Completado | Ver [ACT-0011](#act-0011), [`scripts/smoke-deployment.cjs`](scripts/smoke-deployment.cjs) |
 | 🟢 Continua | ~~Nueva comparación de contenedores/hashes de los proyectos existentes tras el arranque completo~~ — hecho, sin diferencias | 🟢 Completado | Ver [ACT-0011](#act-0011) |
-| 🔴 Alta | Configurar dominio/HTTPS real, SMTP real y datos reales de Pago Móvil en producción (BCV ya es automático desde [ACT-0011](#act-0011)) | 🔵 Planificado | Variables documentadas y prueba de cada integración fuera de dev |
+| 🔴 Alta | Dominio con HTTPS: enrutamiento listo ([ACT-0018](#act-0018)); falta que exista la zona DNS en Hostinger (`A @` y `A www` → `72.61.77.167`), confirmar el certificado y pasar las URL públicas al dominio | 🔴 Bloqueado | `https://guiamedicamonagas.com` con certificado de Let's Encrypt y cookies `secure` |
+| 🔴 Alta | SMTP real y datos reales de Pago Móvil en producción (BCV ya es automático desde [ACT-0011](#act-0011)) | 🔵 Planificado | Variables documentadas y prueba de cada integración fuera de dev |
 | 🟢 Continua | ~~Limpiar la divergencia de line endings del checkout del VPS~~ — ya no existe: `git status` solo muestra archivos no versionados | 🟢 Completado | Ver [ACT-0016](#act-0016) |
 | 🟢 Continua | ~~Cola de administración para revisar `identityStatus`~~ | 🟢 Completado | Ver [ACT-0016](#act-0016) |
 | 🟢 Continua | ~~Precargar el formulario de reserva con la ficha del paciente~~ | 🟢 Completado | Ver [ACT-0016](#act-0016) |
@@ -840,6 +872,7 @@ Para cada cambio futuro, añadir una entrada en la línea de tiempo y actualizar
 | `2026-09-23 18:00:00 -04:00` | Incorporación de ACT-0015 (respuesta a la auditoría externa: cifrado de datos de salud, consentimiento paciente → médico, textos legales versionados, analítica sin IP, subidas seguras, permisos granulares, organizaciones autogestionadas, geografía/bancos como datos, SEO y QA con CI), actualización de línea de tiempo, resumen cuantitativo, registro por área, control de implementaciones y próximas actividades | 🟢 Completado |
 | `2026-09-24 01:45:00 -04:00` | Incorporación de ACT-0016 (`tokenVersion` y cierre de todas las sesiones, cola de verificación de identidad del paciente, reserva con la ficha propia, imágenes de contenedor mínimas con Trivy en verde, CI actualizado con Dependabot y antivirus ClamAV), actualización de línea de tiempo, resumen cuantitativo, registro por área, control de implementaciones y próximas actividades | 🟢 Completado |
 | `2026-09-24 01:48:30 -04:00` | Incorporación de ACT-0017 (`HEALTHCHECK` en los Dockerfiles para cerrar las 2 alertas de Trivy), actualización de línea de tiempo, resumen cuantitativo, registro por área y próximas actividades | 🟢 Completado |
+| `2026-09-24 10:40:26 -04:00` | Incorporación de ACT-0018 (dominio propio enrutado por el Traefik del VPS con IP real del visitante; diagnóstico de la zona DNS inexistente en Hostinger), actualización de línea de tiempo, resumen cuantitativo, registro por área y próximas actividades | 🟢 Completado |
 
 ---
 
