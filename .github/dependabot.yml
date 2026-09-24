@@ -1,6 +1,6 @@
 # Actualizaciones de dependencias agrupadas (una PR por ecosistema y carpeta)
-# para no llenar el repositorio de PRs sueltas. Las alertas de seguridad de
-# Dependabot siguen llegando aparte en cuanto se publica una CVE.
+# para no llenar el repositorio de PRs sueltas. Las alertas de seguridad llegan
+# aparte solo si "Dependabot alerts" está activado en Settings → Code security.
 version: 2
 updates:
   - package-ecosystem: npm
@@ -17,6 +17,17 @@ updates:
         update-types: [version-update:semver-major]
       - dependency-name: '@prisma/*'
         update-types: [version-update:semver-major]
+      # Los tipos de Node siguen al runtime (Node 24 en Dockerfile y CI).
+      - dependency-name: '@types/node'
+        update-types: [version-update:semver-major]
+      # @nestjs/schematics 12 exige TypeScript >= 6 y @nestjs/cli 12: salto de
+      # herramientas que se planifica aparte, no una PR suelta.
+      - dependency-name: 'typescript'
+        update-types: [version-update:semver-major]
+      - dependency-name: '@nestjs/cli'
+        update-types: [version-update:semver-major]
+      - dependency-name: '@nestjs/schematics'
+        update-types: [version-update:semver-major]
 
   - package-ecosystem: npm
     directory: /frontend
@@ -24,8 +35,17 @@ updates:
       interval: monthly
     open-pull-requests-limit: 3
     groups:
+      # react y react-dom deben tener la misma versión: por separado, cada PR
+      # rompe el build.
+      react:
+        patterns: ['react', 'react-dom', '@types/react', '@types/react-dom']
       frontend-minor-patch:
         update-types: [minor, patch]
+    ignore:
+      - dependency-name: '@types/node'
+        update-types: [version-update:semver-major]
+      - dependency-name: 'typescript'
+        update-types: [version-update:semver-major]
 
   - package-ecosystem: docker
     directories: [/backend, /frontend]
