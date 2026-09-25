@@ -3,7 +3,7 @@
 > Bitácora central de cambios, implementaciones, decisiones técnicas y tareas de evolución del sistema.
 >
 > **Repositorio:** [`merchandev/guiamedicamonagas`](https://github.com/merchandev/guiamedicamonagas) · **Rama:** `main`<br>
-> **Última actualización de esta bitácora:** `2026-09-24 17:52:22 -04:00` · **Estado:** 🟢 Registro activo
+> **Última actualización de esta bitácora:** `2026-09-24 18:31:52 -04:00` · **Estado:** 🟢 Registro activo
 
 ![Estado](https://img.shields.io/badge/estado-registro%20activo-16a34a?style=flat-square)
 ![Rama](https://img.shields.io/badge/rama-main-2563eb?style=flat-square)
@@ -123,8 +123,10 @@ flowchart LR
     R[🌐 2026-09-24\n06:40:26\nACT-0018 · Dominio propio vía\nTraefik del VPS (espera DNS)]
     S[🛡️ 2026-09-24\n08:36:50\nACT-0019 · Plan de producción:\nMFA, ClamAV, equipos y respaldos]
     T[📄 2026-09-24\n17:39:26\nACT-0020 · Requisitos del médico:\nsin solvencia y en orden de obtención]
+    U[📈 2026-09-24\n18:14:00\nACT-0021 · Publicación con 60%,\nPlus/Premium con 100% y progreso]
+    V[⌨️ 2026-09-24\n18:31:52\nACT-0022 · Formularios claros\ny con teclado]
 
-    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L --> M --> N --> O --> P --> Q --> R --> S --> T
+    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L --> M --> N --> O --> P --> Q --> R --> S --> T --> U --> V
 ```
 
 ### Resumen cuantitativo
@@ -132,8 +134,8 @@ flowchart LR
 | Indicador | Resultado |
 |---|---:|
 | Actividades históricas importadas desde Git | `3` |
-| Actividades documentales añadidas con esta bitácora | `17` |
-| Actividades registradas en total | `20` |
+| Actividades documentales añadidas con esta bitácora | `19` |
+| Actividades registradas en total | `22` |
 | Rama de referencia | `main` |
 | Commit base consultado | [`81b1091`](https://github.com/merchandev/guiamedicamonagas/commit/81b1091) |
 | Zona horaria de control | `America/Caracas` (`-04:00`) |
@@ -789,6 +791,72 @@ La página de inicio usa el mismo orden. Como la versión 2.1 de los Términos a
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
+<a id="act-0021"></a>
+
+### 📈 ACT-0021 · Publicación del médico con el 60% de documentos, Plus y Premium con el 100%, y barra de progreso del registro
+
+<details>
+<summary><strong>2026-09-24 18:14:00 -04:00</strong> · <code>9b23a4e</code> · 🟢 Completado</summary>
+
+**Responsable:** `Claude Opus 5.5` · **Tipo:** `feature | legal` · **Commit:** [`9b23a4e`](https://github.com/merchandev/guiamedicamonagas/commit/9b23a4e)
+
+El titular pidió que un perfil no se publique sin al menos el 60% de sus documentos, su biografía y su foto de perfil; que Profesional Plus y Premium exijan el 100% de los documentos; y una barra de progreso con todo lo que debe hacer el médico. Se le consultaron dos puntos antes de construir: los porcentajes cuentan documentos **aprobados** por un administrador (no solo subidos), y «extractos» es el **resumen corto** del perfil (la antigua «meta descripción»).
+
+**Reglas** ([`publication-rules.ts`](backend/src/professionals/publication-rules.ts), una sola fuente para backend y panel):
+
+- **Público** cuando hay al menos el 60% de los documentos requeridos aprobados (redondeado hacia arriba: 4 de 6 para médico general, 5 de 8 para especialista), una biografía de al menos 80 caracteres y una foto de perfil, y el perfil no está suspendido.
+- **Sello «Verificado»** solo con el 100% aprobado. Por debajo, el perfil público muestra el sello en contorno con un reloj y el texto «verificación en curso».
+- **Profesional Plus y Premium** solo se contratan con el 100% aprobado (403 con el conteo; en el panel, el botón queda bloqueado). El plan Profesional no cambia.
+- `isPublished` es ahora el único filtro público: directorio, perfil, sitemap, páginas especialidad + municipio, contacto, médicos de una organización y reservas. Antes se exigía además `VERIFIED`.
+- Cuando el perfil pasa a ser público, el médico recibe aviso en el panel, por correo y por WhatsApp (plantilla `profile_published`).
+
+**Barra de progreso** (inicio del panel del médico): registro, correo confirmado, número de contacto, foto, biografía, especialidades, resumen corto, documentos (con avance parcial y cuántos faltan para publicarse), redes sociales y sitio web. Las redes y la web se muestran bloqueadas hasta Profesional Plus y Premium, y no restan porcentaje. Arriba dice qué falta para aparecer en el directorio. En el formulario del perfil, biografía y foto indican que son obligatorias, y «Meta descripción» pasa a llamarse «Resumen corto (extracto)».
+
+**Correcciones encontradas en el camino:**
+
+- «Medicina General» está en el catálogo de especialidades, y elegirla convertía al médico en especialista (le pedía título de postgrado y credencial). Ahora solo cuenta como especialista quien elige otra especialidad.
+- Editar la biografía, el contacto o el resumen de un perfil verificado lo despublicaba y lo dejaba «en revisión» indefinidamente. Ahora solo un cambio de identidad (nombres, cédula, RIF, MPPS o Colegio) lo devuelve a revisión.
+- Revisar un documento de un perfil suspendido levantaba la suspensión. Ahora solo un administrador lo reactiva, y al reactivarlo la verificación y la publicación salen de los documentos.
+- La API aceptaba reservas de pacientes con médicos no publicados o sin plan con agenda. Ahora las rechaza.
+
+**Textos legales:** los Términos decían que un perfil sin verificar no aparece en el directorio y no mencionaban el requisito de Plus y Premium. Pasan a **v2.2** (la Privacidad sigue en v2.1). También se actualizaron la página de inicio y la página de documentos del médico.
+
+**Verificación:** 66 pruebas unitarias en CI (8 nuevas sobre las reglas) y e2e **87/87**, con 5 comprobaciones nuevas: con 3 de 6 documentos, biografía y foto no se publica; la barra de progreso trae documentos, redes y web bloqueadas por plan; con 4 de 6 se publica como `IN_REVIEW`; Plus sin el 100% devuelve 403; y sin biografía completa el perfil deja de ser público. La primera corrida de CI falló por el propio test: enviaba solo la biografía y el DTO exige los nombres; se corrigió en `6abf943`. En local, en el navegador: barra de progreso y ambos sellos, en escritorio y a 375 px, sin desbordes.<br>
+**Desplegado en producción el 2026-09-24:** `api` y `web` reconstruidos, prueba de humo **23/23** y Términos v2.2 publicados con las reglas nuevas. El único médico en producción no tiene documentos, así que sigue sin publicarse.<br>
+**Archivos destacados:** [`backend/src/professionals/publication-rules.ts`](backend/src/professionals/publication-rules.ts), [`backend/src/documents/documents.service.ts`](backend/src/documents/documents.service.ts), [`backend/src/subscriptions/subscriptions.service.ts`](backend/src/subscriptions/subscriptions.service.ts), [`frontend/src/components/ProfessionalProgressCard.tsx`](frontend/src/components/ProfessionalProgressCard.tsx), [`frontend/src/components/VerificationBadge.tsx`](frontend/src/components/VerificationBadge.tsx).
+
+</details>
+
+<p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
+
+<a id="act-0022"></a>
+
+### ⌨️ ACT-0022 · Formularios más claros y utilizables con teclado
+
+<details>
+<summary><strong>2026-09-24 18:31:52 -04:00</strong> · <code>55a9a6a</code> · 🟢 Completado</summary>
+
+**Responsable:** `Claude Opus 5.5` · **Tipo:** `ux | a11y` · **Commit:** [`55a9a6a`](https://github.com/merchandev/guiamedicamonagas/commit/55a9a6a)
+
+El titular compartió una captura del perfil del médico y pidió que los elementos no se vean juntos ni superpuestos, y que los formularios funcionen con teclado. Al revisar, el problema visual era de contraste y espaciado: el borde de los campos (`ink-200` sobre tarjeta blanca) casi no se veía, así que los campos parecían fundirse entre sí. Y cinco botones de subida eran inaccesibles por teclado.
+
+**Diseño (todos los formularios, vía los componentes compartidos):** borde visible (`ink-300`) con estado al pasar el mouse; más aire entre etiqueta, campo y ayuda; en el perfil del médico, secciones con título propio (incluida «Foto de perfil»), separación uniforme entre campos (`gap-x-6 gap-y-5`), botón de guardar separado del contenido, y la cabecera de completitud apilada en pantallas angostas.
+
+**Teclado y lectores de pantalla:**
+
+- **Subidas de archivos** (foto y documentos del médico, logo de la organización, foto y foto de identificación del paciente): el `<input type="file">` tenía `display:none` y Tab nunca llegaba. El nuevo componente `FileButton` lo oculta solo visualmente: Tab lo alcanza, Enter o Espacio abren el selector y el botón muestra el anillo de foco.
+- **Selector desplegable** (municipios, sexo, etc.): antes se abría con el teclado, pero las flechas no recorrían las opciones porque el foco nunca pasaba a la lista. Ahora sigue el patrón combobox de WAI-ARIA: flechas, Inicio y Fin para moverse, Enter o Espacio para elegir, Escape para cerrar, Tab para seguir, y escribir letras salta a la opción («pu» → Punceres). El foco se queda en el campo y la opción activa se anuncia.
+- **Diálogos:** el foco entra al abrir, Tab queda dentro, Escape cierra y el foco vuelve al botón que lo abrió.
+- **Campos:** `aria-invalid`, `aria-required` y `aria-describedby`, para que se lean la ayuda y el error. Además: `aria-pressed` en especialidades y en los días y horas de la reserva, anillo de foco visible en el tipo de cuenta del registro, mensajes nuevos que se marcan con Enter o Espacio, y la etiqueta del comprobante de Pago Móvil asociada a su campo.
+
+**Verificación en el navegador** (página temporal con el formulario real del perfil, borrada antes del commit): en el selector, flecha abajo abre la lista y mueve la opción activa; Enter elige y el foco se queda; End va a la última opción; Escape cierra sin cambiar; teclear salta a la opción; Tab pasa al siguiente campo. En el diálogo, el foco entra al campo, Tab da la vuelta dentro y Escape devuelve el foco. «Subir foto» se alcanza con Tab, muestra el anillo y anuncia su ayuda. A 375 px no hay desbordes. `tsc` y `next build` limpios. CI y Seguridad en verde, e2e **87/87**.<br>
+**Desplegado en producción el 2026-09-24:** `web` reconstruido (la API no cambió), prueba de humo **23/23**. El sitio público ya sirve el selector con teclado y el tipo de cuenta como grupo de opciones.<br>
+**Archivos destacados:** [`frontend/src/components/ui/FileButton.tsx`](frontend/src/components/ui/FileButton.tsx), [`frontend/src/components/ui/Select.tsx`](frontend/src/components/ui/Select.tsx), [`frontend/src/components/ui/Input.tsx`](frontend/src/components/ui/Input.tsx), [`frontend/src/components/ui/Modal.tsx`](frontend/src/components/ui/Modal.tsx), [`frontend/src/app/dashboard/perfil/page.tsx`](frontend/src/app/dashboard/perfil/page.tsx).
+
+</details>
+
+<p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
+
 <a id="registro-por-area"></a>
 
 ## 🧩 Registro por área
@@ -799,14 +867,14 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 |---|---|---|
 | 🧱 Fundación técnica | NestJS, Next.js, Prisma, Docker, Caddy, Tailwind | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) |
 | 🔐 Auth y seguridad | JWT, refresh cookie, roles, correo, recuperación, throttling, Argon2id, permisos granulares, reuso de tokens, `tokenVersion`, cerrar todas las sesiones, MFA obligatorio en producción, subidas seguras, antivirus obligatorio y rotación de claves | [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0012](#act-0012) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0019](#act-0019) |
-| 👨‍⚕️ Profesionales | Perfiles, ubicaciones, documentos, verificación legal (sin solvencia deontológica), redes sociales, badges | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0020](#act-0020) |
+| 👨‍⚕️ Profesionales | Perfiles, ubicaciones, documentos, verificación legal (sin solvencia deontológica), publicación con el 60% aprobado + biografía + foto, barra de progreso del registro, redes sociales, badges | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0020](#act-0020) · [ACT-0021](#act-0021) |
 | 🏥 Organizaciones | Farmacias, laboratorios, clínicas, ubicaciones, autogestión, equipo con invitaciones y roles internos, médicos asociados y plan propio | [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0015](#act-0015) · [ACT-0019](#act-0019) |
-| 💳 Monetización | Planes, Pago Móvil, aprobación, tasa BCV, evidencia de tasa por cuota, catálogo de bancos y referencia única atómica | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0010](#act-0010) · [ACT-0011](#act-0011) · [ACT-0015](#act-0015) · [ACT-0019](#act-0019) |
+| 💳 Monetización | Planes, Pago Móvil, aprobación, tasa BCV, evidencia de tasa por cuota, catálogo de bancos, referencia única atómica y Plus/Premium solo con el 100% de documentos | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0010](#act-0010) · [ACT-0011](#act-0011) · [ACT-0015](#act-0015) · [ACT-0019](#act-0019) · [ACT-0021](#act-0021) |
 | 📅 Agenda y citas | Horarios, disponibilidad, reservas, máquina de estados, anti-doble-reserva, zona America/Caracas | [ACT-0007](#act-0007) · [ACT-0015](#act-0015) |
 | 🔒 Pacientes | Código pseudónimo, cifrado de datos de salud, consentimiento por alcance y tiempo, lecturas auditadas, registro propio, foto de identificación verificada por un admin y reserva con la ficha propia | [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) |
 | 🛠️ Administración | Médicos, pagos, SEO, cookies, especialidades, planes, verificaciones, organizaciones, bancos, geografía e identidad de pacientes | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) |
 | 📊 Observabilidad | Auditoría, analítica con consentimiento y sin IP, notificaciones, salud, pruebas, CI, escaneo de imágenes y Dependabot | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) |
-| 🎨 Experiencia | Directorios, dashboard, componentes UI, motion y legal | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0013](#act-0013) · [ACT-0014](#act-0014) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0017](#act-0017) · [ACT-0019](#act-0019) |
+| 🎨 Experiencia | Directorios, dashboard, componentes UI, motion, legal, formularios legibles y utilizables con teclado | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0013](#act-0013) · [ACT-0014](#act-0014) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0017](#act-0017) · [ACT-0019](#act-0019) · [ACT-0022](#act-0022) |
 | 🚢 Operación | Variables de entorno, Compose, almacenamiento, correo, proxy, imágenes mínimas y antivirus | [ACT-0001](#act-0001) · [ACT-0002](#act-0002) · [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0008](#act-0008) · [ACT-0009](#act-0009) · [ACT-0011](#act-0011) · [ACT-0016](#act-0016) · [ACT-0017](#act-0017) · [ACT-0018](#act-0018) · [ACT-0019](#act-0019) |
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
@@ -862,6 +930,8 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | IMP-043 | Respaldos cifrados, prueba de restauración semanal, monitoreo y rollback | 🟢 Completado | [`scripts/backup.sh`](scripts/backup.sh), [`scripts/restore-test.sh`](scripts/restore-test.sh), [`docs/operations`](docs/operations) |
 | IMP-044 | CI endurecido: acciones por SHA, puerta de vulnerabilidades con excepciones fechadas, ClamAV real en CI, 80 comprobaciones e2e | 🟢 Completado | [`.github/workflows`](.github/workflows), [`scripts/audit-gate.mjs`](scripts/audit-gate.mjs) |
 | IMP-045 | Requisitos del médico en orden de obtención (cédula, RIF, título, MPPS, Colegio, Artículo 8), solvencia deontológica retirada (rechazada al subir) y textos legales v2.1 | 🟢 Completado | [`backend/src/documents/document-requirements.ts`](backend/src/documents/document-requirements.ts), [`frontend/src/app/terminos-y-condiciones/page.tsx`](frontend/src/app/terminos-y-condiciones/page.tsx) |
+| IMP-046 | Publicación del médico con el 60% de documentos aprobados + biografía + foto, sello «Verificado» al 100%, Plus/Premium solo con el 100% y barra de progreso del registro | 🟢 Completado | [`backend/src/professionals/publication-rules.ts`](backend/src/professionals/publication-rules.ts), [`frontend/src/components/ProfessionalProgressCard.tsx`](frontend/src/components/ProfessionalProgressCard.tsx) |
+| IMP-047 | Formularios con bordes visibles y espaciado uniforme; subidas de archivo, selectores y diálogos utilizables con teclado (WAI-ARIA) | 🟢 Completado | [`frontend/src/components/ui/FileButton.tsx`](frontend/src/components/ui/FileButton.tsx), [`frontend/src/components/ui/Select.tsx`](frontend/src/components/ui/Select.tsx) |
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
@@ -967,6 +1037,8 @@ Para cada cambio futuro, añadir una entrada en la línea de tiempo y actualizar
 | `2026-09-24 08:36:50 -04:00` | Incorporación de ACT-0019 (plan de producción sin dominio: MFA y ClamAV obligatorios, invitaciones y roles de organizaciones, Pago Móvil atómico, notas clínicas cifradas, rotación de claves, respaldos cifrados con prueba de restauración, monitoreo, CI endurecido), actualización de línea de tiempo, resumen cuantitativo, registro por área, control de implementaciones y próximas actividades | 🟢 Completado |
 | `2026-09-24 17:39:26 -04:00` | Incorporación de ACT-0020 (solvencia deontológica retirada y requisitos del médico en orden de obtención, a pedido del titular; Términos y Privacidad v2.1), actualización de línea de tiempo, resumen cuantitativo, registro por área y control de implementaciones | 🟢 Completado |
 | `2026-09-24 17:52:22 -04:00` | Cierre de ACT-0020 con su despliegue (primer intento detenido sin impacto; `deploy.sh` tolera un registro caído si la imagen está en el servidor) y nuevo pendiente sobre la imagen de MinIO | 🟢 Completado |
+| `2026-09-24 18:14:00 -04:00` | Incorporación de ACT-0021 (publicación del médico con el 60% de documentos aprobados + biografía + foto, Plus/Premium con el 100%, barra de progreso del registro, Términos v2.2), actualización de línea de tiempo, resumen cuantitativo, registro por área y control de implementaciones | 🟢 Completado |
+| `2026-09-24 18:31:52 -04:00` | Cierre de ACT-0021 con su despliegue e incorporación de ACT-0022 (formularios con bordes visibles y más espaciado; subidas, selectores y diálogos utilizables con teclado) | 🟢 Completado |
 
 ---
 
