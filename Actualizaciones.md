@@ -3,7 +3,7 @@
 > Bitácora central de cambios, implementaciones, decisiones técnicas y tareas de evolución del sistema.
 >
 > **Repositorio:** [`merchandev/guiamedicamonagas`](https://github.com/merchandev/guiamedicamonagas) · **Rama:** `main`<br>
-> **Última actualización de esta bitácora:** `2026-09-25 14:36:20 -04:00` · **Estado:** 🟢 Registro activo
+> **Última actualización de esta bitácora:** `2026-09-25 14:51:05 -04:00` · **Estado:** 🟢 Registro activo
 
 ![Estado](https://img.shields.io/badge/estado-registro%20activo-16a34a?style=flat-square)
 ![Rama](https://img.shields.io/badge/rama-main-2563eb?style=flat-square)
@@ -127,8 +127,9 @@ flowchart LR
     V[⌨️ 2026-09-24\n18:31:52\nACT-0022 · Formularios claros\ny con teclado]
     W[🧑‍🤝‍🧑 2026-09-25\n06:25:35\nACT-0023 · Registro de pacientes\nen el inicio]
     X[🔒 2026-09-25\n14:29:46\nACT-0024 · HTTPS en\nguiamedicamonagas.com]
+    Y[🏷️ 2026-09-25\n14:45:46\nACT-0025 · Farmacias «Próximamente»\ny HTTPS reforzado]
 
-    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L --> M --> N --> O --> P --> Q --> R --> S --> T --> U --> V --> W --> X
+    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L --> M --> N --> O --> P --> Q --> R --> S --> T --> U --> V --> W --> X --> Y
 ```
 
 ### Resumen cuantitativo
@@ -136,8 +137,8 @@ flowchart LR
 | Indicador | Resultado |
 |---|---:|
 | Actividades históricas importadas desde Git | `3` |
-| Actividades documentales añadidas con esta bitácora | `21` |
-| Actividades registradas en total | `24` |
+| Actividades documentales añadidas con esta bitácora | `22` |
+| Actividades registradas en total | `25` |
 | Rama de referencia | `main` |
 | Commit base consultado | [`81b1091`](https://github.com/merchandev/guiamedicamonagas/commit/81b1091) |
 | Zona horaria de control | `America/Caracas` (`-04:00`) |
@@ -923,6 +924,38 @@ El titular avisó que el dominio ya estaba conectado y pidió que el SSL funcion
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
+<a id="act-0025"></a>
+
+### 🏷️ ACT-0025 · Farmacias, laboratorios y clínicas como «Próximamente» y HTTPS reforzado
+
+<details>
+<summary><strong>2026-09-25 14:45:46 -04:00</strong> · <code>51b5ff0</code> · 🟢 Completado</summary>
+
+**Responsable:** `Claude Opus 5.5` · **Tipo:** `ux | contenido | seguridad` · **Commit:** [`51b5ff0`](https://github.com/merchandev/guiamedicamonagas/commit/51b5ff0)
+
+El titular compartió una captura de Chrome con «No es seguro» y el visor mostrando el certificado de Let's Encrypt, y pidió forzar el SSL. También pidió dejar el apartado de farmacias como «Próximamente», porque todavía no hay alianzas con farmacias.
+
+**SSL:** la cadena que sirve el servidor es completa y válida (dominio → Let's Encrypt YR1 → ISRG Root YR → ISRG Root X1, igual que `transfersinbarcelona.com`), y `openssl` la verifica desde fuera. El aviso de Chrome venía de una visita anterior, cuando se servía el certificado temporal de Traefik: Chrome recuerda la excepción aceptada hasta que se cierra por completo. HTTPS ya era obligatorio (301 desde `http://` y HSTS de [ACT-0024](#act-0024)). Como refuerzo, las páginas envían `Content-Security-Policy: upgrade-insecure-requests` (solo cuando `NEXT_PUBLIC_SITE_URL` es https, para no romper el desarrollo local): cualquier recurso enlazado por `http://` se pide por HTTPS y nunca vuelve la página contenido mixto.
+
+**«Próximamente»:** un solo interruptor, `ORGANIZATIONS_LAUNCHED = false` en [`frontend/src/lib/features.ts`](frontend/src/lib/features.ts). Ponerlo en `true` reabre todo; el backend no cambia.
+
+- `/farmacias` muestra una página «Próximamente» con farmacias, laboratorios y clínicas, y enlaces a buscar médicos y ver especialidades.
+- Menú: «Farmacias» con la pastilla «Pronto».
+- Inicio: el contador «0+ Farmacias y clínicas» ahora dice «Pronto», y la vista previa de organizaciones se reemplaza por una tarjeta «Próximamente» que lleva a `/farmacias`.
+- Registro: ya no ofrece el tipo organización (`?tipo=organizacion` abre en «Soy médico»). Las invitaciones a equipos siguen funcionando.
+- Planes: el bloque del plan de organizaciones, si se activa, lleva a «Próximamente» en lugar del registro. Hoy ese plan no está activo en producción.
+- La descripción general del sitio para buscadores deja de prometer farmacias y clínicas verificadas.
+
+**Encabezado:** con la pastilla, el menú completo ya no cabía por debajo de 1280 px dentro del ancho de 80% (el logo se partía en tres líneas a 1024 px). Ahora el menú completo aparece desde 1280 px y, por debajo, el botón de menú.
+
+**Verificación:** `tsc` limpio; en el navegador, sin desbordes a 1280, 1100 y 375 px, y el encabezado en una sola línea a 1280 px. CI y Seguridad en verde.<br>
+**Desplegado en producción el 2026-09-25:** `web` reconstruido, prueba de humo **23/23** y los demás proyectos del VPS intactos. En el dominio: cabeceras HSTS y `upgrade-insecure-requests`; `/farmacias` en «Próximamente»; el registro solo ofrece médico y paciente; sin errores de consola ni recursos `http://`.<br>
+**Archivos destacados:** [`frontend/src/lib/features.ts`](frontend/src/lib/features.ts), [`frontend/src/components/OrganizationsComingSoon.tsx`](frontend/src/components/OrganizationsComingSoon.tsx), [`frontend/src/components/layout/Header.tsx`](frontend/src/components/layout/Header.tsx), [`frontend/next.config.js`](frontend/next.config.js).
+
+</details>
+
+<p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
+
 <a id="registro-por-area"></a>
 
 ## 🧩 Registro por área
@@ -934,13 +967,13 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | 🧱 Fundación técnica | NestJS, Next.js, Prisma, Docker, Caddy, Tailwind | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) |
 | 🔐 Auth y seguridad | JWT, refresh cookie, roles, correo, recuperación, throttling, Argon2id, permisos granulares, reuso de tokens, `tokenVersion`, cerrar todas las sesiones, MFA obligatorio en producción, subidas seguras, antivirus obligatorio y rotación de claves | [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0012](#act-0012) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0019](#act-0019) · [ACT-0024](#act-0024) |
 | 👨‍⚕️ Profesionales | Perfiles, ubicaciones, documentos, verificación legal (sin solvencia deontológica), publicación con el 60% aprobado + biografía + foto, barra de progreso del registro, redes sociales, badges | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0020](#act-0020) · [ACT-0021](#act-0021) |
-| 🏥 Organizaciones | Farmacias, laboratorios, clínicas, ubicaciones, autogestión, equipo con invitaciones y roles internos, médicos asociados y plan propio | [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0015](#act-0015) · [ACT-0019](#act-0019) |
+| 🏥 Organizaciones | Farmacias, laboratorios, clínicas, ubicaciones, autogestión, equipo con invitaciones y roles internos, médicos asociados y plan propio, sección «Próximamente» hasta cerrar alianzas | [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0015](#act-0015) · [ACT-0019](#act-0019) · [ACT-0025](#act-0025) |
 | 💳 Monetización | Planes, Pago Móvil, aprobación, tasa BCV, evidencia de tasa por cuota, catálogo de bancos, referencia única atómica y Plus/Premium solo con el 100% de documentos | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0010](#act-0010) · [ACT-0011](#act-0011) · [ACT-0015](#act-0015) · [ACT-0019](#act-0019) · [ACT-0021](#act-0021) |
 | 📅 Agenda y citas | Horarios, disponibilidad, reservas, máquina de estados, anti-doble-reserva, zona America/Caracas | [ACT-0007](#act-0007) · [ACT-0015](#act-0015) |
 | 🔒 Pacientes | Código pseudónimo, cifrado de datos de salud, consentimiento por alcance y tiempo, lecturas auditadas, registro propio, foto de identificación verificada por un admin, reserva con la ficha propia y registro visible desde el inicio | [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0023](#act-0023) |
 | 🛠️ Administración | Médicos, pagos, SEO, cookies, especialidades, planes, verificaciones, organizaciones, bancos, geografía e identidad de pacientes | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) |
 | 📊 Observabilidad | Auditoría, analítica con consentimiento y sin IP, notificaciones, salud, pruebas, CI, escaneo de imágenes y Dependabot | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) |
-| 🎨 Experiencia | Directorios, dashboard, componentes UI, motion, legal, formularios legibles y utilizables con teclado, sección de pacientes en el inicio | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0013](#act-0013) · [ACT-0014](#act-0014) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0017](#act-0017) · [ACT-0019](#act-0019) · [ACT-0022](#act-0022) · [ACT-0023](#act-0023) |
+| 🎨 Experiencia | Directorios, dashboard, componentes UI, motion, legal, formularios legibles y utilizables con teclado, sección de pacientes en el inicio | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0013](#act-0013) · [ACT-0014](#act-0014) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0017](#act-0017) · [ACT-0019](#act-0019) · [ACT-0022](#act-0022) · [ACT-0023](#act-0023) · [ACT-0025](#act-0025) |
 | 🚢 Operación | Variables de entorno, Compose, almacenamiento, correo, proxy, imágenes mínimas y antivirus | [ACT-0001](#act-0001) · [ACT-0002](#act-0002) · [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0008](#act-0008) · [ACT-0009](#act-0009) · [ACT-0011](#act-0011) · [ACT-0016](#act-0016) · [ACT-0017](#act-0017) · [ACT-0018](#act-0018) · [ACT-0019](#act-0019) · [ACT-0024](#act-0024) |
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
@@ -1000,6 +1033,7 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | IMP-047 | Formularios con bordes visibles y espaciado uniforme; subidas de archivo, selectores y diálogos utilizables con teclado (WAI-ARIA) | 🟢 Completado | [`frontend/src/components/ui/FileButton.tsx`](frontend/src/components/ui/FileButton.tsx), [`frontend/src/components/ui/Select.tsx`](frontend/src/components/ui/Select.tsx) |
 | IMP-048 | Sección de registro de pacientes en el inicio, botón general «Quiero registrarme» y tipo de cuenta preseleccionado con `?tipo=` | 🟢 Completado | [`frontend/src/app/page.tsx`](frontend/src/app/page.tsx), [`frontend/src/app/registro/page.tsx`](frontend/src/app/registro/page.tsx) |
 | IMP-049 | HTTPS completo en el dominio: Let's Encrypt vía Traefik, HSTS en todo el dominio, URL públicas y cookies `secure`, puerto 8088 solo en loopback | 🟢 Completado | [`docker-compose.prod.yml`](docker-compose.prod.yml), [`docs/operations/go-no-go.md`](docs/operations/go-no-go.md) |
+| IMP-050 | Farmacias, laboratorios y clínicas como «Próximamente» con un solo interruptor (`ORGANIZATIONS_LAUNCHED`) y `upgrade-insecure-requests` en las páginas | 🟢 Completado | [`frontend/src/lib/features.ts`](frontend/src/lib/features.ts), [`frontend/src/components/OrganizationsComingSoon.tsx`](frontend/src/components/OrganizationsComingSoon.tsx) |
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
@@ -1109,6 +1143,7 @@ Para cada cambio futuro, añadir una entrada en la línea de tiempo y actualizar
 | `2026-09-24 18:31:52 -04:00` | Cierre de ACT-0021 con su despliegue e incorporación de ACT-0022 (formularios con bordes visibles y más espaciado; subidas, selectores y diálogos utilizables con teclado) | 🟢 Completado |
 | `2026-09-25 06:30:55 -04:00` | Incorporación de ACT-0023 con su despliegue (botón «Quiero registrarme», sección de registro de pacientes en el inicio y tipo de cuenta preseleccionado), actualización de línea de tiempo, resumen cuantitativo, registro por área y control de implementaciones | 🟢 Completado |
 | `2026-09-25 14:36:20 -04:00` | Incorporación de ACT-0024 (HTTPS completo en `guiamedicamonagas.com`) con su despliegue, cierre de ACT-0018 y del pendiente del dominio en Próximas actividades | 🟢 Completado |
+| `2026-09-25 14:51:05 -04:00` | Incorporación de ACT-0025 (farmacias, laboratorios y clínicas como «Próximamente» y `upgrade-insecure-requests`) con su despliegue | 🟢 Completado |
 
 ---
 
