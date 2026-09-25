@@ -3,7 +3,7 @@
 > Bitácora central de cambios, implementaciones, decisiones técnicas y tareas de evolución del sistema.
 >
 > **Repositorio:** [`merchandev/guiamedicamonagas`](https://github.com/merchandev/guiamedicamonagas) · **Rama:** `main`<br>
-> **Última actualización de esta bitácora:** `2026-09-25 15:17:19 -04:00` · **Estado:** 🟢 Registro activo
+> **Última actualización de esta bitácora:** `2026-09-25 15:53:01 -04:00` · **Estado:** 🟢 Registro activo
 
 ![Estado](https://img.shields.io/badge/estado-registro%20activo-16a34a?style=flat-square)
 ![Rama](https://img.shields.io/badge/rama-main-2563eb?style=flat-square)
@@ -129,8 +129,9 @@ flowchart LR
     X[🔒 2026-09-25\n14:29:46\nACT-0024 · HTTPS en\nguiamedicamonagas.com]
     Y[🏷️ 2026-09-25\n14:45:46\nACT-0025 · Farmacias «Próximamente»\ny HTTPS reforzado]
     Z[🔤 2026-09-25\n15:09:34\nACT-0026 · Tipografía corporativa\nMontserrat + Open Sans]
+    AA[🪪 2026-09-25\n15:39:56\nACT-0027 · Código y QR del paciente,\nbóveda y noindex]
 
-    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L --> M --> N --> O --> P --> Q --> R --> S --> T --> U --> V --> W --> X --> Y --> Z
+    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L --> M --> N --> O --> P --> Q --> R --> S --> T --> U --> V --> W --> X --> Y --> Z --> AA
 ```
 
 ### Resumen cuantitativo
@@ -138,8 +139,8 @@ flowchart LR
 | Indicador | Resultado |
 |---|---:|
 | Actividades históricas importadas desde Git | `3` |
-| Actividades documentales añadidas con esta bitácora | `23` |
-| Actividades registradas en total | `26` |
+| Actividades documentales añadidas con esta bitácora | `24` |
+| Actividades registradas en total | `27` |
 | Rama de referencia | `main` |
 | Commit base consultado | [`81b1091`](https://github.com/merchandev/guiamedicamonagas/commit/81b1091) |
 | Zona horaria de control | `America/Caracas` (`-04:00`) |
@@ -982,6 +983,77 @@ En CI, el trabajo «Imagen web (Trivy)» falló la primera vez porque Next.js no
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
+<a id="act-0027"></a>
+
+### 🪪 ACT-0027 · Código de paciente con QR, directorio del médico por código, bóveda de administración y pacientes fuera de buscadores
+
+<details>
+<summary><strong>2026-09-25 15:39:56 -04:00</strong> · <code>9b89ee5</code> · 🟢 Completado</summary>
+
+**Responsable:** `Claude Opus 5.5` · **Tipo:** `privacidad | seguridad | funcionalidad` · **Commits:** [`9b89ee5`](https://github.com/merchandev/guiamedicamonagas/commit/9b89ee5), [`94ff8c9`](https://github.com/merchandev/guiamedicamonagas/commit/94ff8c9)
+
+El titular pidió cuatro cosas:
+- que cada paciente genere un QR y un código único, aleatorio y alfanumérico, para compartirlo con su médico y proteger su identidad (a diferencia de los médicos, que tienen página pública con su nombre en el slug);
+- que los pacientes estén forzados a **noindex**;
+- que sus registros estén blindados incluso para los administradores, con un código de seguridad obligatorio para verlos;
+- que, cuando un médico registre a un paciente con quien ya tuvo contacto, la información del paciente aparezca en su directorio del panel.
+
+**Punto de partida:** ya existían el seudónimo de agenda `GMM-XXXX`, los datos del paciente cifrados y los consentimientos por alcance y tiempo ([ACT-0015](#act-0015)). Pero el seudónimo tiene solo 65.536 combinaciones (no sirve para ubicar a nadie), el médico solo veía pacientes con citas, y un administrador con permiso veía la cola de identidad (nombre, cédula y foto del documento) solo con su sesión.
+
+**Código de paciente y QR:**
+- En «Mi código» ([`/paciente/codigo`](frontend/src/app/paciente/codigo/page.tsx)) el paciente genera un código de 12 caracteres de un alfabeto sin ambiguos (sin 0/O/1/I/L): unas 7,9·10¹⁷ combinaciones. Se muestra como `K7Q4-M9TX-P3WD` y se acepta con o sin guiones ni mayúsculas.
+- El código se guarda **cifrado**, igual que la cédula (AES-GCM + HMAC para buscarlo), entra en la rotación de claves y nunca sale en la ficha.
+- El QR se dibuja en el navegador (`uqr`, sin dependencias) y se descarga en PNG.
+- El paciente elige qué verá el médico que lo registre (nombre, contacto y/o salud). Si genera uno nuevo, el anterior deja de servir al instante.
+- El QR abre [`/p/<código>`](frontend/src/app/p/[code]/page.tsx), una página que no consulta la API ni muestra datos: solo lleva al médico a registrarlo desde su panel, y tras iniciar sesión vuelve con el código (`RequireAuth` conserva `?next=`).
+
+**Directorio del médico:**
+- En «Pacientes», el médico ingresa el código o escanea el QR con su teléfono (`POST /appointments/me/patients/register`, 10 por minuto).
+- Entregar el código es el consentimiento (texto v1.1): se crea el vínculo `ProfessionalPatient` y una autorización de un año con los alcances elegidos. Queda auditado y el paciente recibe aviso por correo y notificación, con enlace a Permisos.
+- Solo pueden registrar médicos publicados o verificados.
+- Si el paciente revoca ese acceso, el **mismo código ya no lo devuelve** (`accessRevokedAt`): hace falta un código nuevo.
+- El directorio muestra los pacientes con citas y los registrados. El nombre solo aparece con autorización de identidad, y verlo queda auditado (`PATIENT_DIRECTORY_VIEWED`).
+- El médico puede quitar a un paciente de su directorio, lo que también cierra el acceso.
+- Un código inexistente responde igual que cualquier código inválido y queda auditado.
+
+**Bóveda de administración:**
+- La cola y los casos de identidad exigen, además de sesión y permiso, una bóveda abierta con el **código de seguridad**. Aplica también a SUPERADMIN.
+- En `.env.prod` solo queda su hash Argon2id en base64 (`PATIENT_VAULT_CODE_HASH`); el código no está en Git ni en ningún archivo.
+- Cada apertura dura 15 minutos, en una cookie httpOnly `SameSite=Strict` limitada a `/api/v1/patients/admin`. En la BD (`PatientVaultSession`) solo queda el hash del token, y la sesión está ligada a esa cuenta.
+- 5 intentos fallidos bloquean a esa cuenta durante 15 minutos. Aperturas, cierres y fallos quedan auditados.
+- El panel muestra la cuenta regresiva y el botón «Cerrar ahora» ([`PatientVaultGate`](frontend/src/components/PatientVaultGate.tsx)).
+- [`scripts/set-patient-vault-code.sh`](scripts/set-patient-vault-code.sh) define o cambia el código sin mostrarlo, cierra las bóvedas abiertas y recrea solo `api`.
+- El resumen del panel de administración ya no muestra correos de pacientes.
+- El filtro de errores deja pasar un `code` estable (`PATIENT_VAULT_LOCKED`) para que la interfaz sepa pedir el código.
+
+**Noindex:**
+- `X-Robots-Tag: noindex, nofollow, noarchive, nosnippet` en `/paciente`, `/p/`, `/dashboard`, `/admin` y `/cuenta` ([`next.config.js`](frontend/next.config.js)), y en la API y los archivos ([`Caddyfile`](Caddyfile)).
+- `<meta robots>` en el panel del paciente y en la página del QR.
+- `/paciente` sale de los `Disallow` de `robots.txt` a propósito: un buscador solo respeta el noindex de una página que puede rastrear.
+- Las páginas de los médicos siguen indexables.
+
+**Legal:** Política de privacidad **2.2**: el código y QR del paciente en la sección 5, y la bóveda de administración en la 6. Los usuarios vuelven a aceptarla.
+
+**Verificación:**
+- Unitarias **68**.
+- e2e **114/114** (antes 87): flujo completo de código, 404 para códigos inexistentes, registro sin guiones, directorio con nombre, revocación que bloquea el mismo código, rotación, quitar del directorio, bóveda cerrada para ADMIN y SUPERADMIN, código incorrecto, cookie, token solo como hash, bóveda no transferible entre cuentas, cierre, bloqueo por fallos y feed sin correos de pacientes.
+- En el navegador: la página del QR y las cabeceras.
+- CI y Seguridad en verde (el primer CI marcó que la ficha incluía la fecha del código; se retiró en [`94ff8c9`](https://github.com/merchandev/guiamedicamonagas/commit/94ff8c9)).
+
+**Despliegue en producción (2026-09-25):**
+- Antes de desplegar, código de seguridad definido con el script, pasado por la entrada estándar de SSH; queda solo el hash. Se comprobó dentro de la API que el hash acepta el código indicado por el titular y rechaza cualquier otro, sin abrir sesión con ninguna cuenta.
+- Migración aditiva `20260925194000_patient_share_code_and_vault` aplicada.
+- Prueba de humo **25/25**, con dos pruebas nuevas: bóveda configurada, y registros cerrados sin el código incluso para SUPERADMIN.
+- `X-Robots-Tag` en `/paciente`, `/p/`, `/dashboard` y `/api`; `/medicos` y el inicio siguen indexables. Los demás proyectos del VPS, intactos.
+- `caddy` no se había recreado (el `Caddyfile` se monta como archivo y `git merge` le cambia el inodo). Se validó el nuevo y se recreó solo `caddy`. Desde ahora `deploy.sh` compara el `Caddyfile` del contenedor con el del repositorio y, si difiere, lo valida en un contenedor sin etiquetas de Traefik y recrea `caddy`.
+
+**Decisión pendiente del titular:** el directorio de pacientes (y por tanto el registro por código) sigue siendo un beneficio desde el plan Profesional, igual que la agenda. Abrirlo al plan básico es un cambio de una línea.<br>
+**Archivos destacados:** [`backend/src/patients/patients.service.ts`](backend/src/patients/patients.service.ts), [`backend/src/patients/patient-vault.service.ts`](backend/src/patients/patient-vault.service.ts), [`backend/src/patients/share-code.util.ts`](backend/src/patients/share-code.util.ts), [`frontend/src/app/dashboard/pacientes/page.tsx`](frontend/src/app/dashboard/pacientes/page.tsx), [`scripts/set-patient-vault-code.sh`](scripts/set-patient-vault-code.sh).
+
+</details>
+
+<p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
+
 <a id="registro-por-area"></a>
 
 ## 🧩 Registro por área
@@ -991,16 +1063,16 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | Área | Implementaciones registradas | Actividades relacionadas |
 |---|---|---|
 | 🧱 Fundación técnica | NestJS, Next.js, Prisma, Docker, Caddy, Tailwind | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) |
-| 🔐 Auth y seguridad | JWT, refresh cookie, roles, correo, recuperación, throttling, Argon2id, permisos granulares, reuso de tokens, `tokenVersion`, cerrar todas las sesiones, MFA obligatorio en producción, subidas seguras, antivirus obligatorio y rotación de claves | [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0012](#act-0012) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0019](#act-0019) · [ACT-0024](#act-0024) |
+| 🔐 Auth y seguridad | JWT, refresh cookie, roles, correo, recuperación, throttling, Argon2id, permisos granulares, reuso de tokens, `tokenVersion`, cerrar todas las sesiones, MFA obligatorio en producción, subidas seguras, antivirus obligatorio y rotación de claves, bóveda de registros de pacientes con código de seguridad | [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0012](#act-0012) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0019](#act-0019) · [ACT-0024](#act-0024) · [ACT-0027](#act-0027) |
 | 👨‍⚕️ Profesionales | Perfiles, ubicaciones, documentos, verificación legal (sin solvencia deontológica), publicación con el 60% aprobado + biografía + foto, barra de progreso del registro, redes sociales, badges | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0020](#act-0020) · [ACT-0021](#act-0021) |
 | 🏥 Organizaciones | Farmacias, laboratorios, clínicas, ubicaciones, autogestión, equipo con invitaciones y roles internos, médicos asociados y plan propio, sección «Próximamente» hasta cerrar alianzas | [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0015](#act-0015) · [ACT-0019](#act-0019) · [ACT-0025](#act-0025) |
 | 💳 Monetización | Planes, Pago Móvil, aprobación, tasa BCV, evidencia de tasa por cuota, catálogo de bancos, referencia única atómica y Plus/Premium solo con el 100% de documentos | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0010](#act-0010) · [ACT-0011](#act-0011) · [ACT-0015](#act-0015) · [ACT-0019](#act-0019) · [ACT-0021](#act-0021) |
 | 📅 Agenda y citas | Horarios, disponibilidad, reservas, máquina de estados, anti-doble-reserva, zona America/Caracas | [ACT-0007](#act-0007) · [ACT-0015](#act-0015) |
-| 🔒 Pacientes | Código pseudónimo, cifrado de datos de salud, consentimiento por alcance y tiempo, lecturas auditadas, registro propio, foto de identificación verificada por un admin, reserva con la ficha propia y registro visible desde el inicio | [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0023](#act-0023) |
+| 🔒 Pacientes | Código pseudónimo, cifrado de datos de salud, consentimiento por alcance y tiempo, lecturas auditadas, registro propio, foto de identificación verificada por un admin, reserva con la ficha propia, código y QR para compartir, directorio del médico por código, bóveda de administración y noindex y registro visible desde el inicio | [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0023](#act-0023) · [ACT-0027](#act-0027) |
 | 🛠️ Administración | Médicos, pagos, SEO, cookies, especialidades, planes, verificaciones, organizaciones, bancos, geografía e identidad de pacientes | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) |
 | 📊 Observabilidad | Auditoría, analítica con consentimiento y sin IP, notificaciones, salud, pruebas, CI, escaneo de imágenes y Dependabot | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) |
 | 🎨 Experiencia | Directorios, dashboard, componentes UI, motion, legal, formularios legibles y utilizables con teclado, sección de pacientes en el inicio, tipografía Montserrat + Open Sans | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0013](#act-0013) · [ACT-0014](#act-0014) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0017](#act-0017) · [ACT-0019](#act-0019) · [ACT-0022](#act-0022) · [ACT-0023](#act-0023) · [ACT-0025](#act-0025) · [ACT-0026](#act-0026) |
-| 🚢 Operación | Variables de entorno, Compose, almacenamiento, correo, proxy, imágenes mínimas y antivirus | [ACT-0001](#act-0001) · [ACT-0002](#act-0002) · [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0008](#act-0008) · [ACT-0009](#act-0009) · [ACT-0011](#act-0011) · [ACT-0016](#act-0016) · [ACT-0017](#act-0017) · [ACT-0018](#act-0018) · [ACT-0019](#act-0019) · [ACT-0024](#act-0024) |
+| 🚢 Operación | Variables de entorno, Compose, almacenamiento, correo, proxy, imágenes mínimas y antivirus | [ACT-0001](#act-0001) · [ACT-0002](#act-0002) · [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0008](#act-0008) · [ACT-0009](#act-0009) · [ACT-0011](#act-0011) · [ACT-0016](#act-0016) · [ACT-0017](#act-0017) · [ACT-0018](#act-0018) · [ACT-0019](#act-0019) · [ACT-0024](#act-0024) · [ACT-0027](#act-0027) |
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
@@ -1061,6 +1133,8 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | IMP-049 | HTTPS completo en el dominio: Let's Encrypt vía Traefik, HSTS en todo el dominio, URL públicas y cookies `secure`, puerto 8088 solo en loopback | 🟢 Completado | [`docker-compose.prod.yml`](docker-compose.prod.yml), [`docs/operations/go-no-go.md`](docs/operations/go-no-go.md) |
 | IMP-050 | Farmacias, laboratorios y clínicas como «Próximamente» con un solo interruptor (`ORGANIZATIONS_LAUNCHED`) y `upgrade-insecure-requests` en las páginas | 🟢 Completado | [`frontend/src/lib/features.ts`](frontend/src/lib/features.ts), [`frontend/src/components/OrganizationsComingSoon.tsx`](frontend/src/components/OrganizationsComingSoon.tsx) |
 | IMP-051 | Tipografía corporativa de dos familias: Montserrat (títulos) y Open Sans (texto), servidas desde el dominio con `next/font` | 🟢 Completado | [`frontend/src/app/layout.tsx`](frontend/src/app/layout.tsx), [`frontend/src/app/globals.css`](frontend/src/app/globals.css) |
+| IMP-052 | Código aleatorio y QR del paciente (cifrado, rotable, con alcances elegidos) y registro en el directorio del médico por código, sin que una revocación se evada con el mismo código | 🟢 Completado | [`backend/src/patients/share-code.util.ts`](backend/src/patients/share-code.util.ts), [`frontend/src/app/paciente/codigo/page.tsx`](frontend/src/app/paciente/codigo/page.tsx) |
+| IMP-053 | Bóveda de registros de pacientes para la administración: código de seguridad (solo hash), 15 minutos, bloqueo por fallos y auditoría; pacientes con noindex forzado | 🟢 Completado | [`backend/src/patients/patient-vault.service.ts`](backend/src/patients/patient-vault.service.ts), [`scripts/set-patient-vault-code.sh`](scripts/set-patient-vault-code.sh) |
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
@@ -1097,6 +1171,8 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | 🟡 Baja | Fase 5 · Notificaciones push web (VAPID) | 🔵 Planificado | Extiende `NotificationsService.notify()`, usa `PushSubscription` ya migrado |
 | 🟡 Baja | Fase 6 · Estadísticas avanzadas (embudo de citas, conversión, no-show) | 🔵 Planificado | Extiende `AnalyticsService` existente |
 | 🟡 Baja | Fase 7 · Compatibilidad con app Flutter (Android/iOS) | 🔵 Planificado | Variante de autenticación por token para clientes no-navegador |
+| 🔴 Alta | Cambiar el código de seguridad de la bóveda de pacientes: el actual se compartió por chat. En el servidor, `bash scripts/set-patient-vault-code.sh` (lo pide sin mostrarlo) | 🔴 Pendiente del titular | Código nuevo que solo conozca el titular; el anterior deja de abrir la bóveda |
+| 🟡 Baja | Decidir si el directorio de pacientes y el registro por código se abren al plan básico (hoy desde el plan Profesional, como la agenda) | 🔵 Planificado | Decisión del titular; es un cambio de una línea en `AGENDA_MIN_TIER` o una verificación propia |
 | 🟠 Media | Proteger la rama `main` (al menos contra *force push* y borrado) y activar las alertas de Dependabot | 🔴 Bloqueado | Decisión del usuario sobre los ajustes del repositorio; ver [ACT-0017](#act-0017) |
 | 🟢 Continua | Registrar cada modificación nueva con fecha, hora, responsable y evidencia | 🟢 Activo | No existen cambios relevantes sin entrada en esta bitácora |
 | 🟢 Continua | Confirmar en el repositorio remoto cada cambio cerrado localmente | 🟢 Activo | `git status` limpio y `origin/main` sincronizado al cierre de cada sesión |
@@ -1172,6 +1248,7 @@ Para cada cambio futuro, añadir una entrada en la línea de tiempo y actualizar
 | `2026-09-25 14:36:20 -04:00` | Incorporación de ACT-0024 (HTTPS completo en `guiamedicamonagas.com`) con su despliegue, cierre de ACT-0018 y del pendiente del dominio en Próximas actividades | 🟢 Completado |
 | `2026-09-25 14:51:05 -04:00` | Incorporación de ACT-0025 (farmacias, laboratorios y clínicas como «Próximamente» y `upgrade-insecure-requests`) con su despliegue | 🟢 Completado |
 | `2026-09-25 15:17:19 -04:00` | Incorporación de ACT-0026 (tipografía corporativa Montserrat + Open Sans) con su despliegue | 🟢 Completado |
+| `2026-09-25 15:53:01 -04:00` | Incorporación de ACT-0027 (código y QR del paciente, directorio del médico por código, bóveda de administración y noindex) con su despliegue, dos pendientes nuevos | 🟢 Completado |
 
 ---
 
