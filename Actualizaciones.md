@@ -3,7 +3,7 @@
 > Bitácora central de cambios, implementaciones, decisiones técnicas y tareas de evolución del sistema.
 >
 > **Repositorio:** [`merchandev/guiamedicamonagas`](https://github.com/merchandev/guiamedicamonagas) · **Rama:** `main`<br>
-> **Última actualización de esta bitácora:** `2026-09-25 14:51:05 -04:00` · **Estado:** 🟢 Registro activo
+> **Última actualización de esta bitácora:** `2026-09-25 15:17:19 -04:00` · **Estado:** 🟢 Registro activo
 
 ![Estado](https://img.shields.io/badge/estado-registro%20activo-16a34a?style=flat-square)
 ![Rama](https://img.shields.io/badge/rama-main-2563eb?style=flat-square)
@@ -128,8 +128,9 @@ flowchart LR
     W[🧑‍🤝‍🧑 2026-09-25\n06:25:35\nACT-0023 · Registro de pacientes\nen el inicio]
     X[🔒 2026-09-25\n14:29:46\nACT-0024 · HTTPS en\nguiamedicamonagas.com]
     Y[🏷️ 2026-09-25\n14:45:46\nACT-0025 · Farmacias «Próximamente»\ny HTTPS reforzado]
+    Z[🔤 2026-09-25\n15:09:34\nACT-0026 · Tipografía corporativa\nMontserrat + Open Sans]
 
-    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L --> M --> N --> O --> P --> Q --> R --> S --> T --> U --> V --> W --> X --> Y
+    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L --> M --> N --> O --> P --> Q --> R --> S --> T --> U --> V --> W --> X --> Y --> Z
 ```
 
 ### Resumen cuantitativo
@@ -137,8 +138,8 @@ flowchart LR
 | Indicador | Resultado |
 |---|---:|
 | Actividades históricas importadas desde Git | `3` |
-| Actividades documentales añadidas con esta bitácora | `22` |
-| Actividades registradas en total | `25` |
+| Actividades documentales añadidas con esta bitácora | `23` |
+| Actividades registradas en total | `26` |
 | Rama de referencia | `main` |
 | Commit base consultado | [`81b1091`](https://github.com/merchandev/guiamedicamonagas/commit/81b1091) |
 | Zona horaria de control | `America/Caracas` (`-04:00`) |
@@ -956,6 +957,31 @@ El titular compartió una captura de Chrome con «No es seguro» y el visor most
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
+<a id="act-0026"></a>
+
+### 🔤 ACT-0026 · Tipografía corporativa: Montserrat para títulos y Open Sans para el texto
+
+<details>
+<summary><strong>2026-09-25 15:09:34 -04:00</strong> · <code>085cc07</code> · 🟢 Completado</summary>
+
+**Responsable:** `Claude Opus 5.5` · **Tipo:** `ux | marca` · **Commit:** [`085cc07`](https://github.com/merchandev/guiamedicamonagas/commit/085cc07)
+
+El titular pidió fuentes más corporativas, porque las anteriores no se veían profesionales, y **como máximo dos**: una para los títulos y otra para los párrafos y lo demás.
+
+- **Antes:** Fraunces, una serif decorativa, en los títulos, e Inter en el texto.
+- **Ahora:** **Montserrat** (600/700) en h1–h4 y el logo, y **Open Sans** en párrafos, botones, formularios y menús. Es una combinación sans-serif habitual en sitios de salud y empresas. Se cargan con `next/font`: los archivos se sirven desde el propio dominio, sin pedir nada a Google en cada visita, y siguen siendo exactamente dos familias.
+- Los títulos pasan a seminegrita (antes `font-medium`) y el respaldo de títulos es sans-serif en lugar de Georgia. El título principal del inicio baja de 48 a 44 px para seguir ocupando tres líneas con la fuente más ancha.
+
+**Verificación:** en el navegador, las únicas familias con texto en la página son Montserrat y Open Sans (en desarrollo aparece además la del botón de Next.js, que no existe en producción). El encabezado sigue en una línea a 1280 px y no hay desbordes a 375 px. `tsc` limpio.
+
+En CI, el trabajo «Imagen web (Trivy)» falló la primera vez porque Next.js no pudo descargar Montserrat de Google Fonts al construir la imagen (`Can't resolve '@vercel/turbopack-next/internal/font/google/font'`); Open Sans sí bajó. Al reintentar solo ese trabajo, pasó: fue un fallo de red momentáneo. Si se repite en el VPS, `deploy.sh` se detiene antes de reemplazar los contenedores y el sitio sigue con la versión anterior.<br>
+**Desplegado en producción el 2026-09-25:** `web` reconstruido, prueba de humo **23/23** y los demás proyectos intactos. En `https://guiamedicamonagas.com`, el h1 usa Montserrat a 44 px y el texto Open Sans, con cuatro archivos `woff2` servidos desde el dominio.<br>
+**Archivos destacados:** [`frontend/src/app/layout.tsx`](frontend/src/app/layout.tsx), [`frontend/src/app/globals.css`](frontend/src/app/globals.css), [`frontend/tailwind.config.js`](frontend/tailwind.config.js).
+
+</details>
+
+<p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
+
 <a id="registro-por-area"></a>
 
 ## 🧩 Registro por área
@@ -973,7 +999,7 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | 🔒 Pacientes | Código pseudónimo, cifrado de datos de salud, consentimiento por alcance y tiempo, lecturas auditadas, registro propio, foto de identificación verificada por un admin, reserva con la ficha propia y registro visible desde el inicio | [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0023](#act-0023) |
 | 🛠️ Administración | Médicos, pagos, SEO, cookies, especialidades, planes, verificaciones, organizaciones, bancos, geografía e identidad de pacientes | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) |
 | 📊 Observabilidad | Auditoría, analítica con consentimiento y sin IP, notificaciones, salud, pruebas, CI, escaneo de imágenes y Dependabot | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) |
-| 🎨 Experiencia | Directorios, dashboard, componentes UI, motion, legal, formularios legibles y utilizables con teclado, sección de pacientes en el inicio | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0013](#act-0013) · [ACT-0014](#act-0014) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0017](#act-0017) · [ACT-0019](#act-0019) · [ACT-0022](#act-0022) · [ACT-0023](#act-0023) · [ACT-0025](#act-0025) |
+| 🎨 Experiencia | Directorios, dashboard, componentes UI, motion, legal, formularios legibles y utilizables con teclado, sección de pacientes en el inicio, tipografía Montserrat + Open Sans | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0013](#act-0013) · [ACT-0014](#act-0014) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0017](#act-0017) · [ACT-0019](#act-0019) · [ACT-0022](#act-0022) · [ACT-0023](#act-0023) · [ACT-0025](#act-0025) · [ACT-0026](#act-0026) |
 | 🚢 Operación | Variables de entorno, Compose, almacenamiento, correo, proxy, imágenes mínimas y antivirus | [ACT-0001](#act-0001) · [ACT-0002](#act-0002) · [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0008](#act-0008) · [ACT-0009](#act-0009) · [ACT-0011](#act-0011) · [ACT-0016](#act-0016) · [ACT-0017](#act-0017) · [ACT-0018](#act-0018) · [ACT-0019](#act-0019) · [ACT-0024](#act-0024) |
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
@@ -1034,6 +1060,7 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | IMP-048 | Sección de registro de pacientes en el inicio, botón general «Quiero registrarme» y tipo de cuenta preseleccionado con `?tipo=` | 🟢 Completado | [`frontend/src/app/page.tsx`](frontend/src/app/page.tsx), [`frontend/src/app/registro/page.tsx`](frontend/src/app/registro/page.tsx) |
 | IMP-049 | HTTPS completo en el dominio: Let's Encrypt vía Traefik, HSTS en todo el dominio, URL públicas y cookies `secure`, puerto 8088 solo en loopback | 🟢 Completado | [`docker-compose.prod.yml`](docker-compose.prod.yml), [`docs/operations/go-no-go.md`](docs/operations/go-no-go.md) |
 | IMP-050 | Farmacias, laboratorios y clínicas como «Próximamente» con un solo interruptor (`ORGANIZATIONS_LAUNCHED`) y `upgrade-insecure-requests` en las páginas | 🟢 Completado | [`frontend/src/lib/features.ts`](frontend/src/lib/features.ts), [`frontend/src/components/OrganizationsComingSoon.tsx`](frontend/src/components/OrganizationsComingSoon.tsx) |
+| IMP-051 | Tipografía corporativa de dos familias: Montserrat (títulos) y Open Sans (texto), servidas desde el dominio con `next/font` | 🟢 Completado | [`frontend/src/app/layout.tsx`](frontend/src/app/layout.tsx), [`frontend/src/app/globals.css`](frontend/src/app/globals.css) |
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
@@ -1144,6 +1171,7 @@ Para cada cambio futuro, añadir una entrada en la línea de tiempo y actualizar
 | `2026-09-25 06:30:55 -04:00` | Incorporación de ACT-0023 con su despliegue (botón «Quiero registrarme», sección de registro de pacientes en el inicio y tipo de cuenta preseleccionado), actualización de línea de tiempo, resumen cuantitativo, registro por área y control de implementaciones | 🟢 Completado |
 | `2026-09-25 14:36:20 -04:00` | Incorporación de ACT-0024 (HTTPS completo en `guiamedicamonagas.com`) con su despliegue, cierre de ACT-0018 y del pendiente del dominio en Próximas actividades | 🟢 Completado |
 | `2026-09-25 14:51:05 -04:00` | Incorporación de ACT-0025 (farmacias, laboratorios y clínicas como «Próximamente» y `upgrade-insecure-requests`) con su despliegue | 🟢 Completado |
+| `2026-09-25 15:17:19 -04:00` | Incorporación de ACT-0026 (tipografía corporativa Montserrat + Open Sans) con su despliegue | 🟢 Completado |
 
 ---
 
