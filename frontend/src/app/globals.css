@@ -15,7 +15,7 @@
   h2,
   h3,
   h4 {
-    @apply font-display font-medium tracking-tight text-ink-950;
+    @apply font-display font-semibold tracking-tight text-ink-950;
   }
 
   ::selection {

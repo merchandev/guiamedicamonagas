@@ -127,7 +127,7 @@ export default async function HomePage() {
         <div className="container-page grid gap-14 py-16 md:grid-cols-2 md:items-center md:py-24">
           <Reveal>
             <Badge tone="pine" className="mb-4">Directorio verificado del estado Monagas</Badge>
-            <h1 className="text-4xl leading-tight text-ink-950 md:text-5xl">
+            <h1 className="text-4xl leading-tight text-ink-950 md:text-[2.75rem]">
               Encuentra un médico de confianza en Monagas
             </h1>
             <p className="mt-5 max-w-lg text-lg text-ink-600">

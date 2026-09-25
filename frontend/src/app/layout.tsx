@@ -1,6 +1,6 @@
 import './globals.css';
 import type { Metadata } from 'next';
-import { Fraunces, Inter } from 'next/font/google';
+import { Montserrat, Open_Sans } from 'next/font/google';
 import { AuthProvider } from '@/lib/auth-context';
 import { TopBar } from '@/components/layout/TopBar';
 import { Header } from '@/components/layout/Header';
@@ -9,8 +9,10 @@ import CookieConsent from '@/components/CookieConsent';
 import { LegalAcceptanceGate } from '@/components/LegalAcceptanceGate';
 import { ORGANIZATIONS_LAUNCHED } from '@/lib/features';
 
-const display = Fraunces({ subsets: ['latin'], variable: '--font-display', weight: ['500', '600'] });
-const sans = Inter({ subsets: ['latin'], variable: '--font-sans' });
+// Solo dos familias en todo el sitio: Montserrat para títulos (h1–h4 y el
+// logo) y Open Sans para el texto, los botones y los formularios.
+const display = Montserrat({ subsets: ['latin'], variable: '--font-display', weight: ['600', '700'] });
+const sans = Open_Sans({ subsets: ['latin'], variable: '--font-sans' });
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'),
