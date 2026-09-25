@@ -85,8 +85,11 @@ function MedicosPageContent() {
           }}
         >
           <Input
-            label="Buscar por nombre"
-            placeholder="Ej. Juan Pérez"
+            id="buscar-medico"
+            type="search"
+            label="Buscar médico"
+            placeholder="Nombre, especialidad o código (GM-…)"
+            hint="Solo busca médicos del directorio. Pulsa Enter para buscar."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />

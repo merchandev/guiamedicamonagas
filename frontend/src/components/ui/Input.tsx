@@ -13,9 +13,9 @@ interface FieldWrapperProps {
 // Borde ink-300 (no ink-200): sobre una tarjeta blanca, el campo debe verse
 // como un campo y no fundirse con el fondo ni con el campo de al lado.
 const fieldBase =
-  'block w-full rounded-lg border border-ink-300 bg-white px-3.5 py-2.5 text-sm text-ink-900 shadow-sm transition-colors placeholder:text-ink-400 hover:border-ink-400 focus:border-pine-600 focus:ring-pine-600 disabled:cursor-not-allowed disabled:bg-ink-50 disabled:text-ink-400';
+  'block w-full rounded-lg border border-ink-300 bg-white px-3.5 py-2.5 text-sm text-ink-900 shadow-sm transition-[border-color,box-shadow] placeholder:text-ink-400 hover:border-ink-400 focus:border-pine-600 focus:outline-none focus:ring-2 focus:ring-pine-600/20 disabled:cursor-not-allowed disabled:bg-ink-50 disabled:text-ink-400';
 
-const errorClasses = 'border-red-400 hover:border-red-500 focus:border-red-500 focus:ring-red-500';
+const errorClasses = 'border-red-400 hover:border-red-500 focus:border-red-500 focus:ring-red-500/20';
 
 /** ids de ayuda/error para `aria-describedby`: el lector de pantalla los lee al enfocar el campo. */
 function describedBy(fieldId: string | undefined, hint?: string, error?: string) {

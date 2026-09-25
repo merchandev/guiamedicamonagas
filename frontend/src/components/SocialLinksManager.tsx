@@ -33,7 +33,11 @@ export function SocialLinksManager({ planTier, initialLinks }: { planTier: PlanT
     setError(null);
     setSaving(true);
     try {
-      const saved = await api.put<SocialLink[]>('/professionals/me/social-links', { links: next });
+      // Solo plataforma y enlace: las filas guardadas traen id y fechas, y
+      // reenviarlas hacía fallar el guardado a partir de la segunda red.
+      const saved = await api.put<SocialLink[]>('/professionals/me/social-links', {
+        links: next.map(({ platform, url }) => ({ platform, url })),
+      });
       setLinks(saved);
       return true;
     } catch (e) {

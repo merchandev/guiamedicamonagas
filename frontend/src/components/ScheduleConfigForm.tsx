@@ -41,7 +41,15 @@ export function ScheduleConfigForm() {
     setSuccess(false);
     setSaving(true);
     try {
-      const updated = await api.put<ScheduleConfig>('/agenda/me', config);
+      // Solo los campos editables: la respuesta de la API trae además id,
+      // bloques y excepciones, y reenviarlos hacía fallar el guardado.
+      const updated = await api.put<ScheduleConfig>('/agenda/me', {
+        slotDurationMinutes: config.slotDurationMinutes,
+        bufferMinutes: config.bufferMinutes,
+        // null = sin límite diario (vaciar el campo quita el límite).
+        maxDailyAppointments: config.maxDailyAppointments,
+        autoConfirm: config.autoConfirm,
+      });
       setConfig(updated);
       setSuccess(true);
     } catch (e) {

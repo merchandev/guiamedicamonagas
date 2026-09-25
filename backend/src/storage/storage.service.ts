@@ -100,6 +100,13 @@ export class StorageService implements OnModuleInit {
     return getSignedUrl(this.presignClient, command, { expiresIn: expiresInSeconds });
   }
 
+  /** Lee un objeto desde la red interna (sin URL firmada), p. ej. para generar una miniatura. */
+  async getObjectBuffer(key: string): Promise<Buffer> {
+    const result = await this.client.send(new GetObjectCommand({ Bucket: this.bucket, Key: key }));
+    if (!result.Body) throw new Error('Objeto vacío');
+    return Buffer.from(await result.Body.transformToByteArray());
+  }
+
   async deleteObject(key: string): Promise<void> {
     await this.client.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: key }));
   }

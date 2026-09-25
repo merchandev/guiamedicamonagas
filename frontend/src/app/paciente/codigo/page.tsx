@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { renderSVG } from 'uqr';
 import { api, ApiError } from '@/lib/api';
 import { ALL_SCOPES, SCOPE_INFO, type PatientDataScope } from '@/lib/patient-scopes';
 import { Alert } from '@/components/ui/Alert';
@@ -10,6 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { PageSpinner } from '@/components/ui/Spinner';
 import { cn } from '@/lib/cn';
+import { brandQrSvg, downloadQrPng, svgDataUrl } from '@/lib/qr';
 
 interface ShareCode {
   code: string | null;
@@ -23,20 +23,6 @@ const STEPS = [
   'Tu médico te registra desde su panel y te ubica sin que tu nombre aparezca en ningún sitio público.',
   'Te llega un aviso. En «Permisos» ves quién te registró y puedes retirarle el acceso cuando quieras.',
 ];
-
-/** Convierte el QR (SVG) en PNG para compartirlo por WhatsApp o guardarlo en el teléfono. */
-async function svgToPng(svg: string, size = 720): Promise<string> {
-  const img = new Image();
-  img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
-  await img.decode();
-  const canvas = document.createElement('canvas');
-  canvas.width = size;
-  canvas.height = size;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error('Canvas no disponible');
-  ctx.drawImage(img, 0, 0, size, size);
-  return canvas.toDataURL('image/png');
-}
 
 export default function PatientShareCodePage() {
   const [data, setData] = useState<ShareCode | null>(null);
@@ -58,7 +44,7 @@ export default function PatientShareCodePage() {
 
   // El QR se dibuja en el navegador: el código no viaja a ningún servicio externo.
   const qrSvg = useMemo(
-    () => (data?.url ? renderSVG(data.url, { ecc: 'M', border: 2, blackColor: '#0f3d33', whiteColor: '#ffffff' }) : null),
+    () => (data?.url ? brandQrSvg(data.url) : null),
     [data?.url],
   );
 
@@ -108,10 +94,7 @@ export default function PatientShareCodePage() {
     if (!qrSvg || !data?.code) return;
     setBusy('download');
     try {
-      const link = document.createElement('a');
-      link.href = await svgToPng(qrSvg);
-      link.download = `codigo-paciente-${data.code}.png`;
-      link.click();
+      await downloadQrPng(qrSvg, `codigo-paciente-${data.code}.png`);
     } catch {
       setError('No se pudo descargar el QR');
     } finally {
@@ -140,7 +123,7 @@ export default function PatientShareCodePage() {
         <section aria-labelledby="codigo-titulo" className="card grid gap-6 p-6 sm:grid-cols-[auto_1fr] sm:items-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(qrSvg)}`}
+            src={svgDataUrl(qrSvg)}
             alt={`Código QR del código de paciente ${data.code}`}
             className="mx-auto h-56 w-56 rounded-lg border border-ink-200 bg-white p-1"
           />

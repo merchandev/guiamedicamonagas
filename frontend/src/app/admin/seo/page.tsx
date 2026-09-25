@@ -71,7 +71,16 @@ export default function AdminSeoPage() {
     setSubmitting(true);
     setError(null);
     try {
-      await api.put('/seo/pages', pageForm);
+      // Solo los campos editables: la fila guardada trae id y fechas, y un
+      // enlace de imagen vacío no es una URL válida. Vacío (null) = borrar.
+      await api.put('/seo/pages', {
+        path: pageForm.path,
+        title: pageForm.title || null,
+        metaDescription: pageForm.metaDescription || null,
+        focusKeyword: pageForm.focusKeyword || null,
+        ogImageUrl: pageForm.ogImageUrl || null,
+        noIndex: pageForm.noIndex ?? false,
+      });
       const refreshed = await api.get<PageSeo[]>('/seo/pages');
       setPages(refreshed);
       setSaved(true);

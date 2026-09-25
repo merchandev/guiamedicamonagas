@@ -8,10 +8,14 @@ import { Badge } from '@/components/ui/Badge';
 import { PageSpinner } from '@/components/ui/Spinner';
 import { VERIFICATION_LABELS } from '@/lib/labels';
 import { ProfessionalProgressCard } from '@/components/ProfessionalProgressCard';
+import { DoctorShareCodeCard } from '@/components/DoctorShareCodeCard';
 import type { ProfessionalProgress } from '@/lib/types';
 
 interface OwnProfile {
   slug: string;
+  firstName: string;
+  lastName: string;
+  publicCode: string | null;
   verificationStatus: string;
   isPublished: boolean;
   documents: { status: string }[];
@@ -69,6 +73,14 @@ export default function DashboardHome() {
       </div>
 
       {profile.progress && <ProfessionalProgressCard progress={profile.progress} isPublished={profile.isPublished} />}
+
+      {profile.publicCode && (
+        <DoctorShareCodeCard
+          code={profile.publicCode}
+          isPublished={profile.isPublished}
+          fullName={`Dr(a). ${profile.firstName} ${profile.lastName}`}
+        />
+      )}
 
       <div className="grid gap-4 sm:grid-cols-3">
         <Link href="/dashboard/perfil" className="card p-5 hover:shadow-card">

@@ -345,6 +345,38 @@ check('Profesional Plus sin el 100% de documentos → 403', r.status === 403, St
 r = await call('PATCH', '/professionals/me', { firstName: 'Paula', lastName: 'Mora', bio: 'Corta' }, pubToken);
 check('sin biografía completa deja de ser público', r.status === 200 && (await call('GET', `/professionals/${pub.slug}`)).status === 404);
 
+// 15d. Formulario del perfil: un campo vacío borra el dato (no es «inválido»)
+r = await call('PATCH', '/professionals/me', { firstName: 'Paula', lastName: 'Mora', phone: '0414-1234567', cedula: 'V-12345678' }, pubToken);
+check('guardar teléfono y cédula', r.status === 200 && r.data.phone === '0414-1234567', String(r.status));
+r = await call('PATCH', '/professionals/me', { firstName: 'Paula', lastName: 'Mora', phone: '', cedula: '  ', rif: '', address: '' }, pubToken);
+check('campos vacíos → se borran (antes: «Cédula inválida»)', r.status === 200 && r.data.phone === null && r.data.cedula === null, `${r.status} ${JSON.stringify(r.data?.message ?? '')}`);
+check('el perfil completo recibido de la API no se puede reenviar tal cual → 400', (await call('PATCH', '/professionals/me', { ...r.data, firstName: 'Paula', lastName: 'Mora' }, pubToken)).status === 400);
+
+// 15e. Buscador del directorio: solo médicos publicados, por nombre, especialidad o código
+const docRow = (await db.query(`select slug, "publicCode" from "ProfessionalProfile" where id=$1`, [doc.id])).rows[0];
+const pubCode = (await db.query(`select "publicCode" from "ProfessionalProfile" where id=$1`, [pub.id])).rows[0].publicCode;
+check('cada médico nace con su código público GM-XXXXXX', /^GM-[2-9A-HJKMNP-Z]{6}$/.test(docRow.publicCode ?? '') && /^GM-/.test(pubCode ?? ''), docRow.publicCode);
+await db.query(`update "ProfessionalProfile" set cedula='V-99887766', rif='V-99887766-5', address='Av. Bolívar, Torre Médica' where id=$1`, [doc.id]);
+const found = async (q) => ((await call('GET', `/professionals?search=${encodeURIComponent(q)}&limit=48`)).data?.items ?? []).map((i) => i.id);
+check('busca por nombre completo', (await found('Diana Rojas')).includes(doc.id));
+check('sin importar orden, mayúsculas ni tildes', (await found('RÓJAS diána')).includes(doc.id));
+check('busca por código del médico (con o sin guion)', (await found(docRow.publicCode.replace('-', '').toLowerCase())).includes(doc.id));
+r = await call('GET', `/professionals/by-code/${docRow.publicCode.toLowerCase()}`);
+check('el código (QR) lleva a la ficha pública', r.status === 200 && r.data.slug === docRow.slug);
+check('el código de un médico no publicado no revela nada → 404', (await call('GET', `/professionals/by-code/${pubCode}`)).status === 404);
+check('no busca por cédula', (await found('99887766')).length === 0);
+check('no busca por RIF', (await found('V-99887766-5')).length === 0);
+check('no busca por correo', (await found(`d-${run}@t.local`)).length === 0);
+check('no busca por dirección', (await found('Torre Médica')).length === 0);
+check('no encuentra pacientes por nombre', (await found('Pedro Luna')).length === 0);
+check('no encuentra pacientes por su código', (await found(newShareCode)).length === 0);
+check('foto para compartir: sin foto (o sin plan que la muestre) → 404, nunca otro dato', (await call('GET', `/professionals/${docRow.slug}/share-photo`)).status === 404 && (await call('GET', `/professionals/${pub.slug}/share-photo`)).status === 404);
+r = await call('GET', '/professionals/me', null, doctorToken);
+check('el panel sabe si la descripción SEO termina en «Agenda cita» (agenda activa)', r.status === 200 && r.data.bookingEnabled === true && r.data.publicCode === docRow.publicCode);
+r = await call('GET', `/professionals/${docRow.slug}`);
+const publicJson = JSON.stringify(r.data ?? {});
+check('la ficha pública muestra el código pero nunca cédula, RIF ni correo', r.status === 200 && r.data.publicCode === docRow.publicCode && !publicJson.includes('99887766') && !publicJson.includes(`d-${run}@t.local`) && !('cedula' in r.data) && !('rif' in r.data));
+
 // 16. Migración de datos heredados completa
 check('_PatientPlaintextLegacy no existe', (await db.query(`select to_regclass('public."_PatientPlaintextLegacy"') t`)).rows[0].t === null);
 

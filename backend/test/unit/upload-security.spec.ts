@@ -39,6 +39,18 @@ describe('findActivePdfContent', () => {
     expect(findActivePdfContent(Buffer.from('%PDF-1.4 << /Type /EmbeddedFile >>'))).toBe('/EmbeddedFile');
   });
 
+  it('no confunde bytes de una imagen o texto comprimido con una acción (PDF escaneado)', () => {
+    // Datos binarios de un flujo que contienen por azar "/JS " y "/XFA)".
+    const binary = Buffer.concat([
+      Buffer.from('%PDF-1.4\n1 0 obj << /Type /XObject /Subtype /Image /Length 40 >>\nstream\n'),
+      Buffer.from([0x9c, 0x2f, 0x4a, 0x53, 0x20, 0xff, 0x2f, 0x58, 0x46, 0x41, 0x29, 0x00]),
+      Buffer.from('\nendstream\nendobj\n'),
+    ]);
+    expect(findActivePdfContent(binary)).toBeNull();
+    // Pero una acción real, fuera del flujo, se sigue detectando.
+    expect(findActivePdfContent(Buffer.concat([binary, Buffer.from('2 0 obj << /S /JavaScript /JS (x) >> endobj')]))).toBe('/JavaScript');
+  });
+
   it('no marca un PDF simple ni nombres parecidos', () => {
     expect(findActivePdfContent(Buffer.from('%PDF-1.4 << /Type /Page /JSON_like /Font >>'))).toBeNull();
   });

@@ -1,5 +1,6 @@
 import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException, OnApplicationBootstrap } from '@nestjs/common';
 import { Prisma, RegistrationType } from '@prisma/client';
+import sharp from 'sharp';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -17,6 +18,7 @@ import {
   recomputeProfessionalStatus,
 } from './publication-rules';
 import { notifyProfilePublished } from './publication-notice';
+import { assignPublicCode, directorySearchWhere, normalizePublicCode, searchNameFor } from './professional-search.util';
 
 // Emisor de cada número que el médico carga en su perfil (ver ProfessionalRegistration).
 const REGISTRATION_SOURCES: {
@@ -89,11 +91,30 @@ export class ProfessionalsService implements OnApplicationBootstrap {
     private readonly geo: GeoService,
   ) {}
 
-  /** Mantiene al día el puntaje del directorio (p.ej. tras desplegar un cambio de fórmula). */
+  /**
+   * Mantiene al día el puntaje del directorio (p.ej. tras desplegar un cambio
+   * de fórmula), el nombre de búsqueda normalizado y el código público de los
+   * perfiles creados antes de que existiera.
+   */
   async onApplicationBootstrap() {
-    const profiles = await this.prisma.professionalProfile.findMany({ select: { id: true }, take: 5000 });
-    for (const { id } of profiles) await recomputeDirectoryScore(this.prisma, id);
+    const profiles = await this.prisma.professionalProfile.findMany({
+      select: { id: true, firstName: true, lastName: true, searchName: true, publicCode: true },
+      take: 5000,
+    });
+    let codes = 0;
+    for (const profile of profiles) {
+      await recomputeDirectoryScore(this.prisma, profile.id);
+      const searchName = searchNameFor(profile.firstName, profile.lastName);
+      if (searchName !== profile.searchName) {
+        await this.prisma.professionalProfile.update({ where: { id: profile.id }, data: { searchName } });
+      }
+      if (!profile.publicCode) {
+        await assignPublicCode(this.prisma, profile.id);
+        codes += 1;
+      }
+    }
     if (profiles.length) this.logger.log(`Puntaje de directorio recalculado para ${profiles.length} perfil(es)`);
+    if (codes) this.logger.log(`Código público asignado a ${codes} perfil(es)`);
   }
 
   private async signPhoto<T extends { photoUrl: string | null }>(profile: T): Promise<T> {
@@ -116,18 +137,17 @@ export class ProfessionalsService implements OnApplicationBootstrap {
     const page = Math.max(1, params.page ?? 1);
     const limit = Math.min(48, Math.max(1, params.limit ?? 12));
 
+    // Solo médicos publicados; la búsqueda usa nombre normalizado, especialidad
+    // o código público (ver directorySearchWhere): nada de pacientes ni de datos
+    // sensibles del médico.
+    const searchWhere = directorySearchWhere(params.search);
     const where: Prisma.ProfessionalProfileWhereInput = {
       isPublished: true,
       municipality: params.municipality || undefined,
       specialties: params.specialtySlug
         ? { some: { specialty: { slug: params.specialtySlug } } }
         : undefined,
-      OR: params.search
-        ? [
-            { firstName: { contains: params.search, mode: 'insensitive' } },
-            { lastName: { contains: params.search, mode: 'insensitive' } },
-          ]
-        : undefined,
+      ...(searchWhere ? { AND: [searchWhere] } : {}),
     };
 
     const [items, total] = await this.prisma.$transaction([
@@ -150,7 +170,7 @@ export class ProfessionalsService implements OnApplicationBootstrap {
     // Franja "Destacado" (patrocinada y rotativa): hasta 3 perfiles Premium
     // que cumplen el mismo filtro, mostrados aparte y señalados como tales.
     let featured: typeof signedItems = [];
-    if (page === 1 && !params.search) {
+    if (page === 1 && !searchWhere) {
       const premiumWhere: Prisma.ProfessionalProfileWhereInput = { ...where, planTier: 'PREMIUM' };
       const premiumCount = await this.prisma.professionalProfile.count({ where: premiumWhere });
       if (premiumCount > 0) {
@@ -168,14 +188,13 @@ export class ProfessionalsService implements OnApplicationBootstrap {
       where: { slug },
       select: {
         ...PUBLIC_LIST_SELECT,
+        publicCode: true,
+        // Resumen corto: alimenta la descripción automática para buscadores.
+        seoDescription: true,
         phone: true,
         address: true,
         latitude: true,
         longitude: true,
-        seoTitle: true,
-        seoDescription: true,
-        seoKeywords: true,
-        ogImageUrl: true,
         noIndex: true,
         verifiedAt: true,
         isPublished: true,
@@ -220,6 +239,37 @@ export class ProfessionalsService implements OnApplicationBootstrap {
     return this.signPhoto(shaped);
   }
 
+  /**
+   * Foto cuadrada en JPEG para la tarjeta al compartir la ficha (WhatsApp,
+   * Telegram, redes). Misma regla que la ficha pública: solo si está
+   * publicada y su plan muestra la foto. Nada más sale por aquí.
+   */
+  async sharePhoto(slug: string): Promise<Buffer> {
+    const profile = await this.prisma.professionalProfile.findUnique({
+      where: { slug },
+      select: { photoUrl: true, isPublished: true, planTier: true },
+    });
+    if (!profile?.isPublished || !profile.photoUrl || !tierAtLeast(profile.planTier, 'PROFESSIONAL')) {
+      throw new NotFoundException('Foto no disponible');
+    }
+    const original = await this.storage.getObjectBuffer(profile.photoUrl);
+    return sharp(original, { limitInputPixels: 40_000_000 })
+      .rotate()
+      .resize(480, 480, { fit: 'cover', position: 'attention' })
+      .jpeg({ quality: 84, mozjpeg: true })
+      .toBuffer();
+  }
+
+  /** Código público (texto o QR) → slug de la ficha, solo si está publicada. */
+  async findPublicByCode(rawCode: string) {
+    const publicCode = normalizePublicCode(rawCode);
+    const profile = publicCode
+      ? await this.prisma.professionalProfile.findUnique({ where: { publicCode }, select: { slug: true, isPublished: true } })
+      : null;
+    if (!profile?.isPublished) throw new NotFoundException('Código de médico no encontrado');
+    return { slug: profile.slug };
+  }
+
   async getOwnProfile(userId: string) {
     const profile = await this.prisma.professionalProfile.findUnique({
       where: { userId },
@@ -234,10 +284,14 @@ export class ProfessionalsService implements OnApplicationBootstrap {
           take: 1,
         },
         user: { select: { isEmailVerified: true } },
+        schedule: { select: { blocks: { select: { id: true }, take: 1 } } },
       },
     });
     if (!profile) throw new NotFoundException('No tienes un perfil profesional');
-    const { user, ...rest } = profile;
+    const { user, schedule, ...rest } = profile;
+    // Igual que en la ficha pública: decide si la descripción para buscadores
+    // termina en «Agenda cita.» (la vista previa del panel lo muestra).
+    const bookingEnabled = tierAtLeast(profile.planTier, AGENDA_MIN_TIER) && !!schedule && schedule.blocks.length > 0;
     const progress = professionalChecklist({
       ...rest,
       isEmailVerified: user.isEmailVerified,
@@ -245,7 +299,7 @@ export class ProfessionalsService implements OnApplicationBootstrap {
       socialPlatforms: profile.socialLinks.map((link) => link.platform),
       documents: documentProgress(profile.isSpecialist, profile.documents),
     });
-    return { ...(await this.signPhoto(rest)), progress };
+    return { ...(await this.signPhoto(rest)), progress, bookingEnabled };
   }
 
   async updateOwnProfile(userId: string, dto: UpdateProfessionalProfileDto) {
@@ -282,6 +336,7 @@ export class ProfessionalsService implements OnApplicationBootstrap {
         where: { id: profile.id },
         data: {
           ...rest,
+          searchName: searchNameFor(rest.firstName, rest.lastName),
           isSpecialist,
           // Un cambio de identidad en un perfil ya público o verificado espera
           // a que un administrador vuelva a revisar sus documentos.
@@ -399,7 +454,7 @@ export class ProfessionalsService implements OnApplicationBootstrap {
     for (const source of REGISTRATION_SOURCES) {
       const value = dto[source.field];
       if (value === undefined) continue;
-      if (!value.trim()) {
+      if (!value?.trim()) {
         await this.prisma.professionalRegistration.deleteMany({
           where: { professionalId, type: source.type, issuer: source.issuer },
         });

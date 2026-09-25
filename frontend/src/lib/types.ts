@@ -53,10 +53,10 @@ export interface ProfessionalDetail extends ProfessionalListItem {
   address: string | null;
   latitude: number | null;
   longitude: number | null;
-  seoTitle: string | null;
+  /** Código público «GM-XXXXXX» para compartir la ficha (texto o QR). */
+  publicCode: string | null;
+  /** «Resumen corto» del médico: alimenta la descripción automática para buscadores. */
   seoDescription: string | null;
-  seoKeywords: string | null;
-  ogImageUrl: string | null;
   noIndex: boolean;
   verifiedAt: string | null;
   locations: ProfessionalExtraLocation[];

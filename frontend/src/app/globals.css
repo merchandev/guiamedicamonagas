@@ -25,6 +25,14 @@
   :focus-visible {
     @apply outline-none ring-2 ring-pine-600 ring-offset-2 ring-offset-canvas;
   }
+
+  /* En los campos de texto el foco se marca en su propio borde, sin anillo
+     separado: con la separación se veía un borde doble al hacer clic. */
+  input:not([type='checkbox']):not([type='radio']):focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    @apply ring-offset-0;
+  }
 }
 
 @layer components {

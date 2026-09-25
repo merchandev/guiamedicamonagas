@@ -1,6 +1,6 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query, Req } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query, Req, Res, StreamableFile } from '@nestjs/common';
 import { Role } from '@prisma/client';
-import type { FastifyRequest } from 'fastify';
+import type { FastifyReply, FastifyRequest } from 'fastify';
 import { Public } from '../common/decorators/public.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -36,7 +36,8 @@ export class ProfessionalsController {
     return this.professionals.findPublicList({
       specialtySlug,
       municipality,
-      search,
+      // ?search=a&search=b llega como arreglo: solo se acepta un texto.
+      search: typeof search === 'string' ? search : undefined,
       page: page ? Number(page) : undefined,
       limit: limit ? Number(limit) : undefined,
     });
@@ -52,6 +53,22 @@ export class ProfessionalsController {
   @Get('landing-pages')
   landingPages() {
     return this.professionals.landingPages();
+  }
+
+  /** El QR o el código «GM-XXXXXX» del médico lleva a su ficha pública. */
+  @Public()
+  @Get('by-code/:code')
+  findByCode(@Param('code') code: string) {
+    return this.professionals.findPublicByCode(code);
+  }
+
+  /** Foto JPEG cuadrada para la tarjeta al compartir la ficha (la usa opengraph-image). */
+  @Public()
+  @Get(':slug/share-photo')
+  async sharePhoto(@Param('slug') slug: string, @Res({ passthrough: true }) reply: FastifyReply) {
+    const jpeg = await this.professionals.sharePhoto(slug);
+    reply.header('Content-Type', 'image/jpeg').header('Cache-Control', 'public, max-age=3600');
+    return new StreamableFile(jpeg);
   }
 
   @Roles(Role.PROFESSIONAL)

@@ -24,6 +24,7 @@ import { ROLE_PERMISSIONS } from '../common/permissions';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { generatePublicCode, searchNameFor } from '../professionals/professional-search.util';
 
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOCKOUT_MINUTES = 15;
@@ -119,12 +120,19 @@ export class AuthService {
         if (dto.role === 'PROFESSIONAL') {
           const base = slugify(`${dto.firstName} ${dto.lastName}`);
           const slug = `${base}-${created.id.slice(0, 6)}`;
+          let publicCode = generatePublicCode();
+          for (let attempt = 0; attempt < 5; attempt++) {
+            if (!(await tx.professionalProfile.findUnique({ where: { publicCode }, select: { id: true } }))) break;
+            publicCode = generatePublicCode();
+          }
           await tx.professionalProfile.create({
             data: {
               userId: created.id,
               slug,
+              publicCode,
               firstName: dto.firstName!.trim(),
               lastName: dto.lastName!.trim(),
+              searchName: searchNameFor(dto.firstName!, dto.lastName!),
             },
           });
         }

@@ -47,8 +47,14 @@ const ACTIVE_PDF_NAMES = ['/JavaScript', '/JS', '/Launch', '/EmbeddedFile', '/Ri
  * ClamAV configurado, pasan por el antivirus.
  */
 export function findActivePdfContent(buffer: Buffer): string | null {
+  // Solo se revisa la estructura del PDF (diccionarios), no el contenido de
+  // los flujos (`stream … endstream`): ahí van las imágenes y el texto
+  // comprimidos, datos binarios en los que 3 bytes como "/JS" aparecen por
+  // azar (≈1 de cada 10 PDF escaneados de 2 MB) y rechazaban documentos
+  // legítimos. Una acción JavaScript real vive en un diccionario.
   const text = buffer
     .toString('latin1')
+    .replace(/(?<![A-Za-z])stream(?:\r\n|\n|\r)[\s\S]*?endstream/g, 'stream endstream')
     .replace(/#([0-9A-Fa-f]{2})/g, (_m, hex: string) => String.fromCharCode(parseInt(hex, 16)));
   for (const name of ACTIVE_PDF_NAMES) {
     const pattern = new RegExp(`${name.replace('/', '\\/')}(?![A-Za-z0-9])`);

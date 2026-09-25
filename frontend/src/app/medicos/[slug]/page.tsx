@@ -9,6 +9,7 @@ import { WhatsAppButton, PhoneButton } from '@/components/ContactButtons';
 import { ProfileViewTracker } from '@/components/ProfileViewTracker';
 import { VerificationBadge } from '@/components/VerificationBadge';
 import { SocialLinksRow } from '@/components/SocialLinksRow';
+import { DoctorSeoInput, SITE_NAME, doctorSeoDescription, doctorSeoTitle } from '@/lib/seo';
 
 async function getDoctor(slug: string) {
   return serverGet<ProfessionalDetail>(`/professionals/${slug}`, 30);
@@ -19,19 +20,34 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const doctor = await getDoctor(slug);
   if (!doctor) return { title: 'Médico no encontrado' };
 
-  const fullName = `Dr(a). ${doctor.firstName} ${doctor.lastName}`;
-  const specialty = doctor.specialties[0]?.specialty.name;
-  const title = doctor.seoTitle || `${fullName}${specialty ? ` — ${specialty}` : ''} en Monagas`;
-  const description =
-    doctor.seoDescription ||
-    `Perfil verificado de ${fullName}${specialty ? `, ${specialty}` : ''} en Monagas. N° MPPS ${doctor.mppsNumber ?? 's/n'}.`;
+  // SEO automático con lo que el médico cargó (ver lib/seo.ts). La imagen para
+  // redes (WhatsApp, Telegram, Facebook, X) la genera opengraph-image.tsx con
+  // su foto: una URL estable, no la firmada que vence en una hora.
+  const seo = seoInput(doctor);
+  const title = doctorSeoTitle(seo);
+  const description = doctorSeoDescription(seo);
+  const url = `/medicos/${doctor.slug}`;
 
   return {
-    title,
+    title: { absolute: title },
     description,
-    keywords: doctor.seoKeywords ?? undefined,
+    alternates: { canonical: url },
     robots: doctor.noIndex ? { index: false, follow: false } : undefined,
-    openGraph: { title, description, images: doctor.ogImageUrl ? [doctor.ogImageUrl] : doctor.photoUrl ? [doctor.photoUrl] : undefined },
+    openGraph: { type: 'profile', title, description, url, siteName: SITE_NAME, locale: 'es_VE' },
+    twitter: { card: 'summary_large_image', title, description },
+  };
+}
+
+function seoInput(doctor: ProfessionalDetail): DoctorSeoInput {
+  return {
+    firstName: doctor.firstName,
+    lastName: doctor.lastName,
+    specialties: doctor.specialties.map((s) => s.specialty.name),
+    municipality: doctor.municipality,
+    summary: doctor.seoDescription,
+    // La API ya oculta la biografía si el plan no la muestra en público.
+    bio: doctor.bio,
+    bookingEnabled: doctor.bookingEnabled,
   };
 }
 
@@ -41,16 +57,25 @@ export default async function DoctorProfilePage({ params }: { params: Promise<{ 
   if (!doctor) notFound();
 
   const fullName = `Dr(a). ${doctor.firstName} ${doctor.lastName}`;
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
+  const profileUrl = `${siteUrl}/medicos/${doctor.slug}`;
+  // El enlace corto con el código no cambia aunque cambie el slug.
+  const shareUrl = doctor.publicCode ? `${siteUrl}/m/${doctor.publicCode}` : profileUrl;
+  const whatsappShare = `https://wa.me/?text=${encodeURIComponent(`${fullName} en Guía Médica Monagas: ${shareUrl}`)}`;
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'Physician',
     name: fullName,
+    url: profileUrl,
+    image: `${profileUrl}/opengraph-image`,
+    description: doctorSeoDescription(seoInput(doctor)),
+    identifier: doctor.publicCode ?? undefined,
     medicalSpecialty: doctor.specialties.map((s) => s.specialty.name),
     address: doctor.address
       ? { '@type': 'PostalAddress', streetAddress: doctor.address, addressRegion: 'Monagas', addressCountry: 'VE' }
       : undefined,
     telephone: doctor.phone ?? undefined,
-    url: doctor.socialLinks.find((l) => l.platform === 'WEBSITE')?.url,
+    sameAs: doctor.socialLinks.map((l) => l.url),
   };
 
   return (
@@ -84,6 +109,22 @@ export default async function DoctorProfilePage({ params }: { params: Promise<{ 
             <p className="mt-1 text-pine-700">
               {doctor.specialties.map((s) => s.specialty.name).join(', ') || 'Medicina General'}
             </p>
+            {doctor.publicCode && (
+              <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                <span className="text-ink-500">
+                  Código del médico:{' '}
+                  <span className="select-all font-mono font-semibold tracking-wider text-ink-800">{doctor.publicCode}</span>
+                </span>
+                <a
+                  href={whatsappShare}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-medium text-pine-700 hover:underline"
+                >
+                  Compartir por WhatsApp
+                </a>
+              </div>
+            )}
             {doctor.bio && <p className="mt-3 leading-relaxed text-ink-600">{doctor.bio}</p>}
             <SocialLinksRow links={doctor.socialLinks} resourceId={doctor.id} className="mt-3" />
           </div>

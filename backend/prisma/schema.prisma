@@ -159,6 +159,15 @@ model ProfessionalProfile {
   photoUrl  String?
   bio       String?
 
+  /// Código público del médico («GM-7KQ4M9»): lo comparte (texto o QR) para
+  /// que el paciente lo encuentre en el buscador o abra su ficha. No es un
+  /// secreto; es estable aunque cambie el slug. Se asigna al crear el perfil.
+  publicCode String? @unique
+  /// Nombre y apellido en minúsculas y sin tildes, solo para el buscador
+  /// («perez» encuentra a «Pérez»). El buscador nunca usa cédula, RIF,
+  /// correo ni dirección.
+  searchName String  @default("")
+
   // Avales legales y gremiales (obligatorios para publicarse en el directorio)
   mppsNumber          String?
   colmedMonagasNumber String?

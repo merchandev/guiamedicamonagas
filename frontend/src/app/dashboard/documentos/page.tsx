@@ -10,6 +10,9 @@ import { FileButton } from '@/components/ui/FileButton';
 import { DOCUMENT_STATUS_LABELS, DOCUMENT_TYPE_LABELS } from '@/lib/labels';
 import { DocumentType, ProfessionalDocument } from '@/lib/types';
 
+/** Mismo tope que la API (MAX_DOCUMENT_SIZE_BYTES): se avisa antes de subir. */
+const MAX_DOCUMENT_BYTES = 10 * 1024 * 1024;
+
 interface DocsResponse {
   documents: ProfessionalDocument[];
   required: { type: DocumentType; label: string; category: string; categoryLabel: string }[];
@@ -34,6 +37,12 @@ export default function DocumentsPage() {
 
   const handleUpload = async (type: DocumentType, file: File) => {
     setError(null);
+    if (file.size > MAX_DOCUMENT_BYTES) {
+      setError(
+        `El archivo pesa ${(file.size / 1024 / 1024).toFixed(1)} MB y el máximo es 10 MB. Comprímelo o escanéalo en menor resolución (una foto nítida en JPG también sirve).`,
+      );
+      return;
+    }
     setUploadingType(type);
     try {
       const formData = new FormData();

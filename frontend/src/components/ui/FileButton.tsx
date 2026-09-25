@@ -2,6 +2,7 @@
 
 import { useId } from 'react';
 import { cn } from '@/lib/cn';
+import { shrinkImageIfLarge } from '@/lib/image-upload';
 
 /**
  * Botón para elegir un archivo que funciona con teclado: el `<input type="file">`
@@ -44,11 +45,12 @@ export function FileButton({
         disabled={disabled}
         aria-describedby={describedBy}
         className="sr-only"
-        onChange={(e) => {
+        onChange={async (e) => {
           const file = e.target.files?.[0];
           // Se limpia para poder volver a elegir el mismo archivo tras un error.
           e.target.value = '';
-          if (file) onFile(file);
+          // Las fotos grandes del teléfono se reducen antes de subir (ver image-upload.ts).
+          if (file) onFile(await shrinkImageIfLarge(file));
         }}
       />
     </label>

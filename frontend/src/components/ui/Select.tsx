@@ -175,9 +175,10 @@ export function Select({
         onKeyDown={onKeyDown}
         className={cn(
           'flex h-11 w-full items-center justify-between gap-2 rounded-lg border border-ink-300 bg-white px-3.5 text-left text-sm text-ink-800 shadow-sm transition-colors',
-          'hover:border-ink-400 focus:border-pine-600 focus:outline-none focus:ring-2 focus:ring-pine-600',
+          // Igual que los campos de texto: borde y halo suave, sin anillo separado.
+          'hover:border-ink-400 focus:border-pine-600 focus:outline-none focus:ring-2 focus:ring-pine-600/20 focus-visible:ring-offset-0',
           disabled && 'cursor-not-allowed bg-ink-50 text-ink-400 hover:border-ink-300',
-          error && 'border-red-400 focus:border-red-500 focus:ring-red-500',
+          error && 'border-red-400 focus:border-red-500 focus:ring-red-500/20',
           className,
         )}
       >

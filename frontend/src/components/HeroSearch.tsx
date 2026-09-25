@@ -25,10 +25,12 @@ export function HeroSearch({ specialties }: { specialties: Specialty[] }) {
   return (
     <form onSubmit={onSubmit} className="card grid items-start gap-3 p-4 sm:grid-cols-[1fr_1fr_1fr_auto] sm:p-3">
       <input
+        type="search"
         value={q}
         onChange={(e) => setQ(e.target.value)}
-        placeholder="Nombre del médico"
-        className="h-11 rounded-lg border-ink-200 text-sm placeholder:text-ink-400 focus:border-pine-600 focus:ring-pine-600"
+        aria-label="Buscar médico por nombre, especialidad o código"
+        placeholder="Nombre, especialidad o código (GM-…)"
+        className="h-11 rounded-lg border border-ink-300 px-3.5 text-sm shadow-sm placeholder:text-ink-400 hover:border-ink-400 focus:border-pine-600 focus:outline-none focus:ring-2 focus:ring-pine-600/20"
       />
       <Select
         value={especialidad}

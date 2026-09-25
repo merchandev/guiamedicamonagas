@@ -79,7 +79,7 @@ export function publicationRequirements(p: PublicationInput) {
       label: `Al menos ${p.documents.minimumToPublish} de ${p.documents.required} documentos aprobados (60%)`,
       done: p.documents.approved >= p.documents.minimumToPublish,
     },
-    { key: 'bio', label: `Biografía (mínimo ${MIN_BIO_LENGTH} caracteres)`, done: hasCompleteBio(p.bio) },
+    { key: 'bio', label: `Biografía profesional (mínimo ${MIN_BIO_LENGTH} caracteres)`, done: hasCompleteBio(p.bio) },
     { key: 'photo', label: 'Foto de perfil', done: !!p.photoUrl },
   ];
 }
@@ -134,7 +134,7 @@ export function professionalChecklist(p: ChecklistInput) {
     { key: 'photo', label: 'Foto de perfil', done: !!p.photoUrl, href: '/dashboard/perfil', requiredToPublish: true },
     {
       key: 'bio',
-      label: `Biografía (mínimo ${MIN_BIO_LENGTH} caracteres)`,
+      label: `Biografía profesional (mínimo ${MIN_BIO_LENGTH} caracteres)`,
       done: hasCompleteBio(p.bio),
       href: '/dashboard/perfil',
       requiredToPublish: true,
