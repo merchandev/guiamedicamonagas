@@ -3,7 +3,7 @@
 > Bitácora central de cambios, implementaciones, decisiones técnicas y tareas de evolución del sistema.
 >
 > **Repositorio:** [`merchandev/guiamedicamonagas`](https://github.com/merchandev/guiamedicamonagas) · **Rama:** `main`<br>
-> **Última actualización de esta bitácora:** `2026-09-25 15:53:01 -04:00` · **Estado:** 🟢 Registro activo
+> **Última actualización de esta bitácora:** `2026-09-25 16:28:26 -04:00` · **Estado:** 🟢 Registro activo
 
 ![Estado](https://img.shields.io/badge/estado-registro%20activo-16a34a?style=flat-square)
 ![Rama](https://img.shields.io/badge/rama-main-2563eb?style=flat-square)
@@ -130,8 +130,11 @@ flowchart LR
     Y[🏷️ 2026-09-25\n14:45:46\nACT-0025 · Farmacias «Próximamente»\ny HTTPS reforzado]
     Z[🔤 2026-09-25\n15:09:34\nACT-0026 · Tipografía corporativa\nMontserrat + Open Sans]
     AA[🪪 2026-09-25\n15:39:56\nACT-0027 · Código y QR del paciente,\nbóveda y noindex]
+    AB[🩹 2026-09-25\n16:20:34\nACT-0028 · Guardado, subidas\ny controles corregidos]
+    AC[🔎 2026-09-25\n16:20:34\nACT-0029 · Código y QR del médico,\nbuscador solo de médicos]
+    AD[🏷️ 2026-09-25\n16:20:34\nACT-0030 · SEO automático\ny tarjeta al compartir]
 
-    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L --> M --> N --> O --> P --> Q --> R --> S --> T --> U --> V --> W --> X --> Y --> Z --> AA
+    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L --> M --> N --> O --> P --> Q --> R --> S --> T --> U --> V --> W --> X --> Y --> Z --> AA --> AB --> AC --> AD
 ```
 
 ### Resumen cuantitativo
@@ -139,8 +142,8 @@ flowchart LR
 | Indicador | Resultado |
 |---|---:|
 | Actividades históricas importadas desde Git | `3` |
-| Actividades documentales añadidas con esta bitácora | `24` |
-| Actividades registradas en total | `27` |
+| Actividades documentales añadidas con esta bitácora | `27` |
+| Actividades registradas en total | `30` |
 | Rama de referencia | `main` |
 | Commit base consultado | [`81b1091`](https://github.com/merchandev/guiamedicamonagas/commit/81b1091) |
 | Zona horaria de control | `America/Caracas` (`-04:00`) |
@@ -1054,6 +1057,105 @@ El titular pidió cuatro cosas:
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
+<a id="act-0028"></a>
+
+### 🩹 ACT-0028 · Errores al guardar y subir documentos, suiches, botones y campos que se deformaban
+
+<details>
+<summary><strong>2026-09-25 16:20:34 -04:00</strong> · <code>e94302d</code> · 🟢 Completado</summary>
+
+**Responsable:** `Claude Opus 5.5` · **Tipo:** `corrección | ux | a11y` · **Commit:** [`e94302d`](https://github.com/merchandev/guiamedicamonagas/commit/e94302d) (junto con [ACT-0029](#act-0029) y [ACT-0030](#act-0030))
+
+El titular compartió tres capturas: el suiche «Soy una persona sana» deformado, el campo «Título SEO» con borde doble al hacer clic, y el perfil del médico con el error «property id should not exist… Cédula inválida. RIF inválido. Teléfono inválido» al guardar. También reportó errores al subir documentos y pidió revisar cabos sueltos de cambios anteriores.
+
+**Guardado:**
+- **Perfil del médico:** reenviaba el perfil completo recibido de la API (`id`, `slug`, `progress`…) y los campos vacíos como texto vacío, que no pasaba el formato de cédula, RIF o teléfono. Ahora envía solo sus campos, y la API recorta espacios y entiende un campo vacío como «borrar el dato».
+- El mismo defecto (reenviar filas guardadas con `id` y fechas) hacía fallar la **configuración de la agenda**, las **redes sociales** a partir de la segunda y el **SEO de páginas** del panel de administración. Se corrigieron los tres.
+- `syncRegistrations` ya no falla al borrar un número de registro.
+
+**Documentos:**
+- El detector de «contenido activo» en PDF revisaba también los datos binarios de las imágenes escaneadas, donde los 3 bytes `/JS` aparecen por azar: en una simulación, rechazaba **11 de cada 100** PDF escaneados de 2 MB. Ahora revisa solo la estructura del PDF, y una acción JavaScript real se sigue bloqueando (prueba unitaria nueva).
+- Las fotos grandes del teléfono se reducen en el navegador antes de subirlas; el tope de 5 MB de la foto de perfil las rechazaba.
+- La página de documentos avisa del tope de 10 MB antes de subir.
+
+**Controles:**
+- **Suiche:** a la bolita le faltaba `left`; el botón la centraba y el desplazamiento la sacaba del riel, encima del texto.
+- **Campos de texto y desplegables:** el anillo de foco global, con separación, se veía como borde doble al hacer clic. Ahora el foco se marca con borde verde y un halo suave.
+- **Botones que cargan:** se volvían grises (usaban el color de «deshabilitado») y crecían con la ruedita. Ahora conservan color y tamaño y anuncian `aria-busy`.
+- **Cabo suelto de ACT-0021:** el perfil mostraba el viejo «Perfil completo al 0%». Ahora muestra la misma barra de progreso del inicio del panel.
+
+**Verificación:** en una página temporal con los componentes reales (borrada antes del commit), la bolita queda dentro del riel, el botón mide lo mismo antes y durante la carga (146 px) y sigue verde, y el campo enfocado tiene borde verde y halo sin separación. En e2e: vaciar teléfono y cédula los borra, y reenviar el perfil completo sigue dando 400.<br>
+**Archivos destacados:** [`frontend/src/app/dashboard/perfil/page.tsx`](frontend/src/app/dashboard/perfil/page.tsx), [`backend/src/professionals/dto/update-professional-profile.dto.ts`](backend/src/professionals/dto/update-professional-profile.dto.ts), [`backend/src/uploads/file-inspection.ts`](backend/src/uploads/file-inspection.ts), [`frontend/src/components/ui/Switch.tsx`](frontend/src/components/ui/Switch.tsx), [`frontend/src/components/ui/Button.tsx`](frontend/src/components/ui/Button.tsx).
+
+</details>
+
+<p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
+
+<a id="act-0029"></a>
+
+### 🔎 ACT-0029 · Código y QR del médico, y buscador que solo busca médicos
+
+<details>
+<summary><strong>2026-09-25 16:20:34 -04:00</strong> · <code>e94302d</code> · 🟢 Completado</summary>
+
+**Responsable:** `Claude Opus 5.5` · **Tipo:** `funcionalidad | privacidad` · **Commit:** [`e94302d`](https://github.com/merchandev/guiamedicamonagas/commit/e94302d)
+
+El titular pidió que los médicos también tengan un código y un QR para compartir su ficha, que ese código sirva en el buscador, y que el buscador solo busque en el directorio de médicos: nunca por cédula, RIF, correo ni dirección, y nunca datos de pacientes.
+
+**Código del médico:**
+- Cada médico tiene un código público `GM-XXXXXX`: se asigna al registrarse, y la API se lo dio al arrancar al único perfil existente.
+- En el inicio de su panel ve el código y su QR, con botones para copiar código o enlace, descargar el QR y compartir por WhatsApp.
+- El QR abre `/m/<código>`, que siempre lleva a la ficha actual aunque cambie el slug.
+- La ficha pública muestra el código y un enlace «Compartir por WhatsApp».
+- No es un secreto; un código de un médico no publicado responde 404.
+
+**Buscador:**
+- Busca solo por nombre (columna nueva `searchName`: sin importar tildes, mayúsculas ni orden, así «perez» encuentra a «Pérez»), por especialidad o por código.
+- La consulta es únicamente sobre médicos publicados, así que nunca toca pacientes, cédula, RIF, correo, teléfono ni dirección.
+- Una sola letra no devuelve todo el directorio, y un `?search=` repetido se ignora (antes podía fallar).
+- Los cuadros de búsqueda dicen «Nombre, especialidad o código (GM-…)»; el del directorio no tenía su etiqueta asociada al campo.
+
+**Verificación:** unitarias del código y de la normalización, incluida una que comprueba que el filtro nunca menciona campos sensibles. En e2e: encuentra por nombre completo, por orden inverso con tildes y por código sin guion; no encuentra por cédula, RIF, correo ni dirección, ni pacientes por nombre o por su código; `by-code` lleva a la ficha, y la ficha pública trae el código sin cédula, RIF ni correo. En producción: migración aplicada, código asignado al médico existente, 404 para códigos inexistentes y 0 resultados para una letra.<br>
+**Archivos destacados:** [`backend/src/professionals/professional-search.util.ts`](backend/src/professionals/professional-search.util.ts), [`frontend/src/components/DoctorShareCodeCard.tsx`](frontend/src/components/DoctorShareCodeCard.tsx), [`frontend/src/app/m/[code]/page.tsx`](frontend/src/app/m/%5Bcode%5D/page.tsx).
+
+</details>
+
+<p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
+
+<a id="act-0030"></a>
+
+### 🏷️ ACT-0030 · SEO automático del médico y tarjeta con su foto al compartir
+
+<details>
+<summary><strong>2026-09-25 16:20:34 -04:00</strong> · <code>e94302d</code> · 🟢 Completado</summary>
+
+**Responsable:** `Claude Opus 5.5` · **Tipo:** `seo | contenido` · **Commit:** [`e94302d`](https://github.com/merchandev/guiamedicamonagas/commit/e94302d)
+
+El titular pidió SEO automático con lo que carga el médico: título «Nombre - Especialidad y el nombre de la plataforma», descripción con el nombre, la especialidad y parte del resumen o la biografía, terminada en «Agenda cita» y con el largo que permite Google. Pidió además la foto del médico al compartir su ficha en redes, Telegram y WhatsApp, y que «Biografía» pase a llamarse «Biografía profesional».
+
+**Título y descripción ([`lib/seo.ts`](frontend/src/lib/seo.ts)):**
+- Título: «Ana Pérez - Cardiología | Guía Médica Monagas», con un máximo de 60 caracteres. Si no cabe, usa primer nombre y primer apellido, y luego recorta la especialidad sin cortar en un conector.
+- Descripción: «Ana Pérez, Cardiología en Maturín, Monagas. <resumen corto o biografía recortado…> Agenda cita.», con un máximo de ~155 caracteres.
+- «Agenda cita.» solo aparece si el médico recibe citas en línea; si no, termina en «Ver perfil y contacto.», para no prometer algo que su ficha no ofrece.
+- La biografía entra solo si su plan la muestra en público (igual que la ficha).
+- Se retiró el campo manual «Título SEO». El resumen corto sigue siendo del médico y el panel muestra en vivo «Así te verán en Google».
+- La etiqueta dice «Biografía profesional» en el formulario y en la barra de progreso.
+
+**Tarjeta para compartir:**
+- `/medicos/<slug>/opengraph-image` genera una tarjeta de 1200×630 centrada, para que el recorte cuadrado de WhatsApp conserve lo esencial: foto (o iniciales), nombre, especialidad, municipio, «Médico verificado», código y la marca.
+- Antes se usaba la foto firmada, que **vencía en una hora**.
+- La foto sale de un endpoint nuevo, `/professionals/<slug>/share-photo`: JPEG cuadrado, solo si la ficha está publicada y su plan muestra la foto (el plan básico la oculta en público, y ahí la tarjeta usa iniciales).
+- Se agregaron la tarjeta para X (`summary_large_image`), la URL canónica y un JSON-LD más completo (url, imagen, descripción, código, redes).
+
+**Verificación:** las funciones de SEO se probaron con nombres largos, sin especialidad y sin resumen. La tarjeta se renderizó con y sin foto; se corrigió un «✓» que la fuente de la imagen no trae. `next build` limpio, 132/132 en e2e, y en producción la tarjeta de respaldo responde 200 en PNG.<br>
+**Nota:** todavía no hay médicos publicados en producción, así que la tarjeta con foto real se verá con el primero que se publique.<br>
+**Despliegue de ACT-0028 a ACT-0030 (2026-09-25):** migración `20260925210000_professional_public_code_and_search_name` aplicada, prueba de humo **25/25**, los demás proyectos del VPS intactos. En el sitio, el buscador del directorio muestra la nueva etiqueta y el nuevo texto, sin errores de consola.<br>
+**Archivos destacados:** [`frontend/src/lib/seo.ts`](frontend/src/lib/seo.ts), [`frontend/src/app/medicos/[slug]/opengraph-image.tsx`](frontend/src/app/medicos/%5Bslug%5D/opengraph-image.tsx), [`frontend/src/lib/doctor-share-card.tsx`](frontend/src/lib/doctor-share-card.tsx).
+
+</details>
+
+<p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
+
 <a id="registro-por-area"></a>
 
 ## 🧩 Registro por área
@@ -1064,14 +1166,14 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 |---|---|---|
 | 🧱 Fundación técnica | NestJS, Next.js, Prisma, Docker, Caddy, Tailwind | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) |
 | 🔐 Auth y seguridad | JWT, refresh cookie, roles, correo, recuperación, throttling, Argon2id, permisos granulares, reuso de tokens, `tokenVersion`, cerrar todas las sesiones, MFA obligatorio en producción, subidas seguras, antivirus obligatorio y rotación de claves, bóveda de registros de pacientes con código de seguridad | [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0012](#act-0012) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0019](#act-0019) · [ACT-0024](#act-0024) · [ACT-0027](#act-0027) |
-| 👨‍⚕️ Profesionales | Perfiles, ubicaciones, documentos, verificación legal (sin solvencia deontológica), publicación con el 60% aprobado + biografía + foto, barra de progreso del registro, redes sociales, badges | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0020](#act-0020) · [ACT-0021](#act-0021) |
+| 👨‍⚕️ Profesionales | Perfiles, ubicaciones, documentos, verificación legal (sin solvencia deontológica), publicación con el 60% aprobado + biografía + foto, barra de progreso del registro, redes sociales, badges, código y QR del médico, SEO automático y tarjeta para compartir | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0020](#act-0020) · [ACT-0021](#act-0021) · [ACT-0028](#act-0028) · [ACT-0029](#act-0029) · [ACT-0030](#act-0030) |
 | 🏥 Organizaciones | Farmacias, laboratorios, clínicas, ubicaciones, autogestión, equipo con invitaciones y roles internos, médicos asociados y plan propio, sección «Próximamente» hasta cerrar alianzas | [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0015](#act-0015) · [ACT-0019](#act-0019) · [ACT-0025](#act-0025) |
 | 💳 Monetización | Planes, Pago Móvil, aprobación, tasa BCV, evidencia de tasa por cuota, catálogo de bancos, referencia única atómica y Plus/Premium solo con el 100% de documentos | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0010](#act-0010) · [ACT-0011](#act-0011) · [ACT-0015](#act-0015) · [ACT-0019](#act-0019) · [ACT-0021](#act-0021) |
 | 📅 Agenda y citas | Horarios, disponibilidad, reservas, máquina de estados, anti-doble-reserva, zona America/Caracas | [ACT-0007](#act-0007) · [ACT-0015](#act-0015) |
-| 🔒 Pacientes | Código pseudónimo, cifrado de datos de salud, consentimiento por alcance y tiempo, lecturas auditadas, registro propio, foto de identificación verificada por un admin, reserva con la ficha propia, código y QR para compartir, directorio del médico por código, bóveda de administración y noindex y registro visible desde el inicio | [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0023](#act-0023) · [ACT-0027](#act-0027) |
+| 🔒 Pacientes | Código pseudónimo, cifrado de datos de salud, consentimiento por alcance y tiempo, lecturas auditadas, registro propio, foto de identificación verificada por un admin, reserva con la ficha propia, código y QR para compartir, directorio del médico por código, bóveda de administración y noindex y registro visible desde el inicio | [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0023](#act-0023) · [ACT-0027](#act-0027) · [ACT-0029](#act-0029) |
 | 🛠️ Administración | Médicos, pagos, SEO, cookies, especialidades, planes, verificaciones, organizaciones, bancos, geografía e identidad de pacientes | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) |
 | 📊 Observabilidad | Auditoría, analítica con consentimiento y sin IP, notificaciones, salud, pruebas, CI, escaneo de imágenes y Dependabot | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) |
-| 🎨 Experiencia | Directorios, dashboard, componentes UI, motion, legal, formularios legibles y utilizables con teclado, sección de pacientes en el inicio, tipografía Montserrat + Open Sans | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0013](#act-0013) · [ACT-0014](#act-0014) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0017](#act-0017) · [ACT-0019](#act-0019) · [ACT-0022](#act-0022) · [ACT-0023](#act-0023) · [ACT-0025](#act-0025) · [ACT-0026](#act-0026) |
+| 🎨 Experiencia | Directorios, dashboard, componentes UI, motion, legal, formularios legibles y utilizables con teclado, sección de pacientes en el inicio, tipografía Montserrat + Open Sans, suiches, botones y foco de campos corregidos | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0013](#act-0013) · [ACT-0014](#act-0014) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0017](#act-0017) · [ACT-0019](#act-0019) · [ACT-0022](#act-0022) · [ACT-0023](#act-0023) · [ACT-0025](#act-0025) · [ACT-0026](#act-0026) · [ACT-0028](#act-0028) |
 | 🚢 Operación | Variables de entorno, Compose, almacenamiento, correo, proxy, imágenes mínimas y antivirus | [ACT-0001](#act-0001) · [ACT-0002](#act-0002) · [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0008](#act-0008) · [ACT-0009](#act-0009) · [ACT-0011](#act-0011) · [ACT-0016](#act-0016) · [ACT-0017](#act-0017) · [ACT-0018](#act-0018) · [ACT-0019](#act-0019) · [ACT-0024](#act-0024) · [ACT-0027](#act-0027) |
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
@@ -1135,6 +1237,9 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | IMP-051 | Tipografía corporativa de dos familias: Montserrat (títulos) y Open Sans (texto), servidas desde el dominio con `next/font` | 🟢 Completado | [`frontend/src/app/layout.tsx`](frontend/src/app/layout.tsx), [`frontend/src/app/globals.css`](frontend/src/app/globals.css) |
 | IMP-052 | Código aleatorio y QR del paciente (cifrado, rotable, con alcances elegidos) y registro en el directorio del médico por código, sin que una revocación se evada con el mismo código | 🟢 Completado | [`backend/src/patients/share-code.util.ts`](backend/src/patients/share-code.util.ts), [`frontend/src/app/paciente/codigo/page.tsx`](frontend/src/app/paciente/codigo/page.tsx) |
 | IMP-053 | Bóveda de registros de pacientes para la administración: código de seguridad (solo hash), 15 minutos, bloqueo por fallos y auditoría; pacientes con noindex forzado | 🟢 Completado | [`backend/src/patients/patient-vault.service.ts`](backend/src/patients/patient-vault.service.ts), [`scripts/set-patient-vault-code.sh`](scripts/set-patient-vault-code.sh) |
+| IMP-054 | Formularios que envían solo sus campos (perfil, agenda, redes, SEO de páginas), campo vacío = borrar, detector de PDF sin falsos positivos y fotos reducidas antes de subir | 🟢 Completado | [`frontend/src/app/dashboard/perfil/page.tsx`](frontend/src/app/dashboard/perfil/page.tsx), [`backend/src/uploads/file-inspection.ts`](backend/src/uploads/file-inspection.ts) |
+| IMP-055 | Código público y QR del médico (`/m/<código>`) y buscador del directorio solo por nombre normalizado, especialidad o código | 🟢 Completado | [`backend/src/professionals/professional-search.util.ts`](backend/src/professionals/professional-search.util.ts), [`frontend/src/components/DoctorShareCodeCard.tsx`](frontend/src/components/DoctorShareCodeCard.tsx) |
+| IMP-056 | SEO automático de la ficha (título, descripción, canónica, JSON-LD) y tarjeta 1200×630 con la foto del médico al compartir | 🟢 Completado | [`frontend/src/lib/seo.ts`](frontend/src/lib/seo.ts), [`frontend/src/app/medicos/[slug]/opengraph-image.tsx`](frontend/src/app/medicos/%5Bslug%5D/opengraph-image.tsx) |
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
@@ -1173,6 +1278,7 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | 🟡 Baja | Fase 7 · Compatibilidad con app Flutter (Android/iOS) | 🔵 Planificado | Variante de autenticación por token para clientes no-navegador |
 | 🔴 Alta | Cambiar el código de seguridad de la bóveda de pacientes: el actual se compartió por chat. En el servidor, `bash scripts/set-patient-vault-code.sh` (lo pide sin mostrarlo) | 🔴 Pendiente del titular | Código nuevo que solo conozca el titular; el anterior deja de abrir la bóveda |
 | 🟡 Baja | Decidir si el directorio de pacientes y el registro por código se abren al plan básico (hoy desde el plan Profesional, como la agenda) | 🔵 Planificado | Decisión del titular; es un cambio de una línea en `AGENDA_MIN_TIER` o una verificación propia |
+| 🟡 Baja | Decidir si el plan básico muestra foto y biografía en público (hoy son obligatorias para publicarse pero se ocultan en ese plan; por eso su tarjeta al compartir usa iniciales y su descripción SEO no usa la biografía) | 🔵 Planificado | Decisión del titular; `gateByTier` en `professionals.service.ts` |
 | 🟠 Media | Proteger la rama `main` (al menos contra *force push* y borrado) y activar las alertas de Dependabot | 🔴 Bloqueado | Decisión del usuario sobre los ajustes del repositorio; ver [ACT-0017](#act-0017) |
 | 🟢 Continua | Registrar cada modificación nueva con fecha, hora, responsable y evidencia | 🟢 Activo | No existen cambios relevantes sin entrada en esta bitácora |
 | 🟢 Continua | Confirmar en el repositorio remoto cada cambio cerrado localmente | 🟢 Activo | `git status` limpio y `origin/main` sincronizado al cierre de cada sesión |
@@ -1249,6 +1355,7 @@ Para cada cambio futuro, añadir una entrada en la línea de tiempo y actualizar
 | `2026-09-25 14:51:05 -04:00` | Incorporación de ACT-0025 (farmacias, laboratorios y clínicas como «Próximamente» y `upgrade-insecure-requests`) con su despliegue | 🟢 Completado |
 | `2026-09-25 15:17:19 -04:00` | Incorporación de ACT-0026 (tipografía corporativa Montserrat + Open Sans) con su despliegue | 🟢 Completado |
 | `2026-09-25 15:53:01 -04:00` | Incorporación de ACT-0027 (código y QR del paciente, directorio del médico por código, bóveda de administración y noindex) con su despliegue, dos pendientes nuevos | 🟢 Completado |
+| `2026-09-25 16:28:26 -04:00` | Incorporación de ACT-0028 (guardado, subidas y controles), ACT-0029 (código y QR del médico, buscador solo de médicos) y ACT-0030 (SEO automático y tarjeta al compartir) con su despliegue | 🟢 Completado |
 
 ---
 
