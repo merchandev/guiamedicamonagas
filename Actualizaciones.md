@@ -3,7 +3,7 @@
 > Bitácora central de cambios, implementaciones, decisiones técnicas y tareas de evolución del sistema.
 >
 > **Repositorio:** [`merchandev/guiamedicamonagas`](https://github.com/merchandev/guiamedicamonagas) · **Rama:** `main`<br>
-> **Última actualización de esta bitácora:** `2026-09-25 06:30:55 -04:00` · **Estado:** 🟢 Registro activo
+> **Última actualización de esta bitácora:** `2026-09-25 14:36:20 -04:00` · **Estado:** 🟢 Registro activo
 
 ![Estado](https://img.shields.io/badge/estado-registro%20activo-16a34a?style=flat-square)
 ![Rama](https://img.shields.io/badge/rama-main-2563eb?style=flat-square)
@@ -126,8 +126,9 @@ flowchart LR
     U[📈 2026-09-24\n18:14:00\nACT-0021 · Publicación con 60%,\nPlus/Premium con 100% y progreso]
     V[⌨️ 2026-09-24\n18:31:52\nACT-0022 · Formularios claros\ny con teclado]
     W[🧑‍🤝‍🧑 2026-09-25\n06:25:35\nACT-0023 · Registro de pacientes\nen el inicio]
+    X[🔒 2026-09-25\n14:29:46\nACT-0024 · HTTPS en\nguiamedicamonagas.com]
 
-    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L --> M --> N --> O --> P --> Q --> R --> S --> T --> U --> V --> W
+    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L --> M --> N --> O --> P --> Q --> R --> S --> T --> U --> V --> W --> X
 ```
 
 ### Resumen cuantitativo
@@ -135,8 +136,8 @@ flowchart LR
 | Indicador | Resultado |
 |---|---:|
 | Actividades históricas importadas desde Git | `3` |
-| Actividades documentales añadidas con esta bitácora | `20` |
-| Actividades registradas en total | `23` |
+| Actividades documentales añadidas con esta bitácora | `21` |
+| Actividades registradas en total | `24` |
 | Rama de referencia | `main` |
 | Commit base consultado | [`81b1091`](https://github.com/merchandev/guiamedicamonagas/commit/81b1091) |
 | Zona horaria de control | `America/Caracas` (`-04:00`) |
@@ -689,7 +690,7 @@ El usuario compartió la portada del repositorio en GitHub, que mostraba **2 ale
 ### 🌐 ACT-0018 · Dominio `guiamedicamonagas.com` enrutado por el Traefik del VPS (a la espera del DNS)
 
 <details>
-<summary><strong>2026-09-24 06:40:26 -04:00</strong> · <code>78df3df</code> · 🟡 En revisión</summary>
+<summary><strong>2026-09-24 06:40:26 -04:00</strong> · <code>78df3df</code> · 🟢 Completado</summary>
 
 **Responsable:** `Claude Opus 5.5` · **Tipo:** `ops` · **Commit:** [`78df3df`](https://github.com/merchandev/guiamedicamonagas/commit/78df3df)
 
@@ -710,6 +711,8 @@ El usuario pidió configurar el proxy del proyecto para que reconozca su dominio
 **Verificación** (forzando que el dominio resuelva a la IP del VPS, como hará el DNS): `https://guiamedicamonagas.com/`, `/medicos` y `/api/v1/health` → 200 con la app; `https://www…/x?y=1` → 301 a `https://guiamedicamonagas.com/x?y=1`; `http://` → 301 a HTTPS; `http://72.61.77.167:8088` sigue en 200. La API recibe la IP real del visitante y un `X-Forwarded-For` falso desde fuera se ignora. Traefik intenta el certificado y Let's Encrypt lo rechaza con `NXDOMAIN`, como se esperaba: mientras tanto se sirve el certificado temporal de Traefik.
 
 **Queda (🟡):** (1) el usuario debe crear la zona DNS en Hostinger con `A @` y `A www` → `72.61.77.167`; (2) confirmar el certificado de Let's Encrypt (si Traefik no reintenta solo, basta con recrear `caddy`); (3) pasar las URL públicas al dominio (`FRONTEND_URL`, `NEXT_PUBLIC_*`, `S3_PUBLIC_ENDPOINT`), activar `COOKIE_SECURE=true`, reconstruir `web` y decidir si el acceso por IP redirige al dominio.
+
+**Cierre (2026-09-25):** los tres puntos se completaron en [ACT-0024](#act-0024); el acceso por IP se cerró en lugar de redirigir.
 
 </details>
 
@@ -882,6 +885,44 @@ El titular pidió que el botón junto a «Iniciar sesión» dijera solo «Quiero
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
+<a id="act-0024"></a>
+
+### 🔒 ACT-0024 · HTTPS completo en `guiamedicamonagas.com`
+
+<details>
+<summary><strong>2026-09-25 14:29:46 -04:00</strong> · <code>9909ae6</code> · 🟢 Completado</summary>
+
+**Responsable:** `Claude Opus 5.5` · **Tipo:** `ops | seguridad` · **Commit:** [`9909ae6`](https://github.com/merchandev/guiamedicamonagas/commit/9909ae6)
+
+El titular avisó que el dominio ya estaba conectado y pidió que el SSL funcione por completo. Cierra los pendientes de [ACT-0018](#act-0018).
+
+**Diagnóstico:** el DNS ya resolvía bien (`@` y `www` → `72.61.77.167` en Google, Cloudflare y los servidores de Hostinger; sin registros AAAA ni CAA que interfieran), pero Traefik seguía sirviendo su certificado temporal («TRAEFIK DEFAULT CERT»). Su último intento con Let's Encrypt fue el 2026-09-24 a las 13:39 UTC, cuando el dominio todavía daba `NXDOMAIN`, y Traefik no reintenta solo. Los errores `Cannot retrieve the ACME challenge` del log no eran de Traefik: llegan con tokens desconocidos también para `transfersinbarcelona.com` cada dos horas, aunque su certificado está vigente. Probablemente vienen del SSL automático de Hostinger y no afectan.
+
+**Actividades ejecutadas:**
+
+- **Certificado:** se recreó solo el contenedor `caddy` del proyecto, y Traefik pidió el certificado de nuevo. Let's Encrypt lo emitió en 15 segundos para `guiamedicamonagas.com` y `www` (vence el 2026-12-24; Traefik lo renueva solo). La configuración de Traefik no se tocó.
+- **HSTS de un año en todo el dominio** con un middleware en las etiquetas de `caddy` ([`docker-compose.prod.yml`](docker-compose.prod.yml)). Hasta ahora solo la API lo enviaba.
+- **Producción al dominio** (respaldo previo en `backups/env.prod.pre-https-20260925`): `FRONTEND_URL`, `NEXT_PUBLIC_SITE_URL` y `S3_PUBLIC_ENDPOINT` → `https://guiamedicamonagas.com`, `COOKIE_SECURE=true` y se retiró `CADDY_BIND_ADDRESS`, así que el puerto 8088 queda solo en `127.0.0.1`. Se desplegó con `deploy.sh`, que reconstruyó `web` con la URL nueva.
+- `deploy.sh` acepta una `NEXT_PUBLIC_API_URL` relativa (`/api/v1`) en el informe GO/NO-GO, porque hereda el HTTPS de la página. Se actualizaron [`docs/DEPLOYMENT-INDEPENDENT.md`](docs/DEPLOYMENT-INDEPENDENT.md), [`docs/operations/go-no-go.md`](docs/operations/go-no-go.md), el [`Caddyfile`](Caddyfile) y [`.env.example`](.env.example), incluido cómo hacer que Traefik reintente un certificado.
+
+**Verificación:**
+
+- `https://guiamedicamonagas.com` responde 200 con certificado válido (lo acepta el almacén de certificados de Windows) y HSTS en las páginas y en la API.
+- `http://` y `www` redirigen con 301 al dominio con HTTPS y conservan la ruta.
+- `http://72.61.77.167:8088` ya no responde desde Internet.
+- El sitemap y robots usan `https://guiamedicamonagas.com` y la página no contiene la IP.
+- En el navegador: contexto seguro, 17 recursos todos por HTTPS, sin errores de consola y la API responde desde el dominio.
+- Prueba de humo **23/23**, incluidas la cookie de sesión con `Secure` y la descarga de una foto firmada a través del dominio.
+- El informe GO/NO-GO bajó a dos puntos pendientes del titular: la excepción de MFA hasta el SMTP real y la copia de respaldos fuera del servidor.
+- `diariomercantil.com` y `transfersinbarcelona.com` siguen respondiendo con sus certificados.
+
+**Efecto para los usuarios:** las sesiones abiertas por la IP no pasan al dominio: hay que iniciar sesión otra vez en `https://guiamedicamonagas.com`.<br>
+**Archivos destacados:** [`docker-compose.prod.yml`](docker-compose.prod.yml), [`scripts/deploy.sh`](scripts/deploy.sh), [`docs/operations/go-no-go.md`](docs/operations/go-no-go.md).
+
+</details>
+
+<p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
+
 <a id="registro-por-area"></a>
 
 ## 🧩 Registro por área
@@ -891,7 +932,7 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | Área | Implementaciones registradas | Actividades relacionadas |
 |---|---|---|
 | 🧱 Fundación técnica | NestJS, Next.js, Prisma, Docker, Caddy, Tailwind | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) |
-| 🔐 Auth y seguridad | JWT, refresh cookie, roles, correo, recuperación, throttling, Argon2id, permisos granulares, reuso de tokens, `tokenVersion`, cerrar todas las sesiones, MFA obligatorio en producción, subidas seguras, antivirus obligatorio y rotación de claves | [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0012](#act-0012) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0019](#act-0019) |
+| 🔐 Auth y seguridad | JWT, refresh cookie, roles, correo, recuperación, throttling, Argon2id, permisos granulares, reuso de tokens, `tokenVersion`, cerrar todas las sesiones, MFA obligatorio en producción, subidas seguras, antivirus obligatorio y rotación de claves | [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0012](#act-0012) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0019](#act-0019) · [ACT-0024](#act-0024) |
 | 👨‍⚕️ Profesionales | Perfiles, ubicaciones, documentos, verificación legal (sin solvencia deontológica), publicación con el 60% aprobado + biografía + foto, barra de progreso del registro, redes sociales, badges | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0020](#act-0020) · [ACT-0021](#act-0021) |
 | 🏥 Organizaciones | Farmacias, laboratorios, clínicas, ubicaciones, autogestión, equipo con invitaciones y roles internos, médicos asociados y plan propio | [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0015](#act-0015) · [ACT-0019](#act-0019) |
 | 💳 Monetización | Planes, Pago Móvil, aprobación, tasa BCV, evidencia de tasa por cuota, catálogo de bancos, referencia única atómica y Plus/Premium solo con el 100% de documentos | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0010](#act-0010) · [ACT-0011](#act-0011) · [ACT-0015](#act-0015) · [ACT-0019](#act-0019) · [ACT-0021](#act-0021) |
@@ -900,7 +941,7 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | 🛠️ Administración | Médicos, pagos, SEO, cookies, especialidades, planes, verificaciones, organizaciones, bancos, geografía e identidad de pacientes | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) |
 | 📊 Observabilidad | Auditoría, analítica con consentimiento y sin IP, notificaciones, salud, pruebas, CI, escaneo de imágenes y Dependabot | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) |
 | 🎨 Experiencia | Directorios, dashboard, componentes UI, motion, legal, formularios legibles y utilizables con teclado, sección de pacientes en el inicio | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0013](#act-0013) · [ACT-0014](#act-0014) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0017](#act-0017) · [ACT-0019](#act-0019) · [ACT-0022](#act-0022) · [ACT-0023](#act-0023) |
-| 🚢 Operación | Variables de entorno, Compose, almacenamiento, correo, proxy, imágenes mínimas y antivirus | [ACT-0001](#act-0001) · [ACT-0002](#act-0002) · [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0008](#act-0008) · [ACT-0009](#act-0009) · [ACT-0011](#act-0011) · [ACT-0016](#act-0016) · [ACT-0017](#act-0017) · [ACT-0018](#act-0018) · [ACT-0019](#act-0019) |
+| 🚢 Operación | Variables de entorno, Compose, almacenamiento, correo, proxy, imágenes mínimas y antivirus | [ACT-0001](#act-0001) · [ACT-0002](#act-0002) · [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0008](#act-0008) · [ACT-0009](#act-0009) · [ACT-0011](#act-0011) · [ACT-0016](#act-0016) · [ACT-0017](#act-0017) · [ACT-0018](#act-0018) · [ACT-0019](#act-0019) · [ACT-0024](#act-0024) |
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
@@ -958,6 +999,7 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | IMP-046 | Publicación del médico con el 60% de documentos aprobados + biografía + foto, sello «Verificado» al 100%, Plus/Premium solo con el 100% y barra de progreso del registro | 🟢 Completado | [`backend/src/professionals/publication-rules.ts`](backend/src/professionals/publication-rules.ts), [`frontend/src/components/ProfessionalProgressCard.tsx`](frontend/src/components/ProfessionalProgressCard.tsx) |
 | IMP-047 | Formularios con bordes visibles y espaciado uniforme; subidas de archivo, selectores y diálogos utilizables con teclado (WAI-ARIA) | 🟢 Completado | [`frontend/src/components/ui/FileButton.tsx`](frontend/src/components/ui/FileButton.tsx), [`frontend/src/components/ui/Select.tsx`](frontend/src/components/ui/Select.tsx) |
 | IMP-048 | Sección de registro de pacientes en el inicio, botón general «Quiero registrarme» y tipo de cuenta preseleccionado con `?tipo=` | 🟢 Completado | [`frontend/src/app/page.tsx`](frontend/src/app/page.tsx), [`frontend/src/app/registro/page.tsx`](frontend/src/app/registro/page.tsx) |
+| IMP-049 | HTTPS completo en el dominio: Let's Encrypt vía Traefik, HSTS en todo el dominio, URL públicas y cookies `secure`, puerto 8088 solo en loopback | 🟢 Completado | [`docker-compose.prod.yml`](docker-compose.prod.yml), [`docs/operations/go-no-go.md`](docs/operations/go-no-go.md) |
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
@@ -972,7 +1014,7 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | 🟢 Continua | ~~Reanudar el despliegue en el VPS con el healthcheck de `web` corregido~~ — hecho: `api`/`web`/`caddy` saludables, `:8088` responde | 🟢 Completado | Ver [ACT-0011](#act-0011) |
 | 🟢 Continua | ~~Validar de extremo a extremo tras el arranque~~ — hecho vía `scripts/smoke-deployment.cjs`: login/refresh/logout, registro, correo de prueba en Mailpit, subida/descarga firmada y rechazo anónimo | 🟢 Completado | Ver [ACT-0011](#act-0011), [`scripts/smoke-deployment.cjs`](scripts/smoke-deployment.cjs) |
 | 🟢 Continua | ~~Nueva comparación de contenedores/hashes de los proyectos existentes tras el arranque completo~~ — hecho, sin diferencias | 🟢 Completado | Ver [ACT-0011](#act-0011) |
-| 🔴 Alta | Dominio con HTTPS: enrutamiento listo ([ACT-0018](#act-0018)); falta que exista la zona DNS en Hostinger (`A @` y `A www` → `72.61.77.167`), confirmar el certificado y pasar las URL públicas al dominio | 🔴 Bloqueado | `https://guiamedicamonagas.com` con certificado de Let's Encrypt y cookies `secure` |
+| 🟢 Continua | ~~Dominio con HTTPS~~: certificado de Let's Encrypt, URL públicas en el dominio, cookies `secure`, HSTS y puerto 8088 cerrado | 🟢 Completado | Ver [ACT-0024](#act-0024) |
 | 🔴 Alta | SMTP real y datos reales de Pago Móvil en producción (BCV ya es automático desde [ACT-0011](#act-0011)) | 🔵 Planificado | Variables documentadas y prueba de cada integración fuera de dev |
 | 🟢 Continua | ~~Limpiar la divergencia de line endings del checkout del VPS~~ — ya no existe: `git status` solo muestra archivos no versionados | 🟢 Completado | Ver [ACT-0016](#act-0016) |
 | 🟢 Continua | ~~Cola de administración para revisar `identityStatus`~~ | 🟢 Completado | Ver [ACT-0016](#act-0016) |
@@ -1066,6 +1108,7 @@ Para cada cambio futuro, añadir una entrada en la línea de tiempo y actualizar
 | `2026-09-24 18:14:00 -04:00` | Incorporación de ACT-0021 (publicación del médico con el 60% de documentos aprobados + biografía + foto, Plus/Premium con el 100%, barra de progreso del registro, Términos v2.2), actualización de línea de tiempo, resumen cuantitativo, registro por área y control de implementaciones | 🟢 Completado |
 | `2026-09-24 18:31:52 -04:00` | Cierre de ACT-0021 con su despliegue e incorporación de ACT-0022 (formularios con bordes visibles y más espaciado; subidas, selectores y diálogos utilizables con teclado) | 🟢 Completado |
 | `2026-09-25 06:30:55 -04:00` | Incorporación de ACT-0023 con su despliegue (botón «Quiero registrarme», sección de registro de pacientes en el inicio y tipo de cuenta preseleccionado), actualización de línea de tiempo, resumen cuantitativo, registro por área y control de implementaciones | 🟢 Completado |
+| `2026-09-25 14:36:20 -04:00` | Incorporación de ACT-0024 (HTTPS completo en `guiamedicamonagas.com`) con su despliegue, cierre de ACT-0018 y del pendiente del dominio en Próximas actividades | 🟢 Completado |
 
 ---
 
