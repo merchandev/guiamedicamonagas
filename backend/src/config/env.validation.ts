@@ -87,6 +87,12 @@ const baseEnvSchema = z.object({
   DATA_ENCRYPTION_ACTIVE_KEY: z.string().default('v1'),
   DATA_LOOKUP_KEY: z.string().min(1),
 
+  // Código de seguridad que la administración debe ingresar para ver
+  // registros de pacientes (además de su sesión y permisos). Solo el hash
+  // Argon2id, en base64 para que los `$` no choquen con .env/compose; se
+  // genera con scripts/set-patient-vault-code.sh. Vacío = registros cerrados.
+  PATIENT_VAULT_CODE_HASH: z.string().optional().default(''),
+
   // Segundo factor por correo para ADMIN/SUPERADMIN. Obligatorio en
   // producción (ver productionRules); requiere un SMTP real: con el Mailpit
   // interno el código nunca llegaría al buzón.

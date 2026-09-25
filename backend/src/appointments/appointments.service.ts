@@ -538,9 +538,19 @@ export class AppointmentsService {
 
   // --- Pacientes (delegado a PatientsService, filtrado por profesional) --
 
-  async listPatients(userId: string) {
+  async listPatients(userId: string, ipAddress?: string) {
     const profile = await this.ownProfileOrThrow(userId);
-    return this.patients.listForProfessional(profile.id);
+    return this.patients.listForProfessional(profile.id, userId, ipAddress);
+  }
+
+  async registerPatientByCode(userId: string, code: string, ipAddress?: string) {
+    const profile = await this.ownProfileOrThrow(userId);
+    return this.patients.registerByShareCode(profile.id, code, userId, ipAddress);
+  }
+
+  async removePatientFromDirectory(userId: string, patientId: string, ipAddress?: string) {
+    const profile = await this.ownProfileOrThrow(userId);
+    return this.patients.removeFromDirectory(profile.id, patientId, userId, ipAddress);
   }
 
   async readPatient(userId: string, patientId: string, ipAddress?: string) {

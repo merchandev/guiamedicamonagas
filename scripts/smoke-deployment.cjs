@@ -70,6 +70,15 @@ async function main() {
   else assert.doesNotMatch(setCookie, /;\s*secure/i);
   const me = ok(await request('/api/v1/auth/me', { token: adminData.accessToken }), 'Administrator identity');
   assert.equal(me.role, 'SUPERADMIN');
+  // Bóveda de pacientes: configurada y cerrada; ni el SUPERADMIN ve registros sin
+  // el código de seguridad (que este script no conoce).
+  const vault = ok(await request('/api/v1/patients/admin/vault', { token: adminData.accessToken }), 'Patient vault configured');
+  assert.equal(vault.configured, true, 'PATIENT_VAULT_CODE_HASH must be set');
+  assert.equal(vault.unlocked, false);
+  const lockedQueue = await request('/api/v1/patients/admin/identity', { token: adminData.accessToken });
+  assert.equal(lockedQueue.response.status, 403);
+  assert.equal(lockedQueue.data.code, 'PATIENT_VAULT_LOCKED');
+  console.log('PASS Patient records locked without the security code');
   const refreshed = await request('/api/v1/auth/refresh', { method: 'POST', cookie: setCookie.split(';')[0] });
   assert.ok(ok(refreshed, 'Session refresh').accessToken);
   const newCookie = refreshed.response.headers.get('set-cookie').split(';')[0];

@@ -1,4 +1,16 @@
-import { Body, Controller, Get, Param, ParseEnumPipe, ParseIntPipe, ParseUUIDPipe, Patch, Query, Req } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseEnumPipe,
+  ParseIntPipe,
+  ParseUUIDPipe,
+  Patch,
+  Query,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { IdentityStatus } from '@prisma/client';
 import type { FastifyRequest } from 'fastify';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -6,12 +18,15 @@ import type { AuthenticatedUser } from '../common/types/authenticated-user';
 import { Permission, RequirePermissions } from '../common/permissions';
 import { PatientsService } from './patients.service';
 import { ReviewIdentityDto } from './dto/review-identity.dto';
+import { PatientVaultGuard } from './patient-vault.guard';
 
 /**
  * Revisión de la foto de identificación de los pacientes. Separado de
  * PatientsController, que solo opera sobre la ficha del propio usuario.
+ * Además del permiso, exige la bóveda abierta con el código de seguridad.
  */
 @RequirePermissions(Permission.VERIFY_PATIENT_IDENTITY)
+@UseGuards(PatientVaultGuard)
 @Controller('patients/admin/identity')
 export class PatientIdentityAdminController {
   constructor(private readonly patients: PatientsService) {}

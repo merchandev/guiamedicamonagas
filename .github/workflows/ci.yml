@@ -80,6 +80,10 @@ jobs:
         run: |
           echo "DATA_ENCRYPTION_KEYS=v1:$(openssl rand -base64 32)" >> "$GITHUB_ENV"
           echo "DATA_LOOKUP_KEY=$(openssl rand -base64 32)" >> "$GITHUB_ENV"
+          # Bóveda de pacientes: código efímero que la suite e2e usa para abrirla.
+          VAULT_CODE="$(openssl rand -hex 12)"
+          echo "E2E_PATIENT_VAULT_CODE=${VAULT_CODE}" >> "$GITHUB_ENV"
+          echo "PATIENT_VAULT_CODE_HASH=$(node -e "require('argon2').hash(process.argv[1]).then((h) => console.log(Buffer.from(h).toString('base64')))" "${VAULT_CODE}")" >> "$GITHUB_ENV"
       - name: Migraciones contra PostgreSQL limpio
         run: npx prisma migrate deploy
       - name: Esquema y migraciones sin desvío

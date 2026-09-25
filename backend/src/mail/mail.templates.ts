@@ -293,6 +293,24 @@ export function patientDataAccessRequestedTemplate(
   );
 }
 
+export function patientRegisteredByCodeTemplate(
+  rawPatientName: string,
+  rawDoctorName: string,
+  scopeLabels: string[],
+  panelUrl: string,
+) {
+  const name = escapeHtml(rawPatientName);
+  const doctor = escapeHtml(rawDoctorName);
+  const scopes = scopeLabels.map(escapeHtml).join(', ');
+  return layout(
+    'Un médico te registró como paciente',
+    `<h1 style="font-size:20px;margin:0 0 12px;">Hola, ${name}</h1>
+     <p style="font-size:14px;line-height:1.6;color:#3a3a3a;">Dr(a). ${doctor} te registró como paciente con tu código. Podrá ver tus ${scopes} durante un año.</p>
+     <p style="font-size:14px;line-height:1.6;color:#3a3a3a;">Si no le entregaste tu código, revoca su acceso y genera un código nuevo desde tu panel.</p>
+     ${button(panelUrl, 'Revisar mis permisos')}`,
+  );
+}
+
 export function mfaCodeTemplate(code: string) {
   return layout(
     'Código de acceso',

@@ -228,6 +228,8 @@ services:
       DATA_ENCRYPTION_KEYS: ${DATA_ENCRYPTION_KEYS}
       DATA_ENCRYPTION_ACTIVE_KEY: ${DATA_ENCRYPTION_ACTIVE_KEY:-v1}
       DATA_LOOKUP_KEY: ${DATA_LOOKUP_KEY}
+      # Hash (base64) del código de la bóveda de pacientes: scripts/set-patient-vault-code.sh.
+      PATIENT_VAULT_CODE_HASH: ${PATIENT_VAULT_CODE_HASH:-}
       ADMIN_MFA_ENABLED: ${ADMIN_MFA_ENABLED:-false}
       # Excepción temporal y fechada al MFA obligatorio (ver env.validation.ts).
       ADMIN_MFA_WAIVER_UNTIL: ${ADMIN_MFA_WAIVER_UNTIL:-}

@@ -17,7 +17,9 @@ Estado al 2026-09-25 (ACT-0024). `scripts/deploy.sh` imprime este informe en cad
 | `_PatientPlaintextLegacy` no existe | 🟢 GO | `deploy.sh` falla si existe; e2e lo comprueba |
 | PostgreSQL, Redis, MinIO (9000/9001), Meilisearch no expuestos | 🟢 GO | Sin puertos publicados; Mailpit solo en `127.0.0.1:18025` |
 | CI y Seguridad en verde | 🟢 GO | GitHub Actions (acciones fijadas por SHA) |
-| Paciente → autorización → revocación | 🟢 GO | e2e (80 comprobaciones) y smoke test en cada despliegue |
+| Paciente → autorización → revocación | 🟢 GO | e2e y smoke test en cada despliegue; incluye el registro por código/QR y que una revocación no se evada con el mismo código |
+| Registros de pacientes cerrados para la administración | 🟢 GO | Bóveda con código de seguridad (`PATIENT_VAULT_CODE_HASH`, solo el hash; `scripts/set-patient-vault-code.sh`), 15 minutos por apertura, bloqueo tras 5 fallos y todo auditado; el smoke test exige que esté configurada y cerrada |
+| Pacientes fuera de buscadores | 🟢 GO | `X-Robots-Tag: noindex` y `<meta robots>` en `/paciente` y `/p/`; la API y los archivos también llevan `noindex` |
 | Respaldos cifrados diarios | 🟢 GO | `scripts/backup.sh` por cron; ver [respaldos-y-restauracion.md](respaldos-y-restauracion.md) |
 | Copia de respaldos fuera del servidor | 🔴 NO-GO | Definir `GMM_BACKUP_REMOTE` o copiar a almacenamiento externo |
 | Prueba de restauración documentada | 🟢 GO | `scripts/restore-test.sh` semanal; resultado en `restore-tests.log` |

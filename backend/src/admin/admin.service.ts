@@ -26,7 +26,7 @@ export class AdminService {
       this.prisma.auditLog.findMany({
         orderBy: { createdAt: 'desc' },
         take: 20,
-        include: { user: { select: { email: true } } },
+        include: { user: { select: { email: true, role: true } } },
       }),
     ]);
 
@@ -38,7 +38,11 @@ export class AdminService {
       inReviewProfessionals,
       totalOrganizations,
       unreadMessages,
-      recentAuditLogs,
+      // Los pacientes no se identifican aquí: sus datos solo se ven con la bóveda abierta.
+      recentAuditLogs: recentAuditLogs.map(({ user, ...log }) => ({
+        ...log,
+        user: user ? { email: user.role === 'USER' ? 'Paciente (protegido)' : user.email } : null,
+      })),
     };
   }
 }

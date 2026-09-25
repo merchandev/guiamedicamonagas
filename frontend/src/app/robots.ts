@@ -7,10 +7,12 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: '*',
         allow: '/',
+        // /paciente y /p/ (destino del QR) no se bloquean aquí a propósito: llevan
+        // noindex (cabecera X-Robots-Tag y <meta>), y un buscador solo respeta el
+        // noindex de una página que puede rastrear.
         disallow: [
           '/dashboard',
           '/admin',
-          '/paciente',
           '/cuenta',
           '/invitacion-organizacion',
           // No un prefijo simple: '/organizacion' bloquearía también '/organizaciones/...'.

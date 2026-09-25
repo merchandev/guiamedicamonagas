@@ -47,13 +47,18 @@ export const PATIENT_DATA_CONTEXTS = {
   health: 'PatientProfile.healthData',
   lookupCedula: 'patient.cedula',
   lookupPhone: 'patient.phone',
+  shareCode: 'PatientProfile.shareCode',
+  lookupShareCode: 'patient.shareCode',
   appointmentReason: 'Appointment.reason',
 } as const;
 const CTX = PATIENT_DATA_CONTEXTS;
 
 const ENCRYPTED_PREFIX = 'gmm1.';
 
-export type DecodedPatient = Omit<PatientProfile, 'cedulaEnc' | 'cedulaLookup' | 'phoneEnc' | 'phoneLookup' | 'healthDataEnc'> & {
+export type DecodedPatient = Omit<
+  PatientProfile,
+  'cedulaEnc' | 'cedulaLookup' | 'phoneEnc' | 'phoneLookup' | 'healthDataEnc' | 'shareCodeEnc' | 'shareCodeLookup'
+> & {
   cedula: string | null;
   phone: string | null;
 } & PatientHealthData;
@@ -99,8 +104,34 @@ export class PatientDataCodec {
     return { ...EMPTY_HEALTH_DATA, ...(stored ?? {}) };
   }
 
+  /** Recibe el código ya normalizado (ver share-code.util.ts). */
+  shareCodeLookup(code: string): string {
+    return this.crypto.lookupHash(code, CTX.lookupShareCode);
+  }
+
+  encodeShareCode(code: string) {
+    return {
+      shareCodeEnc: this.crypto.encrypt(code, CTX.shareCode),
+      shareCodeLookup: this.shareCodeLookup(code),
+    };
+  }
+
+  decodeShareCode(profile: Pick<PatientProfile, 'shareCodeEnc'>): string | null {
+    return this.crypto.decryptNullable(profile.shareCodeEnc, CTX.shareCode);
+  }
+
+  /** El código para compartir nunca sale por decode(): solo el propio paciente lo pide aparte. */
   decode(profile: PatientProfile): DecodedPatient {
-    const { cedulaEnc, cedulaLookup: _cl, phoneEnc, phoneLookup: _pl, healthDataEnc, ...rest } = profile;
+    const {
+      cedulaEnc,
+      cedulaLookup: _cl,
+      phoneEnc,
+      phoneLookup: _pl,
+      healthDataEnc,
+      shareCodeEnc: _sc,
+      shareCodeLookup: _sl,
+      ...rest
+    } = profile;
     return {
       ...rest,
       cedula: this.crypto.decryptNullable(cedulaEnc, CTX.cedula),

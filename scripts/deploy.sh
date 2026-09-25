@@ -76,6 +76,7 @@ for var in FRONTEND_URL NEXT_PUBLIC_SITE_URL NEXT_PUBLIC_API_URL S3_PUBLIC_ENDPO
 done
 [[ "${CADDY_BIND_ADDRESS:-127.0.0.1}" == "127.0.0.1" ]] || NO_GO+=("el puerto ${CADDY_PORT:-8088} está publicado a Internet (CADDY_BIND_ADDRESS=${CADDY_BIND_ADDRESS})")
 [[ "${ADMIN_MFA_ENABLED:-false}" == "true" ]] || NO_GO+=("MFA de administradores con excepción hasta ${ADMIN_MFA_WAIVER_UNTIL}")
+[[ -n "${PATIENT_VAULT_CODE_HASH:-}" ]] || NO_GO+=("bóveda de pacientes sin código de seguridad (scripts/set-patient-vault-code.sh)")
 [[ -r "${PASSPHRASE_FILE}" ]] || NO_GO+=("sin frase de cifrado de respaldos (${PASSPHRASE_FILE})")
 [[ -n "${GMM_BACKUP_REMOTE:-}" ]] || NO_GO+=("respaldos sin copia fuera del servidor (GMM_BACKUP_REMOTE)")
 if ! grep -q ' OK ' "${BACKUP_ROOT}/restore-tests.log" 2>/dev/null; then

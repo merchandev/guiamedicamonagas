@@ -171,6 +171,14 @@ export default function PrivacyPage() {
             <li>Pudiendo revocarla en cualquier momento desde tu panel, con efecto inmediato.</li>
           </ul>
           <p className="mt-2">
+            <strong>Tu código de paciente y su QR.</strong> Desde tu panel puedes generar un código aleatorio (y su QR)
+            para entregárselo a tu médico. Los pacientes no tienen páginas públicas: el código es la forma de que tu médico
+            te ubique sin que tu identidad aparezca en ningún buscador. Entregar el código es tu autorización: el médico
+            que lo registre en su panel podrá ver, durante un año, los datos que elegiste para tu código (nombre, contacto
+            y/o salud) y te llegará un aviso. Puedes revocar ese acceso cuando quieras; después, ese médico necesitará un
+            código nuevo para volver a registrarte. Si generas un código nuevo, el anterior deja de funcionar.
+          </p>
+          <p className="mt-2">
             Cada vez que un médico consulta tus datos, el acceso queda registrado (quién, cuándo y qué alcance). Tu cédula
             no se comparte con los médicos a través de la plataforma. Si un médico registra una cita a tu nombre sin que
             tengas cuenta, solo ese médico ve los datos que él mismo cargó.
@@ -184,8 +192,10 @@ export default function PrivacyPage() {
             <li>Los médicos que autorices, en los términos de la sección 5.</li>
             <li>
               Personal administrativo de Guía Médica Monagas con permisos específicos y registrados: la verificación de
-              documentos profesionales y de pagos. El personal administrativo no tiene acceso a los datos de salud de los
-              pacientes a través de la plataforma.
+              documentos profesionales y de pagos. Los registros de pacientes están protegidos incluso para la
+              administración: para verificar la identidad de un paciente, el administrador debe ingresar además un código
+              de seguridad, que abre el acceso solo por 15 minutos y queda registrado. El personal administrativo no tiene
+              acceso a los datos de salud de los pacientes a través de la plataforma.
             </li>
             <li>
               Proveedores técnicos que procesan datos por cuenta nuestra y bajo confidencialidad: alojamiento del servidor,

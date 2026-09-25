@@ -1,20 +1,13 @@
-'use client';
+import type { Metadata } from 'next';
+import { PacienteShell } from './PacienteShell';
 
-import { RequireAuth } from '@/components/RequireAuth';
-import { DashboardShell } from '@/components/layout/DashboardShell';
-
-const LINKS = [
-  { href: '/paciente', label: 'Mi perfil' },
-  { href: '/paciente/citas', label: 'Mis citas' },
-  { href: '/paciente/permisos', label: 'Permisos' },
-];
+// Los pacientes nunca aparecen en buscadores: además de esta etiqueta, el
+// servidor envía X-Robots-Tag en todo /paciente (ver next.config.js).
+export const metadata: Metadata = {
+  title: 'Panel del paciente',
+  robots: { index: false, follow: false, nocache: true, googleBot: { index: false, follow: false } },
+};
 
 export default function PacienteLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <RequireAuth roles={['USER']}>
-      <DashboardShell title="Panel del paciente" links={LINKS}>
-        {children}
-      </DashboardShell>
-    </RequireAuth>
-  );
+  return <PacienteShell>{children}</PacienteShell>;
 }

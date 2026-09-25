@@ -207,6 +207,10 @@ export default function PatientProfilePage() {
         <Link href="/paciente/permisos" className="font-medium underline">
           Permisos
         </Link>
+        . Para que tu médico te registre, entrégale{' '}
+        <Link href="/paciente/codigo" className="font-medium underline">
+          tu código o tu QR
+        </Link>
         .
       </Alert>
 

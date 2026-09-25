@@ -50,6 +50,7 @@ model User {
   pushSubscriptions   PushSubscription[]
   grantedPatientData  PatientDataGrant[]
   reviewedIdentities  PatientProfile[]       @relation("IdentityReviewer")
+  patientVaultSessions PatientVaultSession[]
   sentOrganizationInvitations     OrganizationInvitation[] @relation("OrganizationInvitationSender")
   acceptedOrganizationInvitations OrganizationInvitation[] @relation("OrganizationInvitationAcceptor")
 
@@ -207,6 +208,7 @@ model ProfessionalProfile {
   registrations ProfessionalRegistration[]
   dataGrants    PatientDataGrant[]
   walkInPatients PatientProfile[]
+  registeredPatients ProfessionalPatient[]
   organizations OrganizationProfessional[]
 
   @@index([verificationStatus, isPublished])
@@ -970,12 +972,25 @@ model PatientProfile {
   identityReviewedById String?
   identityReviewedBy   User?     @relation("IdentityReviewer", fields: [identityReviewedById], references: [id], onDelete: SetNull)
 
+  // ─── Código para compartir con el médico (texto y QR) ────────────────────
+  /// Lo genera el paciente y lo entrega a su médico para que lo registre sin
+  /// revelar su identidad en público. Aleatorio (12 caracteres, ~7,9·10^17
+  /// combinaciones), cifrado como la cédula: `shareCodeLookup` es el HMAC del
+  /// código normalizado, para encontrarlo sin guardarlo en claro. Rotarlo
+  /// invalida el anterior; los médicos que ya lo registraron conservan el vínculo.
+  shareCodeEnc       String?
+  shareCodeLookup    String?            @unique
+  shareCodeCreatedAt DateTime?
+  /// Qué verá el médico que registre al paciente con su código.
+  shareScopes        PatientDataScope[] @default([IDENTITY, CONTACT, HEALTH])
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   appointments   Appointment[]
   clinicalNotes  ClinicalNote[]
   dataGrants     PatientDataGrant[]
+  registeredBy   ProfessionalPatient[]
 
   @@index([patientCode])
   @@index([identityStatus])
@@ -1011,6 +1026,46 @@ model PatientDataGrant {
 
   @@index([patientId, professionalId])
   @@index([professionalId, expiresAt])
+}
+
+/**
+ * Paciente que un médico registró en su directorio con el código (o el QR)
+ * que el paciente le entregó. El vínculo solo ubica al paciente: qué datos
+ * ve el médico lo decide el PatientDataGrant, que el paciente puede revocar.
+ */
+model ProfessionalPatient {
+  id             String              @id @default(uuid())
+  professionalId String
+  professional   ProfessionalProfile @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  patientId      String
+  patient        PatientProfile      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  createdAt      DateTime            @default(now())
+  /// El paciente revocó el acceso de este médico. Mientras sea posterior a
+  /// PatientProfile.shareCodeCreatedAt, el mismo código no vuelve a dar
+  /// acceso: hace falta que el paciente genere y entregue uno nuevo.
+  accessRevokedAt DateTime?
+
+  @@unique([professionalId, patientId])
+  @@index([patientId])
+}
+
+/**
+ * Apertura de la «bóveda» de registros de pacientes por un administrador:
+ * exige el código de seguridad (PATIENT_VAULT_CODE_HASH) además de la sesión,
+ * dura 15 minutos y queda auditada. En la BD solo queda el hash del token de
+ * la cookie httpOnly que la identifica.
+ */
+model PatientVaultSession {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  createdAt DateTime  @default(now())
+  expiresAt DateTime
+  closedAt  DateTime?
+  ipAddress String?
+
+  @@index([userId, expiresAt])
 }
 
 enum IdentityStatus {

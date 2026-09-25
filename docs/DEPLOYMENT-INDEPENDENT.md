@@ -33,6 +33,8 @@ Con el dominio activo (2026-09-25), `.env.prod` usa `https://guiamedicamonagas.c
 
 Si Traefik muestra `TRAEFIK DEFAULT CERT` en el dominio, fue porque un intento anterior de Let's Encrypt falló (por ejemplo, antes de publicarse el DNS) y Traefik no reintenta solo: basta con recrear `caddy` (`docker compose … up -d --no-deps --force-recreate caddy`) para que lo pida de nuevo. Los avisos `Cannot retrieve the ACME challenge` con tokens desconocidos llegan también para otros dominios del VPS y no vienen de Traefik (probablemente del SSL automático de Hostinger): no afectan.
 
+**Código de seguridad de la bóveda de pacientes.** Para ver registros de pacientes, la administración (incluido SUPERADMIN) debe ingresar un código además de su sesión. Se define o cambia en el servidor con `bash scripts/set-patient-vault-code.sh`, que lo pide dos veces sin mostrarlo, guarda en `.env.prod` solo su hash Argon2id (`PATIENT_VAULT_CODE_HASH`, en base64), respalda el `.env.prod` anterior, cierra las bóvedas abiertas y recrea solo `api`. El código no se guarda en Git ni en ningún archivo; si se olvida, se define uno nuevo con el mismo script.
+
 ## Estado y registros
 
 Ejecutar en el servidor:

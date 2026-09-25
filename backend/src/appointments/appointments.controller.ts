@@ -1,7 +1,9 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, Req } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query, Req } from '@nestjs/common';
 import { PatientDataScope, Role } from '@prisma/client';
 import { ArrayMinSize, ArrayUnique, IsArray, IsEnum } from 'class-validator';
 import type { FastifyRequest } from 'fastify';
+import { Throttle } from '@nestjs/throttler';
+import { RegisterPatientByCodeDto } from '../patients/dto/patient-data-grant.dto';
 import { Public } from '../common/decorators/public.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -64,8 +66,22 @@ export class AppointmentsController {
 
   @Roles(Role.PROFESSIONAL)
   @Get('me/patients')
-  listPatients(@CurrentUser() user: AuthenticatedUser) {
-    return this.appointments.listPatients(user.id);
+  listPatients(@CurrentUser() user: AuthenticatedUser, @Req() req: FastifyRequest) {
+    return this.appointments.listPatients(user.id, req.ip);
+  }
+
+  /** Registrar un paciente con el código (o QR) que él mismo entregó. Límite estricto: un código no se adivina. */
+  @Roles(Role.PROFESSIONAL)
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Post('me/patients/register')
+  registerPatient(@CurrentUser() user: AuthenticatedUser, @Body() dto: RegisterPatientByCodeDto, @Req() req: FastifyRequest) {
+    return this.appointments.registerPatientByCode(user.id, dto.code, req.ip);
+  }
+
+  @Roles(Role.PROFESSIONAL)
+  @Delete('me/patients/:patientId')
+  removePatient(@CurrentUser() user: AuthenticatedUser, @Param('patientId', ParseUUIDPipe) patientId: string, @Req() req: FastifyRequest) {
+    return this.appointments.removePatientFromDirectory(user.id, patientId, req.ip);
   }
 
   /** Solo con consentimiento vigente del paciente (o ficha walk-in propia); cada lectura se audita. */

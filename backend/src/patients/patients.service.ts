@@ -13,10 +13,15 @@ import { AuditService } from '../audit/audit.service';
 import { StorageService } from '../storage/storage.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PATIENT_CONSENT_VERSION } from '../common/legal-versions';
-import { identityReviewedTemplate, patientDataAccessRequestedTemplate } from '../mail/mail.templates';
+import {
+  identityReviewedTemplate,
+  patientDataAccessRequestedTemplate,
+  patientRegisteredByCodeTemplate,
+} from '../mail/mail.templates';
 import { generatePatientCode } from './patient-code.util';
+import { formatShareCode, generateShareCode, normalizeShareCode } from './share-code.util';
 import { UpdatePatientProfileDto } from './dto/update-patient-profile.dto';
-import { CreatePatientDataGrantDto, DEFAULT_GRANT_DAYS } from './dto/patient-data-grant.dto';
+import { CreatePatientDataGrantDto, DEFAULT_GRANT_DAYS, MAX_GRANT_DAYS } from './dto/patient-data-grant.dto';
 import { DecodedPatient, PatientDataCodec, PatientHealthData } from './patient-data.codec';
 
 interface PatientIdentity {
@@ -31,8 +36,20 @@ const SCOPE_LABELS: Record<PatientDataScope, string> = {
   HEALTH: 'datos de salud',
 };
 
-const ACCESS_REQUEST_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+const DAY_MS = 24 * 60 * 60 * 1000;
+const ACCESS_REQUEST_COOLDOWN_MS = DAY_MS;
 const FRONTEND_URL = process.env.FRONTEND_URL ?? 'http://localhost:3000';
+/** Registrar al paciente con su código lo autoriza por un año; el paciente lo revoca cuando quiera. */
+const SHARE_CODE_GRANT_DAYS = MAX_GRANT_DAYS;
+export const SHARE_CODE_GRANT_REASON = 'Registro con el código del paciente';
+
+type DirectoryPatient = {
+  patientCode: string;
+  userId: string | null;
+  createdByProfessionalId: string | null;
+  firstName: string | null;
+  lastName: string | null;
+};
 
 @Injectable()
 export class PatientsService {
@@ -168,6 +185,58 @@ export class PatientsService {
     return this.present(updated);
   }
 
+  // --- Código para compartir con el médico (texto y QR) ---------------------
+
+  private shareCodeView(profile: PatientProfile) {
+    const code = this.codec.decodeShareCode(profile);
+    const formatted = code ? formatShareCode(code) : null;
+    return {
+      code: formatted,
+      // El QR abre esta ruta: no muestra nada del paciente y lleva al médico a
+      // registrarlo desde su panel.
+      url: formatted ? `${FRONTEND_URL}/p/${formatted}` : null,
+      createdAt: profile.shareCodeCreatedAt,
+      scopes: profile.shareScopes,
+    };
+  }
+
+  async getShareCode(userId: string) {
+    return this.shareCodeView(await this.ownProfileOrThrow(userId));
+  }
+
+  /** Genera el código, o uno nuevo: el anterior deja de servir al instante. */
+  async rotateShareCode(userId: string, ipAddress?: string) {
+    const profile = await this.ownProfileOrThrow(userId);
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const code = generateShareCode();
+      try {
+        const updated = await this.prisma.patientProfile.update({
+          where: { id: profile.id },
+          data: { ...this.codec.encodeShareCode(code), shareCodeCreatedAt: new Date() },
+        });
+        await this.audit.record({
+          userId,
+          action: profile.shareCodeLookup ? 'PATIENT_SHARE_CODE_ROTATED' : 'PATIENT_SHARE_CODE_CREATED',
+          resource: 'PatientProfile',
+          resourceId: profile.id,
+          ipAddress,
+        });
+        return this.shareCodeView(updated);
+      } catch (error) {
+        // Colisión con el código de otro paciente (improbable): se genera otro.
+        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') continue;
+        throw error;
+      }
+    }
+    throw new ConflictException('No se pudo generar el código; intenta de nuevo');
+  }
+
+  async updateShareScopes(userId: string, scopes: PatientDataScope[]) {
+    const profile = await this.ownProfileOrThrow(userId);
+    const updated = await this.prisma.patientProfile.update({ where: { id: profile.id }, data: { shareScopes: scopes } });
+    return this.shareCodeView(updated);
+  }
+
   // --- Verificación de identidad (administración) --------------------------
 
   /**
@@ -300,15 +369,20 @@ export class PatientsService {
     });
   }
 
-  /** Médicos con los que el paciente tiene o tuvo citas: candidatos a recibir acceso. */
+  /** Médicos con los que el paciente tiene o tuvo citas, o que lo registraron: candidatos a recibir acceso. */
   async listOwnProfessionals(userId: string) {
     const profile = await this.ownProfileOrThrow(userId);
-    const rows = await this.prisma.appointment.findMany({
-      where: { patientId: profile.id },
-      distinct: ['professionalId'],
-      select: { professional: { select: { id: true, slug: true, firstName: true, lastName: true } } },
-    });
-    return rows.map((r) => r.professional);
+    const select = { id: true, slug: true, firstName: true, lastName: true } as const;
+    const [byAppointment, byCode] = await Promise.all([
+      this.prisma.appointment.findMany({
+        where: { patientId: profile.id },
+        distinct: ['professionalId'],
+        select: { professional: { select } },
+      }),
+      this.prisma.professionalPatient.findMany({ where: { patientId: profile.id }, select: { professional: { select } } }),
+    ]);
+    const unique = new Map([...byAppointment, ...byCode].map((r) => [r.professional.id, r.professional]));
+    return [...unique.values()];
   }
 
   async createGrant(userId: string, dto: CreatePatientDataGrantDto, ipAddress?: string) {
@@ -368,7 +442,13 @@ export class PatientsService {
     if (!grant || grant.patientId !== profile.id) throw new NotFoundException('Autorización no encontrada');
     if (grant.revokedAt) return grant;
 
-    const revoked = await this.prisma.patientDataGrant.update({ where: { id: grantId }, data: { revokedAt: new Date() } });
+    const now = new Date();
+    const revoked = await this.prisma.patientDataGrant.update({ where: { id: grantId }, data: { revokedAt: now } });
+    // Si el médico lo registró con el código, ese mismo código ya no le devuelve el acceso.
+    await this.prisma.professionalPatient.updateMany({
+      where: { patientId: profile.id, professionalId: grant.professionalId },
+      data: { accessRevokedAt: now },
+    });
     await this.audit.record({
       userId,
       action: 'PATIENT_DATA_REVOKED',
@@ -389,40 +469,69 @@ export class PatientsService {
     });
   }
 
-  /**
-   * Lista de pacientes de un profesional: SOLO código de paciente y el
-   * estado del consentimiento — nunca nombre/teléfono/cédula, y sin ningún
-   * parámetro de búsqueda por esos datos.
-   */
-  async listForProfessional(professionalId: string) {
-    const appointments = await this.prisma.appointment.findMany({
-      where: { professionalId },
-      select: {
-        patientId: true,
-        startsAt: true,
-        patient: { select: { patientCode: true, userId: true, createdByProfessionalId: true } },
-      },
-      orderBy: { startsAt: 'desc' },
-    });
+  /** Un médico solo trata con pacientes con los que tiene citas o que registró con su código. */
+  private async hasRelationship(professionalId: string, patientId: string) {
+    const [appointment, link] = await Promise.all([
+      this.prisma.appointment.findFirst({ where: { professionalId, patientId }, select: { id: true } }),
+      this.prisma.professionalPatient.findUnique({
+        where: { professionalId_patientId: { professionalId, patientId } },
+        select: { id: true },
+      }),
+    ]);
+    return !!appointment || !!link;
+  }
 
-    const byPatient = new Map<
-      string,
-      { patientId: string; patientCode: string; appointmentCount: number; lastVisit: Date; hasAccount: boolean; createdByMe: boolean }
-    >();
+  /**
+   * Directorio de pacientes de un profesional: los que tuvieron citas con él y
+   * los que registró con su código. El nombre solo aparece si el paciente
+   * autorizó su identidad (o si es una ficha walk-in que cargó el propio
+   * médico); si no, solo el código. Mostrar nombres queda auditado.
+   */
+  async listForProfessional(professionalId: string, requestedByUserId?: string, ipAddress?: string) {
+    const patientSelect = { patientCode: true, userId: true, createdByProfessionalId: true, firstName: true, lastName: true } as const;
+    const [appointments, links] = await Promise.all([
+      this.prisma.appointment.findMany({
+        where: { professionalId },
+        select: { patientId: true, startsAt: true, patient: { select: patientSelect } },
+        orderBy: { startsAt: 'desc' },
+      }),
+      this.prisma.professionalPatient.findMany({
+        where: { professionalId },
+        select: { patientId: true, createdAt: true, patient: { select: patientSelect } },
+      }),
+    ]);
+
+    type Entry = {
+      patientId: string;
+      patient: DirectoryPatient;
+      appointmentCount: number;
+      lastVisit: Date | null;
+      registeredAt: Date | null;
+    };
+    const byPatient = new Map<string, Entry>();
     for (const appt of appointments) {
       const existing = byPatient.get(appt.patientId);
-      if (existing) {
-        existing.appointmentCount += 1;
-      } else {
+      if (existing) existing.appointmentCount += 1;
+      else
         byPatient.set(appt.patientId, {
           patientId: appt.patientId,
-          patientCode: appt.patient.patientCode,
+          patient: appt.patient,
           appointmentCount: 1,
           lastVisit: appt.startsAt,
-          hasAccount: !!appt.patient.userId,
-          createdByMe: appt.patient.createdByProfessionalId === professionalId,
+          registeredAt: null,
         });
-      }
+    }
+    for (const link of links) {
+      const existing = byPatient.get(link.patientId);
+      if (existing) existing.registeredAt = link.createdAt;
+      else
+        byPatient.set(link.patientId, {
+          patientId: link.patientId,
+          patient: link.patient,
+          appointmentCount: 0,
+          lastVisit: null,
+          registeredAt: link.createdAt,
+        });
     }
 
     const patientIds = [...byPatient.keys()];
@@ -432,19 +541,154 @@ export class PatientsService {
     });
     const grantByPatient = new Map(grants.map((g) => [g.patientId, g]));
 
-    return [...byPatient.values()]
-      .sort((a, b) => b.lastVisit.getTime() - a.lastVisit.getTime())
-      .map((p) => {
-        const grant = grantByPatient.get(p.patientId);
+    const latest = (e: Entry) => Math.max(e.lastVisit?.getTime() ?? 0, e.registeredAt?.getTime() ?? 0);
+    const items = [...byPatient.values()]
+      .sort((a, b) => latest(b) - latest(a))
+      .map(({ patient, ...entry }) => {
+        const createdByMe = patient.createdByProfessionalId === professionalId && !patient.userId;
+        const grant = grantByPatient.get(entry.patientId);
+        const access = createdByMe
+          ? { kind: 'WALK_IN' as const, scopes: ['IDENTITY', 'CONTACT'] as PatientDataScope[], expiresAt: null }
+          : grant
+            ? { kind: 'GRANT' as const, scopes: grant.scopes, expiresAt: grant.expiresAt }
+            : { kind: 'NONE' as const, scopes: [] as PatientDataScope[], expiresAt: null };
         return {
-          ...p,
-          access: p.createdByMe
-            ? { kind: 'WALK_IN' as const, scopes: ['IDENTITY', 'CONTACT'] as PatientDataScope[], expiresAt: null }
-            : grant
-              ? { kind: 'GRANT' as const, scopes: grant.scopes, expiresAt: grant.expiresAt }
-              : { kind: 'NONE' as const, scopes: [] as PatientDataScope[], expiresAt: null },
+          ...entry,
+          patientCode: patient.patientCode,
+          hasAccount: !!patient.userId,
+          createdByMe,
+          registered: !!entry.registeredAt,
+          identity: access.scopes.includes('IDENTITY') ? { firstName: patient.firstName, lastName: patient.lastName } : null,
+          access,
         };
       });
+
+    const named = items.filter((i) => i.identity && i.access.kind === 'GRANT').map((i) => i.patientId);
+    if (named.length && requestedByUserId) {
+      await this.audit.record({
+        userId: requestedByUserId,
+        action: 'PATIENT_DIRECTORY_VIEWED',
+        resource: 'ProfessionalProfile',
+        resourceId: professionalId,
+        details: { patientIds: named.slice(0, 200), count: named.length },
+        ipAddress,
+      });
+    }
+    return items;
+  }
+
+  /**
+   * El médico registra a un paciente con el código (o el QR) que el paciente
+   * le entregó. Entregar el código es el consentimiento: el médico recibe una
+   * autorización por los alcances que el paciente eligió para su código,
+   * durante un año, revocable desde «Permisos». Si el paciente ya le había
+   * revocado el acceso, hace falta un código nuevo. Un código inválido no
+   * revela si existe un paciente.
+   */
+  async registerByShareCode(professionalId: string, rawCode: string, requestedByUserId: string, ipAddress?: string) {
+    const code = normalizeShareCode(rawCode);
+    const patient = code
+      ? await this.prisma.patientProfile.findUnique({
+          where: { shareCodeLookup: this.codec.shareCodeLookup(code) },
+          include: { user: { select: { email: true } } },
+        })
+      : null;
+    if (!patient?.userId || !patient.user) {
+      await this.audit.record({
+        userId: requestedByUserId,
+        action: 'PATIENT_SHARE_CODE_FAILED',
+        resource: 'ProfessionalProfile',
+        resourceId: professionalId,
+        ipAddress,
+      });
+      throw new NotFoundException('Código de paciente no válido. Pídele al paciente que lo revise o que genere uno nuevo.');
+    }
+
+    const professional = await this.prisma.professionalProfile.findUniqueOrThrow({
+      where: { id: professionalId },
+      select: { userId: true, firstName: true, lastName: true, isPublished: true, verificationStatus: true },
+    });
+    if (professional.userId === patient.userId) throw new BadRequestException('No puedes registrarte como tu propio paciente');
+    if (professional.verificationStatus === 'SUSPENDED' || (!professional.isPublished && professional.verificationStatus !== 'VERIFIED')) {
+      throw new ForbiddenException('Podrás registrar pacientes cuando tu perfil esté publicado en el directorio');
+    }
+
+    const link = await this.prisma.professionalPatient.findUnique({
+      where: { professionalId_patientId: { professionalId, patientId: patient.id } },
+    });
+    if (link?.accessRevokedAt && patient.shareCodeCreatedAt && link.accessRevokedAt > patient.shareCodeCreatedAt) {
+      throw new ForbiddenException('El paciente retiró tu acceso. Para registrarlo de nuevo necesitas un código nuevo del paciente.');
+    }
+
+    const now = new Date();
+    const scopes = patient.shareScopes;
+    const grant = await this.prisma.$transaction(async (tx) => {
+      await tx.professionalPatient.upsert({
+        where: { professionalId_patientId: { professionalId, patientId: patient.id } },
+        create: { professionalId, patientId: patient.id },
+        update: { accessRevokedAt: null },
+      });
+      await tx.patientDataGrant.updateMany({
+        where: { patientId: patient.id, professionalId, revokedAt: null, expiresAt: { gt: now } },
+        data: { revokedAt: now },
+      });
+      return tx.patientDataGrant.create({
+        data: {
+          patientId: patient.id,
+          professionalId,
+          scopes,
+          reason: SHARE_CODE_GRANT_REASON,
+          expiresAt: new Date(now.getTime() + SHARE_CODE_GRANT_DAYS * DAY_MS),
+          grantedById: patient.userId,
+          consentVersion: PATIENT_CONSENT_VERSION,
+        },
+      });
+    });
+
+    await this.audit.record({
+      userId: requestedByUserId,
+      action: 'PATIENT_REGISTERED_BY_CODE',
+      resource: 'PatientProfile',
+      resourceId: patient.id,
+      details: { professionalId, grantId: grant.id, scopes, consentVersion: PATIENT_CONSENT_VERSION },
+      ipAddress,
+    });
+
+    const doctorName = `${professional.firstName} ${professional.lastName}`;
+    const scopeLabels = scopes.map((s) => SCOPE_LABELS[s]);
+    await this.notifications.notify({
+      userId: patient.userId,
+      type: 'PATIENT_REGISTERED_BY_CODE',
+      title: 'Un médico te registró como paciente',
+      content: `Dr(a). ${doctorName} te registró con tu código y puede ver: ${scopeLabels.join(', ')}. Puedes revocarlo en Permisos.`,
+      email: {
+        to: patient.user.email,
+        subject: 'Un médico te registró como paciente — Guía Médica Monagas',
+        template: 'patient_registered_by_code',
+        html: patientRegisteredByCodeTemplate(patient.firstName ?? 'Paciente', doctorName, scopeLabels, `${FRONTEND_URL}/paciente/permisos`),
+      },
+    });
+
+    return { patientId: patient.id, patientCode: patient.patientCode, scopes, expiresAt: grant.expiresAt };
+  }
+
+  /** Quita al paciente del directorio del médico y cierra su acceso a los datos. */
+  async removeFromDirectory(professionalId: string, patientId: string, requestedByUserId: string, ipAddress?: string) {
+    const removed = await this.prisma.professionalPatient.deleteMany({ where: { professionalId, patientId } });
+    if (!removed.count) throw new NotFoundException('Este paciente no está registrado en tu directorio');
+    await this.prisma.patientDataGrant.updateMany({
+      where: { patientId, professionalId, revokedAt: null, expiresAt: { gt: new Date() } },
+      data: { revokedAt: new Date() },
+    });
+    await this.audit.record({
+      userId: requestedByUserId,
+      action: 'PATIENT_REMOVED_FROM_DIRECTORY',
+      resource: 'PatientProfile',
+      resourceId: patientId,
+      details: { professionalId },
+      ipAddress,
+    });
+    return { removed: true };
   }
 
   /**
@@ -453,11 +697,9 @@ export class PatientsService {
    * lectura queda en la auditoría con el alcance y el consentimiento usado.
    */
   async readForProfessional(professionalId: string, patientId: string, requestedByUserId: string, ipAddress?: string) {
-    const hasRelationship = await this.prisma.appointment.findFirst({
-      where: { professionalId, patientId },
-      select: { id: true },
-    });
-    if (!hasRelationship) throw new ForbiddenException('Este paciente no tiene citas contigo');
+    if (!(await this.hasRelationship(professionalId, patientId))) {
+      throw new ForbiddenException('Este paciente no tiene citas contigo ni está registrado en tu directorio');
+    }
 
     const patient = await this.prisma.patientProfile.findUnique({ where: { id: patientId } });
     if (!patient) throw new NotFoundException('Paciente no encontrado');
@@ -493,11 +735,9 @@ export class PatientsService {
   }
 
   async requestAccess(professionalId: string, patientId: string, requestedByUserId: string, scopes: PatientDataScope[]) {
-    const hasRelationship = await this.prisma.appointment.findFirst({
-      where: { professionalId, patientId },
-      select: { id: true },
-    });
-    if (!hasRelationship) throw new ForbiddenException('Este paciente no tiene citas contigo');
+    if (!(await this.hasRelationship(professionalId, patientId))) {
+      throw new ForbiddenException('Este paciente no tiene citas contigo ni está registrado en tu directorio');
+    }
 
     const patient = await this.prisma.patientProfile.findUnique({
       where: { id: patientId },

@@ -15,16 +15,17 @@ const check = (name, cond, extra = '') => {
   console.log(`${cond ? 'PASS' : 'FAIL'}  ${name}${extra ? ` — ${extra}` : ''}`);
   if (!cond) failures += 1;
 };
-async function call(method, path, body, token) {
+async function call(method, path, body, token, extraHeaders = {}) {
   const res = await fetch(API + path, {
     method,
-    headers: { ...(body ? { 'content-type': 'application/json' } : {}), ...(token ? { authorization: `Bearer ${token}` } : {}) },
+    headers: { ...(body ? { 'content-type': 'application/json' } : {}), ...(token ? { authorization: `Bearer ${token}` } : {}), ...extraHeaders },
     body: body ? JSON.stringify(body) : undefined,
   });
   let data = null;
   try { data = await res.json(); } catch {}
-  return { status: res.status, data };
+  return { status: res.status, data, headers: res.headers };
 }
+const sha256Hex = (t) => createHash('sha256').update(t).digest('hex');
 const pw = 'Prueba12345x';
 const phone = '0414-' + String(Date.now()).slice(-7);
 
@@ -70,7 +71,7 @@ check('motivo de consulta cifrado en BD', apptRow.reason.startsWith('gmm1.'));
 // 4. Vista del médico según consentimiento
 r = await call('GET', '/appointments/me/patients', null, doctorToken);
 const listed = r.data?.find((p) => p.access.kind === 'GRANT');
-check('lista de pacientes muestra consentimiento', !!listed && listed.access.scopes.includes('HEALTH') && !('firstName' in listed));
+check('lista de pacientes: consentimiento y nombre solo con identidad autorizada, sin contacto ni salud', !!listed && listed.access.scopes.includes('HEALTH') && listed.identity?.firstName === 'Pedro' && !('contact' in listed) && !('health' in listed));
 r = await call('POST', `/appointments/me/patients/${listed.patientId}/data`, null, doctorToken);
 check('médico lee solo lo autorizado', r.status === 201 && r.data.identity?.firstName === 'Pedro' && r.data.health?.bloodType === 'A+' && r.data.contact === null);
 const audit = (await db.query(`select count(*)::int n from "AuditLog" where action='PATIENT_DATA_READ' and "resourceId"=$1`, [listed.patientId])).rows[0];
@@ -94,6 +95,44 @@ check('cita manual walk-in (mismo teléfono que un paciente con cuenta, sin choq
 const walk = (await call('GET', '/appointments/me/patients', null, doctorToken)).data.find((p) => p.createdByMe);
 r = await call('POST', `/appointments/me/patients/${walk.patientId}/data`, null, doctorToken);
 check('walk-in propio visible (identidad+contacto)', r.status === 201 && r.data.identity?.firstName === 'Walk' && r.data.contact?.phone === phone && r.data.health === null);
+
+// 6b. Código de paciente (texto/QR): el paciente lo entrega y el médico lo registra en su directorio
+r = await call('GET', '/patients/me/share-code', null, patientToken);
+check('sin código hasta que el paciente lo genera', r.status === 200 && r.data.code === null);
+r = await call('POST', '/patients/me/share-code', null, patientToken);
+const shareCode = r.data?.code;
+check('paciente genera su código (12 caracteres en grupos) y la URL del QR', r.status === 201 && /^[A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}$/.test(shareCode ?? '') && r.data.url?.endsWith(`/p/${shareCode}`), `${r.status} ${shareCode}`);
+row = (await db.query(`select row_to_json(p)::text j from "PatientProfile" p join "User" u on u.id=p."userId" where u.email=$1`, [`p-${run}@t.local`])).rows[0];
+check('el código queda cifrado en BD', !row.j.includes(shareCode.replace(/-/g, '')) && !row.j.includes(shareCode));
+r = await call('GET', '/patients/me', null, patientToken);
+check('la ficha no expone el código ni su hash', !JSON.stringify(r.data).includes('shareCode'));
+r = await call('PATCH', '/patients/me/share-code', { scopes: ['IDENTITY', 'CONTACT'] }, patientToken);
+check('paciente elige qué verá el médico que lo registre', r.status === 200 && r.data.scopes.join(',') === 'IDENTITY,CONTACT');
+check('un paciente no puede registrar pacientes', (await call('POST', '/appointments/me/patients/register', { code: shareCode }, patientToken)).status === 403);
+r = await call('POST', '/appointments/me/patients/register', { code: 'AAAA-BBBB-CCCC' }, doctorToken);
+check('código inexistente → 404 (y queda auditado)', r.status === 404 && (await db.query(`select count(*)::int n from "AuditLog" where action='PATIENT_SHARE_CODE_FAILED' and "resourceId"=$1`, [doc.id])).rows[0].n >= 1, String(r.status));
+r = await call('POST', '/appointments/me/patients/register', { code: shareCode.replace(/-/g, '').toLowerCase() }, doctorToken);
+const sharedPatientId = r.data?.patientId;
+check('médico registra al paciente con su código (sin guiones, minúsculas)', r.status === 201 && r.data.scopes.join(',') === 'IDENTITY,CONTACT', String(r.status));
+r = await call('GET', '/appointments/me/patients', null, doctorToken);
+const inDirectory = r.data?.find((p) => p.patientId === sharedPatientId);
+check('aparece en el directorio del médico con nombre y autorización', inDirectory?.registered === true && inDirectory.identity?.firstName === 'Pedro' && inDirectory.access.kind === 'GRANT' && inDirectory.access.scopes.includes('CONTACT'));
+check('ver el directorio con nombres queda auditado', (await db.query(`select count(*)::int n from "AuditLog" where action='PATIENT_DIRECTORY_VIEWED' and "resourceId"=$1`, [doc.id])).rows[0].n >= 1);
+r = await call('POST', `/appointments/me/patients/${sharedPatientId}/data`, null, doctorToken);
+check('médico ve lo elegido para el código (contacto sí, salud no)', r.status === 201 && r.data.contact?.phone === phone && r.data.health === null);
+r = await call('GET', '/patients/me/grants', null, patientToken);
+const codeGrant = r.data?.find((g) => !g.revokedAt && g.reason === 'Registro con el código del paciente');
+check('el paciente ve la autorización del registro por código', !!codeGrant);
+await call('DELETE', `/patients/me/grants/${codeGrant.id}`, null, patientToken);
+r = await call('POST', '/appointments/me/patients/register', { code: shareCode }, doctorToken);
+check('tras revocar, el mismo código no devuelve el acceso → 403', r.status === 403, String(r.status));
+r = await call('POST', '/patients/me/share-code', null, patientToken);
+const newShareCode = r.data?.code;
+check('paciente rota su código', r.status === 201 && newShareCode && newShareCode !== shareCode);
+check('el código anterior deja de funcionar', (await call('POST', '/appointments/me/patients/register', { code: shareCode }, doctorToken)).status === 404);
+check('con el código nuevo el médico vuelve a registrarlo', (await call('POST', '/appointments/me/patients/register', { code: newShareCode }, doctorToken)).status === 201);
+r = await call('DELETE', `/appointments/me/patients/${sharedPatientId}`, null, doctorToken);
+check('médico quita al paciente de su directorio y pierde el acceso', r.status === 200 && (await call('POST', `/appointments/me/patients/${sharedPatientId}/data`, null, doctorToken)).status === 403);
 
 // 7. Permisos granulares / sin bypass SUPERADMIN
 const hash = await argon2.hash(pw, { type: argon2.argon2id });
@@ -156,17 +195,39 @@ check('listado incluye franja featured', r.status === 200 && Array.isArray(r.dat
 const patientRow = (await db.query(`select p.id from "PatientProfile" p join "User" u on u.id=p."userId" where u.email=$1`, [`p-${run}@t.local`])).rows[0];
 await db.query(`update "PatientProfile" set "idPhotoKey"='patient-id-documents/e2e.jpg', "identityStatus"='PENDING' where id=$1`, [patientRow.id]);
 check('paciente NO ve la cola de identidad', (await call('GET', '/patients/admin/identity', null, patientToken)).status === 403);
+
+// 11a. Bóveda: ni ADMIN ni SUPERADMIN ven registros de pacientes sin el código de seguridad
+const vaultCode = process.env.E2E_PATIENT_VAULT_CODE;
+check('E2E_PATIENT_VAULT_CODE definido para la prueba', !!vaultCode);
 r = await call('GET', '/patients/admin/identity', null, ad);
-check('cola de identidad sin cédula', r.status === 200 && r.data.items.some((i) => i.id === patientRow.id) && !JSON.stringify(r.data).includes(cedula));
-r = await call('GET', `/patients/admin/identity/${patientRow.id}`, null, ad);
+check('ADMIN sin bóveda abierta → 403 PATIENT_VAULT_LOCKED', r.status === 403 && r.data?.code === 'PATIENT_VAULT_LOCKED', `${r.status} ${r.data?.code}`);
+check('SUPERADMIN sin bóveda abierta → 403', (await call('GET', '/patients/admin/identity', null, sa)).status === 403);
+r = await call('POST', '/patients/admin/vault/unlock', { code: 'codigo-equivocado' }, ad);
+check('código de seguridad incorrecto → 403 y auditado', r.status === 403 && r.data?.code === 'PATIENT_VAULT_BAD_CODE' && (await db.query(`select count(*)::int n from "AuditLog" where action='PATIENT_VAULT_UNLOCK_FAILED' and "userId"=$1`, [`ADMIN-${run}`])).rows[0].n === 1);
+r = await call('POST', '/patients/admin/vault/unlock', { code: vaultCode }, ad);
+const vaultSetCookie = r.headers.get('set-cookie') ?? '';
+const vaultCookie = vaultSetCookie.split(';')[0];
+check('código correcto abre la bóveda 15 min (cookie httpOnly, SameSite=Strict, solo rutas de pacientes)', r.status === 200 && r.data.unlocked === true && /^gmm_patient_vault=/.test(vaultCookie) && /httponly/i.test(vaultSetCookie) && /samesite=strict/i.test(vaultSetCookie) && /path=\/api\/v1\/patients\/admin/i.test(vaultSetCookie), String(r.status));
+check('en la BD solo queda el hash del token', (await db.query(`select count(*)::int n from "PatientVaultSession" where "userId"=$1 and "tokenHash"=$2`, [`ADMIN-${run}`, sha256Hex(vaultCookie.split('=')[1])])).rows[0].n === 1);
+check('la bóveda de un admin no sirve a otra cuenta', (await call('GET', '/patients/admin/identity', null, sa, { cookie: vaultCookie })).status === 403);
+const withVault = { cookie: vaultCookie };
+r = await call('GET', '/patients/admin/identity', null, ad, withVault);
+check('cola de identidad sin cédula (bóveda abierta)', r.status === 200 && r.data.items.some((i) => i.id === patientRow.id) && !JSON.stringify(r.data).includes(cedula));
+r = await call('GET', `/patients/admin/identity/${patientRow.id}`, null, ad, withVault);
 check('caso de identidad: cédula descifrada y foto firmada', r.status === 200 && r.data.cedula === cedula && !!r.data.idPhotoUrl);
 check('apertura del caso auditada', (await db.query(`select count(*)::int n from "AuditLog" where action='PATIENT_IDENTITY_DOCUMENT_VIEWED' and "resourceId"=$1`, [patientRow.id])).rows[0].n === 1);
-check('rechazo sin motivo → 400', (await call('PATCH', `/patients/admin/identity/${patientRow.id}/review`, { approved: false }, ad)).status === 400);
-r = await call('PATCH', `/patients/admin/identity/${patientRow.id}/review`, { approved: false, note: 'Foto borrosa' }, ad);
+check('rechazo sin motivo → 400', (await call('PATCH', `/patients/admin/identity/${patientRow.id}/review`, { approved: false }, ad, withVault)).status === 400);
+r = await call('PATCH', `/patients/admin/identity/${patientRow.id}/review`, { approved: false, note: 'Foto borrosa' }, ad, withVault);
 row = (await db.query(`select "idPhotoKey", "identityStatus" from "PatientProfile" where id=$1`, [patientRow.id])).rows[0];
 check('rechazo borra la foto', r.status === 200 && row.identityStatus === 'REJECTED' && row.idPhotoKey === null);
 r = await call('GET', '/patients/me', null, patientToken);
 check('paciente ve el motivo del rechazo', r.data?.identityStatus === 'REJECTED' && r.data?.identityReviewNote === 'Foto borrosa' && !('identityReviewedById' in r.data));
+r = await call('POST', '/patients/admin/vault/lock', null, ad, withVault);
+check('cerrar la bóveda la invalida al instante', r.status === 200 && (await call('GET', '/patients/admin/identity', null, ad, withVault)).status === 403);
+for (let i = 0; i < 5; i++) await db.query(`insert into "AuditLog"(id,"userId",action,resource) values ($1,$2,'PATIENT_VAULT_UNLOCK_FAILED','PatientVault')`, [`vf-${run}-${i}`, `SUPERADMIN-${run}`]);
+check('5 intentos fallidos bloquean la cuenta 15 min, aun con el código correcto → 429', (await call('POST', '/patients/admin/vault/unlock', { code: vaultCode }, sa)).status === 429);
+r = await call('GET', '/admin/stats', null, sa);
+check('el feed de administración no muestra correos de pacientes', r.status === 200 && !JSON.stringify(r.data.recentAuditLogs).includes(`p-${run}@t.local`));
 
 // 12. Sesiones: tokenVersion invalida access tokens vigentes
 r = await call('POST', '/auth/change-password', { currentPassword: pw, newPassword: 'Nueva12345x' }, patientToken);

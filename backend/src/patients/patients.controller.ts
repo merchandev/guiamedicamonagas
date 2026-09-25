@@ -1,5 +1,6 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Req } from '@nestjs/common';
 import type { FastifyRequest } from 'fastify';
+import { Throttle } from '@nestjs/throttler';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../common/types/authenticated-user';
 import { readSingleUploadedFile } from '../common/utils/multipart';
@@ -7,7 +8,7 @@ import { StorageService } from '../storage/storage.service';
 import { IMAGE_TYPES, UploadSecurityService } from '../uploads/upload-security.service';
 import { PatientsService } from './patients.service';
 import { UpdatePatientProfileDto } from './dto/update-patient-profile.dto';
-import { CreatePatientDataGrantDto } from './dto/patient-data-grant.dto';
+import { CreatePatientDataGrantDto, UpdateShareScopesDto } from './dto/patient-data-grant.dto';
 
 const MAX_PHOTO_SIZE = 5 * 1024 * 1024;
 
@@ -49,6 +50,24 @@ export class PatientsController {
     const key = this.storage.buildKey('patient-id-documents', file.extension);
     await this.storage.uploadPrivateObject(key, file.buffer, file.mimetype);
     return this.patients.updateOwnIdPhoto(user.id, key);
+  }
+
+  // --- Código para compartir con el médico (texto y QR) ---------------------
+
+  @Get('me/share-code')
+  getShareCode(@CurrentUser() user: AuthenticatedUser) {
+    return this.patients.getShareCode(user.id);
+  }
+
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Post('me/share-code')
+  rotateShareCode(@CurrentUser() user: AuthenticatedUser, @Req() req: FastifyRequest) {
+    return this.patients.rotateShareCode(user.id, req.ip);
+  }
+
+  @Patch('me/share-code')
+  updateShareScopes(@CurrentUser() user: AuthenticatedUser, @Body() dto: UpdateShareScopesDto) {
+    return this.patients.updateShareScopes(user.id, dto.scopes);
   }
 
   // --- Consentimientos: quién puede ver mis datos --------------------------

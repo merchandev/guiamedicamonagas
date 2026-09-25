@@ -9,6 +9,7 @@ import { Modal } from '@/components/ui/Modal';
 import { Textarea } from '@/components/ui/Input';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { PageSpinner } from '@/components/ui/Spinner';
+import { PatientVaultGate, isVaultLocked, usePatientVault } from '@/components/PatientVaultGate';
 import { cn } from '@/lib/cn';
 
 type IdentityStatus = 'PENDING' | 'VERIFIED' | 'REJECTED';
@@ -49,6 +50,15 @@ const STATUS_BADGE: Record<IdentityStatus, { label: string; tone: 'amber' | 'pin
 };
 
 export default function IdentityQueuePage() {
+  return (
+    <PatientVaultGate>
+      <IdentityQueue />
+    </PatientVaultGate>
+  );
+}
+
+function IdentityQueue() {
+  const { relock } = usePatientVault();
   const [status, setStatus] = useState<IdentityStatus>('PENDING');
   const [items, setItems] = useState<QueueItem[] | null>(null);
   const [current, setCurrent] = useState<IdentityCase | null>(null);
@@ -56,11 +66,20 @@ export default function IdentityQueuePage() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const load = useCallback(async (s: IdentityStatus) => {
-    setItems(null);
-    const res = await api.get<{ items: QueueItem[] }>(`/patients/admin/identity?status=${s}`);
-    setItems(res.items);
-  }, []);
+  const load = useCallback(
+    async (s: IdentityStatus) => {
+      setItems(null);
+      try {
+        const res = await api.get<{ items: QueueItem[] }>(`/patients/admin/identity?status=${s}`);
+        setItems(res.items);
+      } catch (e) {
+        if (isVaultLocked(e)) return relock();
+        setItems([]);
+        setError(e instanceof ApiError ? e.message : 'No se pudo cargar la cola');
+      }
+    },
+    [relock],
+  );
 
   useEffect(() => {
     void load(status);
@@ -74,6 +93,7 @@ export default function IdentityQueuePage() {
     try {
       setCurrent(await api.get<IdentityCase>(`/patients/admin/identity/${id}`));
     } catch (e) {
+      if (isVaultLocked(e)) return relock();
       setError(e instanceof ApiError ? e.message : 'No se pudo abrir el caso');
     }
   };
@@ -91,6 +111,10 @@ export default function IdentityQueuePage() {
       setCurrent(null);
       await load(status);
     } catch (e) {
+      if (isVaultLocked(e)) {
+        setCurrent(null);
+        return relock();
+      }
       setError(e instanceof ApiError ? e.message : 'No se pudo guardar la revisión');
     } finally {
       setSubmitting(false);

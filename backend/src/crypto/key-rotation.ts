@@ -11,6 +11,7 @@ export const ENCRYPTED_FIELDS = [
   { model: 'patientProfile', field: 'cedulaEnc', context: PATIENT_DATA_CONTEXTS.cedula },
   { model: 'patientProfile', field: 'phoneEnc', context: PATIENT_DATA_CONTEXTS.phone },
   { model: 'patientProfile', field: 'healthDataEnc', context: PATIENT_DATA_CONTEXTS.health },
+  { model: 'patientProfile', field: 'shareCodeEnc', context: PATIENT_DATA_CONTEXTS.shareCode },
   { model: 'appointment', field: 'reason', context: PATIENT_DATA_CONTEXTS.appointmentReason },
   { model: 'clinicalNote', field: 'clinicalDataEnc', context: CLINICAL_NOTE_CONTEXT },
 ] as const;

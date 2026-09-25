@@ -18,7 +18,10 @@ export function RequireAuth({
   useEffect(() => {
     if (loading) return;
     if (!user) {
-      router.replace('/iniciar-sesion');
+      // Vuelve a la misma página tras iniciar sesión (p. ej. el QR de un
+      // paciente abre /dashboard/pacientes?codigo=… y el código no se pierde).
+      const next = `${window.location.pathname}${window.location.search}`;
+      router.replace(`/iniciar-sesion?next=${encodeURIComponent(next)}`);
       return;
     }
     if (roles && !roles.includes(user.role)) {

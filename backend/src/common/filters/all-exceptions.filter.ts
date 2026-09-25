@@ -24,12 +24,17 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const status = isHttpException ? exception.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR;
 
     let message: string | string[] = 'Ocurrió un error inesperado. Intenta de nuevo.';
+    // Código estable opcional para que el cliente distinga casos con el mismo
+    // estado HTTP (p. ej. PATIENT_VAULT_LOCKED frente a otro 403).
+    let code: string | undefined;
     if (isHttpException) {
       const body = exception.getResponse();
       if (typeof body === 'string') {
         message = body;
       } else if (typeof body === 'object' && body !== null && 'message' in body) {
         message = (body as { message: string | string[] }).message;
+        const rawCode = (body as { code?: unknown }).code;
+        if (typeof rawCode === 'string' && /^[A-Z_]{1,64}$/.test(rawCode)) code = rawCode;
       }
     }
 
@@ -42,6 +47,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
     response.status(status).send({
       statusCode: status,
       message,
+      ...(code ? { code } : {}),
       timestamp: new Date().toISOString(),
       path: (ctx.getRequest() as { url?: string }).url,
     });
