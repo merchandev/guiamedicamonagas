@@ -116,7 +116,16 @@ export class PatientsService {
       profile.photoKey ? this.storage.getSignedDownloadUrl(profile.photoKey, 3600, false).catch(() => null) : null,
       profile.idPhotoKey ? this.storage.getSignedDownloadUrl(profile.idPhotoKey, 3600, false).catch(() => null) : null,
     ]);
-    const { photoKey: _p, idPhotoKey, createdByProfessionalId: _c, identityReviewedById: _r, ...rest } = decoded;
+    // Lo del código para compartir va solo por /patients/me/share-code.
+    const {
+      photoKey: _p,
+      idPhotoKey,
+      createdByProfessionalId: _c,
+      identityReviewedById: _r,
+      shareCodeCreatedAt: _sc,
+      shareScopes: _ss,
+      ...rest
+    } = decoded;
     return { ...rest, hasIdPhoto: !!idPhotoKey, photoUrl, idPhotoUrl };
   }
 
