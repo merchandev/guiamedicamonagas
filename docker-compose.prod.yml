@@ -355,6 +355,8 @@ services:
     # descubre por estas etiquetas, igual que a los demás proyectos, sin
     # cambiar su configuración. Se activa con GMM_DOMAIN y
     # GMM_TRAEFIK_ENABLE=true en .env.prod; www redirige al dominio principal.
+    # HSTS se añade aquí (y no en Caddy) porque solo por este camino hay HTTPS:
+    # cubre las páginas, la API y los archivos del dominio.
     labels:
       traefik.enable: "${GMM_TRAEFIK_ENABLE:-false}"
       traefik.docker.network: gmm-independent_gmm_dmz
@@ -362,10 +364,12 @@ services:
       traefik.http.routers.gmm.entrypoints: websecure
       traefik.http.routers.gmm.tls: "true"
       traefik.http.routers.gmm.tls.certresolver: letsencrypt
-      traefik.http.routers.gmm.middlewares: gmm-www-to-apex
+      traefik.http.routers.gmm.middlewares: gmm-www-to-apex,gmm-hsts
       traefik.http.middlewares.gmm-www-to-apex.redirectregex.regex: "^https://www\\.(.+)"
       traefik.http.middlewares.gmm-www-to-apex.redirectregex.replacement: "https://$${1}"
       traefik.http.middlewares.gmm-www-to-apex.redirectregex.permanent: "true"
+      traefik.http.middlewares.gmm-hsts.headers.stsSeconds: "31536000"
+      traefik.http.middlewares.gmm-hsts.headers.stsIncludeSubdomains: "true"
       traefik.http.services.gmm.loadbalancer.server.port: "8088"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro

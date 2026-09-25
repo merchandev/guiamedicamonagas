@@ -1,6 +1,6 @@
 # Despliegue independiente de Guía Médica Monagas
 
-La instalación está preparada en `/opt/guiamedicamonagas`, dentro del proyecto Docker Compose `gmm-independent`. El acceso inicial previsto es [http://72.61.77.167:8088](http://72.61.77.167:8088). Dominio, HTTPS público y SMTP de entrega real están pendientes. La verificación final de disponibilidad y comparación de los proyectos anteriores debe registrarse al cerrar el despliegue.
+La instalación está en `/opt/guiamedicamonagas`, dentro del proyecto Docker Compose `gmm-independent`, y se sirve en [https://guiamedicamonagas.com](https://guiamedicamonagas.com) a través del Traefik del VPS (certificado de Let's Encrypt desde el 2026-09-25, renovación automática). El puerto 8088 queda solo en `127.0.0.1` del servidor; el acceso por `http://72.61.77.167:8088` se cerró al activar el dominio. Falta el SMTP de entrega real. La verificación final de disponibilidad y comparación de los proyectos anteriores debe registrarse al cerrar el despliegue.
 
 ## Aislamiento
 
@@ -29,7 +29,9 @@ La configuración usa credenciales, contenedores, redes, volúmenes y proxy prop
 
 Estos archivos deben permanecer fuera de Git. No copiar sus valores a logs, documentación o comandos compartidos. El administrador inicial se crea con `SEED_SUPERADMIN_EMAIL` y `SEED_SUPERADMIN_PASSWORD`; el seed recibe las variables por nombre.
 
-En el acceso HTTP temporal se configura `COOKIE_SECURE=false` y HSTS desactivado. Al habilitar HTTPS real, ajustar las URLs públicas, activar cookies seguras y volver a compilar el frontend para incorporar sus variables públicas. HSTS debe habilitarse cuando el acceso HTTPS haya sido verificado.
+Con el dominio activo (2026-09-25), `.env.prod` usa `https://guiamedicamonagas.com` en `FRONTEND_URL`, `NEXT_PUBLIC_SITE_URL` y `S3_PUBLIC_ENDPOINT`, `COOKIE_SECURE=true` y no define `CADDY_BIND_ADDRESS`. HSTS de un año lo envían Traefik (todo el dominio) y la API. `NEXT_PUBLIC_*` se incorpora al compilar: cambiarlo exige reconstruir `web` (lo hace `deploy.sh`). Volver a un acceso HTTP temporal exigiría revertir todo esto, y los navegadores que ya recibieron HSTS seguirían exigiendo HTTPS durante un año.
+
+Si Traefik muestra `TRAEFIK DEFAULT CERT` en el dominio, fue porque un intento anterior de Let's Encrypt falló (por ejemplo, antes de publicarse el DNS) y Traefik no reintenta solo: basta con recrear `caddy` (`docker compose … up -d --no-deps --force-recreate caddy`) para que lo pida de nuevo. Los avisos `Cannot retrieve the ACME challenge` con tokens desconocidos llegan también para otros dominios del VPS y no vienen de Traefik (probablemente del SSL automático de Hostinger): no afectan.
 
 ## Estado y registros
 

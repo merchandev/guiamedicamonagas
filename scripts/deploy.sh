@@ -71,7 +71,8 @@ fi
 NO_GO=()
 [[ "${COOKIE_SECURE:-true}" == "true" ]] || NO_GO+=("COOKIE_SECURE no es true")
 for var in FRONTEND_URL NEXT_PUBLIC_SITE_URL NEXT_PUBLIC_API_URL S3_PUBLIC_ENDPOINT; do
-  [[ "${!var}" == https://* ]] || NO_GO+=("${var} no usa HTTPS")
+  # Una ruta relativa (NEXT_PUBLIC_API_URL=/api/v1) hereda el HTTPS de la página.
+  [[ "${!var}" == https://* || ( "${var}" == NEXT_PUBLIC_API_URL && "${!var}" == /* ) ]] || NO_GO+=("${var} no usa HTTPS")
 done
 [[ "${CADDY_BIND_ADDRESS:-127.0.0.1}" == "127.0.0.1" ]] || NO_GO+=("el puerto ${CADDY_PORT:-8088} está publicado a Internet (CADDY_BIND_ADDRESS=${CADDY_BIND_ADDRESS})")
 [[ "${ADMIN_MFA_ENABLED:-false}" == "true" ]] || NO_GO+=("MFA de administradores con excepción hasta ${ADMIN_MFA_WAIVER_UNTIL}")

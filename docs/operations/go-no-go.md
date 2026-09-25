@@ -1,16 +1,16 @@
 # GO / NO-GO para operar con pacientes reales
 
-Estado al 2026-09-24 (ACT-0019). `scripts/deploy.sh` imprime este informe en cada despliegue y, con
+Estado al 2026-09-25 (ACT-0024). `scripts/deploy.sh` imprime este informe en cada despliegue y, con
 `GMM_REQUIRE_GO=true`, se niega a desplegar mientras quede algún NO-GO.
 
 ## Criterios
 
 | Criterio | Estado | Cómo se comprueba / qué falta |
 |---|---|---|
-| HTTPS válido en el dominio | 🔴 NO-GO | Enrutamiento listo en Traefik (ACT-0018); falta la zona DNS en Hostinger y el certificado de Let's Encrypt |
-| HTTP → HTTPS y `www` → dominio | 🟡 Listo, sin DNS | Traefik ya redirige; se verá al resolver el DNS |
-| Puerto 8088 cerrado a Internet | 🔴 NO-GO | `CADDY_BIND_ADDRESS=0.0.0.0` en `.env.prod` porque hoy es el único acceso; al activar el dominio, quitarlo (por defecto es `127.0.0.1`) |
-| `COOKIE_SECURE=true` | 🔴 NO-GO | Requiere HTTPS |
+| HTTPS válido en el dominio | 🟢 GO | Let's Encrypt (Traefik, HTTP-01) para `guiamedicamonagas.com` y `www` desde el 2026-09-25; Traefik lo renueva solo |
+| HTTP → HTTPS y `www` → dominio | 🟢 GO | Traefik redirige con 301; HSTS de un año en todo el dominio |
+| Puerto 8088 cerrado a Internet | 🟢 GO | `CADDY_BIND_ADDRESS` retirado de `.env.prod`: 8088 solo en `127.0.0.1` |
+| `COOKIE_SECURE=true` | 🟢 GO | Activado con el dominio; el smoke test exige el atributo `Secure` en la cookie de sesión |
 | MFA de administradores | 🟡 Excepción | Obligatorio en producción; excepción fechada (`ADMIN_MFA_WAIVER_UNTIL`) hasta tener SMTP real |
 | ClamAV activo | 🟢 GO | Obligatorio: la API no arranca sin `CLAMAV_HOST`; `deploy.sh` espera a que esté sano |
 | Claves AES respaldadas fuera del VPS | 🔴 Pendiente del titular | `DATA_ENCRYPTION_KEYS`/`DATA_LOOKUP_KEY` en una bóveda propia |

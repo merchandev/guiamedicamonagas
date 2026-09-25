@@ -8,8 +8,8 @@
 #   navegador ─HTTPS─▶ Traefik :443 ─HTTP─▶ este Caddy :8088 ─▶ web / api / minio
 #
 # Traefik encuentra este Caddy por las etiquetas del servicio `caddy` en
-# docker-compose.prod.yml (sin tocar la configuración de Traefik). El acceso
-# directo por IP a :8088 sigue funcionando. Por eso aquí no hay bloque TLS.
+# docker-compose.prod.yml (sin tocar la configuración de Traefik). Por eso aquí
+# no hay bloque TLS; el puerto :8088 del host queda solo en 127.0.0.1.
 # =============================================================================
 {
 	servers {
@@ -22,8 +22,8 @@
 }
 
 :8088 {
-	# Headers de seguridad que sí aplican sin HTTPS (HSTS se omite a propósito:
-	# forzarlo sobre una conexión sin cifrar rompería el propio sitio).
+	# Headers de seguridad. HSTS lo agrega Traefik (etiquetas de `caddy` en
+	# docker-compose.prod.yml), que es el único camino con HTTPS.
 	header {
 		X-Content-Type-Options "nosniff"
 		X-Frame-Options "DENY"
