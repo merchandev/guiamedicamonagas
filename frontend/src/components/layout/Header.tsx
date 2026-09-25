@@ -33,7 +33,7 @@ export function Header() {
           Guía Médica Monagas
         </Link>
 
-        <nav className="hidden items-center gap-1 md:flex">
+        <nav className="hidden items-center gap-1 lg:flex">
           {NAV_LINKS.map((link) => (
             <Link
               key={link.href}
@@ -48,7 +48,7 @@ export function Header() {
           ))}
         </nav>
 
-        <div className="hidden items-center gap-2 md:flex">
+        <div className="hidden items-center gap-2 lg:flex">
           {user ? (
             <>
               <Link
@@ -80,22 +80,23 @@ export function Header() {
             </>
           ) : (
             <>
-              <Link href="/iniciar-sesion" className="rounded-lg px-3 py-2 text-sm font-medium text-ink-700 hover:bg-ink-100">
+              <Link href="/iniciar-sesion" className="whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium text-ink-700 hover:bg-ink-100">
                 Iniciar sesión
               </Link>
               <Link
                 href="/registro"
-                className="rounded-lg bg-pine-700 px-4 py-2 text-sm font-medium text-white hover:bg-pine-800"
+                className="whitespace-nowrap rounded-lg bg-pine-700 px-4 py-2 text-sm font-medium text-white hover:bg-pine-800"
               >
-                Soy médico
+                Quiero registrarme
               </Link>
             </>
           )}
         </div>
 
         <button
-          className="rounded-lg p-2 text-ink-700 hover:bg-ink-100 md:hidden"
+          className="rounded-lg p-2 text-ink-700 hover:bg-ink-100 lg:hidden"
           aria-label="Abrir menú"
+          aria-expanded={open}
           onClick={() => setOpen((o) => !o)}
         >
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -105,7 +106,7 @@ export function Header() {
       </div>
 
       {open && (
-        <div className="border-t border-ink-100 bg-white px-4 py-3 md:hidden">
+        <div className="border-t border-ink-100 bg-white px-4 py-3 lg:hidden">
           <nav className="flex flex-col gap-1">
             {NAV_LINKS.map((link) => (
               <Link
@@ -148,7 +149,7 @@ export function Header() {
                   Iniciar sesión
                 </Link>
                 <Link href="/registro" onClick={() => setOpen(false)} className="rounded-lg bg-pine-700 px-3 py-2 text-sm font-medium text-white">
-                  Soy médico
+                  Quiero registrarme
                 </Link>
               </>
             )}

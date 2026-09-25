@@ -28,7 +28,8 @@ export function Footer() {
             <li><Link href="/especialidades" className="hover:text-pine-700">Especialidades</Link></li>
             <li><Link href="/farmacias" className="hover:text-pine-700">Farmacias y clínicas</Link></li>
             <li><Link href="/planes" className="hover:text-pine-700">Planes y precios</Link></li>
-            <li><Link href="/registro" className="hover:text-pine-700">Registrar mi consultorio</Link></li>
+            <li><Link href="/registro?tipo=medico" className="hover:text-pine-700">Registrar mi consultorio</Link></li>
+            <li><Link href="/registro?tipo=paciente" className="hover:text-pine-700">Crear cuenta de paciente</Link></li>
           </ul>
         </div>
 

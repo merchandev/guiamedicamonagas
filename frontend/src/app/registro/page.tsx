@@ -27,6 +27,13 @@ const ROLE_OPTIONS = [
   { value: 'ORGANIZATION', label: 'Farmacia, laboratorio o clínica' },
 ] as const;
 
+// ?tipo=paciente|medico|organizacion preselecciona el tipo de cuenta (enlaces del inicio, planes y farmacias).
+const ROLE_BY_TIPO: Record<string, 'USER' | 'PROFESSIONAL' | 'ORGANIZATION'> = {
+  paciente: 'USER',
+  medico: 'PROFESSIONAL',
+  organizacion: 'ORGANIZATION',
+};
+
 const schema = z
   .object({
     role: z.enum(['USER', 'PROFESSIONAL', 'ORGANIZATION']),
@@ -95,7 +102,9 @@ function RegisterContent() {
   const { register: doRegister } = useAuth();
   const router = useRouter();
   // ?invitacion=<token>: alta para unirse al equipo de una organización existente.
-  const invitationToken = useSearchParams().get('invitacion');
+  const searchParams = useSearchParams();
+  const invitationToken = searchParams.get('invitacion');
+  const initialRole = ROLE_BY_TIPO[searchParams.get('tipo') ?? ''] ?? 'PROFESSIONAL';
   const [invitation, setInvitation] = useState<InvitationPreview | null>(null);
   const [invitationError, setInvitationError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -109,7 +118,7 @@ function RegisterContent() {
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: invitationToken ? { role: 'ORGANIZATION', invitationToken } : { role: 'PROFESSIONAL' },
+    defaultValues: invitationToken ? { role: 'ORGANIZATION', invitationToken } : { role: initialRole },
   });
 
   useEffect(() => {

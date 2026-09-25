@@ -70,7 +70,7 @@ export default async function PlansPage() {
                   ))}
                 </ul>
                 <Link
-                  href="/registro"
+                  href="/registro?tipo=medico"
                   className={`mt-6 rounded-lg px-4 py-2.5 text-center text-sm font-semibold transition-transform hover:-translate-y-0.5 ${
                     highlighted ? 'bg-white text-pine-800 hover:bg-pine-50' : 'bg-pine-700 text-white hover:bg-pine-800'
                   }`}
@@ -112,7 +112,7 @@ export default async function PlansPage() {
                 <span className="text-sm font-normal text-ink-400">/mes</span>
               </p>
               <Link
-                href="/registro"
+                href="/registro?tipo=organizacion"
                 className="rounded-lg bg-pine-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-pine-800"
               >
                 Contactar para registrar mi organización

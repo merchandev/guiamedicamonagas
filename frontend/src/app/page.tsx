@@ -17,6 +17,7 @@ import {
   FlaskIcon,
   MapPinIcon,
   PillIcon,
+  ShieldCheckIcon,
   StethoscopeIcon,
   UserRoundIcon,
   WhatsAppIcon,
@@ -51,6 +52,29 @@ const VERIFICATION_STEPS = [
   },
 ];
 
+const PATIENT_BENEFITS = [
+  {
+    title: 'Agenda tus citas',
+    body: 'Reserva en línea con los médicos que ofrecen agenda, ve todas tus citas en un solo lugar y recibe recordatorios.',
+    icon: ClockIcon,
+  },
+  {
+    title: 'Tu ficha de salud',
+    body: 'Guarda tus alergias, tu grupo sanguíneo, tus medicamentos con su horario y tu contacto de emergencia.',
+    icon: FileCheckIcon,
+  },
+  {
+    title: 'Tú decides quién la ve',
+    body: 'Ningún médico ve tus datos sin tu permiso, y cada consulta a tu ficha queda registrada.',
+    icon: ShieldCheckIcon,
+  },
+  {
+    title: 'Gratis y rápido',
+    body: 'Solo necesitas tu nombre, tu cédula y un correo. El resto lo completas cuando quieras.',
+    icon: UserRoundIcon,
+  },
+];
+
 const FAQ_ITEMS = [
   {
     question: '¿Cómo verifican a los médicos?',
@@ -60,6 +84,11 @@ const FAQ_ITEMS = [
   {
     question: '¿Es gratis buscar un médico en el directorio?',
     answer: 'Sí. Buscar, filtrar por especialidad o municipio y contactar a un médico verificado es completamente gratuito para pacientes.',
+  },
+  {
+    question: '¿Necesito una cuenta de paciente?',
+    answer:
+      'Para buscar médicos, no. La cuenta de paciente es gratuita y te sirve para agendar en línea con los médicos que lo ofrecen, recibir recordatorios de tus citas y guardar tu ficha de salud, que solo ven los médicos que tú autorices.',
   },
   {
     question: '¿Cómo confío en que el médico está habilitado para ejercer?',
@@ -112,12 +141,19 @@ export default async function HomePage() {
                 Buscar un médico
               </Link>
               <Link
-                href="/registro"
+                href="/registro?tipo=medico"
                 className="rounded-lg border border-ink-200 bg-white px-6 py-3 text-sm font-semibold text-ink-800 transition-transform hover:-translate-y-0.5 hover:bg-ink-50"
               >
                 Soy médico, quiero registrarme
               </Link>
             </div>
+            <p className="mt-4 text-sm text-ink-600">
+              ¿Eres paciente?{' '}
+              <Link href="/registro?tipo=paciente" className="font-semibold text-pine-700 hover:underline">
+                Crea tu cuenta gratis
+              </Link>{' '}
+              para agendar citas y guardar tu ficha de salud.
+            </p>
           </Reveal>
 
           <Reveal delay={0.15}>
@@ -248,6 +284,46 @@ export default async function HomePage() {
         </section>
       )}
 
+      <section id="pacientes" aria-labelledby="pacientes-titulo" className="container-page scroll-mt-20 py-16">
+        <Reveal>
+          <div className="grid gap-10 rounded-xl2 border border-pine-100 bg-pine-50/70 p-6 sm:p-10 lg:grid-cols-[1fr_1.25fr] lg:items-center">
+            <div>
+              <Badge tone="gold">Para pacientes</Badge>
+              <h2 id="pacientes-titulo" className="mt-3 text-2xl md:text-3xl">
+                ¿Eres paciente? Crea tu cuenta gratis
+              </h2>
+              <p className="mt-3 max-w-md text-ink-600">
+                Buscar médicos no requiere cuenta. Con tu cuenta de paciente, además, agendas en línea y llevas tu
+                información de salud contigo, siempre bajo tu control.
+              </p>
+              <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-3">
+                <Link
+                  href="/registro?tipo=paciente"
+                  className="rounded-lg bg-pine-700 px-6 py-3 text-sm font-semibold text-white shadow-soft transition-transform hover:-translate-y-0.5 hover:bg-pine-800"
+                >
+                  Crear mi cuenta de paciente
+                </Link>
+                <Link href="/iniciar-sesion" className="text-sm font-medium text-pine-700 hover:underline">
+                  Ya tengo cuenta
+                </Link>
+              </div>
+            </div>
+
+            <ul className="grid gap-4 sm:grid-cols-2">
+              {PATIENT_BENEFITS.map((benefit) => (
+                <li key={benefit.title} className="rounded-xl bg-white p-5 shadow-soft">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-pine-50 text-pine-700">
+                    <benefit.icon className="h-5 w-5" />
+                  </span>
+                  <h3 className="mt-3 font-semibold text-ink-900">{benefit.title}</h3>
+                  <p className="mt-1 text-sm text-ink-600">{benefit.body}</p>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </Reveal>
+      </section>
+
       <section className="border-t border-ink-100 bg-white py-16">
         <div className="container-page">
           <Reveal>
@@ -279,7 +355,7 @@ export default async function HomePage() {
                 MPPS y Colegio de Médicos de Monagas con total transparencia.
               </p>
               <Link
-                href="/registro"
+                href="/registro?tipo=medico"
                 className="mt-6 inline-block rounded-lg bg-white px-6 py-3 text-sm font-semibold text-pine-900 transition-transform hover:-translate-y-0.5 hover:bg-pine-50"
               >
                 Registrar mi perfil

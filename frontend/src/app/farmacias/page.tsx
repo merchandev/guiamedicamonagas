@@ -40,7 +40,7 @@ export default async function FarmaciasPage({
       <h1 className="text-3xl">Farmacias, laboratorios y clínicas</h1>
       <p className="mt-2 text-ink-600">
         Organizaciones de salud verificadas en Monagas. ¿Administras una?{' '}
-        <Link href="/registro" className="text-pine-700 underline">
+        <Link href="/registro?tipo=organizacion" className="text-pine-700 underline">
           Regístrala gratis
         </Link>
         .
