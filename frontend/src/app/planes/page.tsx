@@ -5,6 +5,7 @@ import { SubscriptionPlan } from '@/lib/types';
 import { Reveal, RevealGroup, RevealItem } from '@/components/motion/Reveal';
 import { BadgeCheckIcon, BuildingIcon } from '@/components/icons';
 import { PlanComparisonDemo } from '@/components/PlanComparisonDemo';
+import { ORGANIZATIONS_LAUNCHED } from '@/lib/features';
 
 export const metadata: Metadata = {
   title: 'Planes y precios',
@@ -111,12 +112,21 @@ export default async function PlansPage() {
                 ${orgPlan.priceUsd}
                 <span className="text-sm font-normal text-ink-400">/mes</span>
               </p>
-              <Link
-                href="/registro?tipo=organizacion"
-                className="rounded-lg bg-pine-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-pine-800"
-              >
-                Contactar para registrar mi organización
-              </Link>
+              {ORGANIZATIONS_LAUNCHED ? (
+                <Link
+                  href="/registro?tipo=organizacion"
+                  className="rounded-lg bg-pine-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-pine-800"
+                >
+                  Contactar para registrar mi organización
+                </Link>
+              ) : (
+                <Link
+                  href="/farmacias"
+                  className="rounded-lg border border-gold-200 bg-gold-50 px-5 py-2.5 text-sm font-semibold text-gold-800 hover:bg-gold-100"
+                >
+                  Próximamente
+                </Link>
+              )}
             </div>
           </div>
         </Reveal>

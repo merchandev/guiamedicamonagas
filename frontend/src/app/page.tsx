@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { serverGet } from '@/lib/server-fetch';
+import { ORGANIZATIONS_LAUNCHED } from '@/lib/features';
 import { Organization, PaginatedResult, ProfessionalListItem, Specialty } from '@/lib/types';
 import { Badge } from '@/components/ui/Badge';
 import { DoctorCard } from '@/components/DoctorCard';
@@ -106,7 +107,7 @@ export default async function HomePage() {
   const [specialties, doctorsResult, organizations] = await Promise.all([
     serverGet<Specialty[]>('/specialties'),
     serverGet<PaginatedResult<ProfessionalListItem>>('/professionals?limit=6'),
-    serverGet<Organization[]>('/organizations'),
+    ORGANIZATIONS_LAUNCHED ? serverGet<Organization[]>('/organizations') : Promise.resolve(null),
   ]);
 
   const specialtiesList = specialties ?? [];
@@ -116,7 +117,7 @@ export default async function HomePage() {
   const stats = [
     { value: doctorsResult?.total ?? 0, label: 'Médicos verificados', icon: StethoscopeIcon },
     { value: specialtiesList.length, label: 'Especialidades', icon: BadgeCheckIcon },
-    { value: organizations?.length ?? 0, label: 'Farmacias y clínicas', icon: BuildingIcon },
+    { value: organizations?.length ?? 0, label: 'Farmacias y clínicas', icon: BuildingIcon, soon: !ORGANIZATIONS_LAUNCHED },
     { value: 13, label: 'Municipios de Monagas', icon: MapPinIcon },
   ];
 
@@ -176,7 +177,7 @@ export default async function HomePage() {
               <div key={s.label} className="flex flex-col items-center">
                 <s.icon className="mb-2 h-6 w-6 text-pine-200" />
                 <p className="text-3xl font-bold">
-                  <Counter value={s.value} suffix="+" />
+                  {s.soon ? 'Pronto' : <Counter value={s.value} suffix="+" />}
                 </p>
                 <p className="mt-1 text-xs uppercase tracking-wide text-pine-100">{s.label}</p>
               </div>
@@ -281,6 +282,40 @@ export default async function HomePage() {
               );
             })}
           </RevealGroup>
+        </section>
+      )}
+
+      {!ORGANIZATIONS_LAUNCHED && (
+        <section className="container-page pt-16">
+          <Reveal>
+            <Link
+              href="/farmacias"
+              className="card group flex flex-col gap-4 p-6 transition-transform hover:-translate-y-0.5 hover:shadow-card sm:flex-row sm:items-center sm:justify-between"
+            >
+              <div className="flex items-center gap-4">
+                <span className="flex flex-shrink-0 -space-x-2" aria-hidden="true">
+                  {Object.values(ORG_TYPE_META).map((meta) => (
+                    <span
+                      key={meta.label}
+                      className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-white bg-gold-50 text-gold-700"
+                    >
+                      <meta.icon className="h-5 w-5" />
+                    </span>
+                  ))}
+                </span>
+                <div>
+                  <p className="flex flex-wrap items-center gap-2">
+                    <span className="font-semibold text-ink-900">Farmacias, laboratorios y clínicas</span>
+                    <Badge tone="gold">Próximamente</Badge>
+                  </p>
+                  <p className="mt-1 text-sm text-ink-600">
+                    Estamos preparando alianzas en Monagas para que también las encuentres aquí.
+                  </p>
+                </div>
+              </div>
+              <span className="text-sm font-medium text-pine-700 group-hover:underline">Saber más →</span>
+            </Link>
+          </Reveal>
         </section>
       )}
 

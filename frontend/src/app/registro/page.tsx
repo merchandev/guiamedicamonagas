@@ -17,21 +17,24 @@ import { Alert } from '@/components/ui/Alert';
 import { cn } from '@/lib/cn';
 import TermsModal from '@/components/TermsModal';
 import { PRIVACY_VERSION, TERMS_VERSION } from '@/lib/legal';
+import { ORGANIZATIONS_LAUNCHED } from '@/lib/features';
 
 const CEDULA_REGEX = /^[VEJPGvejpg]-?\d{5,9}$/;
 const RIF_REGEX = /^[VEJPGvejpg]-?\d{8,9}-?\d$/;
 
+// Farmacias, laboratorios y clínicas se registran solo cuando se abran las
+// alianzas (ORGANIZATIONS_LAUNCHED); las invitaciones a equipos no dependen de esto.
 const ROLE_OPTIONS = [
   { value: 'PROFESSIONAL', label: 'Soy médico' },
   { value: 'USER', label: 'Soy paciente' },
-  { value: 'ORGANIZATION', label: 'Farmacia, laboratorio o clínica' },
+  ...(ORGANIZATIONS_LAUNCHED ? [{ value: 'ORGANIZATION', label: 'Farmacia, laboratorio o clínica' } as const] : []),
 ] as const;
 
 // ?tipo=paciente|medico|organizacion preselecciona el tipo de cuenta (enlaces del inicio, planes y farmacias).
 const ROLE_BY_TIPO: Record<string, 'USER' | 'PROFESSIONAL' | 'ORGANIZATION'> = {
   paciente: 'USER',
   medico: 'PROFESSIONAL',
-  organizacion: 'ORGANIZATION',
+  ...(ORGANIZATIONS_LAUNCHED ? { organizacion: 'ORGANIZATION' as const } : {}),
 };
 
 const schema = z
@@ -166,8 +169,10 @@ function RegisterContent() {
     <div className="container-page flex min-h-[70vh] max-w-xl flex-col justify-center py-12">
       <h1 className="text-2xl">Crear cuenta</h1>
       <p className="mt-1 text-sm text-ink-500">
-        Regístrate como paciente, como médico o como farmacia, laboratorio o clínica. La verificación y el perfil básico
-        son gratuitos.
+        {ORGANIZATIONS_LAUNCHED
+          ? 'Regístrate como paciente, como médico o como farmacia, laboratorio o clínica.'
+          : 'Regístrate como paciente o como médico.'}{' '}
+        La verificación y el perfil básico son gratuitos.
       </p>
 
       <form onSubmit={handleSubmit(onSubmit)} className="card mt-6 space-y-4 p-6">
@@ -198,7 +203,11 @@ function RegisterContent() {
         )}
 
         {!invitationToken && (
-        <div role="radiogroup" aria-label="Tipo de cuenta" className="grid gap-3 sm:grid-cols-3">
+        <div
+          role="radiogroup"
+          aria-label="Tipo de cuenta"
+          className={cn('grid gap-3', ROLE_OPTIONS.length === 3 ? 'sm:grid-cols-3' : 'sm:grid-cols-2')}
+        >
           {ROLE_OPTIONS.map((option) => (
             <label
               key={option.value}

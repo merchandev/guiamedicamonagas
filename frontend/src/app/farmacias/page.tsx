@@ -6,10 +6,14 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { Badge } from '@/components/ui/Badge';
 import { VerificationBadge } from '@/components/VerificationBadge';
 import { SocialLinksRow } from '@/components/SocialLinksRow';
+import { OrganizationsComingSoon } from '@/components/OrganizationsComingSoon';
+import { ORGANIZATIONS_LAUNCHED } from '@/lib/features';
 
 export const metadata: Metadata = {
   title: 'Farmacias, laboratorios y clínicas',
-  description: 'Directorio de farmacias, laboratorios clínicos y clínicas en el estado Monagas.',
+  description: ORGANIZATIONS_LAUNCHED
+    ? 'Directorio de farmacias, laboratorios clínicos y clínicas en el estado Monagas.'
+    : 'Próximamente: farmacias, laboratorios y clínicas aliadas en el estado Monagas.',
 };
 
 const TYPE_LABELS: Record<string, string> = {
@@ -30,6 +34,8 @@ export default async function FarmaciasPage({
 }: {
   searchParams: Promise<{ tipo?: string }>;
 }) {
+  if (!ORGANIZATIONS_LAUNCHED) return <OrganizationsComingSoon />;
+
   const { tipo } = await searchParams;
   const type = tipo ?? '';
   const query = type ? `?type=${type}` : '';

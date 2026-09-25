@@ -7,6 +7,7 @@ import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import CookieConsent from '@/components/CookieConsent';
 import { LegalAcceptanceGate } from '@/components/LegalAcceptanceGate';
+import { ORGANIZATIONS_LAUNCHED } from '@/lib/features';
 
 const display = Fraunces({ subsets: ['latin'], variable: '--font-display', weight: ['500', '600'] });
 const sans = Inter({ subsets: ['latin'], variable: '--font-sans' });
@@ -17,8 +18,9 @@ export const metadata: Metadata = {
     default: 'Guía Médica Monagas — Directorio médico verificado',
     template: '%s — Guía Médica Monagas',
   },
-  description:
-    'Encuentra médicos, especialistas, farmacias y clínicas verificadas en el estado Monagas. Cada profesional pasa por un proceso de verificación legal y gremial.',
+  description: `Encuentra ${
+    ORGANIZATIONS_LAUNCHED ? 'médicos, especialistas, farmacias y clínicas verificadas' : 'médicos y especialistas verificados'
+  } en el estado Monagas. Cada profesional pasa por un proceso de verificación legal y gremial.`,
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
