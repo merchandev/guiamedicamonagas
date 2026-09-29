@@ -3,7 +3,7 @@
 > Bitácora central de cambios, implementaciones, decisiones técnicas y tareas de evolución del sistema.
 >
 > **Repositorio:** [`merchandev/guiamedicamonagas`](https://github.com/merchandev/guiamedicamonagas) · **Rama:** `main`<br>
-> **Última actualización de esta bitácora:** `2026-09-29 12:48:40 -04:00` · **Estado:** 🟢 Registro activo
+> **Última actualización de esta bitácora:** `2026-09-29 14:17:09 -04:00` · **Estado:** 🟢 Registro activo
 
 ![Estado](https://img.shields.io/badge/estado-registro%20activo-16a34a?style=flat-square)
 ![Rama](https://img.shields.io/badge/rama-main-2563eb?style=flat-square)
@@ -134,8 +134,9 @@ flowchart LR
     AC[🔎 2026-09-25\n16:20:34\nACT-0029 · Código y QR del médico,\nbuscador solo de médicos]
     AD[🏷️ 2026-09-25\n16:20:34\nACT-0030 · SEO automático\ny tarjeta al compartir]
     AE[🛂 2026-09-29\n12:48:40\nACT-0031 · Cuentas, planes pagados\ny eliminación definitiva]
+    AF[🎬 2026-09-29\n14:17:09\nACT-0032 · Precios nuevos y plan\nAgencia con video de presentación]
 
-    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L --> M --> N --> O --> P --> Q --> R --> S --> T --> U --> V --> W --> X --> Y --> Z --> AA --> AB --> AC --> AD --> AE
+    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L --> M --> N --> O --> P --> Q --> R --> S --> T --> U --> V --> W --> X --> Y --> Z --> AA --> AB --> AC --> AD --> AE --> AF
 ```
 
 ### Resumen cuantitativo
@@ -143,8 +144,8 @@ flowchart LR
 | Indicador | Resultado |
 |---|---:|
 | Actividades históricas importadas desde Git | `3` |
-| Actividades documentales añadidas con esta bitácora | `28` |
-| Actividades registradas en total | `31` |
+| Actividades documentales añadidas con esta bitácora | `29` |
+| Actividades registradas en total | `32` |
 | Rama de referencia | `main` |
 | Commit base consultado | [`81b1091`](https://github.com/merchandev/guiamedicamonagas/commit/81b1091) |
 | Zona horaria de control | `America/Caracas` (`-04:00`) |
@@ -1230,6 +1231,94 @@ El titular pidió que la administración pueda suspender y eliminar médicos y p
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
+<a id="act-0032"></a>
+
+### 🎬 ACT-0032 · Precios nuevos y plan Agencia con video de presentación
+
+<details>
+<summary><strong>2026-09-29 14:17:09 -04:00</strong> · <code>81e5f22</code> · 🟢 Completado</summary>
+
+**Responsable:** `Claude Opus 5.5` · **Tipo:** `monetización | profesionales | experiencia | despliegue` · **Commits:** [`81e5f22`](https://github.com/merchandev/guiamedicamonagas/commit/81e5f22) y [`01fd269`](https://github.com/merchandev/guiamedicamonagas/commit/01fd269)
+
+El titular pidió bajar los precios de los planes, agregar el plan Agencia con 2 videos en colaboración con la Guía, permitir que la ficha de ese plan incruste un video de YouTube de presentación y darle la insignia dorada. Al terminar, subirlo al repositorio y a producción.
+
+**Precios (USD al mes):**
+
+| Plan | Antes | Ahora |
+|---|---:|---:|
+| Profesional | 10 | **3,99** |
+| Profesional Plus | 15 | **5,99** |
+| Premium | 25 | **10,99** |
+| Agencia (nuevo) | — | **69,99** |
+
+- Van en la migración de datos `20260929220100_plan_prices_and_agency_catalog`, que también da de alta el plan Agencia. Es repetible: no duplica el plan si ya existe.
+- Las cuotas ya emitidas conservan su precio, porque cada una guarda el monto y la tasa con que se creó. En producción no había suscripciones.
+
+**Plan Agencia:**
+- Incluye todo lo de Premium: redes y web, 5 sedes, publicaciones ilimitadas y el espacio «Destacado».
+- 2 videos en colaboración con Guía Médica Monagas y el video de presentación de YouTube en la ficha.
+- Insignia de verificado dorada con borde y brillo, para distinguirla del dorado liso de Premium.
+- Prioridad en la franja «Destacado»: primero Agencia y, si sobra lugar, Premium, cada grupo rotando. Sigue señalada como patrocinada.
+- No sube el puntaje del directorio por encima de Premium (+15): la regla de que un plan pago no supera a un perfil gratuito mucho más completo se mantiene.
+- Como Plus y Premium, solo se contrata con el 100% de los documentos aprobados.
+
+**Video de presentación:**
+- Se guarda solo el ID de 11 caracteres del video, nunca una URL libre. Lo garantiza también una restricción `CHECK` en la base (migración `20260929220000_agency_plan`).
+- Acepta enlaces `youtube.com/watch`, `youtu.be`, `shorts`, `embed` y `live`. Rechaza cualquier otro dominio, incluidos los que imitan a YouTube.
+- **El médico** lo pega en «Mi perfil» (sección «Video de presentación»), con vista previa. Solo con el plan Agencia; quitarlo siempre puede.
+- **La administración** lo carga o cambia desde «Médicos: cuentas y planes» (botón «Video de presentación»), queda auditado. Puede cargarlo antes de asignar el plan.
+- **La ficha pública** lo muestra solo mientras el plan sea Agencia. Si el médico baja de plan, el video queda guardado y oculto.
+- La ficha solo carga la miniatura. El reproductor de YouTube, en modo de privacidad mejorada (`youtube-nocookie.com`), se carga cuando el paciente pulsa «Reproducir».
+- La barra de progreso del perfil suma el ítem «Video de presentación» (bloqueado hasta Agencia en los demás planes).
+
+**Otros cambios:**
+- La página de planes muestra Agencia en una tarjeta dorada aparte, y el comparador de planes suma la pestaña «Agencia».
+- Los textos que decían «Profesional Plus o Premium» ahora incluyen Agencia.
+- **La semilla ya no sobrescribe los planes.** Cada despliegue la ejecuta y antes volvía a poner precio, textos y estado de todos los planes, borrando lo editado en «Administración → Planes». Ahora solo crea los planes que falten. Los cambios de catálogo que vienen con el código van en una migración.
+
+**Verificación local:**
+- PostgreSQL desechable: migraciones sin desvío frente al esquema y semilla correcta.
+- Con los precios viejos cargados, la migración de precios los actualizó y crea Agencia una sola vez aunque se ejecute dos veces.
+- 105 pruebas unitarias, entre ellas las del lector de enlaces de YouTube (10 enlaces aceptados y 11 rechazados).
+- Suite general e2e `TODO OK`.
+- Suite administrativa **75/75** (13 comprobaciones nuevas: precios del catálogo, asignación de Agencia, permisos del video, ficha pública, orden de «Destacado», baja de plan y eliminación definitiva).
+- Build de producción del frontend correcto.
+- En el navegador, con una base de prueba:
+  - La página de planes mostró los precios nuevos y la tarjeta de Agencia.
+  - La ficha mostró la insignia dorada, «Destacado», la miniatura y, al pulsar, el reproductor de `youtube-nocookie.com`.
+  - El panel del médico mostró la sección del video y el ítem de progreso completo.
+
+**CI de GitHub** para [`01fd269`](https://github.com/merchandev/guiamedicamonagas/commit/01fd269):
+- Backend (tipos, unitarias, build y las dos suites e2e) y frontend en verde.
+- «Seguridad» en verde: CodeQL, Trivy, `npm audit` y gitleaks. gitleaks 8.28 en local también dio «no leaks found».
+- La ejecución de `81e5f22` quedó cancelada porque la reemplazó la de `01fd269`; su parte de seguridad pasó completa.
+
+**Despliegue en el VPS** (`gmm-independent`, log `/var/log/guiamedicamonagas/deploy-act32.log`):
+- Pasó de `05294c8` a `01fd269`.
+- Respaldo cifrado previo (`gmm-db-20260929T180637Z-pre-deploy.dump.gpg`).
+- Migraciones `20260929220000_agency_plan` y `20260929220100_plan_prices_and_agency_catalog` aplicadas. En la base: Profesional 3,99, Plus 5,99, Premium 10,99 y Agencia 69,99, todos activos, y la restricción `ProfessionalProfile_presentationVideoId_format`.
+- Solo se recrearon `api` y `web`, que quedaron *healthy*. El resto de `gmm-independent` y los otros proyectos del servidor (Diario Mercantil, SaaS MT y Traefik) siguen con 3 días de actividad, sin reinicios.
+- Prueba de humo **25/25**, sin fallos.
+- La API y la página `/planes` publican los precios nuevos y la tarjeta de Agencia. Las rutas nuevas del video responden 401 sin sesión.
+- Cuentas sin cambios (1 paciente, 2 médicos y 1 superadministrador, todos activos) y ninguna suscripción. Hoy no hay médicos publicados, así que el video todavía no se ve en ninguna ficha real. En producción no se hicieron pruebas que escriban datos.
+
+**Pendiente del titular:**
+- Los Términos y condiciones (versión 2.2) nombran solo a Plus y Premium en la regla del 100% de documentos y en «Destacado». Agencia ya cumple ambas reglas.
+- Falta decidir quién es dueño de los videos grabados en colaboración, dónde se publican y qué pasa con ellos si el médico deja el plan.
+- Cambiar el texto legal obliga a subir la versión y a que todos los usuarios la acepten de nuevo.
+
+**Archivos destacados:**
+- [`backend/prisma/migrations/20260929220100_plan_prices_and_agency_catalog/migration.sql`](backend/prisma/migrations/20260929220100_plan_prices_and_agency_catalog/migration.sql)
+- [`backend/src/professionals/presentation-video.ts`](backend/src/professionals/presentation-video.ts)
+- [`backend/src/subscriptions/plan-tiers.ts`](backend/src/subscriptions/plan-tiers.ts)
+- [`frontend/src/components/YouTubePresentation.tsx`](frontend/src/components/YouTubePresentation.tsx)
+- [`frontend/src/components/PresentationVideoManager.tsx`](frontend/src/components/PresentationVideoManager.tsx)
+- [`frontend/src/app/planes/page.tsx`](frontend/src/app/planes/page.tsx)
+
+</details>
+
+<p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
+
 <a id="registro-por-area"></a>
 
 ## 🧩 Registro por área
@@ -1240,12 +1329,12 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 |---|---|---|
 | 🧱 Fundación técnica | NestJS, Next.js, Prisma, Docker, Caddy, Tailwind | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) |
 | 🔐 Auth y seguridad | JWT, refresh cookie, roles, correo, recuperación, throttling, Argon2id, permisos granulares, reuso de tokens, `tokenVersion`, cerrar todas las sesiones, MFA obligatorio en producción, subidas seguras, antivirus obligatorio y rotación de claves, bóveda de registros de pacientes con código de seguridad | [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0012](#act-0012) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0019](#act-0019) · [ACT-0024](#act-0024) · [ACT-0027](#act-0027) |
-| 👨‍⚕️ Profesionales | Perfiles, ubicaciones, documentos, verificación legal (sin solvencia deontológica), publicación con el 60% aprobado + biografía + foto, barra de progreso del registro, redes sociales, badges, código y QR del médico, SEO automático y tarjeta para compartir | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0020](#act-0020) · [ACT-0021](#act-0021) · [ACT-0028](#act-0028) · [ACT-0029](#act-0029) · [ACT-0030](#act-0030) |
+| 👨‍⚕️ Profesionales | Perfiles, ubicaciones, documentos, verificación legal (sin solvencia deontológica), publicación con el 60% aprobado + biografía + foto, barra de progreso del registro, redes sociales, badges, código y QR del médico, SEO automático, tarjeta para compartir y video de presentación de YouTube (plan Agencia) | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0020](#act-0020) · [ACT-0021](#act-0021) · [ACT-0028](#act-0028) · [ACT-0029](#act-0029) · [ACT-0030](#act-0030) · [ACT-0032](#act-0032) |
 | 🏥 Organizaciones | Farmacias, laboratorios, clínicas, ubicaciones, autogestión, equipo con invitaciones y roles internos, médicos asociados y plan propio, sección «Próximamente» hasta cerrar alianzas | [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0015](#act-0015) · [ACT-0019](#act-0019) · [ACT-0025](#act-0025) |
-| 💳 Monetización | Planes, Pago Móvil, aprobación, tasa BCV, evidencia de tasa por cuota, catálogo de bancos, referencia única atómica, Plus/Premium solo con el 100% de documentos y pagos externos registrados por la administración con renovación anticipada | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0010](#act-0010) · [ACT-0011](#act-0011) · [ACT-0015](#act-0015) · [ACT-0019](#act-0019) · [ACT-0021](#act-0021) · [ACT-0031](#act-0031) |
+| 💳 Monetización | Planes, Pago Móvil, aprobación, tasa BCV, evidencia de tasa por cuota, catálogo de bancos, referencia única atómica, Plus/Premium/Agencia solo con el 100% de documentos, pagos externos registrados por la administración con renovación anticipada, precios de septiembre de 2026 (3,99 / 5,99 / 10,99 / 69,99 USD) y plan Agencia | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0010](#act-0010) · [ACT-0011](#act-0011) · [ACT-0015](#act-0015) · [ACT-0019](#act-0019) · [ACT-0021](#act-0021) · [ACT-0031](#act-0031) · [ACT-0032](#act-0032) |
 | 📅 Agenda y citas | Horarios, disponibilidad, reservas, máquina de estados, anti-doble-reserva, zona America/Caracas | [ACT-0007](#act-0007) · [ACT-0015](#act-0015) |
 | 🔒 Pacientes | Código pseudónimo, cifrado de datos de salud, consentimiento por alcance y tiempo, lecturas auditadas, registro propio, foto de identificación verificada por un admin, reserva con la ficha propia, código y QR para compartir, directorio del médico por código, bóveda de administración y noindex, registro visible desde el inicio y supresión de la cuenta conservando solo la evidencia legal | [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0023](#act-0023) · [ACT-0027](#act-0027) · [ACT-0029](#act-0029) · [ACT-0031](#act-0031) |
-| 🛠️ Administración | Médicos, pagos, SEO, cookies, especialidades, planes, verificaciones, organizaciones, bancos, geografía, identidad de pacientes, cuentas (suspensión, baja, eliminación definitiva) y planes pagados | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0031](#act-0031) |
+| 🛠️ Administración | Médicos, pagos, SEO, cookies, especialidades, planes, verificaciones, organizaciones, bancos, geografía, identidad de pacientes, cuentas (suspensión, baja, eliminación definitiva), planes pagados y video de presentación de los médicos | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0031](#act-0031) · [ACT-0032](#act-0032) |
 | 📊 Observabilidad | Auditoría, analítica con consentimiento y sin IP, notificaciones, salud, pruebas, CI, escaneo de imágenes y Dependabot | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) |
 | 🎨 Experiencia | Directorios, dashboard, componentes UI, motion, legal, formularios legibles y utilizables con teclado, sección de pacientes en el inicio, tipografía Montserrat + Open Sans, suiches, botones y foco de campos corregidos | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0013](#act-0013) · [ACT-0014](#act-0014) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0017](#act-0017) · [ACT-0019](#act-0019) · [ACT-0022](#act-0022) · [ACT-0023](#act-0023) · [ACT-0025](#act-0025) · [ACT-0026](#act-0026) · [ACT-0028](#act-0028) |
 | 🚢 Operación | Variables de entorno, Compose, almacenamiento, correo, proxy, imágenes mínimas y antivirus | [ACT-0001](#act-0001) · [ACT-0002](#act-0002) · [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0008](#act-0008) · [ACT-0009](#act-0009) · [ACT-0011](#act-0011) · [ACT-0016](#act-0016) · [ACT-0017](#act-0017) · [ACT-0018](#act-0018) · [ACT-0019](#act-0019) · [ACT-0024](#act-0024) · [ACT-0027](#act-0027) |
@@ -1316,6 +1405,8 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | IMP-056 | SEO automático de la ficha (título, descripción, canónica, JSON-LD) y tarjeta 1200×630 con la foto del médico al compartir | 🟢 Completado | [`frontend/src/lib/seo.ts`](frontend/src/lib/seo.ts), [`frontend/src/app/medicos/[slug]/opengraph-image.tsx`](frontend/src/app/medicos/%5Bslug%5D/opengraph-image.tsx) |
 | IMP-057 | Gestión de cuentas de médicos y pacientes (suspensión, baja reversible, reactivación por documentos, avisos) y eliminación definitiva con conservación legal de pagos y autorizaciones | 🟢 Completado | [`backend/src/admin/account-management.service.ts`](backend/src/admin/account-management.service.ts), [`backend/src/admin/account-purge.service.ts`](backend/src/admin/account-purge.service.ts) |
 | IMP-058 | Registro de pagos externos con asignación o renovación del plan (1 a 12 períodos, vista previa de vigencia, aviso al médico) | 🟢 Completado | [`backend/src/subscriptions/admin-plan-assignments.service.ts`](backend/src/subscriptions/admin-plan-assignments.service.ts), [`frontend/src/components/AdminAccountManager.tsx`](frontend/src/components/AdminAccountManager.tsx) |
+| IMP-059 | Precios nuevos (3,99 / 5,99 / 10,99 USD) y plan Agencia (69,99 USD) por migración de datos; la semilla ya no pisa lo editado en «Administración → Planes» | 🟢 Completado | [`backend/prisma/migrations/20260929220100_plan_prices_and_agency_catalog/migration.sql`](backend/prisma/migrations/20260929220100_plan_prices_and_agency_catalog/migration.sql), [`backend/prisma/seed.ts`](backend/prisma/seed.ts) |
+| IMP-060 | Video de presentación de YouTube en la ficha (solo el ID, solo con Agencia, reproductor `youtube-nocookie` al pulsar), editable por el médico y por la administración (auditado), insignia dorada con brillo y prioridad en «Destacado» | 🟢 Completado | [`backend/src/professionals/presentation-video.ts`](backend/src/professionals/presentation-video.ts), [`frontend/src/components/YouTubePresentation.tsx`](frontend/src/components/YouTubePresentation.tsx) |
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
@@ -1356,6 +1447,8 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | 🟡 Baja | Decidir si el directorio de pacientes y el registro por código se abren al plan básico (hoy desde el plan Profesional, como la agenda) | 🔵 Planificado | Decisión del titular; es un cambio de una línea en `AGENDA_MIN_TIER` o una verificación propia |
 | 🟡 Baja | Decidir si el plan básico muestra foto y biografía en público (hoy son obligatorias para publicarse pero se ocultan en ese plan; por eso su tarjeta al compartir usa iniciales y su descripción SEO no usa la biografía) | 🔵 Planificado | Decisión del titular; `gateByTier` en `professionals.service.ts` |
 | 🟠 Media | Revisar y decidir los borradores de otra herramienta guardados en la rama local `wip/borradores-locales-2026-09-29` (sin subir): documentos esenciales para publicar, consentimiento del QR de 30 a 7 días, CSP estricta, lint en CI, bloqueo por correo sin verificar y `/health/ready`. Cambian reglas de producto: no se despliegan sin revisión | 🔴 Bloqueado | Decisión del titular; ver [ACT-0031](#act-0031) |
+| 🟠 Media | Actualizar los Términos y condiciones para el plan Agencia: la regla del 100% de documentos y «Destacado» (hoy solo nombran a Plus y Premium) y quién es dueño de los videos en colaboración, dónde se publican y qué pasa con ellos si el médico deja el plan | 🔴 Pendiente del titular | Texto aprobado por el titular; se sube `TERMS_VERSION` en `frontend/src/lib/legal.ts` y `backend/src/common/legal-versions.ts` y todos los usuarios la aceptan de nuevo. Ver [ACT-0032](#act-0032) |
+| 🟡 Baja | Si se porta la CSP estricta de la rama `wip`, permitir `frame-src https://www.youtube-nocookie.com` e `img-src https://i.ytimg.com`, o el video de presentación deja de verse | 🔵 Planificado | Ver [ACT-0032](#act-0032) |
 | 🟡 Baja | Revisar los PR #13 y #14 de Dependabot (actualizaciones menores abiertas tras ACT-0031) | 🔵 Planificado | Su chequeo de gitleaks falló por el hallazgo histórico ya ignorado en `342745a`; pasa al rebasarlos |
 | 🟠 Media | Proteger la rama `main` (al menos contra *force push* y borrado) y activar las alertas de Dependabot | 🔴 Bloqueado | Decisión del usuario sobre los ajustes del repositorio; ver [ACT-0017](#act-0017) |
 | 🟢 Continua | Registrar cada modificación nueva con fecha, hora, responsable y evidencia | 🟢 Activo | No existen cambios relevantes sin entrada en esta bitácora |
@@ -1435,6 +1528,7 @@ Para cada cambio futuro, añadir una entrada en la línea de tiempo y actualizar
 | `2026-09-25 15:53:01 -04:00` | Incorporación de ACT-0027 (código y QR del paciente, directorio del médico por código, bóveda de administración y noindex) con su despliegue, dos pendientes nuevos | 🟢 Completado |
 | `2026-09-25 16:28:26 -04:00` | Incorporación de ACT-0028 (guardado, subidas y controles), ACT-0029 (código y QR del médico, buscador solo de médicos) y ACT-0030 (SEO automático y tarjeta al compartir) con su despliegue | 🟢 Completado |
 | `2026-09-29 12:48:40 -04:00` | Incorporación de ACT-0031 (revisión de la gestión de cuentas de Codex, eliminación definitiva, planes pagados con renovación, Next 16.3.7) con su despliegue; dos pendientes nuevos | 🟢 Completado |
+| `2026-09-29 14:17:09 -04:00` | Incorporación de ACT-0032 (precios nuevos, plan Agencia con video de presentación de YouTube e insignia dorada, semilla que ya no pisa los planes editados) con su despliegue; dos pendientes nuevos (términos del plan Agencia y CSP de la rama `wip`) | 🟢 Completado |
 
 ---
 
