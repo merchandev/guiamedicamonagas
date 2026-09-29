@@ -97,7 +97,9 @@ export class ProfessionalsService implements OnApplicationBootstrap {
    * perfiles creados antes de que existiera.
    */
   async onApplicationBootstrap() {
+    // Las cuentas eliminadas definitivamente no recuperan código ni nombre de búsqueda.
     const profiles = await this.prisma.professionalProfile.findMany({
+      where: { user: { purgedAt: null } },
       select: { id: true, firstName: true, lastName: true, searchName: true, publicCode: true },
       take: 5000,
     });
@@ -526,6 +528,7 @@ export class ProfessionalsService implements OnApplicationBootstrap {
     const page = Math.max(1, params.page ?? 1);
     const limit = Math.min(50, Math.max(1, params.limit ?? 20));
     const where: Prisma.ProfessionalProfileWhereInput = {
+      user: { purgedAt: null },
       verificationStatus: (params.status as never) || undefined,
       OR: params.search
         ? [

@@ -360,3 +360,60 @@ export function organizationInvitationTemplate(
      </p>`,
   );
 }
+
+export type AccountModerationKind = 'SUSPEND' | 'DELETE' | 'RESTORE';
+
+/** Aviso al titular cuando la administración suspende, da de baja o reactiva su cuenta. */
+export function accountModeratedTemplate(rawName: string, kind: AccountModerationKind, rawReason: string, loginUrl: string) {
+  const name = escapeHtml(rawName);
+  const reason = escapeHtml(rawReason);
+  const copy: Record<AccountModerationKind, { title: string; body: string }> = {
+    SUSPEND: {
+      title: 'Tu cuenta fue suspendida',
+      body: `El equipo de ${BRAND_NAME} suspendió tu cuenta: mientras dure la suspensión no podrás iniciar sesión y, si eres médico, tu perfil no aparecerá en el directorio. Tus datos no se borraron.`,
+    },
+    DELETE: {
+      title: 'Tu cuenta fue dada de baja',
+      body: `El equipo de ${BRAND_NAME} dio de baja tu cuenta: ya no puedes iniciar sesión y, si eres médico, tu perfil dejó de aparecer en el directorio. Los permisos que tenías con médicos o pacientes quedaron revocados.`,
+    },
+    RESTORE: {
+      title: 'Tu cuenta fue reactivada',
+      body: `Tu cuenta en ${BRAND_NAME} está activa otra vez y ya puedes iniciar sesión. Si compartías datos con un médico, tendrás que volver a autorizarlo.`,
+    },
+  };
+  const { title, body } = copy[kind];
+  return layout(
+    title,
+    `<h1 style="font-size:20px;margin:0 0 12px;">Hola, ${name}</h1>
+     <p style="font-size:14px;line-height:1.6;color:#3a3a3a;">${body}</p>
+     <p style="font-size:13px;background:#f7f7f5;border-radius:8px;padding:12px 14px;color:#4a4a4a;">Motivo: ${reason}</p>
+     ${kind === 'RESTORE' ? button(loginUrl, 'Iniciar sesión') : '<p style="font-size:13px;line-height:1.6;color:#8a8a8a;">Si crees que es un error, responde a este correo.</p>'}`,
+  );
+}
+
+export function accountPurgedTemplate(rawName: string) {
+  const name = escapeHtml(rawName);
+  return layout(
+    'Tu cuenta fue eliminada',
+    `<h1 style="font-size:20px;margin:0 0 12px;">Hola, ${name}</h1>
+     <p style="font-size:14px;line-height:1.6;color:#3a3a3a;">
+       Eliminamos tu cuenta de ${BRAND_NAME} y tus datos personales. Solo conservamos, sin tus datos de contacto,
+       los registros que la ley obliga a guardar (pagos y autorizaciones dadas a médicos), como indica nuestra Política de privacidad.
+     </p>`,
+    `Este es el último correo que recibirás de ${BRAND_NAME} sobre esta cuenta.`,
+  );
+}
+
+export function paidPlanAssignedTemplate(rawName: string, rawPlanName: string, endsAtLabel: string, dashboardUrl: string) {
+  const name = escapeHtml(rawName);
+  const plan = escapeHtml(rawPlanName);
+  return layout(
+    'Tu plan está activo',
+    `<h1 style="font-size:20px;margin:0 0 12px;">Hola, ${name}</h1>
+     <p style="font-size:14px;line-height:1.6;color:#3a3a3a;">
+       Registramos tu pago y activamos tu plan <strong>${plan}</strong> en ${BRAND_NAME}.
+       Está vigente hasta el <strong>${escapeHtml(endsAtLabel)}</strong>.
+     </p>
+     ${button(dashboardUrl, 'Ver mi plan')}`,
+  );
+}

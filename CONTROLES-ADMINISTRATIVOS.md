@@ -10,6 +10,30 @@ Este documento reúne los cambios realizados para los controles administrativos 
 
 Se añadió un módulo administrativo independiente para gestionar cuentas de médicos y pacientes, suspender o dar de baja cuentas de forma reversible, revocar accesos relacionados y registrar pagos externos para asignar planes pagados. La solución mantiene separados los datos clínicos, los permisos de pacientes y la facturación, y no elimina registros históricos.
 
+## Revisión y mejoras (29 de septiembre, ACT-0031)
+
+La revisión del commit `9c802c5` encontró huecos de uso y de alcance. Cambios aplicados sobre `main`:
+
+| Hallazgo | Cambio |
+| --- | --- |
+| Nadie se enteraba de una suspensión, baja, reactivación o plan asignado; al iniciar sesión, la cuenta suspendida solo veía «Credenciales inválidas». | El titular recibe aviso en su panel y por correo, con el motivo. Con la contraseña **correcta**, el inicio de sesión responde `ACCOUNT_SUSPENDED` o `ACCOUNT_DELETED` con una explicación; con una incorrecta sigue diciendo «Credenciales inválidas» (no revela el estado). |
+| Reactivar a un médico lo dejaba «en revisión» y oculto sin nada pendiente de revisar: salía de ese limbo solo si el médico editaba su perfil. | Al reactivar se recalculan verificación y publicación con sus documentos, igual que al reactivar desde «Médicos». Sin requisitos completos sigue fuera del directorio. |
+| La suspensión o baja del paciente vaciaba `shareScopes`: al reactivarse, su próximo código no compartiría nada. | Se invalida el código, pero se conserva la preferencia de qué compartir. Los consentimientos revocados siguen sin restaurarse. |
+| Renovar antes de tiempo el mismo plan cortaba los días ya pagados; no se podían registrar varios meses de una vez. | Renovar el mismo plan suma el tiempo al final del período vigente (misma suscripción, una cuota pagada más). Nuevo campo `periods` (1 a 12 ciclos). El formulario muestra la vigencia resultante antes de guardar. Cambiar de plan sigue reemplazando sin prorrateo. |
+| «Eliminar» nunca eliminaba: la baja reversible no cumplía una solicitud de supresión. | **Eliminación definitiva** (`POST …/:id/purge`), solo SUPERADMIN (permiso `PURGE_ACCOUNTS`), solo sobre cuentas ya dadas de baja, escribiendo `ELIMINAR`. Ver abajo. |
+| Los pacientes no se podían buscar por cédula ni teléfono. | Búsqueda por cédula o teléfono **exactos**, por su hash (la tabla nunca se descifra para buscar). |
+| Producción usaba Next 16.3.5, afectado por GHSA-vcvr-r3jv-pc5j (RCE crítica en `next/og`). | Next 16.3.7, framer-motion 13.4.6 y AWS SDK 3.1142 (reemplazan los PR #8 y #9 de Dependabot). |
+
+### Eliminación definitiva
+
+Cumple la sección 8 de la Política de privacidad: se borran los datos personales y los archivos, y solo se conserva lo que la ley obliga a guardar.
+
+- **Médico:** se borran perfil, documentos (y sus archivos), foto, sedes, horario, especialidades, publicaciones, mensajes, agenda, notas clínicas, finanzas y las fichas sin cuenta que cargó y que ningún otro médico usa. Sus citas futuras se cancelan y se avisa a los pacientes. Sus pagos y suscripciones se conservan por normativa tributaria; como dependen de su perfil, la cuenta queda como registro anónimo («Cuenta eliminada», correo `eliminado-<id>@cuentas.invalid`, `purgedAt`). Las autorizaciones que recibió se revocan y se conservan como evidencia.
+- **Paciente:** se borra la cuenta. Si ningún médico lo atendió ni recibió su autorización, también se borra su ficha. Si no, la ficha queda solo con el código `GMM-XXXX`, para que la agenda del médico y la evidencia sigan en pie; se borran identidad, contacto, salud, fotos y código para compartir. Sus citas futuras se cancelan y se avisa al médico.
+- No procede si hay un pago reportado pendiente de revisión o si la cuenta es dueña de una organización.
+- El titular recibe un último correo. Después se anonimiza su registro de envíos (`MessageLog`), y su correo queda libre para registrarse de nuevo.
+- Queda auditada como `ACCOUNT_PURGE`, con el motivo. Migración `20260929190000_account_purge`: columna `purgedAt` y una restricción que exige `deletedAt` e `isActive = false`.
+
 ## Cambios realizados
 
 ### Base de datos
@@ -32,7 +56,7 @@ Se añadió un módulo administrativo independiente para gestionar cuentas de m�
 - Listado paginado por nombre, correo, estado y datos básicos del perfil.
 - Suspensión de cuenta con retiro inmediato del directorio público.
 - Baja reversible con conservación de pagos, citas e historial.
-- Restauración de la cuenta sin reactivar automáticamente publicación, verificación ni consentimientos.
+- Restauración de la cuenta sin reactivar consentimientos; verificación y publicación se recalculan con sus documentos (ACT-0031).
 - Revocación de permisos de pacientes cuando se suspende o da de baja al médico.
 - Protección contra cambios simultáneos mediante actualización condicional.
 
@@ -72,6 +96,7 @@ Se añadió un módulo administrativo independiente para gestionar cuentas de m�
 
 - `GET/PATCH /admin/accounts/professionals`
 - `GET/PATCH /patients/admin/accounts`
+- `POST /admin/accounts/professionals/:id/purge` y `POST /patients/admin/accounts/:id/purge` (solo SUPERADMIN)
 - `POST /subscriptions/admin/professionals/:id/assign-paid-plan`
 
 Las rutas de pacientes requieren además abrir la bóveda administrativa.
@@ -81,8 +106,8 @@ Las rutas de pacientes requieren además abrir la bóveda administrativa.
 - Administración → Cuentas y planes de médicos: buscar, filtrar, suspender, dar de baja y restaurar cuentas.
 - Administración → Cuentas de pacientes: las mismas acciones, con apertura obligatoria de la bóveda de pacientes.
 - Cada cambio exige un motivo, queda auditado y revoca las sesiones anteriores.
-- La baja es reversible: conserva historias clínicas, pagos y relaciones. No constituye un borrado definitivo ni una respuesta automática a solicitudes de supresión de datos.
-- Suspender un médico lo retira del directorio y revoca sus permisos sobre pacientes. Restaurarlo no lo publica automáticamente.
+- La baja es reversible: conserva historias clínicas, pagos y relaciones. Para una solicitud de supresión, el SUPERADMIN elimina definitivamente la cuenta dada de baja (ver «Eliminación definitiva»).
+- Suspender un médico lo retira del directorio y revoca sus permisos sobre pacientes. Al restaurarlo vuelve al directorio solo si sus documentos, foto y biografía cumplen los requisitos.
 - Suspender o dar de baja un paciente revoca permisos y código compartido. Restaurarlo no reactiva consentimientos antiguos.
 - Esta gestión cubre cuentas de pacientes registradas. Las fichas de pacientes sin cuenta no se incluyen.
 
@@ -91,10 +116,10 @@ Las rutas de pacientes requieren además abrir la bóveda administrativa.
 1. Abrir Cuentas y planes de médicos y localizar al profesional.
 2. Elegir la acción de asignar plan.
 3. Seleccionar un plan activo y registrar banco, método, referencia, importe realmente recibido, fecha y motivo.
-4. Confirmar que el pago fue verificado y que la asignación sustituye la suscripción anterior, sin prorrateo.
+4. Indicar cuántos períodos cubre el pago y revisar la vigencia que muestra el formulario. Renovar el mismo plan suma el tiempo al final del período vigente; otro plan reemplaza al anterior sin prorrateo.
 5. Guardar. El sistema crea el pago completado y la suscripción, y registra al administrador responsable.
 
-La vigencia se calcula desde la fecha del pago. Se rechazan pagos futuros, periodos ya vencidos, referencias duplicadas y cuentas inactivas. Si hay un pago pendiente, debe revisarse desde el flujo existente. Los planes Plus y Premium conservan sus requisitos documentales. Esta operación no publica ni verifica al médico y no inventa una tasa de cambio histórica.
+La vigencia se calcula desde la fecha del pago (o desde el fin del período vigente, si se renueva el mismo plan). El médico recibe el aviso en su panel y por correo. Se rechazan pagos futuros, periodos ya vencidos, referencias duplicadas y cuentas inactivas. Si hay un pago pendiente, debe revisarse desde el flujo existente. Los planes Plus y Premium conservan sus requisitos documentales. Esta operación no publica ni verifica al médico y no inventa una tasa de cambio histórica.
 
 ## Validación local
 

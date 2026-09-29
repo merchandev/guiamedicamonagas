@@ -253,7 +253,10 @@ export class AuthService {
 
   async login(dto: LoginDto, ipAddress?: string, userAgent?: string): Promise<LoginResult> {
     const user = await this.prisma.user.findUnique({ where: { email: dto.email.toLowerCase() } });
-    if (!user || !user.isActive) {
+    // Una cuenta suspendida o dada de baja por la administración sí llega a
+    // comprobar la contraseña: solo quien la conoce se entera del bloqueo.
+    const moderated = !!user && !user.isActive && !!user.moderationReason && !user.purgedAt;
+    if (!user || (!user.isActive && !moderated)) {
       throw new UnauthorizedException('Credenciales inválidas');
     }
 
@@ -276,6 +279,15 @@ export class AuthService {
         },
       });
       throw new UnauthorizedException('Credenciales inválidas');
+    }
+
+    if (moderated) {
+      throw new ForbiddenException({
+        code: user.deletedAt ? 'ACCOUNT_DELETED' : 'ACCOUNT_SUSPENDED',
+        message: user.deletedAt
+          ? 'Esta cuenta fue dada de baja por la administración. Te enviamos el motivo a tu correo; si crees que es un error, responde a ese correo.'
+          : 'Tu cuenta está suspendida. Te enviamos el motivo a tu correo; si crees que es un error, responde a ese correo.',
+      });
     }
 
     // Migración silenciosa bcrypt → Argon2id: el usuario no nota nada

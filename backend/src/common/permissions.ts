@@ -8,6 +8,8 @@ import { Role } from '@prisma/client';
  */
 export enum Permission {
   MANAGE_ACCOUNTS = 'MANAGE_ACCOUNTS',
+  /** Eliminar definitivamente una cuenta dada de baja: irreversible, solo SUPERADMIN. */
+  PURGE_ACCOUNTS = 'PURGE_ACCOUNTS',
   ASSIGN_PAID_PLANS = 'ASSIGN_PAID_PLANS',
   VERIFY_PROFESSIONALS = 'VERIFY_PROFESSIONALS',
   /** Ver la foto de identificación y la cédula de un paciente para verificarlo (auditado). */

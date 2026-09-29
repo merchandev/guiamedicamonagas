@@ -67,6 +67,12 @@ describe('permisos (SEC-03)', () => {
     expect(roleHasPermissions('ADMIN', [Permission.MANAGE_SITE])).toBe(false);
   });
 
+  it('ADMIN suspende, da de baja y asigna planes, pero solo SUPERADMIN elimina definitivamente', () => {
+    expect(roleHasPermissions('ADMIN', [Permission.MANAGE_ACCOUNTS, Permission.ASSIGN_PAID_PLANS])).toBe(true);
+    expect(roleHasPermissions('ADMIN', [Permission.PURGE_ACCOUNTS])).toBe(false);
+    expect(roleHasPermissions('SUPERADMIN', [Permission.MANAGE_ACCOUNTS, Permission.PURGE_ACCOUNTS])).toBe(true);
+  });
+
   it('SUPERADMIN tiene todos; roles de usuario ninguno', () => {
     expect(ROLE_PERMISSIONS.SUPERADMIN).toEqual(Object.values(Permission));
     for (const role of ['USER', 'PROFESSIONAL', 'ORGANIZATION'] as const) {
