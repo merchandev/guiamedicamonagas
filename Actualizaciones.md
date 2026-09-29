@@ -3,7 +3,7 @@
 > Bitácora central de cambios, implementaciones, decisiones técnicas y tareas de evolución del sistema.
 >
 > **Repositorio:** [`merchandev/guiamedicamonagas`](https://github.com/merchandev/guiamedicamonagas) · **Rama:** `main`<br>
-> **Última actualización de esta bitácora:** `2026-09-25 16:28:26 -04:00` · **Estado:** 🟢 Registro activo
+> **Última actualización de esta bitácora:** `2026-09-29 12:48:40 -04:00` · **Estado:** 🟢 Registro activo
 
 ![Estado](https://img.shields.io/badge/estado-registro%20activo-16a34a?style=flat-square)
 ![Rama](https://img.shields.io/badge/rama-main-2563eb?style=flat-square)
@@ -133,8 +133,9 @@ flowchart LR
     AB[🩹 2026-09-25\n16:20:34\nACT-0028 · Guardado, subidas\ny controles corregidos]
     AC[🔎 2026-09-25\n16:20:34\nACT-0029 · Código y QR del médico,\nbuscador solo de médicos]
     AD[🏷️ 2026-09-25\n16:20:34\nACT-0030 · SEO automático\ny tarjeta al compartir]
+    AE[🛂 2026-09-29\n12:48:40\nACT-0031 · Cuentas, planes pagados\ny eliminación definitiva]
 
-    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L --> M --> N --> O --> P --> Q --> R --> S --> T --> U --> V --> W --> X --> Y --> Z --> AA --> AB --> AC --> AD
+    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L --> M --> N --> O --> P --> Q --> R --> S --> T --> U --> V --> W --> X --> Y --> Z --> AA --> AB --> AC --> AD --> AE
 ```
 
 ### Resumen cuantitativo
@@ -142,8 +143,8 @@ flowchart LR
 | Indicador | Resultado |
 |---|---:|
 | Actividades históricas importadas desde Git | `3` |
-| Actividades documentales añadidas con esta bitácora | `27` |
-| Actividades registradas en total | `30` |
+| Actividades documentales añadidas con esta bitácora | `28` |
+| Actividades registradas en total | `31` |
 | Rama de referencia | `main` |
 | Commit base consultado | [`81b1091`](https://github.com/merchandev/guiamedicamonagas/commit/81b1091) |
 | Zona horaria de control | `America/Caracas` (`-04:00`) |
@@ -1156,6 +1157,79 @@ El titular pidió SEO automático con lo que carga el médico: título «Nombre 
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
+<a id="act-0031"></a>
+
+### 🛂 ACT-0031 · Gestión de cuentas y planes pagados: revisión, eliminación definitiva y despliegue
+
+<details>
+<summary><strong>2026-09-29 12:48:40 -04:00</strong> · <code>05294c8</code> · 🟢 Completado</summary>
+
+**Responsable:** `Claude Opus 5.5` (revisión y mejoras) sobre el trabajo de Codex ([PR #10](https://github.com/merchandev/guiamedicamonagas/pull/10)–[#12](https://github.com/merchandev/guiamedicamonagas/pull/12)) · **Tipo:** `administración | privacidad | seguridad | despliegue` · **Commits:** [`9c802c5`](https://github.com/merchandev/guiamedicamonagas/commit/9c802c5) (Codex), [`05294c8`](https://github.com/merchandev/guiamedicamonagas/commit/05294c8) y [`342745a`](https://github.com/merchandev/guiamedicamonagas/commit/342745a) (revisión)
+
+El titular pidió que la administración pueda suspender y eliminar médicos y pacientes, y asignar al médico el plan que pagó. Codex lo implementó en `main` (PR #10). Luego el titular pidió revisar lo implementado, mejorarlo, subirlo y desplegarlo. El detalle técnico completo está en [`CONTROLES-ADMINISTRATIVOS.md`](CONTROLES-ADMINISTRATIVOS.md).
+
+**Lo que trajo el PR #10 (Codex):**
+- Secciones «Cuentas y planes de médicos» y «Cuentas de pacientes»; la de pacientes exige la bóveda.
+- Suspensión, baja reversible y reactivación, con motivo obligatorio y auditadas. Cierran sesiones y revocan autorizaciones y el código del paciente.
+- Registro de un pago recibido por fuera de la plataforma, con asignación del plan en una transacción serializable. Rechaza referencias repetidas, pagos futuros y planes Plus o Premium sin documentos completos.
+- Permisos `MANAGE_ACCOUNTS` y `ASSIGN_PAID_PLANS`. Migración `20260929160000_account_moderation`.
+
+**Mejoras de la revisión:**
+- **Avisos:** el titular recibe en su panel y por correo la suspensión, la baja, la reactivación o el plan asignado, con el motivo.
+- **Inicio de sesión:** antes, una cuenta suspendida solo veía «Credenciales inválidas». Ahora, con la contraseña correcta, se explica que está suspendida o dada de baja. Con una incorrecta sigue diciendo «Credenciales inválidas», para no revelar el estado.
+- **Reactivar a un médico** lo dejaba «en revisión» y oculto, sin nada pendiente de revisar. Ahora se recalculan verificación y publicación con sus documentos.
+- **Suspender a un paciente** ya no vacía qué datos compartiría con su próximo código. El código anterior sí se invalida.
+- **Planes pagados:**
+  - Se pueden registrar de 1 a 12 períodos en un mismo pago.
+  - Renovar antes de tiempo el mismo plan suma el tiempo al final del período vigente, en vez de cortarlo.
+  - El formulario muestra la vigencia resultante antes de guardar.
+- **Eliminación definitiva:**
+  - Solo SUPERADMIN (permiso `PURGE_ACCOUNTS`), solo sobre cuentas dadas de baja, y escribiendo «ELIMINAR».
+  - Borra los datos personales y los archivos.
+  - Del médico conserva pagos y suscripciones (normativa tributaria), así que su cuenta queda como registro anónimo. Las autorizaciones que recibió se revocan y se conservan como evidencia.
+  - La cuenta del paciente se borra. Si un médico lo atendió, su ficha queda solo con el código `GMM-XXXX`.
+  - Las citas futuras se cancelan con aviso a la otra parte, y el registro de envíos se anonimiza.
+  - Migración `20260929190000_account_purge`.
+- **Búsqueda de pacientes** por cédula o teléfono exactos, a través del hash, sin descifrar la tabla.
+- **Seguridad:** Next **16.3.7**, que corrige GHSA-vcvr-r3jv-pc5j, una ejecución remota de código crítica en `next/og` que usa la tarjeta para compartir. También framer-motion 13.4.6 y AWS SDK 3.1142. Esto reemplaza los PR #8 y #9 de Dependabot.
+- **Dependencias del PR #7** (React 19, class-validator 0.15, tipos de Node 24), que se fusionó el 25/09 y no se había desplegado.
+
+**Verificación local:**
+- PostgreSQL desechable, con migraciones sin desvío frente al esquema.
+- 79 pruebas unitarias.
+- Suite general e2e `TODO OK`.
+- Suite administrativa **62/62**; antes eran 29.
+- En el navegador, con una base de prueba:
+  - La vista previa de la vigencia calculó «3 meses, hasta el 29 de diciembre de 2026».
+  - Asignar Profesional Plus sin documentos mostró el error dentro del formulario.
+  - Asignar Profesional funcionó.
+  - La eliminación definitiva no se habilita hasta escribir exactamente «ELIMINAR» y funcionó.
+
+**CI de GitHub:** backend (tipos, unitarias, build y las dos suites e2e) y frontend en verde, igual que CodeQL, Trivy y `npm audit`.
+- gitleaks marcó como clave la contraseña de prueba que la suite administrativa tenía escrita en el código. No era un secreto real.
+- En [`342745a`](https://github.com/merchandev/guiamedicamonagas/commit/342745a) la contraseña se genera al azar en cada ejecución, y la huella histórica revisada quedó en [`.gitleaksignore`](.gitleaksignore). gitleaks 8.28 en local: «no leaks found».
+
+**Despliegue en el VPS** (`gmm-independent`, log `/var/log/guiamedicamonagas/deploy-act31.log`):
+- Pasó de `90fbe1c` a `05294c8`: incluye el PR #7, los PR #10–#12 de Codex y esta revisión.
+- Respaldo cifrado previo (`gmm-db-20260929T164254Z-pre-deploy.dump.gpg`).
+- Migraciones `20260929160000_account_moderation` y `20260929190000_account_purge` aplicadas. Se verificaron las columnas `deletedAt`, `moderationReason` y `purgedAt` y las restricciones `User_deleted_inactive` y `User_purged_deleted`.
+- Solo se recrearon `api`, `web` y el antivirus `clamav` de este proyecto, que quedaron *healthy*. Caddy, Postgres, MinIO, Redis, Meilisearch y Mailpit siguen desde hace días. `deploy.sh` solo opera sobre el proyecto de Compose `gmm-independent`: no reinicia Traefik ni otros proyectos.
+- Prueba de humo **25/25**.
+- Producción corre **Next 16.3.7** y **React 19.3.0**.
+- Las rutas nuevas responden 401 sin sesión. Las cuentas existentes siguen igual: 1 paciente, 2 médicos y 1 superadministrador, todos activos. En producción no se hicieron pruebas destructivas.
+- El script suelto `scripts/test-bcv.cjs` del servidor, sin seguimiento en git, se dejó intacto.
+
+**Archivos destacados:**
+- [`backend/src/admin/account-management.service.ts`](backend/src/admin/account-management.service.ts)
+- [`backend/src/admin/account-purge.service.ts`](backend/src/admin/account-purge.service.ts)
+- [`backend/src/subscriptions/admin-plan-assignments.service.ts`](backend/src/subscriptions/admin-plan-assignments.service.ts)
+- [`frontend/src/components/AdminAccountManager.tsx`](frontend/src/components/AdminAccountManager.tsx)
+- [`backend/test/e2e/admin-accounts.e2e.mjs`](backend/test/e2e/admin-accounts.e2e.mjs)
+
+</details>
+
+<p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
+
 <a id="registro-por-area"></a>
 
 ## 🧩 Registro por área
@@ -1168,10 +1242,10 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | 🔐 Auth y seguridad | JWT, refresh cookie, roles, correo, recuperación, throttling, Argon2id, permisos granulares, reuso de tokens, `tokenVersion`, cerrar todas las sesiones, MFA obligatorio en producción, subidas seguras, antivirus obligatorio y rotación de claves, bóveda de registros de pacientes con código de seguridad | [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0012](#act-0012) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0019](#act-0019) · [ACT-0024](#act-0024) · [ACT-0027](#act-0027) |
 | 👨‍⚕️ Profesionales | Perfiles, ubicaciones, documentos, verificación legal (sin solvencia deontológica), publicación con el 60% aprobado + biografía + foto, barra de progreso del registro, redes sociales, badges, código y QR del médico, SEO automático y tarjeta para compartir | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0020](#act-0020) · [ACT-0021](#act-0021) · [ACT-0028](#act-0028) · [ACT-0029](#act-0029) · [ACT-0030](#act-0030) |
 | 🏥 Organizaciones | Farmacias, laboratorios, clínicas, ubicaciones, autogestión, equipo con invitaciones y roles internos, médicos asociados y plan propio, sección «Próximamente» hasta cerrar alianzas | [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0015](#act-0015) · [ACT-0019](#act-0019) · [ACT-0025](#act-0025) |
-| 💳 Monetización | Planes, Pago Móvil, aprobación, tasa BCV, evidencia de tasa por cuota, catálogo de bancos, referencia única atómica y Plus/Premium solo con el 100% de documentos | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0010](#act-0010) · [ACT-0011](#act-0011) · [ACT-0015](#act-0015) · [ACT-0019](#act-0019) · [ACT-0021](#act-0021) |
+| 💳 Monetización | Planes, Pago Móvil, aprobación, tasa BCV, evidencia de tasa por cuota, catálogo de bancos, referencia única atómica, Plus/Premium solo con el 100% de documentos y pagos externos registrados por la administración con renovación anticipada | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0010](#act-0010) · [ACT-0011](#act-0011) · [ACT-0015](#act-0015) · [ACT-0019](#act-0019) · [ACT-0021](#act-0021) · [ACT-0031](#act-0031) |
 | 📅 Agenda y citas | Horarios, disponibilidad, reservas, máquina de estados, anti-doble-reserva, zona America/Caracas | [ACT-0007](#act-0007) · [ACT-0015](#act-0015) |
-| 🔒 Pacientes | Código pseudónimo, cifrado de datos de salud, consentimiento por alcance y tiempo, lecturas auditadas, registro propio, foto de identificación verificada por un admin, reserva con la ficha propia, código y QR para compartir, directorio del médico por código, bóveda de administración y noindex y registro visible desde el inicio | [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0023](#act-0023) · [ACT-0027](#act-0027) · [ACT-0029](#act-0029) |
-| 🛠️ Administración | Médicos, pagos, SEO, cookies, especialidades, planes, verificaciones, organizaciones, bancos, geografía e identidad de pacientes | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) |
+| 🔒 Pacientes | Código pseudónimo, cifrado de datos de salud, consentimiento por alcance y tiempo, lecturas auditadas, registro propio, foto de identificación verificada por un admin, reserva con la ficha propia, código y QR para compartir, directorio del médico por código, bóveda de administración y noindex, registro visible desde el inicio y supresión de la cuenta conservando solo la evidencia legal | [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0023](#act-0023) · [ACT-0027](#act-0027) · [ACT-0029](#act-0029) · [ACT-0031](#act-0031) |
+| 🛠️ Administración | Médicos, pagos, SEO, cookies, especialidades, planes, verificaciones, organizaciones, bancos, geografía, identidad de pacientes, cuentas (suspensión, baja, eliminación definitiva) y planes pagados | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0031](#act-0031) |
 | 📊 Observabilidad | Auditoría, analítica con consentimiento y sin IP, notificaciones, salud, pruebas, CI, escaneo de imágenes y Dependabot | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) |
 | 🎨 Experiencia | Directorios, dashboard, componentes UI, motion, legal, formularios legibles y utilizables con teclado, sección de pacientes en el inicio, tipografía Montserrat + Open Sans, suiches, botones y foco de campos corregidos | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0013](#act-0013) · [ACT-0014](#act-0014) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0017](#act-0017) · [ACT-0019](#act-0019) · [ACT-0022](#act-0022) · [ACT-0023](#act-0023) · [ACT-0025](#act-0025) · [ACT-0026](#act-0026) · [ACT-0028](#act-0028) |
 | 🚢 Operación | Variables de entorno, Compose, almacenamiento, correo, proxy, imágenes mínimas y antivirus | [ACT-0001](#act-0001) · [ACT-0002](#act-0002) · [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0008](#act-0008) · [ACT-0009](#act-0009) · [ACT-0011](#act-0011) · [ACT-0016](#act-0016) · [ACT-0017](#act-0017) · [ACT-0018](#act-0018) · [ACT-0019](#act-0019) · [ACT-0024](#act-0024) · [ACT-0027](#act-0027) |
@@ -1240,6 +1314,8 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | IMP-054 | Formularios que envían solo sus campos (perfil, agenda, redes, SEO de páginas), campo vacío = borrar, detector de PDF sin falsos positivos y fotos reducidas antes de subir | 🟢 Completado | [`frontend/src/app/dashboard/perfil/page.tsx`](frontend/src/app/dashboard/perfil/page.tsx), [`backend/src/uploads/file-inspection.ts`](backend/src/uploads/file-inspection.ts) |
 | IMP-055 | Código público y QR del médico (`/m/<código>`) y buscador del directorio solo por nombre normalizado, especialidad o código | 🟢 Completado | [`backend/src/professionals/professional-search.util.ts`](backend/src/professionals/professional-search.util.ts), [`frontend/src/components/DoctorShareCodeCard.tsx`](frontend/src/components/DoctorShareCodeCard.tsx) |
 | IMP-056 | SEO automático de la ficha (título, descripción, canónica, JSON-LD) y tarjeta 1200×630 con la foto del médico al compartir | 🟢 Completado | [`frontend/src/lib/seo.ts`](frontend/src/lib/seo.ts), [`frontend/src/app/medicos/[slug]/opengraph-image.tsx`](frontend/src/app/medicos/%5Bslug%5D/opengraph-image.tsx) |
+| IMP-057 | Gestión de cuentas de médicos y pacientes (suspensión, baja reversible, reactivación por documentos, avisos) y eliminación definitiva con conservación legal de pagos y autorizaciones | 🟢 Completado | [`backend/src/admin/account-management.service.ts`](backend/src/admin/account-management.service.ts), [`backend/src/admin/account-purge.service.ts`](backend/src/admin/account-purge.service.ts) |
+| IMP-058 | Registro de pagos externos con asignación o renovación del plan (1 a 12 períodos, vista previa de vigencia, aviso al médico) | 🟢 Completado | [`backend/src/subscriptions/admin-plan-assignments.service.ts`](backend/src/subscriptions/admin-plan-assignments.service.ts), [`frontend/src/components/AdminAccountManager.tsx`](frontend/src/components/AdminAccountManager.tsx) |
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
@@ -1279,6 +1355,8 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | 🔴 Alta | Cambiar el código de seguridad de la bóveda de pacientes: el actual se compartió por chat. En el servidor, `bash scripts/set-patient-vault-code.sh` (lo pide sin mostrarlo) | 🔴 Pendiente del titular | Código nuevo que solo conozca el titular; el anterior deja de abrir la bóveda |
 | 🟡 Baja | Decidir si el directorio de pacientes y el registro por código se abren al plan básico (hoy desde el plan Profesional, como la agenda) | 🔵 Planificado | Decisión del titular; es un cambio de una línea en `AGENDA_MIN_TIER` o una verificación propia |
 | 🟡 Baja | Decidir si el plan básico muestra foto y biografía en público (hoy son obligatorias para publicarse pero se ocultan en ese plan; por eso su tarjeta al compartir usa iniciales y su descripción SEO no usa la biografía) | 🔵 Planificado | Decisión del titular; `gateByTier` en `professionals.service.ts` |
+| 🟠 Media | Revisar y decidir los borradores de otra herramienta guardados en la rama local `wip/borradores-locales-2026-09-29` (sin subir): documentos esenciales para publicar, consentimiento del QR de 30 a 7 días, CSP estricta, lint en CI, bloqueo por correo sin verificar y `/health/ready`. Cambian reglas de producto: no se despliegan sin revisión | 🔴 Bloqueado | Decisión del titular; ver [ACT-0031](#act-0031) |
+| 🟡 Baja | Revisar los PR #13 y #14 de Dependabot (actualizaciones menores abiertas tras ACT-0031) | 🔵 Planificado | Su chequeo de gitleaks falló por el hallazgo histórico ya ignorado en `342745a`; pasa al rebasarlos |
 | 🟠 Media | Proteger la rama `main` (al menos contra *force push* y borrado) y activar las alertas de Dependabot | 🔴 Bloqueado | Decisión del usuario sobre los ajustes del repositorio; ver [ACT-0017](#act-0017) |
 | 🟢 Continua | Registrar cada modificación nueva con fecha, hora, responsable y evidencia | 🟢 Activo | No existen cambios relevantes sin entrada en esta bitácora |
 | 🟢 Continua | Confirmar en el repositorio remoto cada cambio cerrado localmente | 🟢 Activo | `git status` limpio y `origin/main` sincronizado al cierre de cada sesión |
@@ -1356,6 +1434,7 @@ Para cada cambio futuro, añadir una entrada en la línea de tiempo y actualizar
 | `2026-09-25 15:17:19 -04:00` | Incorporación de ACT-0026 (tipografía corporativa Montserrat + Open Sans) con su despliegue | 🟢 Completado |
 | `2026-09-25 15:53:01 -04:00` | Incorporación de ACT-0027 (código y QR del paciente, directorio del médico por código, bóveda de administración y noindex) con su despliegue, dos pendientes nuevos | 🟢 Completado |
 | `2026-09-25 16:28:26 -04:00` | Incorporación de ACT-0028 (guardado, subidas y controles), ACT-0029 (código y QR del médico, buscador solo de médicos) y ACT-0030 (SEO automático y tarjeta al compartir) con su despliegue | 🟢 Completado |
+| `2026-09-29 12:48:40 -04:00` | Incorporación de ACT-0031 (revisión de la gestión de cuentas de Codex, eliminación definitiva, planes pagados con renovación, Next 16.3.7) con su despliegue; dos pendientes nuevos | 🟢 Completado |
 
 ---
 

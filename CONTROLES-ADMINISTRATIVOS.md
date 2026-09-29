@@ -130,7 +130,17 @@ La vigencia se calcula desde la fecha del pago (o desde el fin del período vige
 - Suite administrativa incorporada al CI. Su ejecución remota queda pendiente del envío de los cambios.
 - Segunda revisión: la suite general `test/e2e/api.e2e.mjs` terminó con `TODO OK` y código de salida 0, incluyendo consentimiento, bóveda, organizaciones, pagos y reservas concurrentes, publicación y privacidad del directorio.
 
-## Despliegue pendiente
+## Despliegue
+
+**Hecho el 29 de septiembre (ACT-0031, ver [`Actualizaciones.md`](Actualizaciones.md#act-0031)).**
+- Producción pasó de `90fbe1c` a `05294c8`.
+- Respaldo cifrado previo y migraciones `20260929160000_account_moderation` y `20260929190000_account_purge` aplicadas.
+- Solo se recrearon `api`, `web` y `clamav` de `gmm-independent`.
+- Prueba de humo 25/25, con Next 16.3.7 y React 19.3.0.
+- Las rutas nuevas responden 401 sin sesión.
+- No se hicieron pruebas destructivas en producción.
+
+El plan original de despliegue se conserva abajo como referencia.
 
 ### Segunda revisión
 
