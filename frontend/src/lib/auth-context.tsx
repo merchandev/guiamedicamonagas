@@ -6,6 +6,8 @@ import { api, ApiError, setAccessToken, refreshAccessToken } from './api';
 export type Role = 'USER' | 'PROFESSIONAL' | 'ORGANIZATION' | 'ADMIN' | 'SUPERADMIN';
 
 export type Permission =
+  | 'MANAGE_ACCOUNTS'
+  | 'ASSIGN_PAID_PLANS'
   | 'VERIFY_PROFESSIONALS'
   | 'VERIFY_PATIENT_IDENTITY'
   | 'REVIEW_PAYMENTS'

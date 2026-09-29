@@ -19,6 +19,9 @@ model User {
   role                Role      @default(USER)
   isEmailVerified     Boolean   @default(false)
   isActive            Boolean   @default(true)
+  /// Baja administrativa reversible; nunca elimina pagos ni datos clínicos.
+  deletedAt           DateTime?
+  moderationReason    String?
   failedLoginAttempts Int       @default(0)
   lockedUntil         DateTime?
   lastLoginAt         DateTime?

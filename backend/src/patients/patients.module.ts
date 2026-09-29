@@ -14,6 +14,6 @@ import { PatientVaultGuard } from './patient-vault.guard';
   imports: [StorageModule, NotificationsModule],
   controllers: [PatientsController, PatientIdentityAdminController, PatientVaultController],
   providers: [PatientsService, PatientDataCodec, LegacyPatientDataMigrator, PatientVaultService, PatientVaultGuard],
-  exports: [PatientsService, PatientDataCodec],
+  exports: [PatientsService, PatientDataCodec, PatientVaultGuard, PatientVaultService],
 })
 export class PatientsModule {}

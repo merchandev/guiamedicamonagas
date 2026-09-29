@@ -1,4 +1,7 @@
-import { Body, Controller, Get, Param, Patch, Post, Put } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Put, Req } from '@nestjs/common';
+import type { FastifyRequest } from 'fastify';
+import { AssignPaidPlanDto } from './dto/assign-paid-plan.dto';
+import { AdminPlanAssignmentsService } from './admin-plan-assignments.service';
 import { Role } from '@prisma/client';
 import { Public } from '../common/decorators/public.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -11,7 +14,14 @@ import { Permission, RequirePermissions } from '../common/permissions';
 
 @Controller('subscriptions')
 export class SubscriptionsController {
-  constructor(private readonly subscriptions: SubscriptionsService) {}
+  constructor(private readonly subscriptions: SubscriptionsService, private readonly assignments: AdminPlanAssignmentsService) {}
+
+  @RequirePermissions(Permission.ASSIGN_PAID_PLANS, Permission.REVIEW_PAYMENTS)
+  @Post('admin/professionals/:id/assign-paid-plan')
+  assignPaidPlan(@Param('id', ParseUUIDPipe) id: string, @Body() dto: AssignPaidPlanDto,
+    @CurrentUser() actor: AuthenticatedUser, @Req() req: FastifyRequest) {
+    return this.assignments.assign(id, dto, actor.id, req.ip);
+  }
 
   @Public()
   @Get('plans')

@@ -567,6 +567,7 @@ export class ProfessionalsService implements OnApplicationBootstrap {
   async adminSetSuspended(id: string, suspended: boolean, note: string | undefined, adminId: string) {
     const profile = await this.prisma.professionalProfile.findUnique({ where: { id }, include: { user: true } });
     if (!profile) throw new NotFoundException('Perfil no encontrado');
+    if (!profile.user.isActive) throw new ForbiddenException('Reactiva primero la cuenta desde Gestión de cuentas');
     if (
       suspended &&
       !profile.isPublished &&
@@ -576,12 +577,15 @@ export class ProfessionalsService implements OnApplicationBootstrap {
       throw new ForbiddenException('Solo se pueden suspender perfiles publicados o verificados');
     }
 
-    let updated = await this.prisma.professionalProfile.update({
-      where: { id },
+    const changed = await this.prisma.professionalProfile.updateMany({
+      where: { id, verificationStatus: profile.verificationStatus,
+        user: { isActive: true, tokenVersion: profile.user.tokenVersion } },
       data: suspended
         ? { verificationStatus: 'SUSPENDED', isPublished: false, rejectionReason: note }
         : { verificationStatus: 'IN_REVIEW', rejectionReason: null },
     });
+    if (changed.count !== 1) throw new ForbiddenException('La cuenta cambió. Actualiza la lista antes de continuar.');
+    let updated = await this.prisma.professionalProfile.findUniqueOrThrow({ where: { id } });
     // Al reactivar, la verificación y la publicación salen de sus documentos
     // y de su perfil, igual que para cualquier otro médico.
     const status = suspended ? null : await recomputeProfessionalStatus(this.prisma, id);

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { DocumentType } from '@prisma/client';
 import {
   canBePublished,
@@ -6,6 +6,7 @@ import {
   documentProgress,
   nextVerificationStatus,
   professionalChecklist,
+  recomputeProfessionalStatus,
 } from '../../src/professionals/publication-rules';
 
 const BIO = 'Médico cirujano con diez años de experiencia en atención primaria y medicina familiar en Maturín.';
@@ -13,6 +14,29 @@ const approved = (...types: DocumentType[]) =>
   types.map((type) => ({ type, status: 'APPROVED' as const, createdAt: new Date('2026-09-01'), expiresAt: null }));
 const FOUR = approved('CEDULA_IDENTIDAD', 'RIF', 'TITULO_MEDICO', 'REGISTRO_MPPS_SACS');
 const ALL_SIX = approved('CEDULA_IDENTIDAD', 'RIF', 'TITULO_MEDICO', 'REGISTRO_MPPS_SACS', 'MATRICULA_COLEGIO_MONAGAS', 'ARTICULO_8');
+
+describe('moderación de cuentas y publicación', () => {
+  it('una cuenta inactiva no se publica aunque tenga todos los documentos', async () => {
+    const professionalProfile = {
+      findUnique: vi.fn().mockResolvedValue({ user: { isActive: false }, isPublished: true,
+        verificationStatus: 'VERIFIED', isSpecialist: false, photoUrl: '/photo.jpg', bio: BIO, documents: ALL_SIX }),
+      updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+    };
+    const result = await recomputeProfessionalStatus({ professionalProfile } as any, 'test');
+    expect(result?.isPublished).toBe(false);
+    expect(result?.becamePublic).toBe(false);
+    expect(professionalProfile.updateMany.mock.calls[0][0].data.isPublished).toBe(false);
+  });
+
+  it('no anuncia publicación si una moderación concurrente cambia el estado', async () => {
+    const professionalProfile = {
+      findUnique: vi.fn().mockResolvedValue({ user: { isActive: true }, isPublished: false,
+        verificationStatus: 'IN_REVIEW', isSpecialist: false, photoUrl: '/photo.jpg', bio: BIO, documents: ALL_SIX }),
+      updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+    };
+    expect(await recomputeProfessionalStatus({ professionalProfile } as any, 'test')).toBeNull();
+  });
+});
 
 describe('publicación del médico: 60% aprobado + biografía + foto', () => {
   it('el 60% se redondea hacia arriba: 4 de 6 (general) y 5 de 8 (especialista)', () => {
