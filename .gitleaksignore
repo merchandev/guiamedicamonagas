@@ -1,0 +1,4 @@
+# Hallazgos históricos revisados: valores de prueba, no credenciales reales.
+# Contraseña de prueba que la suite administrativa tuvo como literal en 05294c8;
+# desde el commit siguiente se genera al azar en cada ejecución.
+05294c82902964b94abee8e29627aa28e7f3efce:backend/test/e2e/admin-accounts.e2e.mjs:generic-api-key:56

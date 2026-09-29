@@ -53,7 +53,8 @@ try {
     [ids.patientProfile,ids.patient,`TEST-${run}`,'Paciente','Protegido']);
   // Médico con contraseña real, documentos completos, biografía y foto: publicado y verificado.
   const modEmail = `mod-${run}@test.invalid`;
-  const modPassword = 'Prueba12345x';
+  // Contraseña efímera generada en cada ejecución (nunca un literal en el repositorio).
+  const modPassword = `E2e-${randomBytes(12).toString('base64url')}`;
   await db.query('INSERT INTO "User" (id,email,"passwordHash",role,"isEmailVerified","updatedAt") VALUES ($1,$2,$3,\'PROFESSIONAL\',true,now())',
     [ids.modDoctor, modEmail, await argon2.hash(modPassword, { type: argon2.argon2id })]);
   await db.query('INSERT INTO "ProfessionalProfile" (id,"userId","firstName","lastName",slug,"verificationStatus","isPublished","verifiedAt",bio,"photoUrl","updatedAt") VALUES ($1,$2,\'Marta\',\'Moderada\',$3,\'VERIFIED\',true,now(),$4,\'professionals/e2e.png\',now())',
