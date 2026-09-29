@@ -151,20 +151,15 @@ async function main() {
     });
   }
 
+  // Solo crea los planes que falten. Cada despliegue corre este seed: si
+  // actualizara, pisaría lo que la administración editó en /admin/planes
+  // (precio, textos, plan desactivado). Los cambios de catálogo que vienen
+  // con el código van en una migración (ej. 20260929220100).
   console.log('Sembrando catálogo de planes...');
   for (const plan of PLANS) {
     await prisma.subscriptionPlan.upsert({
       where: { tier: plan.tier },
-      update: {
-        name: plan.name,
-        description: plan.description,
-        priceUsd: plan.priceUsd,
-        billingCycle: plan.billingCycle,
-        maxLocations: plan.maxLocations,
-        postsLimit: plan.postsLimit,
-        features: plan.features,
-        isActive: true,
-      },
+      update: {},
       create: {
         tier: plan.tier,
         name: plan.name,
