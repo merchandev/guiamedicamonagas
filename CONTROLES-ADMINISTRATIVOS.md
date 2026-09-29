@@ -1,4 +1,80 @@
-# Controles administrativos — 29 de septiembre de 2026
+# Registro completo de cambios — Guía Médica Monagas
+
+Fecha de revisión: 29 de septiembre de 2026  
+Rama integrada: `main`  
+Commit funcional: `9c802c5`
+
+Este documento reúne los cambios realizados para los controles administrativos y las validaciones ejecutadas antes de integrarlos al repositorio.
+
+## Resumen técnico
+
+Se añadió un módulo administrativo independiente para gestionar cuentas de médicos y pacientes, suspender o dar de baja cuentas de forma reversible, revocar accesos relacionados y registrar pagos externos para asignar planes pagados. La solución mantiene separados los datos clínicos, los permisos de pacientes y la facturación, y no elimina registros históricos.
+
+## Cambios realizados
+
+### Base de datos
+
+- Se añadieron `deletedAt` y `moderationReason` al modelo `User`.
+- Se añadió la migración `20260929160000_account_moderation`.
+- La migración impone que una cuenta con `deletedAt` no pueda permanecer activa.
+- La migración no borra usuarios, perfiles, citas, pagos, suscripciones ni datos clínicos.
+
+### Permisos y seguridad
+
+- Se añadieron los permisos `MANAGE_ACCOUNTS` y `ASSIGN_PAID_PLANS`.
+- Las rutas administrativas exigen autenticación, permisos del rol y validación de UUID.
+- Las operaciones administrativas registran auditoría con actor, recurso, motivo y dirección IP.
+- Cada suspensión o baja incrementa `tokenVersion`, revoca refresh tokens, elimina tokens de verificación y cierra sesiones de bóveda.
+- Se conserva la protección adicional de la bóveda para consultar o modificar cuentas de pacientes.
+
+### Gestión de médicos
+
+- Listado paginado por nombre, correo, estado y datos básicos del perfil.
+- Suspensión de cuenta con retiro inmediato del directorio público.
+- Baja reversible con conservación de pagos, citas e historial.
+- Restauración de la cuenta sin reactivar automáticamente publicación, verificación ni consentimientos.
+- Revocación de permisos de pacientes cuando se suspende o da de baja al médico.
+- Protección contra cambios simultáneos mediante actualización condicional.
+
+### Gestión de pacientes
+
+- Listado administrativo de pacientes que tienen una cuenta de usuario.
+- Búsqueda por nombre, correo y código de paciente, sin exponer datos de salud cifrados.
+- Suspensión y baja reversible con cierre de sesiones.
+- Revocación de consentimientos, relaciones profesionales y código compartido.
+- Restauración sin reactivar consentimientos anteriores.
+- Las fichas walk-in sin cuenta conservan su funcionamiento y no se mezclan con esta gestión de cuentas.
+
+### Asignación de planes pagados
+
+- Nueva ruta `POST /subscriptions/admin/professionals/:id/assign-paid-plan`.
+- Registro del plan, banco, método, referencia, importe recibido, fecha y motivo.
+- Creación de pago completado y suscripción activa en una transacción serializable.
+- Cancelación de la suscripción activa anterior sin prorrateo.
+- Rechazo de cuentas inactivas, planes gratuitos u organizacionales, pagos futuros, periodos vencidos, importes inválidos y referencias duplicadas.
+- Los planes Plus y Premium mantienen el requisito de documentos completos.
+- No se inventa una tasa BCV histórica y la operación no publica ni verifica automáticamente al médico.
+
+### Interfaz web
+
+- Nueva sección de administración para cuentas de médicos y pacientes.
+- Modales con motivo obligatorio, confirmación explícita y mensajes de error.
+- Filtros de estado, búsqueda, paginación y actualización de resultados.
+- Formulario de registro de pago con validación de banco, referencia, importe y fecha.
+- Enlace desde la gestión existente de médicos hacia las nuevas funciones.
+
+### CI y documentación
+
+- Se incorporó la suite administrativa al flujo de integración continua.
+- Se documentaron los límites de la baja reversible y los pasos necesarios para desplegar la migración.
+
+## Rutas administrativas nuevas
+
+- `GET/PATCH /admin/accounts/professionals`
+- `GET/PATCH /patients/admin/accounts`
+- `POST /subscriptions/admin/professionals/:id/assign-paid-plan`
+
+Las rutas de pacientes requieren además abrir la bóveda administrativa.
 
 ## Funciones implementadas
 
