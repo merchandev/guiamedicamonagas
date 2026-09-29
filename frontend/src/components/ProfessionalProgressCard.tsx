@@ -8,7 +8,7 @@ import type { ProfessionalProgress } from '@/lib/types';
 /**
  * Barra de progreso del registro del médico: todo lo que debe completar, en
  * orden, con lo que exige la publicación (60% de documentos aprobados,
- * biografía y foto) y lo que exigen Profesional Plus y Premium (100%).
+ * biografía y foto) y lo que exigen Profesional Plus, Premium y Agencia (100%).
  */
 export function ProfessionalProgressCard({ progress, isPublished }: { progress: ProfessionalProgress; isPublished: boolean }) {
   const { documents } = progress;
@@ -97,8 +97,8 @@ export function ProfessionalProgressCard({ progress, isPublished }: { progress: 
 
       <p className="mt-4 text-xs text-ink-500">
         {progress.fullDocuments
-          ? 'Tienes todos tus documentos aprobados: puedes contratar Profesional Plus o Premium.'
-          : `Profesional Plus y Premium requieren el 100% de tus documentos aprobados (tienes ${documents.approved} de ${documents.required}).`}
+          ? 'Tienes todos tus documentos aprobados: puedes contratar Profesional Plus, Premium o Agencia.'
+          : `Profesional Plus, Premium y Agencia requieren el 100% de tus documentos aprobados (tienes ${documents.approved} de ${documents.required}).`}
       </p>
     </div>
   );

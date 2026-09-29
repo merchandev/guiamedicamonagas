@@ -20,7 +20,7 @@ export function DoctorCard({ doctor }: { doctor: ProfessionalListItem }) {
       >
         {doctor.isFeatured && (
           <span
-            title="Espacio patrocinado: el médico tiene el plan Premium. No es una recomendación clínica."
+            title="Espacio patrocinado: el médico tiene el plan Premium o Agencia. No es una recomendación clínica."
             className="badge absolute -top-2.5 right-4 bg-gold-500 text-white shadow-soft"
           >
             Destacado

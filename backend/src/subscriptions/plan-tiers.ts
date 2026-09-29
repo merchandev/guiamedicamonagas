@@ -7,6 +7,7 @@ export const DOCTOR_TIER_RANK: Record<PlanTier, number> = {
   PROFESSIONAL: 1,
   PROFESSIONAL_PLUS: 2,
   PREMIUM: 3,
+  AGENCY: 4,
   ORGANIZATION: 0,
 };
 
@@ -17,17 +18,27 @@ export function tierAtLeast(tier: PlanTier, min: PlanTier): boolean {
 /** Agenda y citas son un beneficio desde el plan Profesional en adelante. */
 export const AGENDA_MIN_TIER: PlanTier = 'PROFESSIONAL';
 
+/** El video de presentación en la ficha es exclusivo del plan Agencia. */
+export const PRESENTATION_VIDEO_MIN_TIER: PlanTier = 'AGENCY';
+
+/**
+ * Planes con espacio en la franja «Destacado» (patrocinada), en orden de
+ * prioridad: primero Agencia y luego Premium.
+ */
+export const FEATURED_TIERS: PlanTier[] = ['AGENCY', 'PREMIUM'];
+
 /**
  * Redes sociales/web permitidas por plan. El WhatsApp NO vive aquí: es un
  * campo aparte, ya desbloqueado desde el plan Profesional.
  * - Profesional Plus: hasta 2 redes (Instagram/Facebook/TikTok), sin web.
- * - Premium y Organización: las 3 redes + el ícono de Web.
+ * - Premium, Agencia y Organización: las 3 redes + el ícono de Web.
  */
 export const SOCIAL_LINK_LIMITS: Record<PlanTier, { maxLinks: number; allowedPlatforms: SocialPlatform[] }> = {
   FREE: { maxLinks: 0, allowedPlatforms: [] },
   PROFESSIONAL: { maxLinks: 0, allowedPlatforms: [] },
   PROFESSIONAL_PLUS: { maxLinks: 2, allowedPlatforms: ['INSTAGRAM', 'FACEBOOK', 'TIKTOK'] },
   PREMIUM: { maxLinks: 4, allowedPlatforms: ['INSTAGRAM', 'FACEBOOK', 'TIKTOK', 'WEBSITE'] },
+  AGENCY: { maxLinks: 4, allowedPlatforms: ['INSTAGRAM', 'FACEBOOK', 'TIKTOK', 'WEBSITE'] },
   ORGANIZATION: { maxLinks: 4, allowedPlatforms: ['INSTAGRAM', 'FACEBOOK', 'TIKTOK', 'WEBSITE'] },
 };
 

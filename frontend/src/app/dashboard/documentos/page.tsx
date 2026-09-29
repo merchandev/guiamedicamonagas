@@ -67,7 +67,7 @@ export default function DocumentsPage() {
           primero tu identidad y después tus títulos y registros. Cada uno indica su naturaleza (legal, de habilitación,
           fiscal o de la plataforma). Un administrador revisa cada documento manualmente. Con el 60% aprobado (más tu
           biografía y tu foto) tu perfil aparece en el directorio; con el 100% recibes el sello de verificado y puedes
-          contratar Profesional Plus o Premium. Aceptamos PDF, JPG, PNG o WebP; los PDF con scripts o archivos incrustados
+          contratar Profesional Plus, Premium o Agencia. Aceptamos PDF, JPG, PNG o WebP; los PDF con scripts o archivos incrustados
           se rechazan.
         </p>
       </div>

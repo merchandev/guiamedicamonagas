@@ -166,6 +166,11 @@ model ProfessionalProfile {
   lastName  String
   photoUrl  String?
   bio       String?
+  /// Video de presentación en YouTube (plan Agencia): solo el ID de 11
+  /// caracteres, nunca una URL libre. La ficha lo incrusta desde
+  /// youtube-nocookie.com y solo mientras el plan sea Agencia; si baja de
+  /// plan se conserva, oculto, por si vuelve a subir.
+  presentationVideoId String?
 
   /// Código público del médico («GM-7KQ4M9»): lo comparte (texto o QR) para
   /// que el paciente lo encuentre en el buscador o abra su ficha. No es un
@@ -289,7 +294,7 @@ model ProfessionalLocation {
 }
 
 // Instagram/Facebook/TikTok (redes) y Web, disponibles según el plan:
-// Profesional Plus = hasta 2 redes; Premium y Organización = las 3 redes + web.
+// Profesional Plus = hasta 2 redes; Premium, Agencia y Organización = las 3 redes + web.
 enum SocialPlatform {
   INSTAGRAM
   FACEBOOK
@@ -314,6 +319,9 @@ enum PlanTier {
   PROFESSIONAL
   PROFESSIONAL_PLUS
   PREMIUM
+  // Agencia: todo lo de Premium + videos en colaboración con la Guía y
+  // video de presentación incrustado en la ficha.
+  AGENCY
   ORGANIZATION
 }
 

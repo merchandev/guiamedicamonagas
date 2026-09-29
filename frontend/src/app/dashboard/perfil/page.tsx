@@ -15,6 +15,7 @@ import { PlanTier, ProfessionalProgress, Specialty } from '@/lib/types';
 import { PLAN_TIER_LABELS } from '@/lib/labels';
 import { ExtraLocationsManager } from '@/components/ExtraLocationsManager';
 import { SocialLinksManager } from '@/components/SocialLinksManager';
+import { PresentationVideoManager } from '@/components/PresentationVideoManager';
 import { ProfessionalProgressCard } from '@/components/ProfessionalProgressCard';
 import type { SocialLink } from '@/lib/social';
 import { FileButton } from '@/components/ui/FileButton';
@@ -47,6 +48,7 @@ interface OwnProfile extends Partial<Record<(typeof FORM_FIELDS)[number], string
   slug: string;
   photoUrl: string | null;
   planTier: PlanTier;
+  presentationVideoId: string | null;
   isPublished: boolean;
   bookingEnabled: boolean;
   specialties: { specialty: { id: string; name: string } }[];
@@ -59,7 +61,7 @@ function toForm(profile: OwnProfile): OwnProfileForm {
   return Object.fromEntries(FORM_FIELDS.map((field) => [field, profile[field] ?? ''])) as OwnProfileForm;
 }
 
-const PLAN_ORDER: PlanTier[] = ['FREE', 'PROFESSIONAL', 'PROFESSIONAL_PLUS', 'PREMIUM'];
+const PLAN_ORDER: PlanTier[] = ['FREE', 'PROFESSIONAL', 'PROFESSIONAL_PLUS', 'PREMIUM', 'AGENCY'];
 const showsBio = (tier: PlanTier) => PLAN_ORDER.indexOf(tier) >= PLAN_ORDER.indexOf('PROFESSIONAL');
 
 export default function EditProfilePage() {
@@ -329,6 +331,7 @@ export default function EditProfilePage() {
         </div>
       </form>
 
+      <PresentationVideoManager planTier={planTier} initialVideoId={profile.presentationVideoId ?? null} />
       <SocialLinksManager planTier={planTier} initialLinks={profile.socialLinks ?? []} />
       <ExtraLocationsManager />
       <AffiliationsManager />

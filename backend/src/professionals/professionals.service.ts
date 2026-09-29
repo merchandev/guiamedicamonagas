@@ -5,7 +5,15 @@ import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { profilePublishedTemplate, profileVerifiedTemplate } from '../mail/mail.templates';
-import { AGENDA_MIN_TIER, assertValidSocialLinks, SOCIAL_LINK_LIMITS, tierAtLeast } from '../subscriptions/plan-tiers';
+import {
+  AGENDA_MIN_TIER,
+  assertValidSocialLinks,
+  FEATURED_TIERS,
+  PRESENTATION_VIDEO_MIN_TIER,
+  SOCIAL_LINK_LIMITS,
+  tierAtLeast,
+} from '../subscriptions/plan-tiers';
+import { resolvePresentationVideo } from './presentation-video';
 import { UpdateProfessionalProfileDto } from './dto/update-professional-profile.dto';
 import { UpsertLocationDto } from './dto/upsert-location.dto';
 import { UpsertSocialLinksDto } from '../common/dto/social-link.dto';
@@ -33,6 +41,7 @@ const REGISTRATION_SOURCES: {
 ];
 
 const SITEMAP_PAGE_SIZE = 1000;
+const FEATURED_SLOTS = 3;
 
 // Datos que respaldan los documentos: si cambian, el perfil vuelve a revisión.
 const IDENTITY_FIELDS = ['firstName', 'lastName', 'cedula', 'rif', 'mppsNumber', 'colmedMonagasNumber'] as const;
@@ -76,7 +85,7 @@ function gateByTier<
     bio: canRich ? profile.bio : null,
     whatsapp: canRich ? profile.whatsapp : null,
     canReceiveMessages: canPlus,
-    isFeatured: profile.planTier === 'PREMIUM',
+    isFeatured: FEATURED_TIERS.includes(profile.planTier as never),
   };
 }
 
@@ -169,17 +178,30 @@ export class ProfessionalsService implements OnApplicationBootstrap {
     const shaped = items.map((item) => gateByTier(item));
     const signedItems = await Promise.all(shaped.map((item) => this.signPhoto(item)));
 
-    // Franja "Destacado" (patrocinada y rotativa): hasta 3 perfiles Premium
-    // que cumplen el mismo filtro, mostrados aparte y señalados como tales.
+    // Franja "Destacado" (patrocinada y rotativa): hasta 3 perfiles que
+    // cumplen el mismo filtro, mostrados aparte y señalados como tales.
+    // Primero Agencia y, si sobra lugar, Premium; cada grupo rota al azar.
     let featured: typeof signedItems = [];
     if (page === 1 && !searchWhere) {
-      const premiumWhere: Prisma.ProfessionalProfileWhereInput = { ...where, planTier: 'PREMIUM' };
-      const premiumCount = await this.prisma.professionalProfile.count({ where: premiumWhere });
-      if (premiumCount > 0) {
-        const skip = premiumCount > 3 ? Math.floor(Math.random() * (premiumCount - 2)) : 0;
-        const rows = await this.prisma.professionalProfile.findMany({ where: premiumWhere, select: PUBLIC_LIST_SELECT, skip, take: 3 });
-        featured = await Promise.all(rows.map((row) => this.signPhoto(gateByTier(row))));
+      const rows: Prisma.ProfessionalProfileGetPayload<{ select: typeof PUBLIC_LIST_SELECT }>[] = [];
+      for (const tier of FEATURED_TIERS) {
+        const slots = FEATURED_SLOTS - rows.length;
+        if (slots <= 0) break;
+        const tierWhere: Prisma.ProfessionalProfileWhereInput = { ...where, planTier: tier };
+        const count = await this.prisma.professionalProfile.count({ where: tierWhere });
+        if (count === 0) continue;
+        const skip = count > slots ? Math.floor(Math.random() * (count - slots + 1)) : 0;
+        rows.push(
+          ...(await this.prisma.professionalProfile.findMany({
+            where: tierWhere,
+            select: PUBLIC_LIST_SELECT,
+            orderBy: { id: 'asc' },
+            skip,
+            take: slots,
+          })),
+        );
       }
+      featured = await Promise.all(rows.map((row) => this.signPhoto(gateByTier(row))));
     }
 
     return { items: signedItems, featured, total, page, limit, totalPages: Math.ceil(total / limit) };
@@ -201,6 +223,7 @@ export class ProfessionalsService implements OnApplicationBootstrap {
         verifiedAt: true,
         isPublished: true,
         verificationStatus: true,
+        presentationVideoId: true,
         locations: true,
         posts: { where: { published: true }, orderBy: { createdAt: 'desc' }, select: { id: true, title: true, slug: true, content: true, createdAt: true } },
         socialLinks: { select: { platform: true, url: true } },
@@ -230,13 +253,15 @@ export class ProfessionalsService implements OnApplicationBootstrap {
       .filter((link) => allowedPlatforms.includes(link.platform))
       .slice(0, maxLinks);
 
-    const { schedule: _schedule, ...profileWithoutSchedule } = profile;
+    const { schedule: _schedule, presentationVideoId, ...profileWithoutSchedule } = profile;
     const shaped = {
       ...gateByTier(profileWithoutSchedule),
       locations: canPlus ? profile.locations : [],
       posts: canPlus ? profile.posts : [],
       socialLinks,
       bookingEnabled,
+      // Igual que las redes: si el plan bajó, el video queda guardado pero oculto.
+      presentationVideoId: tierAtLeast(profile.planTier, PRESENTATION_VIDEO_MIN_TIER) ? presentationVideoId : null,
     };
     return this.signPhoto(shaped);
   }
@@ -428,6 +453,23 @@ export class ProfessionalsService implements OnApplicationBootstrap {
     }
     await this.prisma.professionalLocation.delete({ where: { id: locationId } });
     return { message: 'Sede eliminada' };
+  }
+
+  // --- Video de presentación (plan Agencia) -----------------------------
+
+  async setOwnPresentationVideo(userId: string, url: string | null | undefined) {
+    const profile = await this.prisma.professionalProfile.findUnique({ where: { userId }, select: { id: true, planTier: true } });
+    if (!profile) throw new NotFoundException('No tienes un perfil profesional');
+    const presentationVideoId = resolvePresentationVideo(url);
+    // Quitarlo siempre se puede; ponerlo o cambiarlo es del plan Agencia.
+    if (presentationVideoId && !tierAtLeast(profile.planTier, PRESENTATION_VIDEO_MIN_TIER)) {
+      throw new ForbiddenException('El video de presentación es un beneficio del plan Agencia');
+    }
+    return this.prisma.professionalProfile.update({
+      where: { id: profile.id },
+      data: { presentationVideoId },
+      select: { presentationVideoId: true },
+    });
   }
 
   // --- Redes sociales / web (Profesional Plus en adelante) -------------

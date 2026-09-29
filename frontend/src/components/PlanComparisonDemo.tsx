@@ -4,11 +4,11 @@ import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { cn } from '@/lib/cn';
 import { Badge } from '@/components/ui/Badge';
-import { BadgeCheckIcon, BuildingIcon, LockIcon, MapPinIcon, SparklesIcon, WhatsAppIcon } from '@/components/icons';
+import { BadgeCheckIcon, BuildingIcon, LockIcon, MapPinIcon, SparklesIcon, VideoIcon, WhatsAppIcon } from '@/components/icons';
 import { VerificationBadge } from '@/components/VerificationBadge';
 import { DOCTOR_SOCIAL_LIMITS, SOCIAL_PLATFORM_COLORS, SOCIAL_PLATFORM_ICONS, type SocialPlatform } from '@/lib/social';
 
-type DoctorTier = 'FREE' | 'PROFESSIONAL' | 'PROFESSIONAL_PLUS' | 'PREMIUM';
+type DoctorTier = 'FREE' | 'PROFESSIONAL' | 'PROFESSIONAL_PLUS' | 'PREMIUM' | 'AGENCY';
 type DemoTier = DoctorTier | 'ORGANIZATION';
 
 const TIER_ORDER: Record<DoctorTier, number> = {
@@ -16,6 +16,7 @@ const TIER_ORDER: Record<DoctorTier, number> = {
   PROFESSIONAL: 1,
   PROFESSIONAL_PLUS: 2,
   PREMIUM: 3,
+  AGENCY: 4,
 };
 
 const TABS: { tier: DemoTier; label: string }[] = [
@@ -23,6 +24,7 @@ const TABS: { tier: DemoTier; label: string }[] = [
   { tier: 'PROFESSIONAL', label: 'Profesional' },
   { tier: 'PROFESSIONAL_PLUS', label: 'Profesional Plus' },
   { tier: 'PREMIUM', label: 'Premium' },
+  { tier: 'AGENCY', label: 'Agencia' },
   { tier: 'ORGANIZATION', label: 'Organizaciones' },
 ];
 
@@ -36,6 +38,9 @@ const FEATURE_ROWS: { label: string; min: DoctorTier }[] = [
   { label: 'Redes sociales (hasta 2: Instagram/Facebook/TikTok)', min: 'PROFESSIONAL_PLUS' },
   { label: 'Espacio «Destacado» rotativo (señalado como patrocinado)', min: 'PREMIUM' },
   { label: 'Publicaciones ilimitadas, redes + web y analítica avanzada', min: 'PREMIUM' },
+  { label: 'Video de presentación de YouTube en la ficha', min: 'AGENCY' },
+  { label: '2 videos en colaboración con Guía Médica Monagas', min: 'AGENCY' },
+  { label: 'Prioridad en el espacio «Destacado» e insignia dorada con brillo', min: 'AGENCY' },
 ];
 
 /** Chip de ícono no interactivo, solo para la vista previa (no navega ni trackea clics reales). */
@@ -61,7 +66,9 @@ function DoctorDemo({ tier }: { tier: DoctorTier }) {
   const rank = TIER_ORDER[tier];
   const canRich = rank >= TIER_ORDER.PROFESSIONAL;
   const canPlus = rank >= TIER_ORDER.PROFESSIONAL_PLUS;
-  const featured = tier === 'PREMIUM';
+  const premiumLike = rank >= TIER_ORDER.PREMIUM;
+  const featured = premiumLike;
+  const agency = tier === 'AGENCY';
 
   return (
     <div className="card p-6 sm:p-8">
@@ -93,6 +100,23 @@ function DoctorDemo({ tier }: { tier: DoctorTier }) {
             </p>
           )}
         </div>
+      </div>
+
+      <div className="mb-6">
+        {agency ? (
+          <div className="relative flex aspect-video w-full items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-pine-800 via-pine-900 to-ink-950 shadow-card">
+            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-white/95 text-pine-800 shadow-lg">
+              <svg viewBox="0 0 24 24" className="ml-1 h-6 w-6" fill="currentColor" aria-hidden="true">
+                <path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.2-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5Z" />
+              </svg>
+            </span>
+            <span className="absolute bottom-3 left-4 flex items-center gap-1.5 text-sm font-semibold text-white">
+              <VideoIcon className="h-4 w-4" /> Video de presentación en YouTube
+            </span>
+          </div>
+        ) : (
+          <Locked label="Video de presentación en la ficha con el plan Agencia" />
+        )}
       </div>
 
       <div className="mb-6 rounded-xl border border-pine-100 bg-pine-50/60 p-4">
@@ -129,7 +153,7 @@ function DoctorDemo({ tier }: { tier: DoctorTier }) {
                 <p className="mt-1 flex items-center gap-1.5 text-ink-500">
                   <MapPinIcon className="h-3.5 w-3.5" /> Clínica Maturín Centro — Av. Bolívar
                 </p>
-                {tier === 'PREMIUM' && (
+                {premiumLike && (
                   <p className="mt-1 flex items-center gap-1.5 text-ink-500">
                     <MapPinIcon className="h-3.5 w-3.5" /> Consultorio Punta de Mata
                   </p>
@@ -164,14 +188,14 @@ function DoctorDemo({ tier }: { tier: DoctorTier }) {
               <p className="text-sm font-semibold text-ink-900">5 hábitos para cuidar tu corazón</p>
               <p className="mt-1 text-xs text-ink-400">Hace 3 días</p>
             </div>
-            {tier === 'PREMIUM' ? (
+            {premiumLike ? (
               <>
                 <div className="rounded-lg border border-ink-100 p-3">
                   <p className="text-sm font-semibold text-ink-900">¿Cada cuánto hacerse un ecocardiograma?</p>
                   <p className="mt-1 text-xs text-ink-400">Hace 1 semana</p>
                 </div>
                 <p className="flex items-center gap-1.5 text-xs font-medium text-gold-700">
-                  <SparklesIcon className="h-3.5 w-3.5" /> Publicaciones ilimitadas en el plan Premium
+                  <SparklesIcon className="h-3.5 w-3.5" /> Publicaciones ilimitadas desde el plan Premium
                 </p>
               </>
             ) : (
@@ -187,14 +211,14 @@ function DoctorDemo({ tier }: { tier: DoctorTier }) {
         <h4 className="mb-3 text-sm font-semibold text-ink-900">Redes sociales y web</h4>
         {canPlus ? (
           <div className="flex flex-wrap items-center gap-2">
-            {(tier === 'PREMIUM'
+            {(premiumLike
               ? DOCTOR_SOCIAL_LIMITS.PREMIUM.allowedPlatforms
               : DOCTOR_SOCIAL_LIMITS.PROFESSIONAL_PLUS.allowedPlatforms.slice(0, 2)
             ).map((platform) => (
               <SocialIconChip key={platform} platform={platform} />
             ))}
             <span className="text-xs text-ink-500">
-              {tier === 'PREMIUM'
+              {premiumLike
                 ? 'Las 3 redes (Instagram/Facebook/TikTok) + Web'
                 : 'Hasta 2 redes a elegir, sin repetir'}
             </span>
@@ -206,8 +230,10 @@ function DoctorDemo({ tier }: { tier: DoctorTier }) {
 
       {featured && (
         <div className="mt-5 flex items-center gap-2 rounded-lg bg-gold-50 px-4 py-3 text-sm font-medium text-gold-800">
-          <SparklesIcon className="h-4 w-4 flex-shrink-0" /> Este perfil aparece primero en los resultados de
-          búsqueda y en secciones destacadas del sitio.
+          <SparklesIcon className="h-4 w-4 flex-shrink-0" />
+          {agency
+            ? 'Este perfil tiene prioridad en la franja «Destacado» del directorio, señalada como patrocinada.'
+            : 'Este perfil rota en la franja «Destacado» del directorio, señalada como patrocinada.'}
         </div>
       )}
     </div>
@@ -268,7 +294,7 @@ export function PlanComparisonDemo() {
         </p>
         <p className="mt-1 text-xs text-ink-400">
           Todos pasan la misma verificación; el check solo cambia de color según el plan: gris (Básico), azul (Profesional), índigo (Plus),
-          dorado (Premium) — y para organizaciones, verde (farmacias), morado (laboratorios) y naranja (clínicas).
+          dorado (Premium), dorado con brillo (Agencia) — y para organizaciones, verde (farmacias), morado (laboratorios) y naranja (clínicas).
         </p>
       </div>
 

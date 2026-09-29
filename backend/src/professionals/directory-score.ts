@@ -11,6 +11,9 @@ export const PLAN_BOOST: Record<PlanTier, number> = {
   PROFESSIONAL: 5,
   PROFESSIONAL_PLUS: 10,
   PREMIUM: 15,
+  // Agencia no sube más el puntaje: su visibilidad extra es la prioridad en
+  // «Destacado», que siempre se señala como patrocinada.
+  AGENCY: 15,
   ORGANIZATION: 0,
 };
 

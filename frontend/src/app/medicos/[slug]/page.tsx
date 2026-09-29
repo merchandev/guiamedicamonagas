@@ -9,6 +9,7 @@ import { WhatsAppButton, PhoneButton } from '@/components/ContactButtons';
 import { ProfileViewTracker } from '@/components/ProfileViewTracker';
 import { VerificationBadge } from '@/components/VerificationBadge';
 import { SocialLinksRow } from '@/components/SocialLinksRow';
+import { YouTubePresentation } from '@/components/YouTubePresentation';
 import { DoctorSeoInput, SITE_NAME, doctorSeoDescription, doctorSeoTitle } from '@/lib/seo';
 
 async function getDoctor(slug: string) {
@@ -129,6 +130,15 @@ export default async function DoctorProfilePage({ params }: { params: Promise<{ 
             <SocialLinksRow links={doctor.socialLinks} resourceId={doctor.id} className="mt-3" />
           </div>
         </div>
+
+        {doctor.presentationVideoId && (
+          <section aria-labelledby="video-presentacion" className="mb-8">
+            <h2 id="video-presentacion" className="mb-3 text-sm font-bold uppercase tracking-wide text-ink-500">
+              Video de presentación
+            </h2>
+            <YouTubePresentation videoId={doctor.presentationVideoId} title={`Conoce a ${fullName}`} />
+          </section>
+        )}
 
         <div className="mb-8 rounded-xl border border-pine-100 bg-pine-50/60 p-6">
           <h2 className="mb-1 flex items-center gap-2 text-sm font-bold text-pine-900">

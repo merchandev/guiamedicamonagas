@@ -131,7 +131,50 @@ try {
   r=await call('PATCH',`/admin/accounts/professionals/${ids.modDoctor}`,mod('RESTORE'));
   const restored=(await db.query('SELECT "verificationStatus","isPublished" FROM "ProfessionalProfile" WHERE id=$1',[ids.modProfile])).rows[0];
   check('reactivar con documentos completos: vuelve verificado y al directorio',r.status===200 && restored.verificationStatus==='VERIFIED' && restored.isPublished===true);
-  check('inicia sesión tras reactivar',(await login(modEmail, modPassword)).status===200);
+  const relogin=await login(modEmail, modPassword);
+  check('inicia sesión tras reactivar',relogin.status===200 && !!relogin.data?.accessToken);
+  const modToken=relogin.data.accessToken;
+
+  // Plan Agencia: precios del catálogo, asignación y video de presentación.
+  r=await call('GET','/subscriptions/plans',null,null);
+  const catalog=Object.fromEntries((r.data??[]).map(p=>[p.tier,Number(p.priceUsd)]));
+  check('catálogo con los precios nuevos y el plan Agencia',catalog.PROFESSIONAL===3.99 && catalog.PROFESSIONAL_PLUS===5.99
+    && catalog.PREMIUM===10.99 && catalog.AGENCY===69.99);
+  const videoId='dQw4w9WgXcQ';
+  r=await call('PUT','/professionals/me/presentation-video',{url:`https://youtu.be/${videoId}?si=e2e`},modToken);
+  check('sin el plan Agencia el médico no puede poner video',r.status===403);
+  const agencyBank=(await db.query('SELECT code FROM "FinancialInstitution" WHERE "isActive"=true AND "supportsPagoMovil"=true LIMIT 1')).rows[0];
+  r=await call('POST',`/subscriptions/admin/professionals/${ids.modProfile}/assign-paid-plan`,{
+    planId:(await db.query('SELECT id FROM "SubscriptionPlan" WHERE tier=\'AGENCY\'')).rows[0].id,amountBs:25000,method:'PAGO_MOVIL',
+    senderBankCode:agencyBank.code,referenceNumber:`AGENCY-${run}`.toUpperCase(),paidAt:new Date(Date.now()-60000).toISOString(),
+    reason:'Pago del plan Agencia revisado en prueba'});
+  check('asigna el plan Agencia a un médico con documentos completos',r.status===201
+    && (await db.query('SELECT "planTier" FROM "ProfessionalProfile" WHERE id=$1',[ids.modProfile])).rows[0].planTier==='AGENCY');
+  r=await call('PUT','/professionals/me/presentation-video',{url:'https://vimeo.com/123456789'},modToken);
+  check('rechaza un enlace que no es de YouTube',r.status===400);
+  r=await call('PUT','/professionals/me/presentation-video',{url:`https://youtu.be/${videoId}?si=e2e`},modToken);
+  check('con Agencia se guarda solo el ID del video',r.status===200 && r.data.presentationVideoId===videoId);
+  r=await call('GET',`/professionals/marta-${run}`,null,null);
+  check('la ficha pública muestra el video, el plan Agencia y el destacado',r.status===200 && r.data.presentationVideoId===videoId
+    && r.data.planTier==='AGENCY' && r.data.isFeatured===true);
+  r=await call('GET','/professionals',null,null);
+  check('Agencia va primero en la franja «Destacado»',r.status===200 && r.data.featured?.[0]?.planTier==='AGENCY');
+  r=await call('PUT',`/admin/accounts/professionals/${ids.modDoctor}/presentation-video`,{url:'https://www.youtube.com/watch?v=aqz-KE-bpKQ'},modToken);
+  check('un médico no usa la ruta administrativa del video',r.status===403);
+  r=await call('PUT',`/admin/accounts/professionals/${ids.modDoctor}/presentation-video`,{url:'https://www.youtube.com/watch?v=aqz-KE-bpKQ&t=5s'});
+  check('el administrador cambia el video y queda auditado',r.status===200 && r.data.presentationVideoId==='aqz-KE-bpKQ'
+    && await count('SELECT count(*)::int n FROM "AuditLog" WHERE "userId"=$1 AND action=\'PROFESSIONAL_VIDEO_SET\' AND "resourceId"=$2',[ids.admin,ids.modProfile])===1);
+  r=await call('PUT',`/admin/accounts/professionals/${ids.patient}/presentation-video`,{url:`https://youtu.be/${videoId}`});
+  check('la ruta del video solo aplica a médicos',r.status===404);
+  // Al bajar de plan el video se conserva, oculto; quitarlo siempre se puede.
+  await db.query('UPDATE "ProfessionalProfile" SET "planTier"=\'PREMIUM\' WHERE id=$1',[ids.modProfile]);
+  r=await call('GET',`/professionals/marta-${run}`,null,null);
+  check('sin Agencia la ficha no muestra el video, pero queda guardado',r.status===200 && r.data.presentationVideoId===null
+    && (await db.query('SELECT "presentationVideoId" FROM "ProfessionalProfile" WHERE id=$1',[ids.modProfile])).rows[0].presentationVideoId==='aqz-KE-bpKQ');
+  r=await call('PUT','/professionals/me/presentation-video',{url:null},modToken);
+  check('el médico puede quitar su video aunque ya no tenga Agencia',r.status===200 && r.data.presentationVideoId===null);
+  r=await call('PUT',`/admin/accounts/professionals/${ids.modDoctor}/presentation-video`,{url:`https://youtu.be/${videoId}`});
+  check('el administrador puede cargarlo antes de asignar Agencia',r.status===200 && r.data.presentationVideoId===videoId);
 
   const plan=(await db.query('SELECT id FROM "SubscriptionPlan" WHERE tier=\'PROFESSIONAL\'')).rows[0];
   const bank=(await db.query('SELECT code FROM "FinancialInstitution" WHERE "isActive"=true AND "supportsPagoMovil"=true LIMIT 1')).rows[0];
@@ -183,9 +226,9 @@ try {
   check('pacientes: eliminar exige la bóveda',(await call('POST',`/patients/admin/accounts/${ids.outsider}/purge`,purgeBody,superToken)).status===403);
   check('una cuenta activa no se elimina: primero se da de baja',(await call('POST',`/patients/admin/accounts/${ids.outsider}/purge`,purgeBody,superToken,superVault)).status===409);
   r=await call('POST',`/admin/accounts/professionals/${ids.modDoctor}/purge`,purgeBody,superToken);
-  const purged=(await db.query('SELECT u.email,u."purgedAt",u."isActive",p."firstName",p."publicCode",p.bio,p."photoUrl",p."isPublished" FROM "User" u JOIN "ProfessionalProfile" p ON p."userId"=u.id WHERE u.id=$1',[ids.modDoctor])).rows[0];
-  check('médico eliminado: sin correo, nombre, código, biografía ni foto',r.status===200 && purged.email.startsWith('eliminado-') && purged.purgedAt && !purged.isActive
-    && purged.firstName==='Cuenta' && purged.publicCode===null && purged.bio===null && purged.photoUrl===null && !purged.isPublished);
+  const purged=(await db.query('SELECT u.email,u."purgedAt",u."isActive",p."firstName",p."publicCode",p.bio,p."photoUrl",p."presentationVideoId",p."isPublished" FROM "User" u JOIN "ProfessionalProfile" p ON p."userId"=u.id WHERE u.id=$1',[ids.modDoctor])).rows[0];
+  check('médico eliminado: sin correo, nombre, código, biografía, foto ni video',r.status===200 && purged.email.startsWith('eliminado-') && purged.purgedAt && !purged.isActive
+    && purged.firstName==='Cuenta' && purged.publicCode===null && purged.bio===null && purged.photoUrl===null && purged.presentationVideoId===null && !purged.isPublished);
   check('se borran sus documentos',await count('SELECT count(*)::int n FROM "ProfessionalDocument" WHERE "professionalId"=$1',[ids.modProfile])===0);
   check('el correo queda anonimizado en el registro de envíos',await count('SELECT count(*)::int n FROM "MessageLog" WHERE recipient=$1',[modEmail])===0
     && await count('SELECT count(*)::int n FROM "MessageLog" WHERE "relatedUserId"=$1 AND template=\'account_purged\'',[ids.modDoctor])===1);

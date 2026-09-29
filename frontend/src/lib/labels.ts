@@ -32,6 +32,7 @@ export const PLAN_TIER_LABELS: Record<string, { label: string; tone: 'neutral' |
   PROFESSIONAL: { label: 'Profesional', tone: 'pine' },
   PROFESSIONAL_PLUS: { label: 'Profesional Plus', tone: 'pine' },
   PREMIUM: { label: 'Premium', tone: 'gold' },
+  AGENCY: { label: 'Agencia', tone: 'gold' },
   ORGANIZATION: { label: 'Organización', tone: 'pine' },
 };
 

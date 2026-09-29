@@ -11,6 +11,7 @@ import { IMAGE_TYPES, UploadSecurityService } from '../uploads/upload-security.s
 import { ProfessionalsService } from './professionals.service';
 import { UpdateProfessionalProfileDto } from './dto/update-professional-profile.dto';
 import { UpsertLocationDto } from './dto/upsert-location.dto';
+import { PresentationVideoDto } from './dto/presentation-video.dto';
 import { UpsertSocialLinksDto } from '../common/dto/social-link.dto';
 import { Permission, RequirePermissions } from '../common/permissions';
 
@@ -115,6 +116,12 @@ export class ProfessionalsController {
   @Put('me/social-links')
   setOwnSocialLinks(@CurrentUser() user: AuthenticatedUser, @Body() dto: UpsertSocialLinksDto) {
     return this.professionals.setOwnSocialLinks(user.id, dto);
+  }
+
+  @Roles(Role.PROFESSIONAL)
+  @Put('me/presentation-video')
+  setOwnPresentationVideo(@CurrentUser() user: AuthenticatedUser, @Body() dto: PresentationVideoDto) {
+    return this.professionals.setOwnPresentationVideo(user.id, dto.url);
   }
 
   @RequirePermissions(Permission.VERIFY_PROFESSIONALS)

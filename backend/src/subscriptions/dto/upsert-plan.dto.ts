@@ -1,6 +1,6 @@
 import { IsArray, IsBoolean, IsIn, IsInt, IsNumber, IsOptional, IsString, Min, MaxLength, MinLength } from 'class-validator';
 
-const PLAN_TIERS = ['FREE', 'PROFESSIONAL', 'PROFESSIONAL_PLUS', 'PREMIUM', 'ORGANIZATION'] as const;
+const PLAN_TIERS = ['FREE', 'PROFESSIONAL', 'PROFESSIONAL_PLUS', 'PREMIUM', 'AGENCY', 'ORGANIZATION'] as const;
 
 export class UpsertPlanDto {
   @IsIn(PLAN_TIERS)

@@ -117,7 +117,7 @@ export function profilePublishedTemplate(rawName: string, profileUrl: string, ap
      <p style="font-size:14px;line-height:1.6;color:#3a3a3a;">
        Tu perfil ya aparece en el directorio de ${BRAND_NAME}: tienes ${approved} de ${required} documentos aprobados,
        tu biografía y tu foto de perfil. Mientras terminamos de revisar el resto, se muestra como «verificación en curso».
-       Con todos tus documentos aprobados obtienes el sello «Verificado» y puedes contratar Profesional Plus o Premium.
+       Con todos tus documentos aprobados obtienes el sello «Verificado» y puedes contratar Profesional Plus, Premium o Agencia.
      </p>
      ${button(profileUrl, 'Ver mi perfil público')}`,
   );

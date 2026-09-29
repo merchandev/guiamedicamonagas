@@ -8,7 +8,7 @@ export interface Specialty {
   _count?: { professionals: number };
 }
 
-export type PlanTier = 'FREE' | 'PROFESSIONAL' | 'PROFESSIONAL_PLUS' | 'PREMIUM' | 'ORGANIZATION';
+export type PlanTier = 'FREE' | 'PROFESSIONAL' | 'PROFESSIONAL_PLUS' | 'PREMIUM' | 'AGENCY' | 'ORGANIZATION';
 
 export interface ProfessionalListItem {
   id: string;
@@ -58,6 +58,8 @@ export interface ProfessionalDetail extends ProfessionalListItem {
   /** «Resumen corto» del médico: alimenta la descripción automática para buscadores. */
   seoDescription: string | null;
   noIndex: boolean;
+  /** ID del video de YouTube de presentación (solo plan Agencia; si no, null). */
+  presentationVideoId?: string | null;
   verifiedAt: string | null;
   locations: ProfessionalExtraLocation[];
   posts: ProfessionalPost[];

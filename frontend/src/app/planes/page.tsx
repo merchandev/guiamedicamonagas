@@ -3,7 +3,8 @@ import Link from 'next/link';
 import { serverGet } from '@/lib/server-fetch';
 import { SubscriptionPlan } from '@/lib/types';
 import { Reveal, RevealGroup, RevealItem } from '@/components/motion/Reveal';
-import { BadgeCheckIcon, BuildingIcon } from '@/components/icons';
+import { BadgeCheckIcon, BuildingIcon, VideoIcon } from '@/components/icons';
+import { VerificationBadge } from '@/components/VerificationBadge';
 import { PlanComparisonDemo } from '@/components/PlanComparisonDemo';
 import { ORGANIZATIONS_LAUNCHED } from '@/lib/features';
 
@@ -24,6 +25,7 @@ export default async function PlansPage() {
   const doctorPlans = DOCTOR_TIERS.map((tier) => plans.find((p) => p.tier === tier)).filter(
     (p): p is SubscriptionPlan => !!p,
   );
+  const agencyPlan = plans.find((p) => p.tier === 'AGENCY');
   const orgPlan = plans.find((p) => p.tier === 'ORGANIZATION');
 
   return (
@@ -32,7 +34,7 @@ export default async function PlansPage() {
         <div className="mx-auto max-w-2xl text-center">
           <h1 className="text-4xl">Planes para tu perfil médico</h1>
           <p className="mt-3 text-lg text-ink-600">
-            Empieza gratis o desbloquea foto, biografía, WhatsApp, publicaciones y más visibilidad en el directorio.
+            Empieza gratis o desbloquea foto, biografía, WhatsApp, publicaciones, más visibilidad en el directorio y, con Agencia, tu video de presentación.
           </p>
         </div>
       </Reveal>
@@ -83,6 +85,43 @@ export default async function PlansPage() {
           );
         })}
       </RevealGroup>
+
+      {agencyPlan && (
+        <Reveal delay={0.05}>
+          <div className="mt-8 rounded-xl2 border border-gold-300 bg-gradient-to-br from-gold-50 via-white to-gold-100 p-8 shadow-card md:flex md:items-center md:justify-between md:gap-10">
+            <div className="max-w-2xl">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-gold-700 px-2.5 py-1 text-xs font-semibold text-white">
+                <VideoIcon className="h-3.5 w-3.5" /> Con video de presentación
+              </span>
+              <div className="mt-3 flex items-center gap-2">
+                <h2 className="text-2xl font-semibold text-ink-950">Plan {agencyPlan.name}</h2>
+                <VerificationBadge kind="doctor" tier="AGENCY" />
+              </div>
+              {agencyPlan.description && <p className="mt-2 text-ink-600">{agencyPlan.description}</p>}
+              <ul className="mt-4 grid gap-2.5 text-sm sm:grid-cols-2">
+                {(agencyPlan.features ?? []).map((feature) => (
+                  <li key={feature} className="flex items-start gap-2">
+                    <BadgeCheckIcon className="mt-0.5 h-4 w-4 flex-shrink-0 text-gold-600" />
+                    <span className="text-ink-700">{feature}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="mt-6 flex flex-shrink-0 flex-col items-start gap-3 md:mt-0 md:items-end">
+              <p className="text-4xl font-bold text-gold-700">
+                {formatUsd(agencyPlan.priceUsd)}
+                <span className="text-sm font-normal text-ink-400">/mes</span>
+              </p>
+              <Link
+                href="/registro?tipo=medico"
+                className="rounded-lg bg-gold-700 px-5 py-2.5 text-sm font-semibold text-white transition-transform hover:-translate-y-0.5 hover:bg-gold-800"
+              >
+                Elegir el plan Agencia
+              </Link>
+            </div>
+          </div>
+        </Reveal>
+      )}
 
       <Reveal delay={0.08} className="mt-20">
         <PlanComparisonDemo />

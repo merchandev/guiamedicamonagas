@@ -12,11 +12,13 @@ import { Alert } from '@/components/ui/Alert';
 import { Badge } from '@/components/ui/Badge';
 import { isVaultLocked, usePatientVault } from '@/components/PatientVaultGate';
 import { VERIFICATION_LABELS } from '@/lib/labels';
+import { YouTubePresentation } from '@/components/YouTubePresentation';
+import { parseYouTubeVideoId, youTubeShortUrl } from '@/lib/youtube';
 
 interface Account {
   id: string; email: string; isActive: boolean; deletedAt: string | null; moderationReason: string | null;
   professionalProfile: { id: string; firstName: string; lastName: string; slug: string; planTier: string;
-    isPublished: boolean; verificationStatus: string;
+    isPublished: boolean; verificationStatus: string; presentationVideoId: string | null;
     subscriptions: { currentPeriodEnd: string | null; plan: { id: string; name: string } }[] } | null;
   patientProfile: { patientCode: string; firstName: string | null; lastName: string | null } | null;
 }
@@ -76,6 +78,8 @@ export function AdminAccountManager({ kind }: { kind: 'professionals' | 'patient
   const [reference, setReference] = useState('');
   const [method, setMethod] = useState('PAGO_MOVIL');
   const [paidAt, setPaidAt] = useState('');
+  const [videoFor, setVideoFor] = useState<Account | null>(null);
+  const [videoUrl, setVideoUrl] = useState('');
   const requestId = useRef(0);
 
   const handleError = useCallback((e: unknown) => {
@@ -145,6 +149,23 @@ export function AdminAccountManager({ kind }: { kind: 'professionals' | 'patient
     } catch (e) { handleError(e); } finally { setBusy(false); }
   };
 
+  const openVideo = (account: Account) => {
+    const current = account.professionalProfile?.presentationVideoId;
+    setVideoFor(account); setVideoUrl(current ? youTubeShortUrl(current) : ''); setError(null); setSuccess(null);
+  };
+  const saveVideo = async (next: string | null) => {
+    if (!videoFor || busy) return;
+    setBusy(true); setError(null);
+    try {
+      const saved = await api.put<{ presentationVideoId: string | null }>(`${endpoint}/${videoFor.id}/presentation-video`, { url: next });
+      setSuccess(saved.presentationVideoId
+        ? `Video guardado para ${nameOf(videoFor)}.${videoFor.professionalProfile?.planTier === 'AGENCY' ? '' : ' Se mostrará en su ficha cuando tenga el plan Agencia.'}`
+        : `Video quitado de la ficha de ${nameOf(videoFor)}.`);
+      setVideoFor(null); await load();
+    } catch (e) { handleError(e); } finally { setBusy(false); }
+  };
+  const videoDraft = parseYouTubeVideoId(videoUrl);
+
   // Vista previa de la vigencia con la misma regla del servidor.
   const preview = useMemo(() => {
     const plan = plans.find(p => p.id === planId);
@@ -167,7 +188,7 @@ export function AdminAccountManager({ kind }: { kind: 'professionals' | 'patient
       {kind === 'patients' && <p className="mt-2 text-sm text-ink-500">Esta sección gestiona pacientes con cuenta. Las fichas sin cuenta creadas por un médico conservan su historial.</p>}
       {kind === 'professionals' && <Link href="/admin/pagos" className="mt-2 inline-block text-pine-700 underline">Revisar pagos reportados por los médicos</Link>}
     </div>
-    {error && !selected && !assignment && !purging && <Alert tone="error">{error}</Alert>}
+    {error && !selected && !assignment && !purging && !videoFor && <Alert tone="error">{error}</Alert>}
     {success && <div role="status"><Alert tone="success">{success}</Alert></div>}
     <form onSubmit={e => { e.preventDefault(); setPage(1); setQuery(search.trim()); }} className="flex flex-wrap items-end gap-3">
       <Input label={kind === 'patients' ? 'Nombre, correo, código, cédula o teléfono' : 'Nombre o correo'} maxLength={100} value={search} onChange={e => setSearch(e.target.value)} />
@@ -191,6 +212,7 @@ export function AdminAccountManager({ kind }: { kind: 'professionals' | 'patient
               {profile.subscriptions[0]?.currentPeriodEnd && ` · Hasta ${new Date(profile.subscriptions[0].currentPeriodEnd).toLocaleDateString('es-VE')}`}</p>}
             <div className="mt-2 flex flex-wrap gap-2"><Badge tone={account.isActive ? 'pine' : 'red'}>{account.deletedAt ? 'Baja' : account.isActive ? 'Cuenta activa' : 'Cuenta suspendida'}</Badge>
               {verification && <Badge tone={verification.tone}>{verification.label}</Badge>}
+              {profile?.presentationVideoId && <Badge tone={profile.planTier === 'AGENCY' ? 'gold' : 'neutral'}>{profile.planTier === 'AGENCY' ? 'Con video' : 'Video oculto (sin plan Agencia)'}</Badge>}
               {profile?.isPublished && <Link href={`/medicos/${profile.slug}`} className="text-sm text-pine-700 underline">Ver perfil</Link>}
             </div>
           </div>
@@ -199,6 +221,7 @@ export function AdminAccountManager({ kind }: { kind: 'professionals' | 'patient
               : <Button size="sm" variant="outline" disabled={busy} onClick={() => openModeration(account, 'RESTORE')}>Reactivar</Button>}
             {!account.deletedAt && <Button size="sm" variant="danger" disabled={busy} onClick={() => openModeration(account, 'DELETE')}>Dar de baja</Button>}
             {account.deletedAt && canPurge && <Button size="sm" variant="danger" disabled={busy} onClick={() => openPurge(account)}>Eliminar definitivamente</Button>}
+            {kind === 'professionals' && profile && !account.deletedAt && <Button size="sm" variant="outline" disabled={busy} onClick={() => openVideo(account)}>{profile.presentationVideoId ? 'Cambiar video' : 'Video de presentación'}</Button>}
             {kind === 'professionals' && profile && account.isActive && canAssign && <Button size="sm" disabled={busy || profile.verificationStatus === 'SUSPENDED'} onClick={() => void openAssignment(account)}>Registrar pago y asignar plan</Button>}
           </div>
         </div>;
@@ -241,6 +264,19 @@ export function AdminAccountManager({ kind }: { kind: 'professionals' | 'patient
         {error && <Alert tone="error">{error}</Alert>}
         <div className="flex gap-2"><Button type="button" variant="outline" disabled={busy} onClick={() => setPurging(null)}>Cancelar</Button>
           <Button type="submit" variant="danger" loading={busy} disabled={purgeConfirm !== PURGE_CONFIRMATION || reason.trim().length < 8}>Eliminar definitivamente</Button></div>
+      </form>}
+    </Modal>
+    <Modal open={!!videoFor} onClose={() => { if (!busy) setVideoFor(null); }} title="Video de presentación">
+      {videoFor && <form className="space-y-4" onSubmit={e => { e.preventDefault(); if (videoDraft) void saveVideo(videoUrl.trim()); }}>
+        <p className="font-semibold">{nameOf(videoFor)}</p>
+        <p className="text-sm text-ink-600">El plan Agencia incluye 2 videos en colaboración con la Guía. Pega el enlace de YouTube del que se mostrará en su ficha. Puedes cargarlo antes de asignar el plan: la ficha solo lo muestra mientras el plan sea Agencia. El médico también puede cambiarlo desde su perfil.</p>
+        <Input label="Enlace del video en YouTube" placeholder="https://youtu.be/…" maxLength={300} value={videoUrl} onChange={e => setVideoUrl(e.target.value)}
+          error={videoUrl.trim() && !videoDraft ? 'Pega un enlace de YouTube (youtu.be/… o youtube.com/watch?v=…).' : undefined} />
+        {videoDraft && <YouTubePresentation key={videoDraft} videoId={videoDraft} title={`Video de ${nameOf(videoFor)}`} />}
+        {error && <Alert tone="error">{error}</Alert>}
+        <div className="flex flex-wrap gap-2"><Button type="button" variant="outline" disabled={busy} onClick={() => setVideoFor(null)}>Cancelar</Button>
+          {videoFor.professionalProfile?.presentationVideoId && <Button type="button" variant="danger" loading={busy} onClick={() => void saveVideo(null)}>Quitar video</Button>}
+          <Button type="submit" loading={busy} disabled={!videoDraft || videoDraft === videoFor.professionalProfile?.presentationVideoId}>Guardar video</Button></div>
       </form>}
     </Modal>
     <Modal open={!!assignment} onClose={() => { if (!busy) setAssignment(null); }} title="Registrar pago y asignar plan">

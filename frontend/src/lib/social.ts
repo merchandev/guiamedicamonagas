@@ -59,5 +59,6 @@ export const DOCTOR_SOCIAL_LIMITS: Record<PlanTier, { maxLinks: number; allowedP
   PROFESSIONAL: { maxLinks: 0, allowedPlatforms: [] },
   PROFESSIONAL_PLUS: { maxLinks: 2, allowedPlatforms: ['INSTAGRAM', 'FACEBOOK', 'TIKTOK'] },
   PREMIUM: { maxLinks: 4, allowedPlatforms: ['INSTAGRAM', 'FACEBOOK', 'TIKTOK', 'WEBSITE'] },
+  AGENCY: { maxLinks: 4, allowedPlatforms: ['INSTAGRAM', 'FACEBOOK', 'TIKTOK', 'WEBSITE'] },
   ORGANIZATION: { maxLinks: 4, allowedPlatforms: ['INSTAGRAM', 'FACEBOOK', 'TIKTOK', 'WEBSITE'] },
 };

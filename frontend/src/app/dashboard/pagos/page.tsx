@@ -15,7 +15,7 @@ import { PagoMovilReportForm, type PendingInstallment } from '@/components/PagoM
 type Plan = SubscriptionPlan;
 
 // Deben coincidir con FULL_DOCUMENTS_TIERS del backend (publication-rules.ts).
-const FULL_DOCUMENTS_TIERS = ['PROFESSIONAL_PLUS', 'PREMIUM'];
+const FULL_DOCUMENTS_TIERS = ['PROFESSIONAL_PLUS', 'PREMIUM', 'AGENCY'];
 
 interface Installment extends PendingInstallment {
   id: string;
@@ -89,7 +89,7 @@ export default function PaymentsPage() {
             <EmptyState title="Aún no hay planes disponibles" description="Vuelve pronto." />
           ) : (
             plans.map((plan) => (
-              <div key={plan.id} className="card p-6">
+              <div key={plan.id} className={plan.tier === 'AGENCY' ? 'card border-gold-300 bg-gold-50/40 p-6' : 'card p-6'}>
                 <h3 className="text-lg font-semibold text-ink-900">{plan.name}</h3>
                 <p className="mt-1 text-2xl font-bold text-pine-700">${plan.priceUsd}<span className="text-sm font-normal text-ink-400">/mes</span></p>
                 {exchangeRate && (

@@ -7,6 +7,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { PatientDataCodec } from '../patients/patient-data.codec';
 import { accountModeratedTemplate } from '../mail/mail.templates';
 import { recomputeProfessionalStatus } from '../professionals/publication-rules';
+import { resolvePresentationVideo } from '../professionals/presentation-video';
 import { AccountListDto, ModerateAccountDto } from './account-management.dto';
 
 export type ManagedRole = 'USER' | 'PROFESSIONAL';
@@ -55,7 +56,7 @@ export class AccountManagementService {
         orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
         select: { id: true, email: true, isActive: true, deletedAt: true, moderationReason: true, isEmailVerified: true,
           professionalProfile: { select: { id: true, firstName: true, lastName: true, slug: true, planTier: true,
-            isPublished: true, verificationStatus: true,
+            isPublished: true, verificationStatus: true, presentationVideoId: true,
             subscriptions: { where: { status: 'ACTIVE' }, take: 1, orderBy: { createdAt: 'desc' },
               select: { currentPeriodEnd: true, plan: { select: { id: true, name: true } } } },
           } },
@@ -149,6 +150,29 @@ export class AccountManagementService {
     }
     await this.notifyHolder(id, dto, result.email, result.displayName);
     return result.response;
+  }
+
+  /**
+   * Video de presentación que produce la Guía con el médico (plan Agencia).
+   * Se puede cargar antes de asignarle el plan: la ficha solo lo muestra
+   * mientras el plan sea Agencia.
+   */
+  async setPresentationVideo(id: string, url: string | null | undefined, actorId: string, ipAddress?: string) {
+    const presentationVideoId = resolvePresentationVideo(url);
+    return this.prisma.$transaction(async (tx) => {
+      const user = await tx.user.findUnique({ where: { id }, select: { role: true, purgedAt: true,
+        professionalProfile: { select: { id: true, presentationVideoId: true } } } });
+      if (!user || user.role !== 'PROFESSIONAL' || user.purgedAt || !user.professionalProfile) {
+        throw new NotFoundException('Cuenta no encontrada');
+      }
+      const profile = user.professionalProfile;
+      const updated = await tx.professionalProfile.update({ where: { id: profile.id }, data: { presentationVideoId },
+        select: { presentationVideoId: true } });
+      await tx.auditLog.create({ data: { userId: actorId, action: presentationVideoId ? 'PROFESSIONAL_VIDEO_SET' : 'PROFESSIONAL_VIDEO_CLEARED',
+        resource: 'ProfessionalProfile', resourceId: profile.id,
+        details: { previousVideoId: profile.presentationVideoId, videoId: presentationVideoId }, ipAddress } });
+      return updated;
+    });
   }
 
   /** El titular recibe el motivo por correo; un fallo de envío no deshace la moderación. */

@@ -1,7 +1,7 @@
 import { DocumentStatus, DocumentType, PlanTier, SocialPlatform, VerificationStatus } from '@prisma/client';
 import type { PrismaService } from '../prisma/prisma.service';
 import { requiredDocumentsFor } from '../documents/document-requirements';
-import { SOCIAL_LINK_LIMITS } from '../subscriptions/plan-tiers';
+import { PRESENTATION_VIDEO_MIN_TIER, SOCIAL_LINK_LIMITS, tierAtLeast } from '../subscriptions/plan-tiers';
 
 /**
  * Reglas de publicación del médico (decisión del titular, 2026-09-24):
@@ -10,11 +10,11 @@ import { SOCIAL_LINK_LIMITS } from '../subscriptions/plan-tiers';
  *   foto de perfil.
  * - La insignia «Verificado» (verificationStatus VERIFIED) sigue exigiendo el
  *   100% de los documentos aprobados.
- * - Profesional Plus y Premium solo se contratan con el 100% aprobado.
+ * - Profesional Plus, Premium y Agencia solo se contratan con el 100% aprobado.
  */
 export const PUBLICATION_MIN_DOCUMENT_RATIO = 0.6;
 export const MIN_BIO_LENGTH = 80;
-export const FULL_DOCUMENTS_TIERS: PlanTier[] = ['PROFESSIONAL_PLUS', 'PREMIUM'];
+export const FULL_DOCUMENTS_TIERS: PlanTier[] = ['PROFESSIONAL_PLUS', 'PREMIUM', 'AGENCY'];
 
 /** «Medicina General» está en el catálogo, pero no convierte al médico en especialista. */
 export const GENERAL_MEDICINE_SLUG = 'medicina-general';
@@ -88,7 +88,7 @@ export function canBePublished(p: PublicationInput): boolean {
   return p.verificationStatus !== 'SUSPENDED' && publicationRequirements(p).every((r) => r.done);
 }
 
-/** Profesional Plus y Premium exigen el 100% de los documentos aprobados. */
+/** Profesional Plus, Premium y Agencia exigen el 100% de los documentos aprobados. */
 export function canSubscribeToTier(tier: PlanTier, documents: DocumentProgress): boolean {
   return !FULL_DOCUMENTS_TIERS.includes(tier) || documents.approved === documents.required;
 }
@@ -101,6 +101,7 @@ export interface ChecklistInput extends PublicationInput {
   specialtyCount: number;
   planTier: PlanTier;
   socialPlatforms: SocialPlatform[];
+  presentationVideoId?: string | null;
 }
 
 export interface ChecklistItem {
@@ -118,7 +119,7 @@ export interface ChecklistItem {
 
 /**
  * Todo lo que el médico debe completar, en orden, para la barra de progreso
- * del panel. Los ítems que su plan todavía no permite (redes, web) se
+ * del panel. Los ítems que su plan todavía no permite (redes, web, video) se
  * muestran bloqueados y no restan porcentaje.
  */
 export function professionalChecklist(p: ChecklistInput) {
@@ -146,7 +147,7 @@ export function professionalChecklist(p: ChecklistInput) {
       label: 'Documentos de verificación',
       done: docs.approved === docs.required,
       fraction: docs.required ? docs.approved / docs.required : 0,
-      detail: `${docs.approved} de ${docs.required} aprobados · mínimo ${docs.minimumToPublish} para publicarte y todos para Profesional Plus o Premium`,
+      detail: `${docs.approved} de ${docs.required} aprobados · mínimo ${docs.minimumToPublish} para publicarte y todos para Profesional Plus, Premium o Agencia`,
       href: '/dashboard/documentos',
       requiredToPublish: true,
     },
@@ -163,6 +164,13 @@ export function professionalChecklist(p: ChecklistInput) {
       done: hasWebsite,
       href: '/dashboard/perfil',
       lockedUntil: socialAllowed.includes('WEBSITE') ? undefined : 'PREMIUM',
+    },
+    {
+      key: 'video',
+      label: 'Video de presentación',
+      done: !!p.presentationVideoId,
+      href: '/dashboard/perfil',
+      lockedUntil: tierAtLeast(p.planTier, PRESENTATION_VIDEO_MIN_TIER) ? undefined : PRESENTATION_VIDEO_MIN_TIER,
     },
   ];
 

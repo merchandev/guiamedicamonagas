@@ -98,7 +98,7 @@ describe('barra de progreso del registro del médico', () => {
     documents: documentProgress(false, ALL_SIX),
   };
 
-  it('en plan básico, redes y web se muestran bloqueadas y no restan', () => {
+  it('en plan básico, redes, web y video se muestran bloqueados y no restan', () => {
     const progress = professionalChecklist({ ...input, planTier: 'FREE' });
     expect(progress.items.map((i) => i.key)).toEqual([
       'account',
@@ -111,9 +111,11 @@ describe('barra de progreso del registro del médico', () => {
       'documents',
       'social',
       'website',
+      'video',
     ]);
     expect(progress.items.find((i) => i.key === 'social')?.lockedUntil).toBe('PROFESSIONAL_PLUS');
     expect(progress.items.find((i) => i.key === 'website')?.lockedUntil).toBe('PREMIUM');
+    expect(progress.items.find((i) => i.key === 'video')?.lockedUntil).toBe('AGENCY');
     expect(progress.percent).toBe(100);
     expect(progress.canPublish).toBe(true);
   });

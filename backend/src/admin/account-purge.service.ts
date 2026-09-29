@@ -218,6 +218,7 @@ export class AccountPurgeService {
         publicCode: null,
         photoUrl: null,
         bio: null,
+        presentationVideoId: null,
         mppsNumber: null,
         colmedMonagasNumber: null,
         inpremedicoNumber: null,
