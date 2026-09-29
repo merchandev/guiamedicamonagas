@@ -473,7 +473,8 @@ export class PatientsService {
 
   private async activeGrant(patientId: string, professionalId: string) {
     return this.prisma.patientDataGrant.findFirst({
-      where: { patientId, professionalId, revokedAt: null, expiresAt: { gt: new Date() } },
+      where: { patientId, professionalId, revokedAt: null, expiresAt: { gt: new Date() },
+        patient: { user: { isActive: true } }, professional: { user: { isActive: true } } },
       orderBy: { grantedAt: 'desc' },
     });
   }
@@ -545,7 +546,8 @@ export class PatientsService {
 
     const patientIds = [...byPatient.keys()];
     const grants = await this.prisma.patientDataGrant.findMany({
-      where: { professionalId, patientId: { in: patientIds }, revokedAt: null, expiresAt: { gt: new Date() } },
+      where: { professionalId, patientId: { in: patientIds }, revokedAt: null, expiresAt: { gt: new Date() },
+        patient: { user: { isActive: true } }, professional: { user: { isActive: true } } },
       select: { patientId: true, scopes: true, expiresAt: true },
     });
     const grantByPatient = new Map(grants.map((g) => [g.patientId, g]));
@@ -599,10 +601,10 @@ export class PatientsService {
     const patient = code
       ? await this.prisma.patientProfile.findUnique({
           where: { shareCodeLookup: this.codec.shareCodeLookup(code) },
-          include: { user: { select: { email: true } } },
+          include: { user: { select: { email: true, isActive: true } } },
         })
       : null;
-    if (!patient?.userId || !patient.user) {
+    if (!patient?.userId || !patient.user?.isActive) {
       await this.audit.record({
         userId: requestedByUserId,
         action: 'PATIENT_SHARE_CODE_FAILED',
@@ -632,6 +634,19 @@ export class PatientsService {
     const now = new Date();
     const scopes = patient.shareScopes;
     const grant = await this.prisma.$transaction(async (tx) => {
+      // Serializar con la suspensión/baja: un QR leído justo antes no puede
+      // recrear permisos después de la revocación administrativa.
+      const accounts = await tx.$queryRaw<{ isActive: boolean }[]>`
+        SELECT "isActive" FROM "User" WHERE id IN (${patient.userId}, ${requestedByUserId}) ORDER BY id FOR UPDATE`;
+      if (accounts.length !== 2 || accounts.some(account => !account.isActive)) {
+        throw new ForbiddenException('La cuenta ya no está disponible');
+      }
+      const currentPatient = await tx.patientProfile.findUnique({ where: { id: patient.id },
+        select: { shareCodeLookup: true, shareScopes: true } });
+      if (!currentPatient?.shareCodeLookup || currentPatient.shareCodeLookup !== patient.shareCodeLookup ||
+          JSON.stringify(currentPatient.shareScopes) !== JSON.stringify(scopes)) {
+        throw new ForbiddenException('El código o los permisos cambiaron. Solicita el código vigente al paciente.');
+      }
       await tx.professionalPatient.upsert({
         where: { professionalId_patientId: { professionalId, patientId: patient.id } },
         create: { professionalId, patientId: patient.id },

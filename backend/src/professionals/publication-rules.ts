@@ -199,6 +199,7 @@ export async function recomputeProfessionalStatus(
     where: { id: professionalId },
     select: {
       isPublished: true,
+      user: { select: { isActive: true } },
       verificationStatus: true,
       isSpecialist: true,
       photoUrl: true,
@@ -210,14 +211,17 @@ export async function recomputeProfessionalStatus(
 
   const documents = documentProgress(profile.isSpecialist, profile.documents, now);
   const verificationStatus = nextVerificationStatus(profile.verificationStatus, documents);
-  const isPublished = canBePublished({ ...profile, verificationStatus, documents });
+  const isPublished = profile.user.isActive && canBePublished({ ...profile, verificationStatus, documents });
   const becameVerified = verificationStatus === 'VERIFIED' && profile.verificationStatus !== 'VERIFIED';
 
   if (verificationStatus !== profile.verificationStatus || isPublished !== profile.isPublished) {
-    await prisma.professionalProfile.update({
-      where: { id: professionalId },
+    const changed = await prisma.professionalProfile.updateMany({
+      where: { id: professionalId, verificationStatus: profile.verificationStatus,
+        user: { isActive: profile.user.isActive } },
       data: { verificationStatus, isPublished, ...(becameVerified ? { verifiedAt: now } : {}) },
     });
+    // Una moderación concurrente tiene prioridad sobre este cálculo anterior.
+    if (changed.count === 0) return null;
   }
   return {
     documents,

@@ -62,6 +62,8 @@ export default function AdminDoctorsPage() {
         />
       </div>
 
+      <Link href="/admin/cuentas-medicos" className="inline-block text-pine-700 underline">Gestionar cuentas, bajas y planes pagados</Link>
+
       <div className="card divide-y divide-ink-50">
         {items.map((p) => {
           const s = VERIFICATION_LABELS[p.verificationStatus];

@@ -7,6 +7,8 @@ import { Role } from '@prisma/client';
  * atajos: SUPERADMIN también pasa por esta tabla.
  */
 export enum Permission {
+  MANAGE_ACCOUNTS = 'MANAGE_ACCOUNTS',
+  ASSIGN_PAID_PLANS = 'ASSIGN_PAID_PLANS',
   VERIFY_PROFESSIONALS = 'VERIFY_PROFESSIONALS',
   /** Ver la foto de identificación y la cédula de un paciente para verificarlo (auditado). */
   VERIFY_PATIENT_IDENTITY = 'VERIFY_PATIENT_IDENTITY',
@@ -23,6 +25,8 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
   PROFESSIONAL: [],
   ORGANIZATION: [],
   ADMIN: [
+    Permission.MANAGE_ACCOUNTS,
+    Permission.ASSIGN_PAID_PLANS,
     Permission.VERIFY_PROFESSIONALS,
     Permission.VERIFY_PATIENT_IDENTITY,
     Permission.REVIEW_PAYMENTS,
