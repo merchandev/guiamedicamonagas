@@ -36,8 +36,9 @@ const SECTIONS: LegalSection[] = [
         </P>
         <P>
           <strong>Plan Agencia.</strong> Incluye la producción de dos videos en colaboración con Guía Médica Monagas, que
-          son para el profesional. Uno de ellos puede mostrarse como video de presentación en su ficha. Los detalles de
-          producción (fechas, contenido y entrega) se coordinan con cada profesional.
+          son para el profesional. Uno de ellos puede mostrarse como video de presentación en su ficha mientras el plan
+          Agencia esté vigente; si el plan vence, el video deja de mostrarse y queda guardado. Los detalles de producción
+          (fechas, contenido y entrega) se coordinan con cada profesional.
         </P>
       </>
     ),
@@ -51,6 +52,19 @@ const SECTIONS: LegalSection[] = [
         resultado. Lo que un plan añade es comercial: herramientas y visibilidad. El color de la insignia solo refleja el
         plan. Ver <DocLink to="verificacion" /> y <DocLink to="publicidad-medica" />.
       </Callout>
+    ),
+  },
+  {
+    id: 'visibilidad',
+    title: 'Visibilidad comercial',
+    body: (
+      <Ul
+        items={[
+          'El orden del directorio prioriza la relevancia de la búsqueda y los perfiles completos. Los planes de pago suman un impulso acotado.',
+          'El espacio rotativo «Destacado» forma parte de los planes Premium y Agencia, con prioridad para Agencia. Es publicidad y se muestra señalada como tal.',
+          'Ninguna de estas ventajas indica superioridad clínica ni equivale a una recomendación de la plataforma.',
+        ]}
+      />
     ),
   },
   {
