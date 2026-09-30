@@ -11,6 +11,7 @@ import { Modal } from '@/components/ui/Modal';
 import { Alert } from '@/components/ui/Alert';
 import { Badge } from '@/components/ui/Badge';
 import { isVaultLocked, usePatientVault } from '@/components/PatientVaultGate';
+import { AccountActionDialog, accountsEndpoint, type AccountAction } from '@/components/admin/AccountActionDialog';
 import { VERIFICATION_LABELS } from '@/lib/labels';
 import { YouTubePresentation } from '@/components/YouTubePresentation';
 import { parseYouTubeVideoId, youTubeShortUrl } from '@/lib/youtube';
@@ -25,11 +26,8 @@ interface Account {
 interface Results { items: Account[]; total: number; page: number; totalPages: number }
 interface Plan { id: string; name: string; tier: string; priceUsd: string; billingCycle: 'MONTHLY' | 'QUARTERLY' | 'YEARLY' }
 interface Bank { code: string; name: string; supportsPagoMovil: boolean }
-type Action = 'SUSPEND' | 'DELETE' | 'RESTORE';
-const actionLabel: Record<Action, string> = { SUSPEND: 'Suspender cuenta', DELETE: 'Dar de baja', RESTORE: 'Reactivar cuenta' };
 const CYCLE_LABEL: Record<Plan['billingCycle'], string> = { MONTHLY: 'mensual', QUARTERLY: 'trimestral', YEARLY: 'anual' };
 const CYCLE_UNIT: Record<Plan['billingCycle'], [string, string]> = { MONTHLY: ['mes', 'meses'], QUARTERLY: ['trimestre', 'trimestres'], YEARLY: ['año', 'años'] };
-const PURGE_CONFIRMATION = 'ELIMINAR';
 const nameOf = (a: Account) => {
   const p = a.professionalProfile ?? a.patientProfile;
   return p ? [p.firstName, p.lastName].filter(Boolean).join(' ') || a.email : a.email;
@@ -53,7 +51,7 @@ export function AdminAccountManager({ kind }: { kind: 'professionals' | 'patient
   const canManage = user?.permissions.includes('MANAGE_ACCOUNTS');
   const canPurge = user?.permissions.includes('PURGE_ACCOUNTS');
   const canAssign = user?.permissions.includes('ASSIGN_PAID_PLANS') && user?.permissions.includes('REVIEW_PAYMENTS');
-  const endpoint = kind === 'patients' ? '/patients/admin/accounts' : '/admin/accounts/professionals';
+  const endpoint = accountsEndpoint(kind);
   const [results, setResults] = useState<Results | null>(null);
   const [search, setSearch] = useState('');
   const [query, setQuery] = useState('');
@@ -63,9 +61,7 @@ export function AdminAccountManager({ kind }: { kind: 'professionals' | 'patient
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [selected, setSelected] = useState<{ account: Account; action: Action } | null>(null);
-  const [purging, setPurging] = useState<Account | null>(null);
-  const [purgeConfirm, setPurgeConfirm] = useState('');
+  const [selected, setSelected] = useState<{ account: Account; action: AccountAction } | null>(null);
   const [reason, setReason] = useState('');
   const [confirmed, setConfirmed] = useState(false);
   const [plans, setPlans] = useState<Plan[]>([]);
@@ -98,31 +94,8 @@ export function AdminAccountManager({ kind }: { kind: 'professionals' | 'patient
   }, [canManage, endpoint, page, status, query, handleError]);
   useEffect(() => { void load(); return () => { requestId.current++; }; }, [load]);
 
-  const openModeration = (account: Account, action: Action) => {
-    setSelected({ account, action }); setReason(''); setConfirmed(false); setError(null); setSuccess(null);
-  };
-  const moderate = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!selected || !confirmed || busy) return;
-    setBusy(true); setError(null);
-    try {
-      await api.patch(`${endpoint}/${selected.account.id}`, { action: selected.action, reason: reason.trim() });
-      setSuccess(`${actionLabel[selected.action]}: cambio guardado para ${nameOf(selected.account)}. Le enviamos un aviso con el motivo.`);
-      setSelected(null); await load();
-    } catch (e) { handleError(e); } finally { setBusy(false); }
-  };
-  const openPurge = (account: Account) => {
-    setPurging(account); setReason(''); setPurgeConfirm(''); setError(null); setSuccess(null);
-  };
-  const purge = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!purging || purgeConfirm !== PURGE_CONFIRMATION || busy) return;
-    setBusy(true); setError(null);
-    try {
-      await api.post(`${endpoint}/${purging.id}/purge`, { reason: reason.trim(), confirm: purgeConfirm });
-      setSuccess(`Cuenta de ${nameOf(purging)} eliminada definitivamente.`);
-      setPurging(null); await load();
-    } catch (e) { handleError(e); } finally { setBusy(false); }
+  const openAction = (account: Account, action: AccountAction) => {
+    setSelected({ account, action }); setError(null); setSuccess(null);
   };
   const openAssignment = async (account: Account) => {
     setError(null); setSuccess(null); setBusy(true);
@@ -183,18 +156,18 @@ export function AdminAccountManager({ kind }: { kind: 'professionals' | 'patient
   if (!canManage) return <Alert tone="warning">No tienes permiso para gestionar cuentas.</Alert>;
   return <div className="space-y-6">
     <div><h1 className="text-2xl">{kind === 'patients' ? 'Cuentas de pacientes' : 'Médicos: cuentas y planes'}</h1>
-      <p className="mt-2 text-sm text-ink-600">Suspende el acceso, da de baja o reactiva una cuenta con un motivo registrado; el titular recibe el aviso por correo. La baja es reversible y conserva el historial.</p>
-      {canPurge && <p className="mt-2 text-sm text-ink-600">Una cuenta dada de baja se puede <strong>eliminar definitivamente</strong> (se borran sus datos personales; solo se conservan los pagos y las autorizaciones que exige la ley).</p>}
+      <p className="mt-2 text-sm text-ink-600">Suspende el acceso, da de baja o reactiva una cuenta con un motivo registrado; el titular recibe el aviso por correo. La suspensión y la baja son reversibles y conservan el historial.</p>
+      {canPurge && <p className="mt-2 text-sm text-ink-600">Una cuenta suspendida o dada de baja se puede <strong>eliminar definitivamente</strong>: se borran sus datos personales (solo se conservan los pagos y las autorizaciones que exige la ley) y su correo queda libre para registrarse de nuevo.</p>}
       {kind === 'patients' && <p className="mt-2 text-sm text-ink-500">Esta sección gestiona pacientes con cuenta. Las fichas sin cuenta creadas por un médico conservan su historial.</p>}
       {kind === 'professionals' && <Link href="/admin/pagos" className="mt-2 inline-block text-pine-700 underline">Revisar pagos reportados por los médicos</Link>}
     </div>
-    {error && !selected && !assignment && !purging && !videoFor && <Alert tone="error">{error}</Alert>}
+    {error && !assignment && !videoFor && <Alert tone="error">{error}</Alert>}
     {success && <div role="status"><Alert tone="success">{success}</Alert></div>}
     <form onSubmit={e => { e.preventDefault(); setPage(1); setQuery(search.trim()); }} className="flex flex-wrap items-end gap-3">
       <Input label={kind === 'patients' ? 'Nombre, correo, código, cédula o teléfono' : 'Nombre o correo'} maxLength={100} value={search} onChange={e => setSearch(e.target.value)} />
       <Button type="submit" disabled={busy}>Buscar</Button>
       <Select label="Estado de la cuenta" value={status} onChange={s => { setStatus(s); setPage(1); }} options={[
-        { value: '', label: 'Activas y suspendidas' }, { value: 'ACTIVE', label: 'Activas' },
+        { value: '', label: 'Todas' }, { value: 'ACTIVE', label: 'Activas' },
         { value: 'SUSPENDED', label: 'Suspendidas' }, { value: 'DELETED', label: 'Dadas de baja' },
       ]} />
       <Button type="button" variant="outline" onClick={() => { setError(null); void load(); }} disabled={busy || loading}>Actualizar</Button>
@@ -217,10 +190,10 @@ export function AdminAccountManager({ kind }: { kind: 'professionals' | 'patient
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            {account.isActive ? <Button size="sm" variant="outline" disabled={busy} onClick={() => openModeration(account, 'SUSPEND')}>Suspender</Button>
-              : <Button size="sm" variant="outline" disabled={busy} onClick={() => openModeration(account, 'RESTORE')}>Reactivar</Button>}
-            {!account.deletedAt && <Button size="sm" variant="danger" disabled={busy} onClick={() => openModeration(account, 'DELETE')}>Dar de baja</Button>}
-            {account.deletedAt && canPurge && <Button size="sm" variant="danger" disabled={busy} onClick={() => openPurge(account)}>Eliminar definitivamente</Button>}
+            {account.isActive ? <Button size="sm" variant="outline" disabled={busy} onClick={() => openAction(account, 'SUSPEND')}>Suspender</Button>
+              : <Button size="sm" variant="outline" disabled={busy} onClick={() => openAction(account, 'RESTORE')}>Reactivar</Button>}
+            {!account.deletedAt && <Button size="sm" variant="danger" disabled={busy} onClick={() => openAction(account, 'DELETE')}>Dar de baja</Button>}
+            {!account.isActive && canPurge && <Button size="sm" variant="danger" disabled={busy} onClick={() => openAction(account, 'PURGE')}>Eliminar definitivamente</Button>}
             {kind === 'professionals' && profile && !account.deletedAt && <Button size="sm" variant="outline" disabled={busy} onClick={() => openVideo(account)}>{profile.presentationVideoId ? 'Cambiar video' : 'Video de presentación'}</Button>}
             {kind === 'professionals' && profile && account.isActive && canAssign && <Button size="sm" disabled={busy || profile.verificationStatus === 'SUSPENDED'} onClick={() => void openAssignment(account)}>Registrar pago y asignar plan</Button>}
           </div>
@@ -231,41 +204,11 @@ export function AdminAccountManager({ kind }: { kind: 'professionals' | 'patient
       <div className="flex gap-2"><Button variant="outline" disabled={loading || busy || page <= 1} onClick={() => setPage(p => p - 1)}>Anterior</Button>
         <Button variant="outline" disabled={loading || busy || page >= (results?.totalPages ?? 1)} onClick={() => setPage(p => p + 1)}>Siguiente</Button></div>
     </div>
-    <Modal open={!!selected} onClose={() => { if (!busy) setSelected(null); }} title={selected ? actionLabel[selected.action] : ''}>
-      {selected && <form className="space-y-4" onSubmit={moderate}>
-        <p className="font-semibold">{nameOf(selected.account)}</p><p className="break-all text-sm">{selected.account.email}</p>
-        <p className="text-sm text-ink-600">{selected.action === 'RESTORE'
-          ? 'Permite volver a iniciar sesión. No restaura los permisos de datos revocados. Un médico vuelve al directorio solo si sus documentos, su foto y su biografía cumplen los requisitos de publicación.'
-          : 'Cierra las sesiones e impide iniciar sesión. Retira el perfil médico público o revoca los permisos y el código compartido del paciente. Conserva pagos, citas e historial.'}</p>
-        <Textarea label="Motivo (el titular lo recibirá por correo; sin datos clínicos)" required minLength={8} maxLength={500} value={reason} onChange={e => setReason(e.target.value)} />
-        <label className="flex gap-2 text-sm"><input type="checkbox" required checked={confirmed} onChange={e => setConfirmed(e.target.checked)} />Confirmo la acción sobre esta cuenta.</label>
-        {error && <Alert tone="error">{error}</Alert>}
-        <div className="flex gap-2"><Button type="button" variant="outline" disabled={busy} onClick={() => setSelected(null)}>Cancelar</Button>
-          <Button type="submit" loading={busy} disabled={!confirmed || reason.trim().length < 8} variant={selected.action === 'RESTORE' ? 'primary' : 'danger'}>Confirmar</Button></div>
-      </form>}
-    </Modal>
-    <Modal open={!!purging} onClose={() => { if (!busy) setPurging(null); }} title="Eliminar definitivamente">
-      {purging && <form className="space-y-4" onSubmit={purge}>
-        <p className="font-semibold">{nameOf(purging)}</p><p className="break-all text-sm">{purging.email}</p>
-        <Alert tone="warning">No se puede deshacer.</Alert>
-        <ul className="list-disc space-y-1 pl-5 text-sm text-ink-600">
-          {kind === 'professionals' ? <>
-            <li>Se borran su perfil, documentos, foto, sedes, horario, publicaciones, mensajes, agenda, notas clínicas y finanzas.</li>
-            <li>Sus citas futuras se cancelan y se avisa a los pacientes.</li>
-            <li>Se conservan, sin datos personales, sus pagos y suscripciones (normativa tributaria) y las autorizaciones que recibió (revocadas).</li>
-          </> : <>
-            <li>Se borran la cuenta, su identidad, contacto, datos de salud, fotos y código para compartir.</li>
-            <li>Si un médico lo atendió, su ficha queda solo con el código de paciente para que la agenda y las autorizaciones (evidencia) sigan en pie. Sus citas futuras se cancelan.</li>
-          </>}
-          <li>El titular recibe un último correo; su correo queda libre para registrarse de nuevo.</li>
-        </ul>
-        <Textarea label="Motivo (queda en la auditoría)" required minLength={8} maxLength={500} value={reason} onChange={e => setReason(e.target.value)} />
-        <Input label={`Escribe ${PURGE_CONFIRMATION} para confirmar`} autoComplete="off" value={purgeConfirm} onChange={e => setPurgeConfirm(e.target.value)} />
-        {error && <Alert tone="error">{error}</Alert>}
-        <div className="flex gap-2"><Button type="button" variant="outline" disabled={busy} onClick={() => setPurging(null)}>Cancelar</Button>
-          <Button type="submit" variant="danger" loading={busy} disabled={purgeConfirm !== PURGE_CONFIRMATION || reason.trim().length < 8}>Eliminar definitivamente</Button></div>
-      </form>}
-    </Modal>
+    <AccountActionDialog kind={kind}
+      request={selected && { account: { id: selected.account.id, name: nameOf(selected.account), email: selected.account.email }, action: selected.action }}
+      onClose={() => setSelected(null)}
+      onDone={message => { setSelected(null); setSuccess(message); void load(); }}
+      onVaultLocked={() => { setSelected(null); setResults(null); relock(); }} />
     <Modal open={!!videoFor} onClose={() => { if (!busy) setVideoFor(null); }} title="Video de presentación">
       {videoFor && <form className="space-y-4" onSubmit={e => { e.preventDefault(); if (videoDraft) void saveVideo(videoUrl.trim()); }}>
         <p className="font-semibold">{nameOf(videoFor)}</p>

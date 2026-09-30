@@ -29,15 +29,16 @@ async function call(method, path, body, auth = adminToken, cookie) {
     ...(body ? { 'Content-Type': 'application/json' } : {}), ...(cookie ? { Cookie: cookie } : {}) }, body: body ? JSON.stringify(body) : undefined });
   return { status: res.status, data: await res.json().catch(() => null), headers: res.headers };
 }
-// El inicio de sesión tiene límite por minuto: si la suite anterior lo agotó, se espera una vez.
-async function login(email, password) {
-  let r = await call('POST', '/auth/login', { email, password }, null);
+// El inicio de sesión y el registro tienen límite por minuto: si la suite anterior lo agotó, se espera una vez.
+async function publicPost(path, body) {
+  let r = await call('POST', path, body, null);
   if (r.status === 429) {
     await new Promise((resolve) => setTimeout(resolve, 61_000));
-    r = await call('POST', '/auth/login', { email, password }, null);
+    r = await call('POST', path, body, null);
   }
   return r;
 }
+const login = (email, password) => publicPost('/auth/login', { email, password });
 const count = async (sql, params) => (await db.query(sql, params)).rows[0].n;
 function check(label, condition) { assert.ok(condition, label); console.log('PASS', label); checks++; }
 const mod = (action) => ({ action, reason: 'Prueba administrativa controlada' });
@@ -116,8 +117,12 @@ try {
   check('médico suspendido sale del directorio',!(await db.query('SELECT "isPublished" FROM "ProfessionalProfile" WHERE id=$1',[ids.profile])).rows[0].isPublished);
   r = await call('PATCH',`/professionals/admin/${ids.profile}/suspend`,{suspended:false});
   check('el control anterior no reactiva una cuenta suspendida',r.status === 403);
+  r = await call('GET','/professionals/admin/list?status=SUSPENDED&limit=50');
+  check('la lista de médicos informa que lo suspendido es la cuenta',r.status === 200 && r.data.items.find(x=>x.id===ids.profile)?.user.isActive === false
+    && r.data.items.find(x=>x.id===ids.profile)?.user.id === ids.doctor);
   await call('PATCH',`/admin/accounts/professionals/${ids.doctor}`,mod('RESTORE'));
-  check('reactivar sin documentos: queda en revisión y fuera del directorio',(await db.query('SELECT "verificationStatus","isPublished" FROM "ProfessionalProfile" WHERE id=$1',[ids.profile])).rows[0].verificationStatus==='IN_REVIEW');
+  const reinstated=(await db.query('SELECT "verificationStatus","isPublished" FROM "ProfessionalProfile" WHERE id=$1',[ids.profile])).rows[0];
+  check('reactivar sin documentos: queda pendiente de documentos y fuera del directorio',reinstated.verificationStatus==='PENDING' && reinstated.isPublished===false);
 
   // Mensaje al iniciar sesión, avisos y reactivación según sus documentos.
   check('médico activo inicia sesión',(await login(modEmail, modPassword)).status===200);
@@ -232,15 +237,18 @@ try {
   r=await call('POST','/legal-requests/lookup',{ticket,email:`rec-${run}@test.invalid`},null);
   check('el solicitante consulta la respuesta con su número',r.status===200 && r.data.status==='RESOLVED' && r.data.resolution.startsWith('Retiramos'));
 
-  // Eliminación definitiva: solo SUPERADMIN, solo cuentas dadas de baja, con confirmación escrita.
+  // Eliminación definitiva: solo SUPERADMIN, solo cuentas suspendidas o dadas de baja, con confirmación escrita.
   r=await call('PATCH',`/admin/accounts/professionals/${ids.modDoctor}`,mod('DELETE'));
   check('dar de baja al médico verificado',r.status===200);
+  r=await call('GET',`/admin/accounts/professionals?search=${run}`);
+  check('la baja sigue en la lista sin filtro y no cuenta como suspendida',r.status===200 && !!r.data.items.find(x=>x.id===ids.modDoctor)?.deletedAt
+    && !(await call('GET',`/admin/accounts/professionals?status=SUSPENDED&search=${run}`)).data.items.some(x=>x.id===ids.modDoctor));
   r=await login(modEmail, modPassword);
   check('con la contraseña correcta explica la baja',r.status===403 && r.data?.code==='ACCOUNT_DELETED');
   check('ADMIN no puede eliminar definitivamente',(await call('POST',`/admin/accounts/professionals/${ids.modDoctor}/purge`,purgeBody)).status===403);
   check('sin escribir ELIMINAR → 400',(await call('POST',`/admin/accounts/professionals/${ids.modDoctor}/purge`,{...purgeBody,confirm:'eliminar'},superToken)).status===400);
   check('pacientes: eliminar exige la bóveda',(await call('POST',`/patients/admin/accounts/${ids.outsider}/purge`,purgeBody,superToken)).status===403);
-  check('una cuenta activa no se elimina: primero se da de baja',(await call('POST',`/patients/admin/accounts/${ids.outsider}/purge`,purgeBody,superToken,superVault)).status===409);
+  check('una cuenta activa no se elimina: primero se suspende o se da de baja',(await call('POST',`/patients/admin/accounts/${ids.outsider}/purge`,purgeBody,superToken,superVault)).status===409);
   r=await call('POST',`/admin/accounts/professionals/${ids.modDoctor}/purge`,purgeBody,superToken);
   const purged=(await db.query('SELECT u.email,u."purgedAt",u."isActive",p."firstName",p."publicCode",p.bio,p."photoUrl",p."presentationVideoId",p."isPublished" FROM "User" u JOIN "ProfessionalProfile" p ON p."userId"=u.id WHERE u.id=$1',[ids.modDoctor])).rows[0];
   check('médico eliminado: sin correo, nombre, código, biografía, foto ni video',r.status===200 && purged.email.startsWith('eliminado-') && purged.purgedAt && !purged.isActive
@@ -252,6 +260,16 @@ try {
   r=await call('GET',`/admin/accounts/professionals?status=DELETED&search=${run}`);
   check('ya no aparece en la gestión de cuentas',r.status===200 && !r.data.items.some(x=>x.id===ids.modDoctor));
   check('no se elimina dos veces',(await call('POST',`/admin/accounts/professionals/${ids.modDoctor}/purge`,purgeBody,superToken)).status===404);
+  // El correo queda libre: vuelve como una cuenta nueva, que también se puede eliminar estando solo suspendida.
+  r=await publicPost('/auth/register',{email:modEmail,password:modPassword,role:'PROFESSIONAL',firstName:'Marta',lastName:'Regresa',acceptLegal:true,acceptProfessionalTerms:true});
+  const again=(await db.query('SELECT id FROM "User" WHERE email=$1',[modEmail])).rows[0];
+  check('el médico eliminado se registra de nuevo con el mismo correo, como cuenta nueva',r.status===201 && !!again && again.id!==ids.modDoctor);
+  check('suspender la cuenta nueva',(await call('PATCH',`/admin/accounts/professionals/${again.id}`,mod('SUSPEND'))).status===200);
+  r=await call('POST',`/admin/accounts/professionals/${again.id}/purge`,purgeBody,superToken);
+  const purgedAgain=(await db.query('SELECT email,"purgedAt","deletedAt","isActive" FROM "User" WHERE id=$1',[again.id])).rows[0];
+  check('una cuenta suspendida se elimina sin pasar por la baja',r.status===200 && purgedAgain.email.startsWith('eliminado-')
+    && !!purgedAgain.purgedAt && !!purgedAgain.deletedAt && !purgedAgain.isActive);
+  check('la lista de médicos ya no muestra las cuentas eliminadas',!(await call('GET','/professionals/admin/list?limit=50')).data.items.some(x=>x.user.id===again.id || x.user.id===ids.modDoctor));
   r=await call('POST',`/admin/accounts/professionals/${ids.doctor}/purge`,purgeBody,superToken);
   check('médico con pagos: se eliminan sus datos y se conservan pagos, suscripción y autorización revocada',r.status===200
     && await count('SELECT count(*)::int n FROM "Payment" WHERE "referenceNumber"=$1',[body.referenceNumber])===1
@@ -264,6 +282,6 @@ try {
   check('paciente eliminado: la cuenta se borra',r.status===200 && await count('SELECT count(*)::int n FROM "User" WHERE id=$1',[ids.patient])===0);
   check('su ficha queda solo con el código (tenía una autorización a un médico)',shell && shell.userId===null && shell.firstName===null
     && shell.cedulaLookup===null && shell.phoneLookup===null && shell.shareCodeLookup===null && shell.patientCode===`TEST-${run}`);
-  check('eliminaciones auditadas',await count('SELECT count(*)::int n FROM "AuditLog" WHERE "userId"=$1 AND action=\'ACCOUNT_PURGE\'',[ids.superadmin])===3);
+  check('eliminaciones auditadas',await count('SELECT count(*)::int n FROM "AuditLog" WHERE "userId"=$1 AND action=\'ACCOUNT_PURGE\'',[ids.superadmin])===4);
   console.log(`PASS: ${checks} comprobaciones administrativas`);
 } finally { await db.end(); }

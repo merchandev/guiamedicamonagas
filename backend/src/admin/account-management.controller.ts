@@ -29,7 +29,7 @@ export class ProfessionalAccountsController {
   setPresentationVideo(@Param('id', ParseUUIDPipe) id: string, @Body() dto: PresentationVideoDto, @CurrentUser() actor: AuthenticatedUser, @Req() req: FastifyRequest) {
     return this.accounts.setPresentationVideo(id, dto.url, actor.id, req.ip);
   }
-  /** Irreversible: solo SUPERADMIN y solo sobre una cuenta ya dada de baja. */
+  /** Irreversible: solo SUPERADMIN y solo sobre una cuenta ya suspendida o dada de baja. */
   @RequirePermissions(Permission.MANAGE_ACCOUNTS, Permission.PURGE_ACCOUNTS)
   @Post(':id/purge')
   @HttpCode(200)

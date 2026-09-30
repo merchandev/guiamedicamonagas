@@ -22,8 +22,8 @@ model User {
   /// Baja administrativa reversible; nunca elimina pagos ni datos clínicos.
   deletedAt           DateTime?
   moderationReason    String?
-  /// Eliminación definitiva (solo SUPERADMIN, sobre una cuenta ya dada de
-  /// baja): se borran los datos personales. Un médico queda como registro
+  /// Eliminación definitiva (solo SUPERADMIN, sobre una cuenta ya suspendida
+  /// o dada de baja): se borran los datos personales. Un médico queda como registro
   /// anónimo porque sus pagos se conservan por normativa tributaria; la
   /// cuenta de un paciente se borra. Ver AccountPurgeService.
   purgedAt            DateTime?

@@ -583,7 +583,9 @@ export class ProfessionalsService implements OnApplicationBootstrap {
       this.prisma.professionalProfile.findMany({
         where,
         include: {
-          user: { select: { email: true, isEmailVerified: true } },
+          // Estado de la cuenta: un perfil «Suspendido» puede serlo por la
+          // suspensión o la baja de la cuenta, y entonces se reactiva la cuenta.
+          user: { select: { id: true, email: true, isEmailVerified: true, isActive: true, deletedAt: true } },
           documents: true,
           specialties: { include: { specialty: true } },
         },
@@ -610,9 +612,18 @@ export class ProfessionalsService implements OnApplicationBootstrap {
   }
 
   async adminSetSuspended(id: string, suspended: boolean, note: string | undefined, adminId: string) {
-    const profile = await this.prisma.professionalProfile.findUnique({ where: { id }, include: { user: true } });
+    const profile = await this.prisma.professionalProfile.findUnique({
+      where: { id },
+      include: { user: true, _count: { select: { documents: true } } },
+    });
     if (!profile) throw new NotFoundException('Perfil no encontrado');
-    if (!profile.user.isActive) throw new ForbiddenException('Reactiva primero la cuenta desde Gestión de cuentas');
+    if (!profile.user.isActive) {
+      throw new ForbiddenException(
+        profile.user.deletedAt
+          ? 'Esta cuenta está dada de baja: reactiva la cuenta, no solo el perfil.'
+          : 'Esta cuenta está suspendida: reactiva la cuenta, no solo el perfil.',
+      );
+    }
     if (
       suspended &&
       !profile.isPublished &&
@@ -627,7 +638,7 @@ export class ProfessionalsService implements OnApplicationBootstrap {
         user: { isActive: true, tokenVersion: profile.user.tokenVersion } },
       data: suspended
         ? { verificationStatus: 'SUSPENDED', isPublished: false, rejectionReason: note }
-        : { verificationStatus: 'IN_REVIEW', rejectionReason: null },
+        : { verificationStatus: profile._count.documents > 0 ? 'IN_REVIEW' : 'PENDING', rejectionReason: null },
     });
     if (changed.count !== 1) throw new ForbiddenException('La cuenta cambió. Actualiza la lista antes de continuar.');
     let updated = await this.prisma.professionalProfile.findUniqueOrThrow({ where: { id } });

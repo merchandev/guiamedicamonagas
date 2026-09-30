@@ -399,6 +399,9 @@ export function accountPurgedTemplate(rawName: string) {
      <p style="font-size:14px;line-height:1.6;color:#3a3a3a;">
        Eliminamos tu cuenta de ${BRAND_NAME} y tus datos personales. Solo conservamos, sin tus datos de contacto,
        los registros que la ley obliga a guardar (pagos y autorizaciones dadas a médicos), como indica nuestra Política de privacidad.
+     </p>
+     <p style="font-size:14px;line-height:1.6;color:#3a3a3a;">
+       Si más adelante quieres volver, puedes registrarte de nuevo con este mismo correo.
      </p>`,
     `Este es el último correo que recibirás de ${BRAND_NAME} sobre esta cuenta.`,
   );

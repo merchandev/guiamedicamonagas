@@ -22,7 +22,8 @@ interface CancelledAppointmentNotice {
 }
 
 /**
- * Eliminación definitiva de una cuenta ya dada de baja (solo SUPERADMIN).
+ * Eliminación definitiva de una cuenta ya desactivada, suspendida o dada de
+ * baja (solo SUPERADMIN). Su correo queda libre para registrarse de nuevo.
  * Cumple la Política de retención y eliminación (/privacidad/retencion): borra los datos personales y
  * los archivos, y conserva solo lo que la ley obliga a guardar:
  *
@@ -55,8 +56,8 @@ export class AccountPurgeService {
       },
     });
     if (!user || user.role !== role || id === actorId || user.purgedAt) throw new NotFoundException('Cuenta no encontrada');
-    if (!user.deletedAt) {
-      throw new ConflictException('Primero da de baja la cuenta; la eliminación definitiva solo se aplica a cuentas dadas de baja.');
+    if (user.isActive) {
+      throw new ConflictException('Primero suspende o da de baja la cuenta; la eliminación definitiva solo se aplica a cuentas desactivadas.');
     }
     const owned = await this.prisma.organizationMember.findFirst({
       where: { userId: id, role: 'OWNER' },
@@ -121,7 +122,7 @@ export class AccountPurgeService {
     await this.prisma.$transaction(async (tx) => {
       // CAS: nadie la reactivó ni la eliminó mientras tanto.
       const locked = await tx.user.updateMany({
-        where: { id, tokenVersion: user.tokenVersion, deletedAt: { not: null }, purgedAt: null },
+        where: { id, tokenVersion: user.tokenVersion, isActive: false, purgedAt: null },
         data: { tokenVersion: { increment: 1 } },
       });
       if (locked.count !== 1) throw new ConflictException('La cuenta cambió. Actualiza la lista y vuelve a intentarlo.');
@@ -141,6 +142,8 @@ export class AccountPurgeService {
             passwordHash: '!',
             isActive: false,
             isEmailVerified: false,
+            // Una cuenta suspendida se elimina sin pasar antes por la baja.
+            deletedAt: user.deletedAt ?? now,
             purgedAt: now,
             moderationReason: null,
             lastLoginAt: null,
@@ -161,7 +164,7 @@ export class AccountPurgeService {
       }
 
       await tx.auditLog.create({ data: { userId: actorId, action: 'ACCOUNT_PURGE', resource: 'User', resourceId: id,
-        details: { role, reason, cancelledAppointments: notices.length }, ipAddress } });
+        details: { role, reason, previousState: user.deletedAt ? 'DELETED' : 'SUSPENDED', cancelledAppointments: notices.length }, ipAddress } });
     }, { timeout: 30_000 });
 
     await Promise.all(fileKeys.map((key) => this.storage.deleteObject(key).catch(() => undefined)));

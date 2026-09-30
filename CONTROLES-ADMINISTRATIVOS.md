@@ -10,6 +10,19 @@ Este documento reúne los cambios realizados para los controles administrativos 
 
 Se añadió un módulo administrativo independiente para gestionar cuentas de médicos y pacientes, suspender o dar de baja cuentas de forma reversible, revocar accesos relacionados y registrar pagos externos para asignar planes pagados. La solución mantiene separados los datos clínicos, los permisos de pacientes y la facturación, y no elimina registros históricos.
 
+## Reactivar y eliminar desde «Médicos» (30 de septiembre, ACT-0034)
+
+Reportado por el titular: tras dar de baja a un médico, el botón «Reactivar» de la lista «Médicos» no hacía nada, y no había forma visible de eliminar la cuenta.
+
+| Hallazgo | Cambio |
+| --- | --- |
+| «Reactivar» en «Médicos» llamaba al control del **perfil** (`PATCH /professionals/admin/:id/suspend`), que rechaza con 403 una cuenta suspendida o dada de baja; la página no mostraba el error. | La lista recibe el estado de la cuenta. Si la cuenta está suspendida o dada de baja, «Reactivar» reactiva la **cuenta** (`PATCH /admin/accounts/professionals/:id`, acción `RESTORE`, con motivo). Con la cuenta activa, el botón actúa sobre el perfil y se llama «Suspender perfil» / «Reactivar perfil». Los errores y el resultado se muestran. |
+| La eliminación definitiva solo aparecía en «Cuentas y planes de médicos», con el filtro «Dadas de baja»; al dar de baja, la cuenta desaparecía de la vista por defecto. | «Eliminar definitivamente» aparece junto a «Reactivar» en «Médicos» y en la gestión de cuentas (médicos y pacientes). La vista sin filtro lista **todas** las cuentas; «Suspendidas» ya no incluye las bajas. |
+| Solo se podía eliminar una cuenta dada de baja. | Se puede eliminar cualquier cuenta **desactivada**: suspendida o dada de baja. Una cuenta activa sigue respondiendo 409. El resto no cambia: solo SUPERADMIN, motivo y escribir `ELIMINAR`. |
+| Un médico sin documentos cargados quedaba «En revisión» al reactivarlo, sin nada que revisar. | Vuelve a «Pendiente de documentos»; con documentos cargados sigue recalculándose como antes. |
+
+El correo (y, en pacientes, la cédula) queda libre: la persona puede registrarse otra vez y entra como una cuenta nueva, sin documentos, verificación ni historial anteriores. El último correo al titular se lo dice.
+
 ## Revisión y mejoras (29 de septiembre, ACT-0031)
 
 La revisión del commit `9c802c5` encontró huecos de uso y de alcance. Cambios aplicados sobre `main`:
@@ -32,7 +45,7 @@ Cumple la sección 8 de la Política de privacidad: se borran los datos personal
 - **Paciente:** se borra la cuenta. Si ningún médico lo atendió ni recibió su autorización, también se borra su ficha. Si no, la ficha queda solo con el código `GMM-XXXX`, para que la agenda del médico y la evidencia sigan en pie; se borran identidad, contacto, salud, fotos y código para compartir. Sus citas futuras se cancelan y se avisa al médico.
 - No procede si hay un pago reportado pendiente de revisión o si la cuenta es dueña de una organización.
 - El titular recibe un último correo. Después se anonimiza su registro de envíos (`MessageLog`), y su correo queda libre para registrarse de nuevo.
-- Queda auditada como `ACCOUNT_PURGE`, con el motivo. Migración `20260929190000_account_purge`: columna `purgedAt` y una restricción que exige `deletedAt` e `isActive = false`.
+- Queda auditada como `ACCOUNT_PURGE`, con el motivo. Migración `20260929190000_account_purge`: columna `purgedAt` y una restricción que exige `deletedAt` e `isActive = false` (al eliminar una cuenta que solo estaba suspendida, `deletedAt` se fija en ese momento).
 
 ## Cambios realizados
 

@@ -35,8 +35,11 @@ export class AccountManagementService {
       role,
       // Las cuentas eliminadas definitivamente ya no tienen datos que gestionar.
       purgedAt: null,
-      ...(query.status === 'DELETED' ? { deletedAt: { not: null } } : { deletedAt: null }),
-      ...(query.status === 'ACTIVE' ? { isActive: true } : query.status === 'SUSPENDED' ? { isActive: false } : {}),
+      // Sin filtro se listan todas, también las dadas de baja: si no, una baja
+      // desaparece de la vista y no se puede reactivar ni eliminar.
+      ...(query.status === 'ACTIVE' ? { isActive: true }
+        : query.status === 'SUSPENDED' ? { isActive: false, deletedAt: null }
+        : query.status === 'DELETED' ? { deletedAt: { not: null } } : {}),
       ...(search ? { OR: [
         { email: { contains: search, mode: 'insensitive' } },
         ...(role === 'PROFESSIONAL' ? [
@@ -91,7 +94,7 @@ export class AccountManagementService {
     const result = await this.prisma.$transaction(async (tx) => {
       const user = await tx.user.findUnique({ where: { id },
         include: {
-          professionalProfile: { select: { id: true, firstName: true } },
+          professionalProfile: { select: { id: true, firstName: true, _count: { select: { documents: true } } } },
           patientProfile: { select: { id: true, firstName: true } },
         },
       });
@@ -116,8 +119,10 @@ export class AccountManagementService {
       if (user.professionalProfile) {
         // Al reactivar se sale de SUSPENDED y, fuera de la transacción, se
         // recalcula verificación y publicación con sus documentos (abajo).
+        // Sin documentos cargados no hay nada «en revisión»: vuelve a pendiente.
+        const reinstated = user.professionalProfile._count.documents > 0 ? 'IN_REVIEW' : 'PENDING';
         await tx.professionalProfile.update({ where: { id: user.professionalProfile.id }, data: {
-          isPublished: false, verificationStatus: active ? 'IN_REVIEW' : 'SUSPENDED',
+          isPublished: false, verificationStatus: active ? reinstated : 'SUSPENDED',
         } });
         if (!active) await tx.patientDataGrant.updateMany({ where: { professionalId: user.professionalProfile.id, revokedAt: null }, data: { revokedAt: now } });
       }
