@@ -3,7 +3,7 @@
 > Bitácora central de cambios, implementaciones, decisiones técnicas y tareas de evolución del sistema.
 >
 > **Repositorio:** [`merchandev/guiamedicamonagas`](https://github.com/merchandev/guiamedicamonagas) · **Rama:** `main`<br>
-> **Última actualización de esta bitácora:** `2026-09-29 14:17:09 -04:00` · **Estado:** 🟢 Registro activo
+> **Última actualización de esta bitácora:** `2026-09-30 08:03:13 -04:00` · **Estado:** 🟢 Registro activo
 
 ![Estado](https://img.shields.io/badge/estado-registro%20activo-16a34a?style=flat-square)
 ![Rama](https://img.shields.io/badge/rama-main-2563eb?style=flat-square)
@@ -135,8 +135,9 @@ flowchart LR
     AD[🏷️ 2026-09-25\n16:20:34\nACT-0030 · SEO automático\ny tarjeta al compartir]
     AE[🛂 2026-09-29\n12:48:40\nACT-0031 · Cuentas, planes pagados\ny eliminación definitiva]
     AF[🎬 2026-09-29\n14:17:09\nACT-0032 · Precios nuevos y plan\nAgencia con video de presentación]
+    AG[⚖️ 2026-09-30\n08:03:13\nACT-0033 · Marco legal venezolano,\nreclamos y derechos del paciente]
 
-    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L --> M --> N --> O --> P --> Q --> R --> S --> T --> U --> V --> W --> X --> Y --> Z --> AA --> AB --> AC --> AD --> AE --> AF
+    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L --> M --> N --> O --> P --> Q --> R --> S --> T --> U --> V --> W --> X --> Y --> Z --> AA --> AB --> AC --> AD --> AE --> AF --> AG
 ```
 
 ### Resumen cuantitativo
@@ -144,8 +145,8 @@ flowchart LR
 | Indicador | Resultado |
 |---|---:|
 | Actividades históricas importadas desde Git | `3` |
-| Actividades documentales añadidas con esta bitácora | `29` |
-| Actividades registradas en total | `32` |
+| Actividades documentales añadidas con esta bitácora | `30` |
+| Actividades registradas en total | `33` |
 | Rama de referencia | `main` |
 | Commit base consultado | [`81b1091`](https://github.com/merchandev/guiamedicamonagas/commit/81b1091) |
 | Zona horaria de control | `America/Caracas` (`-04:00`) |
@@ -1319,6 +1320,145 @@ El titular pidió bajar los precios de los planes, agregar el plan Agencia con 2
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
+<a id="act-0033"></a>
+
+### ⚖️ ACT-0033 · Marco legal venezolano: 21 documentos, aceptaciones con evidencia, canal de reclamos y derechos del paciente
+
+<details>
+<summary><strong>2026-09-30 08:03:13 -04:00</strong> · <code>d0dc5fd</code> · 🟢 Completado</summary>
+
+**Responsable:** `Claude Opus 5.5` · **Tipo:** `legal | privacidad | seguridad | experiencia | despliegue` · **Commits:** [`2caa911`](https://github.com/merchandev/guiamedicamonagas/commit/2caa911), [`6ced522`](https://github.com/merchandev/guiamedicamonagas/commit/6ced522) y [`d0dc5fd`](https://github.com/merchandev/guiamedicamonagas/commit/d0dc5fd)
+
+El titular pidió «blindarse legalmente» y adaptar el sistema a las leyes venezolanas, y entregó una matriz con 20 páginas, principios contractuales, base legal (Constitución arts. 28 y 60, Ley Especial contra los Delitos Informáticos, Ley de Ejercicio de la Medicina, Código de Deontología Médica), matriz de consentimientos, evidencias que debe guardar el servidor y avisos breves. La matriz advierte que no se inventen datos del operador, plazos ni condiciones de pago, y que un abogado venezolano revise los textos antes del lanzamiento comercial.
+
+**Documentos publicados** (cada uno con versión y fecha; todos en el [Centro legal](frontend/src/app/legal/page.tsx), `/legal`):
+
+| N.º | Documento | URL | Versión |
+|---:|---|---|---:|
+| 1 | Aviso legal e identificación del operador | `/aviso-legal` | 1.0 |
+| 2 | Términos y condiciones generales | `/terminos-y-condiciones` | **3.0** |
+| 3 | Política de privacidad y protección de datos | `/privacidad` | **3.0** |
+| 4 | Política de datos de salud y datos sensibles | `/privacidad/datos-de-salud` | 1.0 |
+| 5 | Consentimiento del paciente | `/consentimiento-paciente` | 1.0 |
+| 6 | Autorización de acceso médico por código o QR | `/privacidad/autorizacion-medica` | **2.0** |
+| 7 | Descargo de responsabilidad médica | `/descargo-medico` | 1.0 |
+| 8 | Política de verificación de profesionales | `/verificacion-profesionales` | 1.0 |
+| 9 | Condiciones específicas para profesionales | `/profesionales/condiciones` | 1.0 |
+| 10 | Política de cookies | `/cookies` | 1.0 |
+| 11 | Pagos, planes y suscripciones | `/pagos-y-suscripciones` | 1.0 |
+| 12 | Cancelación, reembolsos y devoluciones | `/reembolsos` | 1.0 |
+| 13 | Retención y eliminación de datos | `/privacidad/retencion` | 1.0 |
+| 14 | Publicidad y contenido médico | `/publicidad-medica` | 1.0 |
+| 15 | Seguridad y uso aceptable | `/seguridad/uso-aceptable` | 1.0 |
+| 15 bis | Seguridad y reporte de vulnerabilidades | `/seguridad` | 1.0 |
+| 16 | Centro de privacidad y ejercicio de derechos | `/privacidad/derechos` | 1.0 |
+| 17 | Política de edad y menores | `/menores` | 1.0 |
+| 18 | Proveedores y transferencias | `/privacidad/proveedores` | 1.0 |
+| 19 | Canal de reclamos, denuncias y solicitudes legales | `/reclamos` (+ `/reclamos/estado`) | 1.0 |
+| 20 | Propiedad intelectual y contenido de usuarios | `/propiedad-intelectual` | 1.0 |
+
+**Criterios de redacción:**
+- Los textos describen lo que el sistema hace de verdad; cada afirmación técnica se contrastó con el código (cookies, vigencia de autorizaciones, qué borra la eliminación de cuentas, rotación de respaldos, contenido de terceros incrustado).
+- Nada inventado. Razón social, RIF, domicilio y correos aparecen como «pendiente de publicación» en el Aviso legal; los nombres de proveedores y el país de alojamiento, como «en proceso de publicación»; los plazos fijos de retención, como «en definición». Mientras tanto, el medio oficial de contacto es el canal de reclamos.
+- Sin cláusulas absolutas: ni «nunca responde por ningún daño» ni «pagos no reembolsables». Las limitaciones se aplican «dentro de lo que la ley permite» y no excluyen la responsabilidad propia de la plataforma.
+- No se cita una «ley venezolana de cookies», no se nombran técnicas criptográficas, no se llama «historia clínica» al perfil del paciente, no se afirma el segundo factor (hoy exonerado) y los datos personales se tratan con lenguaje de titularidad, no de «propiedad».
+- «Verificado» = el 100% de los documentos aprobados. No es certificación estatal, recomendación clínica ni garantía de resultados. Un plan no compra la verificación ni indica superioridad clínica.
+- Compromisos repetidos de forma idéntica en todos los textos: no se venden datos, no se usan para publicidad ni para estudiar hábitos de consumo, y no se entrena inteligencia artificial con datos privados.
+- Además de las normas de la matriz, el Aviso legal menciona la Ley sobre Mensajes de Datos y Firmas Electrónicas (valor de las aceptaciones electrónicas). Queda señalada para la revisión del abogado.
+
+**Aceptaciones con evidencia** (matriz de consentimientos):
+- Tabla `LegalAcceptance` de solo inserción: cuenta, documento, versión, fecha y hora, contexto (registro o nueva versión), IP y navegador. Un disparador impide modificarla o borrarla; solo admite la anonimización al eliminar la cuenta.
+- Cada tipo de cuenta acepta sus documentos con una casilla por documento:
+  - Todas: Términos (con el descargo médico) y Privacidad.
+  - Paciente: además, consentimiento de datos de salud y declaración de mayoría de edad (18 años o más).
+  - Profesional: además, Condiciones para profesionales.
+- El registro rechaza una cuenta sin sus consentimientos. `/auth/accept-legal` exige la lista completa de documentos pendientes y `/auth/me` informa cuáles faltan.
+- Términos y Privacidad pasan a la versión 3.0: **todas las cuentas deben aceptar de nuevo al iniciar sesión**. El aviso ya no tapa las páginas legales, para que se puedan leer antes de aceptar.
+- La autorización del paciente al médico pasa a la versión 2.0; cada autorización guarda la versión vigente.
+
+**Canal de reclamos (`/reclamos`):**
+- Formulario público con 12 categorías (derechos sobre datos, cierre de cuenta, acceso indebido, identidad o credencial falsa, profesional suspendido, contenido engañoso, seguridad, pagos, propiedad intelectual, requerimiento de autoridad y otras).
+- Entrega un número de seguimiento (`R-XXXXXXXX`). El estado se consulta con el número y el correo en `/reclamos/estado`; con otro correo responde 404.
+- Con sesión, la solicitud queda a nombre de la cuenta y usa su correo.
+- Bandeja en «Administración → Solicitudes legales» (permiso nuevo `MANAGE_LEGAL_REQUESTS`). Para resolver o rechazar hay que escribir la respuesta, que se envía al solicitante y queda como constancia. Cada paso queda en la auditoría.
+- Límite de envíos por IP.
+
+**Derechos del paciente (Constitución, art. 28):**
+- «Privacidad y mis datos» en el panel del paciente (`/paciente/privacidad`):
+  - **Descargar mis datos:** cuenta, perfil y datos de salud descifrados, citas, autorizaciones, historial de accesos, textos aceptados y solicitudes. La descarga queda auditada.
+  - **Historial de accesos:** quién consultó sus datos, cuándo y con qué alcance; autorizaciones dadas y revocadas.
+  - **Solicitudes:** corrección o consulta, denuncia de acceso indebido y cierre de cuenta, con el estado de cada una.
+- El Centro de privacidad (`/privacidad/derechos`) enlaza cada derecho con la función que lo hace efectivo.
+
+**Avisos breves de la matriz:**
+- Descargo médico («directorio tecnológico, no presta atención médica…») y aviso de emergencias: pie de página, directorio, ficha del médico y reserva de citas.
+- Ficha del médico: qué significa la verificación y qué no garantiza.
+- Código y QR del paciente: advertencia antes de compartirlo.
+- Área del paciente: para qué se usa su información y qué no se hace con ella.
+- Formulario de mensaje al médico: no es para emergencias.
+- Selección de plan: enlaces a las condiciones comerciales y de reembolso.
+- El pie de página ya no dice «antes de aparecer públicamente»: explica que la insignia de verificado se otorga solo con todos los documentos aprobados.
+
+**Cookies:** el aviso ya no ofrece la categoría «Marketing» (el sitio no tiene cookies publicitarias), muestra «Rechazar no esenciales» y enlaza la política. La elección se sigue guardando como constancia.
+
+**Verificación local:**
+- Docker Desktop estaba apagado y no se reinició. Las pruebas corrieron contra un PostgreSQL embebido (versión 17) en una base nueva y desechable.
+- Todas las migraciones aplican en una base vacía, sin desvío frente al esquema; semilla correcta.
+- 105 pruebas unitarias.
+- Suite general e2e `TODO OK` (148 comprobaciones), con las nuevas: consentimientos obligatorios, evidencia de aceptación, tabla de solo inserción, historial de accesos, descarga de datos sin campos cifrados, aceptación parcial rechazada y canal de reclamos.
+- Suite administrativa **79/79** (4 nuevas: bandeja, respuesta obligatoria, correo al solicitante y auditoría).
+- Build de producción del frontend correcto; las páginas legales se generan estáticas.
+- En el navegador, con la base de prueba:
+  - Las 21 páginas y el Centro legal responden 200 con su título y versión; los 39 enlaces internos resuelven; el mapa del sitio incluye las 22 URL.
+  - Se envió un reclamo, se obtuvo el número y se consultó su estado; apareció en la bandeja de administración.
+  - El registro de paciente mostró las 4 casillas, rechazó el envío sin marcarlas y creó la cuenta con las 4 aceptaciones registradas.
+  - El aviso de nueva versión mostró los documentos pendientes y se cerró al aceptarlos (4 filas con contexto `UPDATE`).
+  - «Privacidad y mis datos» descargó la copia (sin campos cifrados) y mostró el historial.
+  - En pantalla de teléfono las tablas se apilan como fichas y no hay desplazamiento horizontal.
+- No se pudo pulsar «Guardar» en la bandeja desde el panel de pruebas (bloquea `PATCH` hacia `localhost`); esa acción la cubre la suite administrativa.
+
+**CI de GitHub** para [`6ced522`](https://github.com/merchandev/guiamedicamonagas/commit/6ced522):
+- Backend (tipos, unitarias, build y las dos suites e2e) y frontend en verde.
+- «Seguridad» en verde: CodeQL, Trivy, `npm audit` y gitleaks. gitleaks en local, sobre lo preparado para confirmar, también dio «no leaks found».
+
+**Despliegue en el VPS** (`gmm-independent`), en dos pasos:
+- **Primero `6ced522`** (log `/var/log/guiamedicamonagas/deploy-act33.log`), desde `01fd269` (código; la bitácora estaba en `fd91e96`):
+  - Respaldo cifrado previo (`gmm-db-20260930T114848Z-pre-deploy.dump.gpg`).
+  - Migración `20260929230000_legal_acceptances_and_requests` aplicada: tablas `LegalAcceptance` y `LegalRequest` y el disparador `LegalAcceptance_append_only`.
+  - Se recrearon `api` y `web`, que quedaron *healthy*. Prueba de humo **25/25**.
+- **Después [`d0dc5fd`](https://github.com/merchandev/guiamedicamonagas/commit/d0dc5fd)** (log `deploy-act33b.log`): la política de pagos nombra los planes con espacio «Destacado» (Premium y Agencia) y explica que el video de la ficha se oculta, sin borrarse, si el plan Agencia vence. CI y «Seguridad» en verde; respaldo previo (`gmm-db-20260930T120103Z-pre-deploy.dump.gpg`), sin migraciones, solo se recreó `web`, prueba de humo **25/25**.
+- El resto de `gmm-independent` y los otros proyectos del servidor (Diario Mercantil, SaaS MT y Traefik) siguen con 4 días de actividad, sin reinicios.
+- La cuenta temporal de cada prueba de humo deja 3 filas de aceptación sin cuenta, IP ni navegador (hoy 6): la tabla es de solo inserción.
+- Las 23 direcciones nuevas o reescritas responden 200 en `https://guiamedicamonagas.com`; Términos y Privacidad muestran la versión 3.0 del 30 de septiembre de 2026; `/reclamos/estado` lleva `noindex`; el mapa del sitio incluye las 22 URL legales.
+- Las rutas nuevas de la API responden 401 sin sesión, y la consulta de una solicitud inexistente, 404.
+- El aviso de cookies usa el texto nuevo (no había uno personalizado guardado).
+- Cuentas sin cambios (1 paciente, 2 médicos y 1 superadministrador) y ninguna solicitud legal. **Las 4 cuentas deberán aceptar los textos nuevos en su próximo inicio de sesión.** En producción no se hicieron pruebas que escriban datos.
+
+**Pendiente del titular** (los textos son borradores hasta completarlo):
+- Datos del operador: nombre o razón social, RIF, domicilio, responsable del tratamiento y correos (legal, privacidad, soporte y seguridad). Van en `DATA_CONTROLLER` de [`frontend/src/lib/legal.ts`](frontend/src/lib/legal.ts).
+- Plazos fijos de retención (accesos y auditoría, autorizaciones, reclamos, constancias de cookies) y plazo entre la baja y la eliminación definitiva.
+- Reembolsos: plazos de respuesta y de devolución, medio y moneda.
+- Jurisdicción: hoy dice «tribunales venezolanos competentes», sin sede.
+- Nombre de los proveedores de alojamiento y correo, y país de almacenamiento.
+- Decidir si se exige el título y el registro del MPPS aprobados antes de publicar un perfil con el 60% (borrador en la rama `wip`). Hoy un perfil «en curso» puede publicarse sin ellos; la política lo describe tal cual.
+- Revisión final de los 21 textos por un abogado venezolano.
+- Sin SMTP real, los correos del canal de reclamos no salen del servidor: el solicitante ve la respuesta en `/reclamos/estado`.
+
+**Archivos destacados:**
+- [`frontend/src/lib/legal.ts`](frontend/src/lib/legal.ts)
+- [`frontend/src/components/legal/LegalPage.tsx`](frontend/src/components/legal/LegalPage.tsx)
+- [`frontend/src/components/legal/LegalConsentChecklist.tsx`](frontend/src/components/legal/LegalConsentChecklist.tsx)
+- [`frontend/src/app/paciente/privacidad/page.tsx`](frontend/src/app/paciente/privacidad/page.tsx)
+- [`frontend/src/app/admin/solicitudes/page.tsx`](frontend/src/app/admin/solicitudes/page.tsx)
+- [`backend/prisma/migrations/20260929230000_legal_acceptances_and_requests/migration.sql`](backend/prisma/migrations/20260929230000_legal_acceptances_and_requests/migration.sql)
+- [`backend/src/legal/legal-requests.service.ts`](backend/src/legal/legal-requests.service.ts)
+- [`backend/src/patients/patient-privacy.service.ts`](backend/src/patients/patient-privacy.service.ts)
+- [`backend/src/common/legal-versions.ts`](backend/src/common/legal-versions.ts)
+
+</details>
+
+<p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
+
 <a id="registro-por-area"></a>
 
 ## 🧩 Registro por área
@@ -1328,15 +1468,15 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | Área | Implementaciones registradas | Actividades relacionadas |
 |---|---|---|
 | 🧱 Fundación técnica | NestJS, Next.js, Prisma, Docker, Caddy, Tailwind | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) |
-| 🔐 Auth y seguridad | JWT, refresh cookie, roles, correo, recuperación, throttling, Argon2id, permisos granulares, reuso de tokens, `tokenVersion`, cerrar todas las sesiones, MFA obligatorio en producción, subidas seguras, antivirus obligatorio y rotación de claves, bóveda de registros de pacientes con código de seguridad | [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0012](#act-0012) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0019](#act-0019) · [ACT-0024](#act-0024) · [ACT-0027](#act-0027) |
-| 👨‍⚕️ Profesionales | Perfiles, ubicaciones, documentos, verificación legal (sin solvencia deontológica), publicación con el 60% aprobado + biografía + foto, barra de progreso del registro, redes sociales, badges, código y QR del médico, SEO automático, tarjeta para compartir y video de presentación de YouTube (plan Agencia) | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0020](#act-0020) · [ACT-0021](#act-0021) · [ACT-0028](#act-0028) · [ACT-0029](#act-0029) · [ACT-0030](#act-0030) · [ACT-0032](#act-0032) |
+| 🔐 Auth y seguridad | JWT, refresh cookie, roles, correo, recuperación, throttling, Argon2id, permisos granulares, reuso de tokens, `tokenVersion`, cerrar todas las sesiones, MFA obligatorio en producción, subidas seguras, antivirus obligatorio y rotación de claves, bóveda de registros de pacientes con código de seguridad, aceptaciones legales con evidencia de solo inserción, política de uso aceptable y reporte de vulnerabilidades | [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0012](#act-0012) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0019](#act-0019) · [ACT-0024](#act-0024) · [ACT-0027](#act-0027) · [ACT-0033](#act-0033) |
+| 👨‍⚕️ Profesionales | Perfiles, ubicaciones, documentos, verificación legal (sin solvencia deontológica), publicación con el 60% aprobado + biografía + foto, barra de progreso del registro, redes sociales, badges, código y QR del médico, SEO automático, tarjeta para compartir, video de presentación de YouTube (plan Agencia), condiciones para profesionales y políticas de verificación y de publicidad médica | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0020](#act-0020) · [ACT-0021](#act-0021) · [ACT-0028](#act-0028) · [ACT-0029](#act-0029) · [ACT-0030](#act-0030) · [ACT-0032](#act-0032) · [ACT-0033](#act-0033) |
 | 🏥 Organizaciones | Farmacias, laboratorios, clínicas, ubicaciones, autogestión, equipo con invitaciones y roles internos, médicos asociados y plan propio, sección «Próximamente» hasta cerrar alianzas | [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0015](#act-0015) · [ACT-0019](#act-0019) · [ACT-0025](#act-0025) |
-| 💳 Monetización | Planes, Pago Móvil, aprobación, tasa BCV, evidencia de tasa por cuota, catálogo de bancos, referencia única atómica, Plus/Premium/Agencia solo con el 100% de documentos, pagos externos registrados por la administración con renovación anticipada, precios de septiembre de 2026 (3,99 / 5,99 / 10,99 / 69,99 USD) y plan Agencia | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0010](#act-0010) · [ACT-0011](#act-0011) · [ACT-0015](#act-0015) · [ACT-0019](#act-0019) · [ACT-0021](#act-0021) · [ACT-0031](#act-0031) · [ACT-0032](#act-0032) |
+| 💳 Monetización | Planes, Pago Móvil, aprobación, tasa BCV, evidencia de tasa por cuota, catálogo de bancos, referencia única atómica, Plus/Premium/Agencia solo con el 100% de documentos, pagos externos registrados por la administración con renovación anticipada, precios de septiembre de 2026 (3,99 / 5,99 / 10,99 / 69,99 USD), plan Agencia y políticas de pagos y de reembolsos | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0010](#act-0010) · [ACT-0011](#act-0011) · [ACT-0015](#act-0015) · [ACT-0019](#act-0019) · [ACT-0021](#act-0021) · [ACT-0031](#act-0031) · [ACT-0032](#act-0032) · [ACT-0033](#act-0033) |
 | 📅 Agenda y citas | Horarios, disponibilidad, reservas, máquina de estados, anti-doble-reserva, zona America/Caracas | [ACT-0007](#act-0007) · [ACT-0015](#act-0015) |
-| 🔒 Pacientes | Código pseudónimo, cifrado de datos de salud, consentimiento por alcance y tiempo, lecturas auditadas, registro propio, foto de identificación verificada por un admin, reserva con la ficha propia, código y QR para compartir, directorio del médico por código, bóveda de administración y noindex, registro visible desde el inicio y supresión de la cuenta conservando solo la evidencia legal | [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0023](#act-0023) · [ACT-0027](#act-0027) · [ACT-0029](#act-0029) · [ACT-0031](#act-0031) |
-| 🛠️ Administración | Médicos, pagos, SEO, cookies, especialidades, planes, verificaciones, organizaciones, bancos, geografía, identidad de pacientes, cuentas (suspensión, baja, eliminación definitiva), planes pagados y video de presentación de los médicos | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0031](#act-0031) · [ACT-0032](#act-0032) |
+| 🔒 Pacientes | Código pseudónimo, cifrado de datos de salud, consentimiento por alcance y tiempo, lecturas auditadas, registro propio, foto de identificación verificada por un admin, reserva con la ficha propia, código y QR para compartir, directorio del médico por código, bóveda de administración y noindex, registro visible desde el inicio, supresión de la cuenta conservando solo la evidencia legal, consentimiento expreso de datos de salud y mayoría de edad, descarga de los datos propios e historial de accesos | [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0023](#act-0023) · [ACT-0027](#act-0027) · [ACT-0029](#act-0029) · [ACT-0031](#act-0031) · [ACT-0033](#act-0033) |
+| 🛠️ Administración | Médicos, pagos, SEO, cookies, especialidades, planes, verificaciones, organizaciones, bancos, geografía, identidad de pacientes, cuentas (suspensión, baja, eliminación definitiva), planes pagados, video de presentación de los médicos y bandeja de solicitudes legales | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0031](#act-0031) · [ACT-0032](#act-0032) · [ACT-0033](#act-0033) |
 | 📊 Observabilidad | Auditoría, analítica con consentimiento y sin IP, notificaciones, salud, pruebas, CI, escaneo de imágenes y Dependabot | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) |
-| 🎨 Experiencia | Directorios, dashboard, componentes UI, motion, legal, formularios legibles y utilizables con teclado, sección de pacientes en el inicio, tipografía Montserrat + Open Sans, suiches, botones y foco de campos corregidos | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0013](#act-0013) · [ACT-0014](#act-0014) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0017](#act-0017) · [ACT-0019](#act-0019) · [ACT-0022](#act-0022) · [ACT-0023](#act-0023) · [ACT-0025](#act-0025) · [ACT-0026](#act-0026) · [ACT-0028](#act-0028) |
+| 🎨 Experiencia | Directorios, dashboard, componentes UI, motion, legal, formularios legibles y utilizables con teclado, sección de pacientes en el inicio, tipografía Montserrat + Open Sans, suiches, botones y foco de campos corregidos, centro legal con 21 documentos versionados y avisos breves (descargo médico, verificación, QR) | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0013](#act-0013) · [ACT-0014](#act-0014) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0017](#act-0017) · [ACT-0019](#act-0019) · [ACT-0022](#act-0022) · [ACT-0023](#act-0023) · [ACT-0025](#act-0025) · [ACT-0026](#act-0026) · [ACT-0028](#act-0028) · [ACT-0033](#act-0033) |
 | 🚢 Operación | Variables de entorno, Compose, almacenamiento, correo, proxy, imágenes mínimas y antivirus | [ACT-0001](#act-0001) · [ACT-0002](#act-0002) · [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0008](#act-0008) · [ACT-0009](#act-0009) · [ACT-0011](#act-0011) · [ACT-0016](#act-0016) · [ACT-0017](#act-0017) · [ACT-0018](#act-0018) · [ACT-0019](#act-0019) · [ACT-0024](#act-0024) · [ACT-0027](#act-0027) |
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
@@ -1407,6 +1547,10 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | IMP-058 | Registro de pagos externos con asignación o renovación del plan (1 a 12 períodos, vista previa de vigencia, aviso al médico) | 🟢 Completado | [`backend/src/subscriptions/admin-plan-assignments.service.ts`](backend/src/subscriptions/admin-plan-assignments.service.ts), [`frontend/src/components/AdminAccountManager.tsx`](frontend/src/components/AdminAccountManager.tsx) |
 | IMP-059 | Precios nuevos (3,99 / 5,99 / 10,99 USD) y plan Agencia (69,99 USD) por migración de datos; la semilla ya no pisa lo editado en «Administración → Planes» | 🟢 Completado | [`backend/prisma/migrations/20260929220100_plan_prices_and_agency_catalog/migration.sql`](backend/prisma/migrations/20260929220100_plan_prices_and_agency_catalog/migration.sql), [`backend/prisma/seed.ts`](backend/prisma/seed.ts) |
 | IMP-060 | Video de presentación de YouTube en la ficha (solo el ID, solo con Agencia, reproductor `youtube-nocookie` al pulsar), editable por el médico y por la administración (auditado), insignia dorada con brillo y prioridad en «Destacado» | 🟢 Completado | [`backend/src/professionals/presentation-video.ts`](backend/src/professionals/presentation-video.ts), [`frontend/src/components/YouTubePresentation.tsx`](frontend/src/components/YouTubePresentation.tsx) |
+| IMP-061 | Marco legal: 21 documentos versionados con registro único (títulos, versiones, enlaces y mapa del sitio), centro legal y avisos breves en ficha, directorio, reserva, código QR, área del paciente y pie de página | 🟢 Completado | [`frontend/src/lib/legal.ts`](frontend/src/lib/legal.ts), [`frontend/src/components/legal/LegalPage.tsx`](frontend/src/components/legal/LegalPage.tsx) |
+| IMP-062 | Aceptación expresa por documento y por tipo de cuenta, con evidencia de solo inserción (documento, versión, fecha, contexto, IP y navegador); Términos y Privacidad 3.0 | 🟢 Completado | [`backend/src/legal/legal-acceptance.service.ts`](backend/src/legal/legal-acceptance.service.ts), [`frontend/src/components/legal/LegalConsentChecklist.tsx`](frontend/src/components/legal/LegalConsentChecklist.tsx) |
+| IMP-063 | Canal de reclamos, denuncias y solicitudes legales con número de seguimiento, consulta de estado y bandeja administrativa auditada (`MANAGE_LEGAL_REQUESTS`) | 🟢 Completado | [`backend/src/legal/legal-requests.service.ts`](backend/src/legal/legal-requests.service.ts), [`frontend/src/app/admin/solicitudes/page.tsx`](frontend/src/app/admin/solicitudes/page.tsx) |
+| IMP-064 | Derechos del paciente: descarga de sus datos, historial de accesos y solicitudes desde «Privacidad y mis datos» | 🟢 Completado | [`backend/src/patients/patient-privacy.service.ts`](backend/src/patients/patient-privacy.service.ts), [`frontend/src/app/paciente/privacidad/page.tsx`](frontend/src/app/paciente/privacidad/page.tsx) |
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
@@ -1432,7 +1576,7 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | 🔴 Alta | Respaldar fuera del VPS las claves `DATA_ENCRYPTION_KEYS`/`DATA_LOOKUP_KEY` de producción (sin ellas los datos cifrados son irrecuperables) | 🔴 Bloqueado | Copia en una bóveda del usuario, separada de los respaldos de la BD — ver [`docs/security/sec-02-05-privacidad-y-acceso.md`](docs/security/sec-02-05-privacidad-y-acceso.md) |
 | 🔴 Alta | SMTP real → `ADMIN_MFA_ENABLED=true` y retirar `ADMIN_MFA_WAIVER_UNTIL` (vence el 2026-10-24; después `deploy.sh` no despliega) | 🔴 Bloqueado | Login de administrador con código por correo en producción; requiere las credenciales SMTP del usuario |
 | 🔴 Alta | Copia de los respaldos fuera del VPS (`GMM_BACKUP_REMOTE`) y guardar fuera del servidor la frase de cifrado de respaldos | 🔴 Bloqueado | Regla 3-2-1; ver [`docs/operations/respaldos-y-restauracion.md`](docs/operations/respaldos-y-restauracion.md) |
-| 🟠 Media | Datos del responsable legal (razón social, RIF, domicilio, correos) para la Política de privacidad | 🔴 Bloqueado | `DATA_CONTROLLER` en `frontend/src/lib/legal.ts` + nueva versión de la política |
+| 🔴 Alta | Datos del operador para el Aviso legal y la Política de privacidad: nombre o razón social, RIF, domicilio, responsable del tratamiento y correos (legal, privacidad, soporte y seguridad). Hasta tenerlos, los textos legales son borradores y el Aviso legal los muestra como «pendiente de publicación» | 🔴 Pendiente del titular | `DATA_CONTROLLER` en `frontend/src/lib/legal.ts` + nueva versión de la política. Ver [ACT-0033](#act-0033) |
 | 🟡 Baja | Canal de alertas del monitoreo (`GMM_ALERT_WEBHOOK_URL`) | 🔵 Planificado | Avisos de caída, disco, respaldos y certificado fuera del log |
 | 🟠 Media | Imagen de MinIO: `quay.io` ya no la sirve sin autenticación ([ACT-0020](#act-0020)). Guardar una copia (`docker save`) fuera del servidor o planificar su reemplazo | 🔵 Planificado | Un servidor nuevo puede levantar el almacenamiento sin depender de ese registro |
 | 🟠 Media | Pagos C2P/P2C o API bancaria autorizada en lugar del reporte manual de Pago Móvil | 🔵 Planificado | Conciliación automática con evidencia del banco |
@@ -1447,7 +1591,12 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | 🟡 Baja | Decidir si el directorio de pacientes y el registro por código se abren al plan básico (hoy desde el plan Profesional, como la agenda) | 🔵 Planificado | Decisión del titular; es un cambio de una línea en `AGENDA_MIN_TIER` o una verificación propia |
 | 🟡 Baja | Decidir si el plan básico muestra foto y biografía en público (hoy son obligatorias para publicarse pero se ocultan en ese plan; por eso su tarjeta al compartir usa iniciales y su descripción SEO no usa la biografía) | 🔵 Planificado | Decisión del titular; `gateByTier` en `professionals.service.ts` |
 | 🟠 Media | Revisar y decidir los borradores de otra herramienta guardados en la rama local `wip/borradores-locales-2026-09-29` (sin subir): documentos esenciales para publicar, consentimiento del QR de 30 a 7 días, CSP estricta, lint en CI, bloqueo por correo sin verificar y `/health/ready`. Cambian reglas de producto: no se despliegan sin revisión | 🔴 Bloqueado | Decisión del titular; ver [ACT-0031](#act-0031) |
-| 🟠 Media | Actualizar los Términos y condiciones para el plan Agencia: la regla del 100% de documentos y «Destacado» (hoy solo nombran a Plus y Premium) y los videos en colaboración. Decisión del titular (2026-09-29): la ficha muestra un solo video y los 2 videos del plan son para el cliente. Falta definir en el texto dónde se publican y qué pasa con el de la ficha si el médico deja el plan | 🔴 Pendiente del titular | Texto aprobado por el titular; se sube `TERMS_VERSION` en `frontend/src/lib/legal.ts` y `backend/src/common/legal-versions.ts` y todos los usuarios la aceptan de nuevo. Ver [ACT-0032](#act-0032) |
+| 🟢 Continua | ~~Actualizar los textos legales para el plan Agencia~~ — hecho: la política de pagos incluye a Agencia en la regla del 100% de documentos y describe los 2 videos (para el profesional; uno puede mostrarse en la ficha). Los detalles de producción se coordinan con cada profesional | 🟢 Completado | Ver [ACT-0033](#act-0033) |
+| 🔴 Alta | Revisión de los 21 textos legales por un abogado venezolano antes del lanzamiento comercial (incluida la mención a la Ley sobre Mensajes de Datos y Firmas Electrónicas) | 🔴 Pendiente del titular | Textos aprobados; cada cambio sustancial sube la versión del documento. Ver [ACT-0033](#act-0033) |
+| 🟠 Media | Definir los plazos que hoy figuran «en definición»: retención de accesos, auditoría, autorizaciones, reclamos y constancias de cookies; tiempo entre la baja y la eliminación definitiva; plazos, medio y moneda de los reembolsos; y la sede de jurisdicción | 🔴 Pendiente del titular | Plazos publicados en `/privacidad/retencion` y `/reembolsos` con nueva versión. Ver [ACT-0033](#act-0033) |
+| 🟠 Media | Publicar el nombre de los proveedores de alojamiento y correo y el país de almacenamiento en `/privacidad/proveedores` | 🔴 Pendiente del titular | Depende de los datos del operador y del SMTP real. Ver [ACT-0033](#act-0033) |
+| 🟠 Media | Decidir si un perfil «en curso» (60% de documentos) puede publicarse sin el título y el registro del MPPS aprobados. La matriz legal recomienda exigir las credenciales esenciales; hoy la política de verificación describe la regla actual y el título del sitio dice «Directorio médico verificado» | 🔴 Pendiente del titular | Regla decidida y reflejada en el código y en `/verificacion-profesionales`; hay un borrador en la rama `wip`. Ver [ACT-0033](#act-0033) |
+| 🟡 Baja | Eliminación de cuenta por autoservicio (hoy se pide por el canal de reclamos y la ejecuta un administrador) y registro de la aceptación de las condiciones comerciales al contratar un plan | 🔵 Planificado | Botón en «Privacidad y mis datos» con confirmación por contraseña; fila en `LegalAcceptance` al suscribirse |
 | 🟡 Baja | Si se porta la CSP estricta de la rama `wip`, permitir `frame-src https://www.youtube-nocookie.com` e `img-src https://i.ytimg.com`, o el video de presentación deja de verse | 🔵 Planificado | Ver [ACT-0032](#act-0032) |
 | 🟡 Baja | Revisar los PR #13 y #14 de Dependabot (actualizaciones menores abiertas tras ACT-0031) | 🔵 Planificado | Su chequeo de gitleaks falló por el hallazgo histórico ya ignorado en `342745a`; pasa al rebasarlos |
 | 🟠 Media | Proteger la rama `main` (al menos contra *force push* y borrado) y activar las alertas de Dependabot | 🔴 Bloqueado | Decisión del usuario sobre los ajustes del repositorio; ver [ACT-0017](#act-0017) |
@@ -1529,6 +1678,7 @@ Para cada cambio futuro, añadir una entrada en la línea de tiempo y actualizar
 | `2026-09-25 16:28:26 -04:00` | Incorporación de ACT-0028 (guardado, subidas y controles), ACT-0029 (código y QR del médico, buscador solo de médicos) y ACT-0030 (SEO automático y tarjeta al compartir) con su despliegue | 🟢 Completado |
 | `2026-09-29 12:48:40 -04:00` | Incorporación de ACT-0031 (revisión de la gestión de cuentas de Codex, eliminación definitiva, planes pagados con renovación, Next 16.3.7) con su despliegue; dos pendientes nuevos | 🟢 Completado |
 | `2026-09-29 14:17:09 -04:00` | Incorporación de ACT-0032 (precios nuevos, plan Agencia con video de presentación de YouTube e insignia dorada, semilla que ya no pisa los planes editados) con su despliegue; dos pendientes nuevos (términos del plan Agencia y CSP de la rama `wip`) | 🟢 Completado |
+| `2026-09-30 08:03:13 -04:00` | Incorporación de ACT-0033 (marco legal venezolano: 21 documentos versionados, aceptaciones con evidencia, canal de reclamos, derechos del paciente y avisos breves) con su despliegue; se cierra el pendiente de los términos del plan Agencia y se abren cinco del titular (datos del operador, abogado, plazos, proveedores y credenciales esenciales) | 🟢 Completado |
 
 ---
 
