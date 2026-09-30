@@ -3,7 +3,7 @@
 > Bitácora central de cambios, implementaciones, decisiones técnicas y tareas de evolución del sistema.
 >
 > **Repositorio:** [`merchandev/guiamedicamonagas`](https://github.com/merchandev/guiamedicamonagas) · **Rama:** `main`<br>
-> **Última actualización de esta bitácora:** `2026-09-30 10:15:59 -04:00` · **Estado:** 🟢 Registro activo
+> **Última actualización de esta bitácora:** `2026-09-30 19:44:09 -04:00` · **Estado:** 🟢 Registro activo
 
 ![Estado](https://img.shields.io/badge/estado-registro%20activo-16a34a?style=flat-square)
 ![Rama](https://img.shields.io/badge/rama-main-2563eb?style=flat-square)
@@ -137,8 +137,10 @@ flowchart LR
     AF[🎬 2026-09-29\n14:17:09\nACT-0032 · Precios nuevos y plan\nAgencia con video de presentación]
     AG[⚖️ 2026-09-30\n08:03:13\nACT-0033 · Marco legal venezolano,\nreclamos y derechos del paciente]
     AH[🗑️ 2026-09-30\n10:15:59\nACT-0034 · Reactivar desde «Médicos»\ny eliminar cuentas desactivadas]
+    AI[💳 2026-09-30\n19:44:09\nACT-0035 · Plan Plus, actividad\ndesplegable y Pago Móvil propio]
+    AJ[🎬 2026-09-30\n19:44:09\nACT-0036 · Marca Médica y\nestadísticas del médico]
 
-    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L --> M --> N --> O --> P --> Q --> R --> S --> T --> U --> V --> W --> X --> Y --> Z --> AA --> AB --> AC --> AD --> AE --> AF --> AG --> AH
+    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L --> M --> N --> O --> P --> Q --> R --> S --> T --> U --> V --> W --> X --> Y --> Z --> AA --> AB --> AC --> AD --> AE --> AF --> AG --> AH --> AI --> AJ
 ```
 
 ### Resumen cuantitativo
@@ -146,8 +148,8 @@ flowchart LR
 | Indicador | Resultado |
 |---|---:|
 | Actividades históricas importadas desde Git | `3` |
-| Actividades documentales añadidas con esta bitácora | `31` |
-| Actividades registradas en total | `34` |
+| Actividades documentales añadidas con esta bitácora | `33` |
+| Actividades registradas en total | `36` |
 | Rama de referencia | `main` |
 | Commit base consultado | [`81b1091`](https://github.com/merchandev/guiamedicamonagas/commit/81b1091) |
 | Zona horaria de control | `America/Caracas` (`-04:00`) |
@@ -1522,6 +1524,99 @@ El titular reportó, con una captura de «Médicos registrados», que tras dar d
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
+<a id="act-0035"></a>
+
+### 💳 ACT-0035 · Plan «Plus», «Actividad reciente» desplegable y el Pago Móvil de la plataforma registrado desde Pagos
+
+<details>
+<summary><strong>2026-09-30 19:44:09 -04:00</strong> · <code>04eb072</code> · 🟢 Completado</summary>
+
+**Responsable:** `Claude Opus 5.5` · **Tipo:** `planes | administración | pagos | privacidad | despliegue` · **Commit:** [`04eb072`](https://github.com/merchandev/guiamedicamonagas/commit/04eb072)
+
+El titular pidió renombrar los planes a Perfil Básico, Profesional, Plus, Premium y Agencia; que «Actividad reciente» del panel de administración sea un desplegable, y registrar desde «Pagos» su propio Pago Móvil (cédula, nombre, número de cuenta, código de banco y teléfono), dejando claro que el médico reporta el pago desde dentro de su perfil. Después pidió verificar lo implementado; la verificación encontró todo funcionando en local, pero sin subir ni desplegar, y un detalle («Básico» en la comparación de planes), que se corrigió en [ACT-0036](#act-0036).
+
+**Cambios:**
+- **Planes:** solo había que renombrar «Profesional Plus», que pasa a «Plus». La migración `20260930150000_rename_plus_plan` cambia el catálogo (y la lista de beneficios de Premium, que lo nombraba); los textos del sitio, los correos y los mensajes del servidor lo siguen. El valor interno del enum no cambia.
+- **Actividad reciente:** cerrada por defecto, con «Ver las últimas 20» / «Ocultar».
+- **Mi Pago Móvil para recibir pagos** (Administración → Pagos): titular, cédula o RIF, banco (del catálogo), teléfono y número de cuenta.
+  - Valida 20 dígitos y que la cuenta empiece por el código del banco, y normaliza la cédula y el teléfono.
+  - Lo ve quien revisa pagos; solo el superadministrador (`MANAGE_PLANS`) lo cambia, y cada cambio queda auditado (`PAGO_MOVIL_ACCOUNT_UPDATED`, con los campos cambiados y los últimos 4 dígitos).
+  - Se guarda en `SiteSettings` (`pago_movil_account`). Las variables `PAGO_MOVIL_*`, que solo tenían valores de ejemplo, dejan de usarse.
+- **Desde dentro del perfil:** los datos de pago dejaron de ser públicos. Solo los ve un médico (o un miembro de una organización) con sesión, en «Suscripción y pagos», junto al formulario de reporte y con botón «Copiar» en cada dato. Sin sesión: 401; un paciente: 403. Si aún no están registrados, el panel muestra un aviso en lugar del formulario.
+- La cola de pagos nombra también a las organizaciones y muestra el plan.
+
+**Verificación:** unitarias (105), suite general e2e `TODO OK` y administrativa en verde; en el navegador, el guardado del Pago Móvil desde «Pagos» y lo que ve el médico antes y después de registrarlo. CI y Seguridad en verde. Se desplegó junto con [ACT-0036](#act-0036).
+
+**Archivos destacados:**
+- [`frontend/src/components/admin/PagoMovilAccountCard.tsx`](frontend/src/components/admin/PagoMovilAccountCard.tsx)
+- [`frontend/src/components/PagoMovilReportForm.tsx`](frontend/src/components/PagoMovilReportForm.tsx)
+- [`backend/src/payments/payments.service.ts`](backend/src/payments/payments.service.ts)
+- [`backend/prisma/migrations/20260930150000_rename_plus_plan/migration.sql`](backend/prisma/migrations/20260930150000_rename_plus_plan/migration.sql)
+
+</details>
+
+<p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
+
+<a id="act-0036"></a>
+
+### 🎬 ACT-0036 · «Marca Médica»: el plan de $69.99 como servicio de contenido, y estadísticas para el médico
+
+<details>
+<summary><strong>2026-09-30 19:44:09 -04:00</strong> · <code>7b1b634</code> · 🟢 Completado</summary>
+
+**Responsable:** `Claude Opus 5.5` · **Tipo:** `planes | experiencia | legal | analítica | despliegue` · **Commit:** [`7b1b634`](https://github.com/merchandev/guiamedicamonagas/commit/7b1b634)
+
+El titular compartió un análisis del plan Agencia: a $69.99 frente a los $10.99 de Premium, la página solo mostraba «Premium + 2 videos»; «2 videos» no decía si eran cada mes; «Agencia» podía entenderse como un plan para agencias, y la insignia dorada con brillo podía leerse como «más verificado». Pidió aplicar esas mejoras.
+
+**Cambios:**
+- **Nombre y promesa:** el plan se llama **Marca Médica** (migración `20260930200000_marca_medica_plan`; el enum sigue siendo `AGENCY`). Sus beneficios quedan explícitos:
+  - 2 videos profesionales cada mes, con guion, grabación, edición, subtítulos y portada;
+  - publicación colaborativa con Guía Médica Monagas;
+  - uno de los videos como presentación en la ficha;
+  - prioridad en «Destacado»;
+  - estadísticas de visitas, contactos y citas, e informe mensual con recomendaciones;
+  - el médico puede usar sus videos en sus redes, WhatsApp y su web.
+- **Página de planes:** ya no es una franja bajo las tarjetas, sino una sección grande en dos columnas.
+  - A la izquierda: «Servicio de producción de contenido», precio, «2 videos profesionales cada mes», Producción / Difusión / Medición, «Quiero impulsar mi marca» y «Sin renovación automática · Pago mensual · Sin permanencia».
+  - A la derecha: un teléfono con el **video de muestra** que se carga en Administración → Planes. Si no hay video, muestra una ilustración señalada como tal. Nada se pide a YouTube hasta que el visitante pulsa.
+  - Debajo: «Incluido cada mes», leído del catálogo.
+- **Sello y plan separados:** Marca Médica usa el mismo sello dorado que Premium, sin brillo, y lleva aparte la etiqueta «MARCA MÉDICA» en la ficha, en las tarjetas del directorio y en la comparación de planes. La etiqueta explica que es el servicio contratado y no una verificación adicional.
+- **Estadísticas (nuevo):** los planes anunciaban estadísticas, pero el médico no tenía dónde verlas. Nueva sección «Estadísticas» en su panel:
+  - Profesional ve visitas y clics en WhatsApp y teléfono.
+  - Plus ve además clics en redes, mensajes y citas pedidas por estado.
+  - Premium y Marca Médica ven además la comparación con los 30 días anteriores y los últimos 6 meses.
+  - El Perfil Básico no incluye estadísticas.
+- **Textos legales:** Pagos y suscripciones, Propiedad intelectual, Cookies y Proveedores pasan a la versión 1.1: servicio mensual, uso de los videos por el médico, el contenido sigue la política de publicidad médica, y el video de muestra.
+- La comparación de planes dice «Perfil Básico» (antes «Básico»).
+
+**Verificación local** (PostgreSQL desechable, recreado porque la limpieza de archivos temporales de Windows borró parte del Postgres embebido):
+- Las dos migraciones, aplicadas sobre un catálogo igual al de producción: sin menciones viejas.
+- 105 unitarias, suite general `TODO OK` y administrativa **104/104**.
+- En el navegador: la sección nueva en `/planes`; el video de muestra cargado desde Administración → Planes (rechaza enlaces que no son de YouTube y no pide nada a YouTube antes de pulsar); la etiqueta en la ficha y en el directorio; y «Estadísticas» de una médica de prueba con visitas en tres meses.
+- No hubo capturas de pantalla: el panel del navegador no estaba dibujando. El diseño se midió en la página (en 1024 px las columnas se apilan para no apretar el texto).
+
+**CI de GitHub:** «CI» y «Seguridad» en verde para `7b1b634`.
+
+**Despliegue en el VPS** (`gmm-independent`, log `deploy-act35.log`, junto con [ACT-0035](#act-0035)):
+- Respaldo cifrado previo `gmm-db-20260930T233847Z-pre-deploy.dump.gpg`.
+- Migraciones `20260930150000_rename_plus_plan` y `20260930200000_marca_medica_plan` aplicadas: el catálogo dice Perfil Básico, Profesional, Plus, Premium y Marca Médica.
+- Se recrearon `api` y `web` (*healthy*). Prueba de humo **25/25**. Los otros proyectos siguen desde hace 5 días, sin reinicios.
+- Sin sesión responden 401 los datos del Pago Móvil, las estadísticas y el cambio del video de muestra. `/planes` ya muestra la sección nueva.
+- Todavía no hay Pago Móvil registrado ni video de muestra: los médicos ven el aviso «todavía no están publicados» y la página muestra la ilustración.
+- En producción no se hicieron pruebas de escritura. Cuentas sin cambios: 2 médicos, 2 pacientes y el superadministrador.
+
+**Archivos destacados:**
+- [`frontend/src/app/planes/page.tsx`](frontend/src/app/planes/page.tsx)
+- [`frontend/src/components/MarcaMedicaPhone.tsx`](frontend/src/components/MarcaMedicaPhone.tsx)
+- [`frontend/src/components/VerificationBadge.tsx`](frontend/src/components/VerificationBadge.tsx)
+- [`frontend/src/app/dashboard/estadisticas/page.tsx`](frontend/src/app/dashboard/estadisticas/page.tsx)
+- [`backend/src/analytics/analytics.service.ts`](backend/src/analytics/analytics.service.ts)
+- [`backend/prisma/migrations/20260930200000_marca_medica_plan/migration.sql`](backend/prisma/migrations/20260930200000_marca_medica_plan/migration.sql)
+
+</details>
+
+<p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
+
 <a id="registro-por-area"></a>
 
 ## 🧩 Registro por área
@@ -1534,11 +1629,11 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | 🔐 Auth y seguridad | JWT, refresh cookie, roles, correo, recuperación, throttling, Argon2id, permisos granulares, reuso de tokens, `tokenVersion`, cerrar todas las sesiones, MFA obligatorio en producción, subidas seguras, antivirus obligatorio y rotación de claves, bóveda de registros de pacientes con código de seguridad, aceptaciones legales con evidencia de solo inserción, política de uso aceptable y reporte de vulnerabilidades | [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0012](#act-0012) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0019](#act-0019) · [ACT-0024](#act-0024) · [ACT-0027](#act-0027) · [ACT-0033](#act-0033) |
 | 👨‍⚕️ Profesionales | Perfiles, ubicaciones, documentos, verificación legal (sin solvencia deontológica), publicación con el 60% aprobado + biografía + foto, barra de progreso del registro, redes sociales, badges, código y QR del médico, SEO automático, tarjeta para compartir, video de presentación de YouTube (plan Agencia), condiciones para profesionales y políticas de verificación y de publicidad médica | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0020](#act-0020) · [ACT-0021](#act-0021) · [ACT-0028](#act-0028) · [ACT-0029](#act-0029) · [ACT-0030](#act-0030) · [ACT-0032](#act-0032) · [ACT-0033](#act-0033) |
 | 🏥 Organizaciones | Farmacias, laboratorios, clínicas, ubicaciones, autogestión, equipo con invitaciones y roles internos, médicos asociados y plan propio, sección «Próximamente» hasta cerrar alianzas | [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0015](#act-0015) · [ACT-0019](#act-0019) · [ACT-0025](#act-0025) |
-| 💳 Monetización | Planes, Pago Móvil, aprobación, tasa BCV, evidencia de tasa por cuota, catálogo de bancos, referencia única atómica, Plus/Premium/Agencia solo con el 100% de documentos, pagos externos registrados por la administración con renovación anticipada, precios de septiembre de 2026 (3,99 / 5,99 / 10,99 / 69,99 USD), plan Agencia y políticas de pagos y de reembolsos | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0010](#act-0010) · [ACT-0011](#act-0011) · [ACT-0015](#act-0015) · [ACT-0019](#act-0019) · [ACT-0021](#act-0021) · [ACT-0031](#act-0031) · [ACT-0032](#act-0032) · [ACT-0033](#act-0033) |
+| 💳 Monetización | Planes, Pago Móvil, aprobación, tasa BCV, evidencia de tasa por cuota, catálogo de bancos, referencia única atómica, Plus/Premium/Agencia solo con el 100% de documentos, pagos externos registrados por la administración con renovación anticipada, precios de septiembre de 2026 (3,99 / 5,99 / 10,99 / 69,99 USD), planes Perfil Básico, Profesional, Plus, Premium y Marca Médica (servicio de contenido: 2 videos cada mes), Pago Móvil de la plataforma registrado desde Pagos y visible solo dentro del panel, y políticas de pagos y de reembolsos | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0010](#act-0010) · [ACT-0011](#act-0011) · [ACT-0015](#act-0015) · [ACT-0019](#act-0019) · [ACT-0021](#act-0021) · [ACT-0031](#act-0031) · [ACT-0032](#act-0032) · [ACT-0033](#act-0033) · [ACT-0035](#act-0035) · [ACT-0036](#act-0036) |
 | 📅 Agenda y citas | Horarios, disponibilidad, reservas, máquina de estados, anti-doble-reserva, zona America/Caracas | [ACT-0007](#act-0007) · [ACT-0015](#act-0015) |
 | 🔒 Pacientes | Código pseudónimo, cifrado de datos de salud, consentimiento por alcance y tiempo, lecturas auditadas, registro propio, foto de identificación verificada por un admin, reserva con la ficha propia, código y QR para compartir, directorio del médico por código, bóveda de administración y noindex, registro visible desde el inicio, supresión de la cuenta conservando solo la evidencia legal, consentimiento expreso de datos de salud y mayoría de edad, descarga de los datos propios e historial de accesos | [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0023](#act-0023) · [ACT-0027](#act-0027) · [ACT-0029](#act-0029) · [ACT-0031](#act-0031) · [ACT-0033](#act-0033) |
-| 🛠️ Administración | Médicos, pagos, SEO, cookies, especialidades, planes, verificaciones, organizaciones, bancos, geografía, identidad de pacientes, cuentas (suspensión, baja, eliminación definitiva), planes pagados, video de presentación de los médicos y bandeja de solicitudes legales | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0031](#act-0031) · [ACT-0032](#act-0032) · [ACT-0033](#act-0033) · [ACT-0034](#act-0034) |
-| 📊 Observabilidad | Auditoría, analítica con consentimiento y sin IP, notificaciones, salud, pruebas, CI, escaneo de imágenes y Dependabot | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) |
+| 🛠️ Administración | Médicos, pagos, SEO, cookies, especialidades, planes, verificaciones, organizaciones, bancos, geografía, identidad de pacientes, cuentas (suspensión, baja, eliminación definitiva), planes pagados, video de presentación de los médicos, bandeja de solicitudes legales, Pago Móvil propio, video de muestra de Marca Médica y actividad reciente desplegable | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0031](#act-0031) · [ACT-0032](#act-0032) · [ACT-0033](#act-0033) · [ACT-0034](#act-0034) · [ACT-0035](#act-0035) · [ACT-0036](#act-0036) |
+| 📊 Observabilidad | Auditoría, analítica con consentimiento y sin IP, estadísticas del médico según su plan, notificaciones, salud, pruebas, CI, escaneo de imágenes y Dependabot | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0036](#act-0036) |
 | 🎨 Experiencia | Directorios, dashboard, componentes UI, motion, legal, formularios legibles y utilizables con teclado, sección de pacientes en el inicio, tipografía Montserrat + Open Sans, suiches, botones y foco de campos corregidos, centro legal con 21 documentos versionados y avisos breves (descargo médico, verificación, QR) | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0013](#act-0013) · [ACT-0014](#act-0014) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0017](#act-0017) · [ACT-0019](#act-0019) · [ACT-0022](#act-0022) · [ACT-0023](#act-0023) · [ACT-0025](#act-0025) · [ACT-0026](#act-0026) · [ACT-0028](#act-0028) · [ACT-0033](#act-0033) |
 | 🚢 Operación | Variables de entorno, Compose, almacenamiento, correo, proxy, imágenes mínimas y antivirus | [ACT-0001](#act-0001) · [ACT-0002](#act-0002) · [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0008](#act-0008) · [ACT-0009](#act-0009) · [ACT-0011](#act-0011) · [ACT-0016](#act-0016) · [ACT-0017](#act-0017) · [ACT-0018](#act-0018) · [ACT-0019](#act-0019) · [ACT-0024](#act-0024) · [ACT-0027](#act-0027) |
 
@@ -1664,6 +1759,11 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | 🟡 Baja | Si se porta la CSP estricta de la rama `wip`, permitir `frame-src https://www.youtube-nocookie.com` e `img-src https://i.ytimg.com`, o el video de presentación deja de verse | 🔵 Planificado | Ver [ACT-0032](#act-0032) |
 | 🟡 Baja | La imagen web descarga las tipografías de Google durante `next build`; si esa descarga falla, el despliegue se detiene antes de tocar producción (pasó una vez en [ACT-0034](#act-0034) y el reintento funcionó). Guardar las tipografías en el repositorio (`next/font/local`) quita esa dependencia | 🔵 Planificado | Build de la imagen web sin acceso a `fonts.gstatic.com` |
 | 🟡 Baja | «Suspender perfil» en la lista de médicos pide el motivo con un cuadro del navegador (`window.prompt`); pasarlo al mismo diálogo que usan las cuentas | 🔵 Planificado | Motivo en un formulario, con validación. Ver [ACT-0034](#act-0034) |
+| 🔴 Alta | Registrar el Pago Móvil de la plataforma en Administración → Pagos. Hasta hacerlo, un médico que elige un plan ve «todavía no están publicados» y no puede reportar su pago | 🔴 Pendiente del titular | Datos cargados por el superadministrador. Ver [ACT-0035](#act-0035) |
+| 🟠 Media | Cargar en Administración → Planes un video real de muestra de Marca Médica (20 a 40 s, vertical). Hasta entonces `/planes` muestra una ilustración | 🔴 Pendiente del titular | Video producido por la Guía y publicado en YouTube. Ver [ACT-0036](#act-0036) |
+| 🟠 Media | Confirmar lo que se publicó de Marca Médica: 2 videos cada mes (uno puede ser el de presentación, no un tercero), informe mensual y publicación colaborativa; y definir qué pasa si en un mes pagado no se entregan los videos (la política de reembolsos no lo cubre) | 🔴 Pendiente del titular | Textos de `/planes` y `/pagos-y-suscripciones` confirmados o ajustados. Ver [ACT-0036](#act-0036) |
+| 🟡 Baja | Decidir si «Registrar pago y asignar plan» (pagos recibidos por fuera, que registra la administración) se mantiene, ahora que el pago se reporta desde el panel del médico | 🔵 Planificado | Decisión del titular. Ver [ACT-0035](#act-0035) |
+| 🟡 Baja | El sello de verificación todavía cambia de color según el plan (gris, azul, índigo, dorado). Si se quiere el mismo sello para todos y solo etiquetas de plan, como ya se hizo con Marca Médica, es un cambio pequeño | 🔵 Planificado | Decisión del titular. Ver [ACT-0036](#act-0036) |
 | 🟡 Baja | Revisar los PR #13 y #14 de Dependabot (actualizaciones menores abiertas tras ACT-0031) | 🔵 Planificado | Su chequeo de gitleaks falló por el hallazgo histórico ya ignorado en `342745a`; pasa al rebasarlos |
 | 🟠 Media | Proteger la rama `main` (al menos contra *force push* y borrado) y activar las alertas de Dependabot | 🔴 Bloqueado | Decisión del usuario sobre los ajustes del repositorio; ver [ACT-0017](#act-0017) |
 | 🟢 Continua | Registrar cada modificación nueva con fecha, hora, responsable y evidencia | 🟢 Activo | No existen cambios relevantes sin entrada en esta bitácora |
@@ -1746,6 +1846,7 @@ Para cada cambio futuro, añadir una entrada en la línea de tiempo y actualizar
 | `2026-09-29 14:17:09 -04:00` | Incorporación de ACT-0032 (precios nuevos, plan Agencia con video de presentación de YouTube e insignia dorada, semilla que ya no pisa los planes editados) con su despliegue; dos pendientes nuevos (términos del plan Agencia y CSP de la rama `wip`) | 🟢 Completado |
 | `2026-09-30 08:03:13 -04:00` | Incorporación de ACT-0033 (marco legal venezolano: 21 documentos versionados, aceptaciones con evidencia, canal de reclamos, derechos del paciente y avisos breves) con su despliegue; se cierra el pendiente de los términos del plan Agencia y se abren cinco del titular (datos del operador, abogado, plazos, proveedores y credenciales esenciales) | 🟢 Completado |
 | `2026-09-30 10:15:59 -04:00` | Incorporación de ACT-0034 («Reactivar» desde la lista de médicos, eliminación definitiva de cuentas suspendidas o dadas de baja y registro posterior con el mismo correo) con su despliegue; dos pendientes nuevos (tipografías en el build de la imagen web y motivo de «Suspender perfil» en un formulario) | 🟢 Completado |
+| `2026-09-30 19:44:09 -04:00` | Incorporación de ACT-0035 (plan «Plus», actividad reciente desplegable y Pago Móvil de la plataforma registrado desde Pagos) y ACT-0036 (plan Marca Médica como servicio de contenido, video de muestra, etiqueta aparte del sello y estadísticas del médico), desplegadas juntas; cinco pendientes nuevos del titular (registrar el Pago Móvil, video de muestra, confirmar lo publicado de Marca Médica, pagos registrados por la administración y color del sello) | 🟢 Completado |
 
 ---
 
