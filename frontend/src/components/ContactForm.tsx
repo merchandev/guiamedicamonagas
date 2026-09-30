@@ -67,6 +67,14 @@ export function ContactForm({ professionalSlug }: { professionalSlug: string }) 
         className="hidden"
         {...register('website')}
       />
+      <p className="text-xs text-ink-500">
+        Este formulario no es para emergencias ni sustituye una consulta. Tu mensaje y tus datos de contacto se entregan a
+        este profesional; no incluyas más información de salud de la necesaria. Ver la{' '}
+        <a href="/privacidad" target="_blank" className="font-medium text-pine-700 underline">
+          Política de privacidad
+        </a>
+        .
+      </p>
       <Button type="submit" loading={isSubmitting} className="w-full">
         Enviar mensaje
       </Button>

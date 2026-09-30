@@ -12,6 +12,7 @@ import { PageSpinner } from '@/components/ui/Spinner';
 import { ProfessionalDetail } from '@/lib/types';
 import { ALL_SCOPES, SCOPE_INFO, type PatientDataScope } from '@/lib/patient-scopes';
 import { PATIENT_CONSENT_VERSION } from '@/lib/legal';
+import { MedicalDisclaimer } from '@/components/legal/MedicalDisclaimer';
 
 function nextDays(count: number) {
   return Array.from({ length: count }, (_, i) => {
@@ -267,10 +268,14 @@ export default function AgendarCitaPage({ params }: { params: Promise<{ slug: st
                     <option value={30}>30 días</option>
                     <option value={90}>90 días</option>
                   </select>
-                  <span className="text-xs text-ink-400">Consentimiento v{PATIENT_CONSENT_VERSION}</span>
+                  <Link href="/privacidad/autorizacion-medica" target="_blank" className="text-xs text-ink-500 underline">
+                    Autorización v{PATIENT_CONSENT_VERSION}
+                  </Link>
                 </label>
               )}
             </fieldset>
+
+            <MedicalDisclaimer emergency />
 
             <Button type="submit" loading={submitting} disabled={!selectedSlot} className="w-full">
               Solicitar cita

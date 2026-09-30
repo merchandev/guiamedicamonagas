@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { useAuth } from '@/lib/auth-context';
 import { api, ApiError } from '@/lib/api';
+import { PATIENT_AREA_NOTICE } from '@/lib/legal';
 import { municipalityOptions, useMunicipalities } from '@/lib/catalogs';
 import { Input, Textarea } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
@@ -212,6 +213,13 @@ export default function PatientProfilePage() {
           tu código o tu QR
         </Link>
         .
+        <span className="mt-2 block">
+          {PATIENT_AREA_NOTICE}{' '}
+          <Link href="/paciente/privacidad" className="font-medium underline">
+            Privacidad y mis datos
+          </Link>
+          .
+        </span>
       </Alert>
 
       <form onSubmit={handleSubmit(onSubmit)} className="card space-y-8 p-6">

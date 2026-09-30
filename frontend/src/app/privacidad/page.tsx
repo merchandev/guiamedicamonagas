@@ -1,273 +1,340 @@
-import type { Metadata } from 'next';
 import Link from 'next/link';
-import { DATA_CONTROLLER, LEGAL_EFFECTIVE_DATE_LABEL, PATIENT_CONSENT_VERSION, PRIVACY_VERSION } from '@/lib/legal';
+import { Callout, DocLink, LegalPage, type LegalSection, P, Ul, legalMetadata } from '@/components/legal/LegalPage';
+import { DATA_COMMITMENTS, DATA_CONTROLLER } from '@/lib/legal';
 
-export const metadata: Metadata = {
-  title: 'Política de privacidad',
-  description:
-    'Qué datos trata Guía Médica Monagas, incluidos los datos de salud de los pacientes, cómo se protegen, cuánto tiempo se conservan y cómo ejercer tus derechos.',
-};
+export const metadata = legalMetadata('privacidad');
 
-const SECTIONS = [
-  { id: 'responsable', title: '1. Quién trata tus datos' },
-  { id: 'datos', title: '2. Datos que tratamos' },
-  { id: 'salud', title: '3. Datos de salud del paciente' },
-  { id: 'finalidades', title: '4. Para qué los usamos' },
-  { id: 'medicos', title: '5. Acceso de los médicos a tus datos' },
-  { id: 'terceros', title: '6. Con quién los compartimos' },
-  { id: 'seguridad', title: '7. Cómo los protegemos' },
-  { id: 'conservacion', title: '8. Cuánto tiempo los conservamos' },
-  { id: 'cookies', title: '9. Cookies y analítica' },
-  { id: 'derechos', title: '10. Tus derechos' },
-  { id: 'cambios', title: '11. Cambios a esta política' },
+const SECTIONS: LegalSection[] = [
+  {
+    id: 'responsable',
+    title: 'Quién trata tus datos',
+    body: (
+      <>
+        <P>
+          El responsable del tratamiento es el operador de Guía Médica Monagas, identificado en el{' '}
+          <DocLink to="aviso-legal" />.
+          {DATA_CONTROLLER.legalName ? (
+            <>
+              {' '}
+              Responsable: <strong>{DATA_CONTROLLER.legalName}</strong>
+              {DATA_CONTROLLER.rif ? `, RIF ${DATA_CONTROLLER.rif}` : ''}
+              {DATA_CONTROLLER.address ? `, con domicilio en ${DATA_CONTROLLER.address}` : ''}.
+            </>
+          ) : null}
+        </P>
+        <P>
+          Para cualquier asunto de privacidad puedes usar el{' '}
+          <Link href="/reclamos?tipo=PRIVACY_RIGHTS" className="text-pine-700 underline">
+            canal de solicitudes
+          </Link>
+          {DATA_CONTROLLER.privacyEmail ? <> o escribir a {DATA_CONTROLLER.privacyEmail}</> : null}.
+        </P>
+      </>
+    ),
+  },
+  {
+    id: 'marco',
+    title: 'Marco legal',
+    body: (
+      <P>
+        Tratamos tus datos conforme a la Constitución de la República Bolivariana de Venezuela —en particular el derecho
+        de toda persona a acceder a sus datos, conocer su uso y pedir su actualización, rectificación o destrucción
+        (artículo 28) y la protección de la vida privada, la intimidad, la propia imagen y la confidencialidad (artículo
+        60)—, a la Ley Especial contra los Delitos Informáticos y a las normas sobre secreto médico de la Ley de Ejercicio
+        de la Medicina y del Código de Deontología Médica.
+      </P>
+    ),
+  },
+  {
+    id: 'datos',
+    title: 'Datos que tratamos',
+    body: (
+      <>
+        <h3 className="mt-4 font-semibold text-ink-900">Si eres paciente</h3>
+        <Ul
+          items={[
+            <>
+              <strong>Cuenta:</strong> correo electrónico y contraseña. La contraseña no se guarda: solo un resumen
+              irreversible que no permite recuperarla.
+            </>,
+            <>
+              <strong>Identidad y contacto:</strong> nombre, apellido, cédula, teléfono, municipio, foto de perfil y foto
+              de un documento de identidad.
+            </>,
+            <>
+              <strong>Información de salud que tú registras:</strong> fecha de nacimiento, sexo, grupo sanguíneo,
+              alergias, resumen de tu condición, medicamentos y su horario, médicos tratantes, y dirección y teléfono para
+              emergencias. Ver la política de <DocLink to="datos-de-salud" />.
+            </>,
+            <>
+              <strong>Citas:</strong> médico, fecha, hora, sede, estado y el motivo de consulta que escribas.
+            </>,
+            <>
+              <strong>Autorizaciones:</strong> a qué médico autorizaste, con qué alcance, desde cuándo y hasta cuándo, y
+              si la revocaste.
+            </>,
+            <>
+              <strong>Historial de accesos:</strong> quién consultó tus datos, cuándo y con qué alcance.
+            </>,
+          ]}
+        />
+        <h3 className="mt-4 font-semibold text-ink-900">Si eres profesional</h3>
+        <Ul
+          items={[
+            <>
+              <strong>Identidad y habilitación:</strong> nombre, cédula, RIF, números de registro (MPPS, Colegio de
+              Médicos) y los documentos de verificación (título, constancias, credenciales de especialidad).
+            </>,
+            <>
+              <strong>Información pública del perfil:</strong> nombre, foto, biografía, especialidades, datos de contacto
+              y de consulta, sedes, redes sociales, publicaciones y, según el plan, un video de presentación.
+            </>,
+            <>
+              <strong>Plan y pagos:</strong> plan contratado, y los datos de cada pago reportado (banco, teléfono emisor,
+              referencia, monto, comprobante y tasa de cambio aplicada).
+            </>,
+            <>
+              <strong>Agenda y registros propios:</strong> horarios, citas y las notas que el profesional lleve sobre su
+              consulta.
+            </>,
+          ]}
+        />
+        <h3 className="mt-4 font-semibold text-ink-900">De cualquier persona que usa el sitio</h3>
+        <Ul
+          items={[
+            <>
+              <strong>Mensajes</strong> enviados a un profesional por el formulario de su perfil, y las solicitudes
+              presentadas por el canal de reclamos.
+            </>,
+            <>
+              <strong>Datos técnicos de seguridad:</strong> dirección IP y navegador asociados al inicio de sesión y a las
+              acciones sensibles, para prevenir fraudes y accesos no autorizados.
+            </>,
+            <>
+              <strong>Aceptaciones y preferencias:</strong> qué textos legales aceptaste, en qué versión y cuándo, y tu
+              elección sobre cookies.
+            </>,
+          ]}
+        />
+      </>
+    ),
+  },
+  {
+    id: 'finalidades',
+    title: 'Para qué los usamos',
+    body: (
+      <Ul
+        items={[
+          'Crear y administrar tu cuenta, y evitar cuentas duplicadas.',
+          'Operar las funciones que tú solicitas: tu perfil, tus citas, tu código de paciente y tus autorizaciones.',
+          'Permitir que los médicos que tú autorices vean los datos que tú elijas, por el tiempo que tú elijas.',
+          'Verificar la identidad y la habilitación de los profesionales antes de publicarlos.',
+          'Gestionar los planes de los profesionales y validar sus pagos.',
+          'Enviarte avisos sobre tu cuenta, tus citas y tus solicitudes.',
+          'Proteger la seguridad de las cuentas y del sistema: prevenir fraude, abuso, suplantación y accesos indebidos.',
+          'Prestar soporte, atender reclamos e investigar incidentes.',
+          'Llevar registros de auditoría y conservar evidencia de los consentimientos.',
+          'Mejorar técnicamente el software y su confiabilidad, con datos mínimos y agregados.',
+          'Cumplir obligaciones legales válidamente exigibles.',
+        ]}
+      />
+    ),
+  },
+  {
+    id: 'finalidad',
+    title: 'Principio de finalidad',
+    body: (
+      <P>
+        No usamos tu información para fines incompatibles con los informados en esta política. Si en el futuro una función
+        nueva requiere un uso distinto, se te informará antes y, cuando corresponda, se pedirá tu consentimiento por
+        separado.
+      </P>
+    ),
+  },
+  {
+    id: 'compromisos',
+    title: 'Lo que no hacemos con tus datos',
+    body: (
+      <>
+        <Ul items={DATA_COMMITMENTS} />
+        <P>
+          Una futura integración de inteligencia artificial tendría que respetar estos compromisos y pasar antes por una
+          revisión legal y técnica.
+        </P>
+      </>
+    ),
+  },
+  {
+    id: 'acceso',
+    title: 'Quién puede acceder a tus datos',
+    body: (
+      <Ul
+        items={[
+          <>
+            <strong>Tú</strong>, desde tu cuenta.
+          </>,
+          <>
+            <strong>Los médicos que autorices</strong>, solo con el alcance y por el tiempo de tu autorización. Sin ella,
+            en su agenda un médico ve únicamente tu código de paciente. Ver <DocLink to="autorizacion-medica" />.
+          </>,
+          <>
+            <strong>Personal administrativo</strong> con permisos específicos por función y con registro de sus acciones:
+            revisa documentos de profesionales y pagos, y verifica la identidad de los pacientes. El personal
+            administrativo no tiene acceso a los datos de salud de los pacientes a través de la plataforma.
+          </>,
+          <>
+            <strong>Proveedores técnicos</strong> que intervienen en la operación, en los términos de la política de{' '}
+            <DocLink to="proveedores" />.
+          </>,
+          <>
+            <strong>Autoridades competentes</strong>, solo cuando exista un fundamento jurídico válido (sección 13).
+          </>,
+        ]}
+      />
+    ),
+  },
+  {
+    id: 'publico',
+    title: 'Qué es público y qué no',
+    body: (
+      <>
+        <P>
+          <strong>Los pacientes no tienen páginas públicas.</strong> Su cédula, teléfono, dirección, fecha de nacimiento,
+          documentos, alergias, medicamentos, condiciones, contactos de emergencia, citas, códigos y registros de acceso
+          nunca se publican ni se ofrecen a los buscadores.
+        </P>
+        <P>
+          De los profesionales solo se publican los campos del perfil previstos como públicos. Sus documentos de
+          verificación, su cédula y su RIF son siempre privados.
+        </P>
+      </>
+    ),
+  },
+  {
+    id: 'analitica',
+    title: 'Analítica y cookies',
+    body: (
+      <P>
+        Las estadísticas de uso (por ejemplo, visitas a un perfil o clics en el botón de contacto) se registran solo si
+        aceptas la analítica y, aun así, como conteos sin tu dirección IP ni tu navegador. No hay cookies publicitarias. El
+        detalle está en la <DocLink to="cookies" />.
+      </P>
+    ),
+  },
+  {
+    id: 'seguridad',
+    title: 'Cómo los protegemos',
+    body: (
+      <>
+        <Ul
+          items={[
+            'Las conexiones con el sitio viajan cifradas.',
+            'Los datos más sensibles (cédula, teléfono, información de salud y motivos de consulta) se cifran antes de guardarse, con claves que se custodian separadas de la base de datos.',
+            'Documentos, fotos y comprobantes se guardan en almacenamiento privado y solo se abren con enlaces temporales.',
+            'Los archivos que se suben se revisan antes de aceptarse y a las imágenes se les eliminan los metadatos, incluida la ubicación.',
+            'Los permisos administrativos se asignan por función y las acciones sensibles quedan en un registro de auditoría.',
+            'Las sesiones pueden cerrarse a distancia y hay límites de intentos para frenar ataques automatizados.',
+            'Las copias de seguridad se guardan cifradas.',
+          ]}
+        />
+        <P>
+          No publicamos detalles que ayudarían a atacar el sistema. Más información en <DocLink to="seguridad" />.
+        </P>
+      </>
+    ),
+  },
+  {
+    id: 'conservacion',
+    title: 'Cuánto tiempo los conservamos',
+    body: (
+      <P>
+        Conservamos los datos mientras tu cuenta esté activa y, después, solo lo que sea necesario por obligación legal o
+        como evidencia. El criterio para cada tipo de dato está en la política de <DocLink to="retencion" />.
+      </P>
+    ),
+  },
+  {
+    id: 'derechos',
+    title: 'Tus derechos',
+    body: (
+      <>
+        <P>Tienes derecho a:</P>
+        <Ul
+          items={[
+            'acceder a los datos que tenemos sobre ti y conocer para qué se usan;',
+            'actualizarlos y corregirlos;',
+            'obtener una copia;',
+            'revocar las autorizaciones dadas a un médico;',
+            'consultar quién accedió a tu información;',
+            'solicitar su eliminación cuando corresponda;',
+            'reclamar por un acceso indebido.',
+          ]}
+        />
+        <P>
+          Cómo ejercer cada uno, con las funciones reales de la plataforma, está en el <DocLink to="derechos" />.
+        </P>
+      </>
+    ),
+  },
+  {
+    id: 'autoridades',
+    title: 'Requerimientos de autoridades',
+    body: (
+      <P>
+        Solo entregamos información a una autoridad cuando existe un fundamento jurídico válido y el requerimiento proviene
+        de un órgano competente. Entregamos lo estrictamente requerido y dejamos constancia. Los requerimientos se reciben
+        por el{' '}
+        <Link href="/reclamos?tipo=AUTHORITY_REQUEST" className="text-pine-700 underline">
+          canal de solicitudes legales
+        </Link>
+        .
+      </P>
+    ),
+  },
+  {
+    id: 'incidentes',
+    title: 'Incidentes de seguridad',
+    body: (
+      <P>
+        Si detectamos un incidente que afecte tus datos personales, lo investigaremos, tomaremos medidas para contenerlo y
+        avisaremos a las personas afectadas cuando exista un riesgo para ellas, indicando qué ocurrió y qué pueden hacer.
+      </P>
+    ),
+  },
+  {
+    id: 'menores',
+    title: 'Menores de edad',
+    body: (
+      <P>
+        El registro de pacientes es solo para personas de 18 años o más. Ver la política de <DocLink to="menores" />.
+      </P>
+    ),
+  },
+  {
+    id: 'cambios',
+    title: 'Cambios a esta política',
+    body: (
+      <P>
+        Cada versión lleva número y fecha. Si la modificamos de forma sustancial, publicaremos la nueva versión aquí y te
+        pediremos aceptarla al iniciar sesión; registramos qué versión aceptó cada usuario.
+      </P>
+    ),
+  },
 ];
 
 export default function PrivacyPage() {
   return (
-    <div className="container-page max-w-3xl py-12">
-      <h1 className="text-3xl">Política de privacidad</h1>
-      <p className="mt-2 text-sm text-ink-500">
-        Versión {PRIVACY_VERSION} — vigente desde el {LEGAL_EFFECTIVE_DATE_LABEL}. Cuando cambie, publicaremos la nueva
-        versión con su fecha y te pediremos aceptarla de nuevo al iniciar sesión.
-      </p>
-
-      <nav className="card mt-6 p-5 text-sm">
-        <p className="mb-2 font-semibold text-ink-900">Contenido</p>
-        <ul className="grid gap-1 sm:grid-cols-2">
-          {SECTIONS.map((s) => (
-            <li key={s.id}>
-              <a href={`#${s.id}`} className="text-pine-700 hover:underline">
-                {s.title}
-              </a>
-            </li>
-          ))}
-        </ul>
-      </nav>
-
-      <article className="mt-8 space-y-8 text-ink-700">
-        <section id="responsable">
-          <h2 className="text-xl font-semibold text-ink-900">1. Quién trata tus datos</h2>
-          <p className="mt-2">
-            Guía Médica Monagas opera esta plataforma de directorio de profesionales y organizaciones de salud verificados,
-            agenda de citas y perfil del paciente. Tratamos tus datos conforme a la Constitución de la República
-            Bolivariana de Venezuela (en particular el derecho a la protección de la vida privada y el acceso a la
-            información sobre uno mismo, artículos 28 y 60) y a la normativa venezolana aplicable al secreto y la
-            confidencialidad de la información médica.
-          </p>
-          {DATA_CONTROLLER.legalName && (
-            <dl className="mt-3 grid gap-1 text-sm sm:grid-cols-[max-content_1fr] sm:gap-x-4">
-              <dt className="font-medium text-ink-900">Responsable</dt>
-              <dd>{DATA_CONTROLLER.legalName}</dd>
-              {DATA_CONTROLLER.rif && (
-                <>
-                  <dt className="font-medium text-ink-900">RIF</dt>
-                  <dd>{DATA_CONTROLLER.rif}</dd>
-                </>
-              )}
-              {DATA_CONTROLLER.address && (
-                <>
-                  <dt className="font-medium text-ink-900">Domicilio</dt>
-                  <dd>{DATA_CONTROLLER.address}</dd>
-                </>
-              )}
-              {DATA_CONTROLLER.privacyEmail && (
-                <>
-                  <dt className="font-medium text-ink-900">Privacidad</dt>
-                  <dd>{DATA_CONTROLLER.privacyEmail}</dd>
-                </>
-              )}
-              {DATA_CONTROLLER.supportEmail && (
-                <>
-                  <dt className="font-medium text-ink-900">Soporte</dt>
-                  <dd>{DATA_CONTROLLER.supportEmail}</dd>
-                </>
-              )}
-            </dl>
-          )}
-        </section>
-
-        <section id="datos">
-          <h2 className="text-xl font-semibold text-ink-900">2. Datos que tratamos</h2>
-          <ul className="mt-2 list-disc space-y-1 pl-5">
-            <li>
-              <strong>Cuenta:</strong> correo electrónico y contraseña. La contraseña nunca se guarda: se almacena solo un
-              resumen criptográfico irreversible (Argon2id), que no permite recuperarla.
-            </li>
-            <li>
-              <strong>Perfil del paciente:</strong> nombre, apellido, cédula, teléfono, municipio, foto de perfil y foto de
-              un documento de identidad, además de los datos de salud descritos en la sección 3.
-            </li>
-            <li>
-              <strong>Citas:</strong> médico, fecha, hora, sede, estado y el motivo de consulta que escribas.
-            </li>
-            <li>
-              <strong>Perfil profesional:</strong> nombre, biografía, especialidades, datos de contacto y de consulta,
-              números de registro (MPPS, Colegio de Médicos) y los documentos de verificación (título, constancias,
-              cédula y RIF).
-            </li>
-            <li>
-              <strong>Organizaciones</strong> (farmacias, laboratorios y clínicas): datos de la entidad, RIF, sedes,
-              servicios y las cuentas de las personas que la administran.
-            </li>
-            <li>
-              <strong>Pagos:</strong> datos del reporte de Pago Móvil (banco, teléfono emisor, referencia, monto y
-              comprobante) y la tasa de cambio aplicada.
-            </li>
-            <li>
-              <strong>Mensajes</strong> enviados a un profesional por el formulario de su perfil.
-            </li>
-            <li>
-              <strong>Datos técnicos de seguridad:</strong> dirección IP y navegador asociados a tu inicio de sesión y a
-              las acciones sensibles, para prevenir fraudes y accesos no autorizados.
-            </li>
-            <li>
-              <strong>Preferencias de cookies</strong> que elijas, como evidencia de tu consentimiento.
-            </li>
-          </ul>
-        </section>
-
-        <section id="salud">
-          <h2 className="text-xl font-semibold text-ink-900">3. Datos de salud del paciente</h2>
-          <p className="mt-2">
-            Si eres paciente, puedes registrar voluntariamente en tu perfil: fecha de nacimiento, sexo, grupo sanguíneo,
-            alergias, un resumen de tu condición de salud (o indicar que eres una persona sana), medicamentos y su horario,
-            médicos tratantes, dirección y número de contacto para emergencias. También el motivo de consulta de tus
-            citas.
-          </p>
-          <p className="mt-2">
-            Estos datos son de categoría especialmente sensible. Por eso: se guardan <strong>cifrados</strong> (ver
-            sección 7), solo se usan para las finalidades de la sección 4, <strong>no se venden ni se usan con fines
-            publicitarios</strong>, y ningún médico ni organización los ve sin tu autorización (sección 5).
-          </p>
-          <p className="mt-2">
-            La plataforma no es una historia clínica electrónica: no sustituye el registro clínico que cada profesional
-            lleva bajo su responsabilidad.
-          </p>
-        </section>
-
-        <section id="finalidades">
-          <h2 className="text-xl font-semibold text-ink-900">4. Para qué los usamos</h2>
-          <ul className="mt-2 list-disc space-y-1 pl-5">
-            <li>Crear y proteger tu cuenta, y evitar cuentas duplicadas (una cédula y un teléfono por paciente).</li>
-            <li>Gestionar tus citas y enviarte confirmaciones, recordatorios y avisos por correo y, cuando esté activo, WhatsApp.</li>
-            <li>Permitir que los médicos que TÚ autorices vean los datos que TÚ elijas.</li>
-            <li>Verificar la identidad y habilitación de profesionales y organizaciones antes de publicarlos.</li>
-            <li>Procesar y validar los pagos de los planes.</li>
-            <li>Estadísticas agregadas y anónimas de uso del directorio (solo si aceptas la analítica; ver sección 9).</li>
-            <li>Cumplir obligaciones legales y atender requerimientos de autoridades competentes.</li>
-          </ul>
-        </section>
-
-        <section id="medicos">
-          <h2 className="text-xl font-semibold text-ink-900">5. Acceso de los médicos a tus datos</h2>
-          <p className="mt-2">
-            En su agenda, un médico solo ve un <strong>código de paciente</strong> (por ejemplo, GMM-A4F2), nunca tu
-            nombre, cédula ni datos de salud. Para ver más debe contar con tu <strong>autorización explícita</strong>{' '}
-            (texto de consentimiento v{PATIENT_CONSENT_VERSION}), que tú otorgas:
-          </p>
-          <ul className="mt-2 list-disc space-y-1 pl-5">
-            <li>Eligiendo el alcance: nombre, datos de contacto y emergencia, y/o datos de salud.</li>
-            <li>Eligiendo por cuánto tiempo (por ejemplo, 30 días).</li>
-            <li>Pudiendo revocarla en cualquier momento desde tu panel, con efecto inmediato.</li>
-          </ul>
-          <p className="mt-2">
-            <strong>Tu código de paciente y su QR.</strong> Desde tu panel puedes generar un código aleatorio (y su QR)
-            para entregárselo a tu médico. Los pacientes no tienen páginas públicas: el código es la forma de que tu médico
-            te ubique sin que tu identidad aparezca en ningún buscador. Entregar el código es tu autorización: el médico
-            que lo registre en su panel podrá ver, durante un año, los datos que elegiste para tu código (nombre, contacto
-            y/o salud) y te llegará un aviso. Puedes revocar ese acceso cuando quieras; después, ese médico necesitará un
-            código nuevo para volver a registrarte. Si generas un código nuevo, el anterior deja de funcionar.
-          </p>
-          <p className="mt-2">
-            Cada vez que un médico consulta tus datos, el acceso queda registrado (quién, cuándo y qué alcance). Tu cédula
-            no se comparte con los médicos a través de la plataforma. Si un médico registra una cita a tu nombre sin que
-            tengas cuenta, solo ese médico ve los datos que él mismo cargó.
-          </p>
-        </section>
-
-        <section id="terceros">
-          <h2 className="text-xl font-semibold text-ink-900">6. Con quién los compartimos</h2>
-          <p className="mt-2">No vendemos datos personales. Solo intervienen:</p>
-          <ul className="mt-2 list-disc space-y-1 pl-5">
-            <li>Los médicos que autorices, en los términos de la sección 5.</li>
-            <li>
-              Personal administrativo de Guía Médica Monagas con permisos específicos y registrados: la verificación de
-              documentos profesionales y de pagos. Los registros de pacientes están protegidos incluso para la
-              administración: para verificar la identidad de un paciente, el administrador debe ingresar además un código
-              de seguridad, que abre el acceso solo por 15 minutos y queda registrado. El personal administrativo no tiene
-              acceso a los datos de salud de los pacientes a través de la plataforma.
-            </li>
-            <li>
-              Proveedores técnicos que procesan datos por cuenta nuestra y bajo confidencialidad: alojamiento del servidor,
-              envío de correo electrónico y, cuando esté activo, la mensajería de WhatsApp Business de Meta.
-            </li>
-            <li>Autoridades competentes, cuando la ley lo exija.</li>
-          </ul>
-        </section>
-
-        <section id="seguridad">
-          <h2 className="text-xl font-semibold text-ink-900">7. Cómo los protegemos</h2>
-          <ul className="mt-2 list-disc space-y-1 pl-5">
-            <li>
-              Cédula, teléfono, datos de salud y motivos de consulta se cifran en la aplicación (AES-256-GCM) con claves que
-              se guardan fuera de la base de datos: un respaldo de la base de datos por sí solo no permite leerlos.
-            </li>
-            <li>Contraseñas con Argon2id, bloqueo tras intentos fallidos y sesiones revocables.</li>
-            <li>Documentos, fotos y comprobantes en almacenamiento privado, accesibles solo con enlaces temporales.</li>
-            <li>
-              Todo archivo subido se verifica por su contenido real; las imágenes se regeneran y se les eliminan los
-              metadatos (incluida la ubicación GPS).
-            </li>
-            <li>Permisos administrativos por función y registro de auditoría de las acciones sensibles.</li>
-          </ul>
-        </section>
-
-        <section id="conservacion">
-          <h2 className="text-xl font-semibold text-ink-900">8. Cuánto tiempo los conservamos</h2>
-          <ul className="mt-2 list-disc space-y-1 pl-5">
-            <li>Datos de cuenta y perfil: mientras la cuenta esté activa, o hasta que solicites su eliminación.</li>
-            <li>Autorizaciones a médicos: se conservan como evidencia aun después de vencer o ser revocadas.</li>
-            <li>
-              Pagos y comprobantes: el tiempo que exija la normativa tributaria y mercantil venezolana.
-            </li>
-            <li>
-              Registros de auditoría y de consentimiento: mientras sean necesarios para demostrar el cumplimiento de esta
-              política o atender reclamaciones.
-            </li>
-          </ul>
-        </section>
-
-        <section id="cookies">
-          <h2 className="text-xl font-semibold text-ink-900">9. Cookies y analítica</h2>
-          <p className="mt-2">
-            Usamos cookies necesarias para la sesión y la seguridad. Las estadísticas de uso (visitas a un perfil, clics en
-            WhatsApp o teléfono) se registran <strong>solo si aceptas la analítica</strong> y, aun así, como conteos
-            anónimos: sin tu dirección IP ni tu navegador. Puedes cambiar tu elección en cualquier momento desde
-            «Configuración de cookies» en el pie de página.
-          </p>
-        </section>
-
-        <section id="derechos">
-          <h2 className="text-xl font-semibold text-ink-900">10. Tus derechos</h2>
-          <p className="mt-2">
-            Puedes acceder a tus datos y corregirlos desde tu panel, revocar autorizaciones a médicos en cualquier momento,
-            y solicitar una copia o la eliminación de tu información escribiéndonos por los canales de contacto del sitio.
-            Algunos registros (pagos, auditoría) pueden conservarse el tiempo indicado en la sección 8 por obligación legal.
-          </p>
-        </section>
-
-        <section id="cambios">
-          <h2 className="text-xl font-semibold text-ink-900">11. Cambios a esta política</h2>
-          <p className="mt-2">
-            Cada versión lleva número y fecha. Si la modificamos, publicaremos la nueva versión aquí y te pediremos
-            aceptarla al iniciar sesión; registramos qué versión aceptó cada usuario. Consulta también los{' '}
-            <Link href="/terminos-y-condiciones" className="text-pine-700 underline">
-              Términos y condiciones
-            </Link>
-            .
-          </p>
-        </section>
-      </article>
-    </div>
+    <LegalPage
+      slug="privacidad"
+      lead={
+        <Callout title="En pocas palabras">
+          Usamos tus datos solo para operar y proteger la plataforma. No los vendemos, no los usamos para publicidad ni
+          para estudiar hábitos de consumo, y no entrenamos inteligencia artificial con tu información privada. Tus datos
+          de salud no son públicos y ningún médico los ve sin tu autorización.
+        </Callout>
+      }
+      sections={SECTIONS}
+      related={['datos-de-salud', 'consentimiento-paciente', 'autorizacion-medica', 'derechos', 'retencion', 'proveedores', 'cookies', 'menores']}
+    />
   );
 }

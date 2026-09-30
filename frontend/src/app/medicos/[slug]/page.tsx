@@ -10,6 +10,8 @@ import { ProfileViewTracker } from '@/components/ProfileViewTracker';
 import { VerificationBadge } from '@/components/VerificationBadge';
 import { SocialLinksRow } from '@/components/SocialLinksRow';
 import { YouTubePresentation } from '@/components/YouTubePresentation';
+import { MedicalDisclaimer } from '@/components/legal/MedicalDisclaimer';
+import { VERIFICATION_NOTICE } from '@/lib/legal';
 import { DoctorSeoInput, SITE_NAME, doctorSeoDescription, doctorSeoTitle } from '@/lib/seo';
 
 async function getDoctor(slug: string) {
@@ -146,8 +148,15 @@ export default async function DoctorProfilePage({ params }: { params: Promise<{ 
           </h2>
           <p className="mb-4 text-sm text-pine-800">
             {doctor.verificationStatus === 'VERIFIED'
-              ? 'Credenciales verificadas por Guía Médica Monagas contra los documentos presentados. La verificación es la misma para todos los planes.'
+              ? 'Verificado: Guía Médica Monagas revisó y aprobó todos los documentos exigidos a este profesional. La verificación es la misma para todos los planes.'
               : 'Verificación en curso: un administrador ya aprobó parte de sus documentos y revisa el resto. El sello de verificado se otorga con todos aprobados.'}
+          </p>
+          <p className="mb-4 text-xs leading-relaxed text-pine-800/90">
+            {VERIFICATION_NOTICE}{' '}
+            <Link href="/verificacion-profesionales" className="font-medium underline">
+              Política de verificación
+            </Link>
+            .
           </p>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {doctor.registrations && doctor.registrations.length > 0 ? (
@@ -267,6 +276,8 @@ export default async function DoctorProfilePage({ params }: { params: Promise<{ 
             </div>
           </div>
         )}
+
+        <MedicalDisclaimer emergency className="mt-10" />
       </div>
     </div>
   );

@@ -2,6 +2,10 @@
 
 import Link from 'next/link';
 import { openCookiePreferences } from '@/components/CookieConsent';
+import { EMERGENCY_NOTICE, MEDICAL_DISCLAIMER_NOTICE, legalDoc, type LegalDocSlug } from '@/lib/legal';
+
+// Los textos que más se consultan; el resto está en el Centro legal.
+const LEGAL_LINKS: LegalDocSlug[] = ['terminos', 'privacidad', 'descargo-medico', 'verificacion', 'cookies', 'aviso-legal'];
 
 export function Footer() {
   return (
@@ -15,9 +19,9 @@ export function Footer() {
             Guía Médica Monagas
           </div>
           <p className="mt-3 max-w-sm text-sm text-ink-600">
-            Directorio médico verificado del estado Monagas. Cada profesional pasa por un proceso de validación de
-            sus avales legales y gremiales (MPPS y Colegio de Médicos de Monagas) antes de aparecer
-            públicamente.
+            Directorio de médicos del estado Monagas con verificación documental. Una persona del equipo revisa los
+            avales legales y gremiales de cada profesional (MPPS y Colegio de Médicos); la insignia de verificado se
+            otorga solo con todos los documentos aprobados.
           </p>
         </div>
 
@@ -36,8 +40,26 @@ export function Footer() {
         <div>
           <h4 className="text-sm font-semibold text-ink-900">Legal</h4>
           <ul className="mt-3 space-y-2 text-sm text-ink-600">
-            <li><Link href="/terminos-y-condiciones" className="hover:text-pine-700">Términos y condiciones</Link></li>
-            <li><Link href="/privacidad" className="hover:text-pine-700">Política de privacidad</Link></li>
+            {LEGAL_LINKS.map((slug) => {
+              const doc = legalDoc(slug);
+              return (
+                <li key={slug}>
+                  <Link href={doc.href} className="hover:text-pine-700">
+                    {doc.short}
+                  </Link>
+                </li>
+              );
+            })}
+            <li>
+              <Link href="/reclamos" className="hover:text-pine-700">
+                Reclamos y solicitudes
+              </Link>
+            </li>
+            <li>
+              <Link href="/legal" className="font-medium text-pine-700 hover:underline">
+                Centro legal: todos los textos
+              </Link>
+            </li>
             <li>
               <button onClick={openCookiePreferences} className="text-left hover:text-pine-700">
                 Configuración de cookies
@@ -47,10 +69,12 @@ export function Footer() {
         </div>
       </div>
       <div className="border-t border-ink-100 py-4">
-        <p className="container-page text-xs text-ink-400">
-          © {new Date().getFullYear()} Guía Médica Monagas. Este sitio es un directorio informativo y no sustituye
-          una consulta médica ni constituye asesoría médica.
-        </p>
+        <div className="container-page space-y-1 text-xs text-ink-500">
+          <p>
+            {MEDICAL_DISCLAIMER_NOTICE} {EMERGENCY_NOTICE}
+          </p>
+          <p className="text-ink-400">© {new Date().getFullYear()} Guía Médica Monagas.</p>
+        </div>
       </div>
     </footer>
   );

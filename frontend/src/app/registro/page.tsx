@@ -15,8 +15,8 @@ import { Select } from '@/components/ui/Select';
 import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
 import { cn } from '@/lib/cn';
-import TermsModal from '@/components/TermsModal';
-import { PRIVACY_VERSION, TERMS_VERSION } from '@/lib/legal';
+import { LegalConsentChecklist, allAccepted } from '@/components/legal/LegalConsentChecklist';
+import { requiredLegalDocuments, type LegalDocumentKey } from '@/lib/legal';
 import { ORGANIZATIONS_LAUNCHED } from '@/lib/features';
 
 const CEDULA_REGEX = /^[VEJPGvejpg]-?\d{5,9}$/;
@@ -111,8 +111,7 @@ function RegisterContent() {
   const [invitation, setInvitation] = useState<InvitationPreview | null>(null);
   const [invitationError, setInvitationError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [termsAccepted, setTermsAccepted] = useState(false);
-  const [showTerms, setShowTerms] = useState(false);
+  const [accepted, setAccepted] = useState<LegalDocumentKey[]>([]);
   const {
     register,
     handleSubmit,
@@ -134,11 +133,13 @@ function RegisterContent() {
 
   const role = watch('role');
   const organizationType = watch('organizationType');
+  // Cada tipo de cuenta acepta sus propios textos, con una casilla por documento.
+  const legalDocuments = requiredLegalDocuments(role);
 
   const onSubmit = async (values: FormValues) => {
     setError(null);
-    if (!termsAccepted) {
-      setShowTerms(true);
+    if (!allAccepted(legalDocuments, accepted)) {
+      setError('Para crear la cuenta, marca todas las casillas de aceptación.');
       return;
     }
     try {
@@ -147,6 +148,9 @@ function RegisterContent() {
         password: values.password,
         role: values.role,
         acceptLegal: true,
+        acceptHealthConsent: values.role === 'USER' ? true : undefined,
+        declareAdult: values.role === 'USER' ? true : undefined,
+        acceptProfessionalTerms: values.role === 'PROFESSIONAL' ? true : undefined,
         firstName: values.role === 'ORGANIZATION' ? undefined : values.firstName,
         lastName: values.role === 'ORGANIZATION' ? undefined : values.lastName,
         cedula: values.role === 'USER' ? values.cedula : undefined,
@@ -293,32 +297,13 @@ function RegisterContent() {
           />
         </div>
 
-        <label className="flex items-start gap-2 text-sm text-ink-600">
-          <input
-            type="checkbox"
-            checked={termsAccepted}
-            onChange={() => setTermsAccepted((v) => !v)}
-            className="mt-0.5 h-4 w-4 rounded border-ink-300 text-pine-700 focus:ring-pine-600"
-          />
-          <span>
-            He leído y acepto los{' '}
-            <button type="button" onClick={() => setShowTerms(true)} className="text-pine-700 underline">
-              Términos y condiciones (v{TERMS_VERSION})
-            </button>{' '}
-            y la{' '}
-            <a href="/privacidad" target="_blank" className="text-pine-700 underline">
-              Política de privacidad (v{PRIVACY_VERSION})
-            </a>
-            .
-          </span>
-        </label>
+        <LegalConsentChecklist documents={legalDocuments} checked={accepted} onChange={setAccepted} idPrefix="registro" />
 
         <Button type="submit" loading={isSubmitting} className="w-full">
           Crear cuenta
         </Button>
       </form>
 
-      <TermsModal isOpen={showTerms} onClose={() => setShowTerms(false)} onAccept={() => setTermsAccepted(true)} />
     </div>
   );
 }

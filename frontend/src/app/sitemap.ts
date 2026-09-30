@@ -1,6 +1,7 @@
 import type { MetadataRoute } from 'next';
 import { serverGet } from '@/lib/server-fetch';
 import { Organization, Specialty } from '@/lib/types';
+import { LEGAL_DOCS } from '@/lib/legal';
 
 interface SitemapPage {
   items: { slug: string; updatedAt: string }[];
@@ -25,8 +26,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${siteUrl}/especialidades`, changeFrequency: 'weekly', priority: 0.7 },
     { url: `${siteUrl}/farmacias`, changeFrequency: 'weekly', priority: 0.7 },
     { url: `${siteUrl}/planes`, changeFrequency: 'monthly', priority: 0.4 },
-    { url: `${siteUrl}/terminos-y-condiciones`, changeFrequency: 'yearly', priority: 0.2 },
-    { url: `${siteUrl}/privacidad`, changeFrequency: 'yearly', priority: 0.2 },
+    { url: `${siteUrl}/legal`, changeFrequency: 'yearly', priority: 0.2 },
+    ...LEGAL_DOCS.map((doc) => ({ url: `${siteUrl}${doc.href}`, changeFrequency: 'yearly' as const, priority: 0.2 })),
   ];
 
   const [specialties, landings, organizations] = await Promise.all([

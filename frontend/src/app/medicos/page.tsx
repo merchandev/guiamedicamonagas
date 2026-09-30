@@ -6,6 +6,7 @@ import { api } from '@/lib/api';
 import { PaginatedResult, ProfessionalListItem, Specialty } from '@/lib/types';
 import { municipalityOptions, useMunicipalities } from '@/lib/catalogs';
 import { DoctorCard } from '@/components/DoctorCard';
+import { MedicalDisclaimer } from '@/components/legal/MedicalDisclaimer';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Button } from '@/components/ui/Button';
@@ -160,6 +161,8 @@ function MedicosPageContent() {
           </>
         )}
       </div>
+
+      <MedicalDisclaimer emergency className="mt-10" />
     </div>
   );
 }

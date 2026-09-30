@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { api, ApiError } from '@/lib/api';
+import { SHARE_CODE_NOTICE } from '@/lib/legal';
 import { ALL_SCOPES, SCOPE_INFO, type PatientDataScope } from '@/lib/patient-scopes';
 import { Alert } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
@@ -118,6 +119,14 @@ export default function PatientShareCodePage() {
 
       {error && <Alert tone="error">{error}</Alert>}
       {message && <Alert tone="success">{message}</Alert>}
+
+      <Alert tone="warning" title="Antes de compartirlo">
+        {SHARE_CODE_NOTICE}{' '}
+        <Link href="/privacidad/autorizacion-medica" className="font-medium underline">
+          Cómo funciona la autorización
+        </Link>
+        .
+      </Alert>
 
       {data.code && qrSvg ? (
         <section aria-labelledby="codigo-titulo" className="card grid gap-6 p-6 sm:grid-cols-[auto_1fr] sm:items-center">

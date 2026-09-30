@@ -1,225 +1,333 @@
-import type { Metadata } from 'next';
 import Link from 'next/link';
-import { LEGAL_EFFECTIVE_DATE_LABEL, TERMS_VERSION } from '@/lib/legal';
+import { Callout, DocLink, LegalPage, type LegalSection, P, Ul, legalMetadata } from '@/components/legal/LegalPage';
+import { EMERGENCY_NOTICE, NOT_PROVIDED_SERVICES } from '@/lib/legal';
 
-export const metadata: Metadata = {
-  title: 'Términos y condiciones',
-  description:
-    'Condiciones de uso de Guía Médica Monagas: verificación gratuita de profesionales y organizaciones, requisitos documentales, planes, pagos y privacidad.',
-};
+export const metadata = legalMetadata('terminos');
 
-const SECTIONS = [
-  { id: 'naturaleza', title: '1. Naturaleza del servicio' },
-  { id: 'cuentas', title: '2. Cuentas de usuario' },
-  { id: 'verificacion', title: '3. Verificación de profesionales' },
-  { id: 'documentos', title: '4. Requisitos documentales' },
-  { id: 'organizaciones', title: '5. Farmacias, laboratorios y clínicas' },
-  { id: 'planes', title: '6. Planes, visibilidad y pagos' },
-  { id: 'pacientes', title: '7. Datos de los pacientes' },
-  { id: 'suspension', title: '8. Suspensión y baja' },
-  { id: 'contenido', title: '9. Contenido y conducta' },
-  { id: 'responsabilidad', title: '10. Límite de responsabilidad' },
-  { id: 'cambios', title: '11. Cambios y versiones' },
-];
-
-const LAW = 'Requisito legal (Ley de Ejercicio de la Medicina)';
-const QUALIFICATION = 'Habilitación profesional';
-const PLATFORM = 'Política de verificación de Guía Médica Monagas';
-
-// En el orden en que un médico los obtiene en Venezuela (mismo orden que el panel del médico).
-const REQUIREMENTS: { item: string; nature: string }[] = [
-  { item: 'Cédula de identidad vigente.', nature: `Identidad · ${PLATFORM}` },
-  { item: 'RIF actualizado.', nature: `Fiscal · ${PLATFORM}` },
-  { item: 'Título de Médico Cirujano, registrado ante el Registro Principal.', nature: LAW },
-  { item: 'Registro del título ante el Ministerio del Poder Popular para la Salud (MPPS / SACS).', nature: QUALIFICATION },
+const SECTIONS: LegalSection[] = [
   {
-    item: 'Inscripción en el Colegio de Médicos (u organización médico-gremial) del estado donde ejerce.',
-    nature: QUALIFICATION,
+    id: 'naturaleza',
+    title: 'Naturaleza del servicio',
+    body: (
+      <>
+        <P>
+          Guía Médica Monagas es una <strong>plataforma tecnológica de directorio y conexión</strong>. Permite encontrar,
+          identificar y contactar a profesionales médicos independientes; ofrece a esos profesionales herramientas para
+          presentar su consulta y organizar su agenda, y ofrece a los pacientes un área privada para guardar su
+          información y decidir con quién la comparten.
+        </P>
+        <P>
+          Al crear una cuenta o usar el sitio aceptas estos términos y los documentos que los integran (sección 17). Si no
+          estás de acuerdo, no uses la plataforma.
+        </P>
+      </>
+    ),
   },
-  { item: 'Constancia de cumplimiento del Artículo 8 (servicio rural o internado rotatorio).', nature: LAW },
+  {
+    id: 'no-presta',
+    title: 'Lo que Guía Médica Monagas no hace',
+    body: (
+      <>
+        <P>Guía Médica Monagas no presta, por sí misma ni por cuenta de los profesionales, ninguno de estos servicios:</P>
+        <Ul items={NOT_PROVIDED_SERVICES} />
+        <P>
+          La plataforma no sustituye al médico tratante, no garantiza resultados médicos y no participa en el acto médico.
+          El detalle está en el <DocLink to="descargo-medico" />.
+        </P>
+      </>
+    ),
+  },
+  {
+    id: 'profesionales-independientes',
+    title: 'Profesionales independientes',
+    body: (
+      <>
+        <P>
+          Los médicos que aparecen en el directorio ejercen de forma <strong>independiente</strong>. No son empleados,
+          agentes ni representantes de Guía Médica Monagas, y la plataforma no dirige ni supervisa sus decisiones
+          clínicas, sus honorarios, sus horarios ni la forma en que atienden.
+        </P>
+        <P>
+          <strong>El uso del sitio no crea una relación médico-paciente entre Guía Médica Monagas y el usuario.</strong>{' '}
+          La relación asistencial nace entre el paciente y el profesional que lo atiende, fuera de la plataforma, y se rige
+          por las normas del ejercicio profesional.
+        </P>
+      </>
+    ),
+  },
+  {
+    id: 'emergencias',
+    title: 'Emergencias y automedicación',
+    body: (
+      <>
+        <Callout tone="red" title="No uses este sitio para una emergencia">
+          {EMERGENCY_NOTICE}
+        </Callout>
+        <P>
+          La información general del sitio (perfiles, publicaciones, descripciones de especialidades) no es una receta ni
+          una indicación de tratamiento. No inicies, cambies ni suspendas un tratamiento con base en ella, y no uses
+          recetas destinadas a otra persona.
+        </P>
+      </>
+    ),
+  },
+  {
+    id: 'cuentas',
+    title: 'Cuentas de usuario',
+    body: (
+      <Ul
+        items={[
+          'Los datos que registres deben ser verdaderos, propios y estar actualizados.',
+          <>
+            La cuenta de paciente es solo para personas de 18 años o más (ver <DocLink to="menores" />) y cada paciente
+            puede tener una sola cuenta.
+          </>,
+          'La cuenta es personal e intransferible: no la compartas ni la cedas. Eres responsable de la confidencialidad de tu contraseña y de lo que se haga con tu cuenta mientras no nos avises de un uso no autorizado.',
+          'Está prohibido crear cuentas con identidades falsas, suplantar a otra persona o institución, o registrar credenciales profesionales que no te pertenecen.',
+          <>
+            Puedes cerrar todas tus sesiones y cambiar tu contraseña desde «Seguridad de la cuenta», y pedir el cierre de
+            tu cuenta desde el <DocLink to="derechos" />.
+          </>,
+        ]}
+      />
+    ),
+  },
+  {
+    id: 'paciente',
+    title: 'Perfil privado del paciente',
+    body: (
+      <>
+        <P>
+          El perfil del paciente es un espacio privado con la información personal y de salud que el propio paciente
+          decide registrar. No es público, no aparece en el directorio ni en buscadores, y ningún médico lo ve sin la
+          autorización del paciente.
+        </P>
+        <P>
+          Ese perfil <strong>no es una historia clínica</strong>: no sustituye la historia que corresponde elaborar y
+          custodiar al profesional o al establecimiento de salud conforme a sus obligaciones.
+        </P>
+        <P>
+          El tratamiento de estos datos se rige por la <DocLink to="privacidad" />, la política de{' '}
+          <DocLink to="datos-de-salud" />, el <DocLink to="consentimiento-paciente" /> y la{' '}
+          <DocLink to="autorizacion-medica" />.
+        </P>
+      </>
+    ),
+  },
+  {
+    id: 'profesionales',
+    title: 'Profesionales y verificación',
+    body: (
+      <>
+        <P>
+          Quien publica un perfil profesional acepta además las <DocLink to="condiciones-profesionales" />. Ningún perfil
+          se publica de forma automática: los documentos los revisa una persona del equipo administrativo, según la{' '}
+          <DocLink to="verificacion" />.
+        </P>
+        <P>
+          «Verificado» significa que se hicieron las comprobaciones documentales descritas en esa política. No es una
+          certificación estatal, una recomendación clínica ni una garantía de resultados. La verificación es gratuita e
+          igual para todos los planes.
+        </P>
+      </>
+    ),
+  },
+  {
+    id: 'planes',
+    title: 'Planes, visibilidad y pagos',
+    body: (
+      <>
+        <P>
+          El directorio es gratuito para los pacientes. Los profesionales pueden contratar planes de pago que añaden
+          herramientas y visibilidad, en las condiciones de la política de <DocLink to="pagos" /> y de{' '}
+          <DocLink to="reembolsos" />.
+        </P>
+        <P>
+          Un plan de pago nunca compra ni acelera la verificación, y la mayor visibilidad de un perfil (incluido el espacio
+          señalado como «Destacado») es comercial: no indica superioridad clínica. Ver <DocLink to="publicidad-medica" />.
+        </P>
+      </>
+    ),
+  },
+  {
+    id: 'contenido',
+    title: 'Contenido aportado por los usuarios',
+    body: (
+      <>
+        <P>
+          Cada usuario es responsable del contenido que aporta: los datos de su perfil, sus fotografías, publicaciones,
+          videos enlazados y mensajes. Debe ser veraz, lícito y no vulnerar derechos de terceros.
+        </P>
+        <P>
+          Guía Médica Monagas puede retirar o dejar de mostrar contenido que incumpla estos términos o la ley, y atiende
+          las denuncias por el <DocLink to="reclamos">canal de reclamos</DocLink>. Los derechos sobre el contenido se
+          explican en <DocLink to="propiedad-intelectual" />.
+        </P>
+      </>
+    ),
+  },
+  {
+    id: 'uso-aceptable',
+    title: 'Uso aceptable y seguridad',
+    body: (
+      <P>
+        No está permitido acceder a cuentas o datos ajenos, extraer información de forma masiva, automatizar el uso del
+        sitio sin autorización, intentar vulnerar su seguridad, ni usar los datos obtenidos para acosar o para fines
+        distintos de los previstos. Las reglas completas están en la política de <DocLink to="uso-aceptable" />.
+      </P>
+    ),
+  },
+  {
+    id: 'terceros',
+    title: 'Farmacias, laboratorios, clínicas y otros terceros',
+    body: (
+      <>
+        <P>
+          El directorio podrá incluir, ahora o en el futuro, a terceros como farmacias, laboratorios, clínicas u otros
+          establecimientos. Su sola presencia en el directorio no convierte a Guía Médica Monagas en vendedor, farmacia,
+          laboratorio, clínica ni transportista.
+        </P>
+        <P>
+          La dispensación de medicamentos, la entrega de productos, los exámenes y cualquier otro servicio de esos
+          terceros se rigen por la relación entre ellos y el usuario. Los hechos exclusivamente imputables a un tercero
+          (por ejemplo, un producto equivocado o vencido, un error de dosificación, un retraso o una pérdida en una
+          entrega) corresponden a quien resulte responsable conforme a la ley, cuando no exista un acto u omisión
+          imputable a Guía Médica Monagas.
+        </P>
+      </>
+    ),
+  },
+  {
+    id: 'suspension',
+    title: 'Suspensión y cierre de cuentas',
+    body: (
+      <>
+        <P>Podemos suspender, dejar de publicar o dar de baja una cuenta o un perfil cuando:</P>
+        <Ul
+          items={[
+            'se detecte información falsa, documentos adulterados o suplantación de identidad;',
+            'un organismo competente o el Colegio de Médicos informe una suspensión, inhabilitación o sanción;',
+            'se haga un uso indebido de datos de pacientes;',
+            'se incumplan estos términos, las condiciones para profesionales o las políticas del sitio;',
+            'exista fraude en un pago o riesgo para la seguridad de la plataforma o de otros usuarios.',
+          ]}
+        />
+        <P>
+          La decisión se comunica al titular de la cuenta con su motivo, y puede reclamarse por el{' '}
+          <DocLink to="reclamos">canal de reclamos</DocLink>. Qué ocurre con los datos al cerrar una cuenta está en la
+          política de <DocLink to="retencion" />.
+        </P>
+      </>
+    ),
+  },
+  {
+    id: 'responsabilidad',
+    title: 'Responsabilidad',
+    body: (
+      <>
+        <P>
+          <strong>Acto médico.</strong> Guía Médica Monagas no ejecuta el acto médico y no decide el diagnóstico, el
+          medicamento, la dosis, la cirugía, el procedimiento, las pruebas, el alta ni el seguimiento. Cuando una
+          consecuencia sea exclusivamente atribuible al acto de un profesional independiente (negligencia, impericia,
+          imprudencia, error diagnóstico, omisión, prescripción o procedimiento), la responsabilidad corresponde a quien
+          resulte responsable conforme a la ley.
+        </P>
+        <P>
+          <strong>Verificación.</strong> Realizamos una verificación documental razonable, pero no sustituimos la
+          verificación oficial ante los organismos competentes ni garantizamos la vigencia continua de cada credencial.
+          Ante cualquier duda sobre la habilitación de un profesional, consulta al Ministerio del Poder Popular para la
+          Salud o al Colegio de Médicos correspondiente.
+        </P>
+        <P>
+          <strong>Disponibilidad.</strong> Trabajamos para que el sitio esté disponible y funcione correctamente, pero
+          puede haber interrupciones por mantenimiento, fallas técnicas o causas ajenas a nuestro control.
+        </P>
+        <Callout title="Límites de estas cláusulas">
+          Estas limitaciones se aplican solo dentro de lo que la ley permite. Nada en estos términos excluye ni reduce la
+          responsabilidad que la ley atribuya directamente a Guía Médica Monagas por sus propios actos u omisiones, ni los
+          derechos irrenunciables de los usuarios.
+        </Callout>
+      </>
+    ),
+  },
+  {
+    id: 'reclamos',
+    title: 'Reclamos y solicitudes',
+    body: (
+      <P>
+        Los reclamos, denuncias y solicitudes se presentan por el{' '}
+        <Link href="/reclamos" className="text-pine-700 underline">
+          canal de reclamos, denuncias y solicitudes legales
+        </Link>
+        , que entrega un número de seguimiento y conserva la constancia de la respuesta.
+      </P>
+    ),
+  },
+  {
+    id: 'ley',
+    title: 'Ley aplicable',
+    body: (
+      <P>
+        Estos términos se rigen por las leyes de la República Bolivariana de Venezuela. Las controversias se someterán a
+        los tribunales venezolanos competentes, sin perjuicio de los derechos irrenunciables que la ley reconozca a cada
+        persona. La identificación del operador está en el <DocLink to="aviso-legal" />.
+      </P>
+    ),
+  },
+  {
+    id: 'cambios',
+    title: 'Cambios y versiones',
+    body: (
+      <P>
+        Cada versión de estos términos lleva número y fecha. Si los modificamos de forma sustancial, publicaremos la nueva
+        versión y te pediremos aceptarla al iniciar sesión. Registramos qué versión aceptó cada usuario y cuándo.
+      </P>
+    ),
+  },
+  {
+    id: 'documentos',
+    title: 'Documentos que integran estos términos',
+    body: (
+      <>
+        <P>Forman parte de estos términos, según el tipo de cuenta y el uso que hagas del sitio:</P>
+        <Ul
+          items={[
+            <>
+              <DocLink to="aviso-legal" />, <DocLink to="descargo-medico" /> y <DocLink to="uso-aceptable" />.
+            </>,
+            <>
+              <DocLink to="privacidad" />, <DocLink to="datos-de-salud" />, <DocLink to="cookies" />,{' '}
+              <DocLink to="retencion" />, <DocLink to="proveedores" /> y <DocLink to="menores" />.
+            </>,
+            <>
+              Para pacientes: <DocLink to="consentimiento-paciente" /> y <DocLink to="autorizacion-medica" />.
+            </>,
+            <>
+              Para profesionales: <DocLink to="condiciones-profesionales" />, <DocLink to="verificacion" />,{' '}
+              <DocLink to="publicidad-medica" />, <DocLink to="pagos" /> y <DocLink to="reembolsos" />.
+            </>,
+            <>
+              <DocLink to="propiedad-intelectual" /> y <DocLink to="reclamos" />.
+            </>,
+          ]}
+        />
+      </>
+    ),
+  },
 ];
-
-const SPECIALIST_REQUIREMENTS = ['Título de postgrado o especialización.', 'Credencial de reconocimiento de la especialidad.'];
 
 export default function TermsPage() {
   return (
-    <div className="container-page max-w-3xl py-12">
-      <h1 className="text-3xl">Términos y condiciones</h1>
-      <p className="mt-2 text-sm text-ink-500">
-        Versión {TERMS_VERSION} — vigente desde el {LEGAL_EFFECTIVE_DATE_LABEL}.
-      </p>
-
-      <nav className="card mt-6 p-5 text-sm">
-        <p className="mb-2 font-semibold text-ink-900">Contenido</p>
-        <ul className="grid gap-1 sm:grid-cols-2">
-          {SECTIONS.map((s) => (
-            <li key={s.id}>
-              <a href={`#${s.id}`} className="text-pine-700 hover:underline">
-                {s.title}
-              </a>
-            </li>
-          ))}
-        </ul>
-      </nav>
-
-      <article className="prose-content mt-8 space-y-8 text-ink-700">
-        <section id="naturaleza">
-          <h2 className="text-xl font-semibold text-ink-900">1. Naturaleza del servicio</h2>
-          <p className="mt-2">
-            Guía Médica Monagas es una plataforma tecnológica que ofrece un directorio de profesionales de la salud,
-            farmacias, laboratorios y clínicas verificados, agenda de citas y un perfil del paciente. La plataforma{' '}
-            <strong>no presta servicios médicos</strong>, no emite diagnósticos, no es una historia clínica electrónica ni
-            sustituye el criterio de ningún profesional. El acto médico y sus consecuencias son responsabilidad exclusiva del
-            profesional que lo realiza.
-          </p>
-        </section>
-
-        <section id="cuentas">
-          <h2 className="text-xl font-semibold text-ink-900">2. Cuentas de usuario</h2>
-          <p className="mt-2">
-            Puedes crear una cuenta como paciente, como profesional de la salud o como organización. Los datos que
-            registres deben ser reales y vigentes; la cuenta es personal e intransferible. Cada paciente puede tener una sola
-            cuenta (una cédula y un teléfono). Eres responsable de la confidencialidad de tu contraseña.
-          </p>
-        </section>
-
-        <section id="verificacion">
-          <h2 className="text-xl font-semibold text-ink-900">3. Verificación de profesionales</h2>
-          <p className="mt-2">
-            Ningún perfil profesional se publica automáticamente: cada documento lo revisa manualmente un administrador.
-            La verificación es <strong>gratuita y la misma para todos</strong>: no depende del plan contratado, y un plan
-            pago nunca sustituye ni acelera la verificación. La insignia de verificado indica que confirmamos las
-            credenciales del profesional; su color (gris, azul o dorado) solo refleja el nivel de perfil elegido.
-          </p>
-          <p className="mt-2">
-            Un perfil aparece en el directorio público cuando un administrador aprobó al menos el{' '}
-            <strong>60% de sus documentos requeridos</strong> y el profesional cargó su biografía y su foto de perfil.
-            Mientras no tenga el 100% aprobado, se muestra como <strong>«verificación en curso»</strong>, sin la insignia
-            de verificado. Si no cumple esos requisitos, no aparece en el directorio.
-          </p>
-        </section>
-
-        <section id="documentos">
-          <h2 className="text-xl font-semibold text-ink-900">4. Requisitos documentales</h2>
-          <p className="mt-2">
-            Para verificar a un médico solicitamos los siguientes documentos, en el orden en que se obtienen. Indicamos la
-            naturaleza de cada uno para distinguir lo que exige la ley de lo que es habilitación profesional o política
-            interna de la plataforma:
-          </p>
-          <ol className="mt-4 list-decimal space-y-2 rounded-lg border border-ink-100 p-4 pl-9">
-            {REQUIREMENTS.map((requirement) => (
-              <li key={requirement.item}>
-                {requirement.item}
-                <span className="block text-sm text-ink-500">{requirement.nature}</span>
-              </li>
-            ))}
-          </ol>
-          <div className="mt-4 rounded-lg border border-ink-100 p-4">
-            <h3 className="font-semibold text-ink-800">Especialidad</h3>
-            <p className="mt-1 text-sm text-ink-500">Solo si el profesional se anuncia como especialista, además:</p>
-            <ol className="mt-2 list-decimal space-y-1 pl-5" start={REQUIREMENTS.length + 1}>
-              {SPECIALIST_REQUIREMENTS.map((item) => (
-                <li key={item}>{item}</li>
-              ))}
-            </ol>
-          </div>
-          <p className="mt-4 text-sm text-ink-500">
-            Opcional: el registro INPREMÉDICO u otros registros históricos; no son requisito para publicarse.
-          </p>
-          <p className="mt-4">
-            El perfil público de cada médico muestra sus números de registro (MPPS y Colegio de Médicos) como práctica de
-            transparencia. Un profesional puede registrar matrículas de Colegios de distintos estados.
-          </p>
-        </section>
-
-        <section id="organizaciones">
-          <h2 className="text-xl font-semibold text-ink-900">5. Farmacias, laboratorios y clínicas</h2>
-          <p className="mt-2">
-            Las organizaciones pueden registrarse y administrar su perfil (sedes, servicios, aseguradoras, métodos de pago y
-            horario). Se publican después de que un administrador verifique sus datos, y vuelven a revisión si cambian su
-            nombre, tipo o RIF. Un médico solo aparece asociado a una organización si acepta la invitación.
-          </p>
-        </section>
-
-        <section id="planes">
-          <h2 className="text-xl font-semibold text-ink-900">6. Planes, visibilidad y pagos</h2>
-          <ul className="mt-2 list-disc space-y-1 pl-5">
-            <li>
-              <strong>La verificación y el perfil básico son gratuitos.</strong> Los planes pagos añaden herramientas
-              (agenda, fotos, publicaciones, estadísticas, sedes, redes) y visibilidad.
-            </li>
-            <li>
-              Los planes <strong>Profesional Plus y Premium</strong> solo se contratan con el 100% de los documentos
-              requeridos aprobados.
-            </li>
-            <li>
-              El orden del directorio prioriza perfiles completos y relevantes. Un plan pago suma un impulso acotado y, en el
-              plan Premium, un espacio rotativo señalado como <strong>«Destacado»</strong>: es publicidad, no una
-              recomendación clínica.
-            </li>
-            <li>
-              Los precios se expresan en dólares y se pagan en bolívares por <strong>Pago Móvil</strong>, a la tasa oficial
-              del BCV vigente al momento de suscribirse; ese monto queda fijado en la cuota junto con la tasa aplicada.
-            </li>
-            <li>
-              El titular reporta el pago (banco, teléfono, referencia, monto y comprobante) y un administrador lo valida antes
-              de activar el plan. Una misma referencia no puede usarse dos veces.
-            </li>
-            <li>
-              Si un plan pago vence sin renovarse, el perfil vuelve al plan básico gratuito: sigue verificado y visible.
-            </li>
-          </ul>
-        </section>
-
-        <section id="pacientes">
-          <h2 className="text-xl font-semibold text-ink-900">7. Datos de los pacientes</h2>
-          <p className="mt-2">
-            Los profesionales solo pueden ver datos de un paciente con su autorización vigente y únicamente para la atención
-            de ese paciente. Está prohibido copiar, divulgar o usar esos datos con otros fines; cada consulta queda
-            registrada. El tratamiento de datos se describe en la{' '}
-            <Link href="/privacidad" className="text-pine-700 underline">
-              Política de privacidad
-            </Link>
-            .
-          </p>
-        </section>
-
-        <section id="suspension">
-          <h2 className="text-xl font-semibold text-ink-900">8. Suspensión y baja</h2>
-          <p className="mt-2">
-            Podemos suspender o dar de baja un perfil si se detecta información falsa o documentos adulterados, si el
-            Colegio de Médicos informa una suspensión o sanción, si un documento de vigencia periódica vence sin renovarse,
-            si se hace un uso indebido de datos de pacientes, o si se incumplen estos términos. La decisión se notifica al
-            titular.
-          </p>
-        </section>
-
-        <section id="contenido">
-          <h2 className="text-xl font-semibold text-ink-900">9. Contenido y conducta</h2>
-          <p className="mt-2">
-            No está permitido publicar información falsa, suplantar a otra persona o institución, anunciarse como
-            especialista sin la credencial correspondiente, ni enviar spam o contenido ofensivo por los formularios.
-          </p>
-        </section>
-
-        <section id="responsabilidad">
-          <h2 className="text-xl font-semibold text-ink-900">10. Límite de responsabilidad</h2>
-          <p className="mt-2">
-            Realizamos una verificación documental razonable, pero no garantizamos de forma absoluta la vigencia continua de
-            cada aval ni sustituimos la verificación oficial ante los organismos correspondientes (MPPS, Colegios de
-            Médicos). Ante cualquier duda sobre la habilitación de un profesional, consulta directamente con esos
-            organismos.
-          </p>
-        </section>
-
-        <section id="cambios">
-          <h2 className="text-xl font-semibold text-ink-900">11. Cambios y versiones</h2>
-          <p className="mt-2">
-            Cada versión de estos términos lleva número y fecha. Si los modificamos, publicaremos la nueva versión y te
-            pediremos aceptarla al iniciar sesión; registramos qué versión aceptó cada usuario y cuándo.
-          </p>
-        </section>
-      </article>
-    </div>
+    <LegalPage
+      slug="terminos"
+      lead={
+        <p>
+          Guía Médica Monagas es un directorio tecnológico de profesionales médicos independientes con herramientas
+          privadas para pacientes. No presta atención médica ni de emergencia. Estas son las reglas para usarlo.
+        </p>
+      }
+      sections={SECTIONS}
+      related={['descargo-medico', 'privacidad', 'condiciones-profesionales', 'uso-aceptable', 'aviso-legal']}
+    />
   );
 }

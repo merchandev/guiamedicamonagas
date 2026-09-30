@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { api } from '@/lib/api';
 import { COOKIE_CONSENT_STORAGE_KEY } from '@/lib/analytics';
 import { Button } from '@/components/ui/Button';
@@ -9,6 +10,9 @@ import { Modal } from '@/components/ui/Modal';
 const STORAGE_KEY = COOKIE_CONSENT_STORAGE_KEY;
 const OPEN_EVENT = 'gmm:open-cookie-preferences';
 
+// El sitio no usa cookies publicitarias: no hay categoría de marketing que
+// aceptar. El campo se conserva en false por compatibilidad con el registro
+// de consentimientos del servidor.
 interface StoredConsent {
   subjectId: string;
   analytics: boolean;
@@ -20,7 +24,6 @@ interface CookieConfig {
   message: string;
   necessaryDescription?: string;
   analyticsDescription?: string;
-  marketingDescription?: string;
 }
 
 function randomId() {
@@ -41,7 +44,6 @@ export default function CookieConsent() {
   const [showBanner, setShowBanner] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [analytics, setAnalytics] = useState(false);
-  const [marketing, setMarketing] = useState(false);
 
   useEffect(() => {
     try {
@@ -50,7 +52,6 @@ export default function CookieConsent() {
         const parsed: StoredConsent = JSON.parse(raw);
         setStored(parsed);
         setAnalytics(parsed.analytics);
-        setMarketing(parsed.marketing);
       } else {
         setShowBanner(true);
       }
@@ -65,19 +66,16 @@ export default function CookieConsent() {
     return () => window.removeEventListener(OPEN_EVENT, onOpen);
   }, []);
 
-  const persist = async (next: { analytics: boolean; marketing: boolean }) => {
+  const persist = async (acceptAnalytics: boolean) => {
     const subjectId = stored?.subjectId ?? randomId();
-    const record: StoredConsent = { subjectId, ...next, decidedAt: new Date().toISOString() };
+    const record: StoredConsent = { subjectId, analytics: acceptAnalytics, marketing: false, decidedAt: new Date().toISOString() };
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(record));
     setStored(record);
+    setAnalytics(acceptAnalytics);
     setShowBanner(false);
     setShowModal(false);
-    await api.post('/cookie-consent', { subjectId, analytics: next.analytics, marketing: next.marketing }).catch(() => undefined);
+    await api.post('/cookie-consent', { subjectId, analytics: acceptAnalytics, marketing: false }).catch(() => undefined);
   };
-
-  const acceptAll = () => persist({ analytics: true, marketing: true });
-  const rejectNonEssential = () => persist({ analytics: false, marketing: false });
-  const savePreferences = () => persist({ analytics, marketing });
 
   return (
     <>
@@ -86,17 +84,20 @@ export default function CookieConsent() {
           <div className="container-page flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-ink-700">
               {config?.message ??
-                'Usamos cookies necesarias para el funcionamiento del sitio y, con tu permiso, cookies de análisis y marketing.'}
+                'Usamos solo lo necesario para que el sitio funcione y sea seguro. Con tu permiso, también contamos visitas y clics de forma anónima. No usamos publicidad ni rastreo de terceros.'}{' '}
+              <Link href="/cookies" className="font-medium text-pine-700 underline">
+                Política de cookies
+              </Link>
             </p>
             <div className="flex flex-shrink-0 flex-wrap gap-2">
               <Button variant="outline" size="sm" onClick={() => setShowModal(true)}>
-                Personalizar
+                Configurar
               </Button>
-              <Button variant="ghost" size="sm" onClick={rejectNonEssential}>
-                Rechazar
+              <Button variant="outline" size="sm" onClick={() => persist(false)}>
+                Rechazar no esenciales
               </Button>
-              <Button size="sm" onClick={acceptAll}>
-                Aceptar todo
+              <Button size="sm" onClick={() => persist(true)}>
+                Aceptar todas
               </Button>
             </div>
           </div>
@@ -109,7 +110,7 @@ export default function CookieConsent() {
             <div>
               <p className="text-sm font-semibold text-ink-900">Necesarias</p>
               <p className="text-xs text-ink-500">
-                {config?.necessaryDescription ?? 'Imprescindibles para que el sitio funcione. Siempre activas.'}
+                {config?.necessaryDescription ?? 'Imprescindibles para iniciar sesión y proteger tu cuenta. Siempre activas.'}
               </p>
             </div>
             <span className="rounded-full bg-ink-100 px-2.5 py-1 text-xs font-medium text-ink-500">Siempre activas</span>
@@ -119,7 +120,8 @@ export default function CookieConsent() {
             <div>
               <p className="text-sm font-semibold text-ink-900">Análisis</p>
               <p className="text-xs text-ink-500">
-                {config?.analyticsDescription ?? 'Nos ayudan a entender cómo se usa el sitio para mejorarlo.'}
+                {config?.analyticsDescription ??
+                  'Conteos anónimos de visitas a perfiles y clics en los botones de contacto, sin tu dirección IP ni tu navegador.'}
               </p>
             </div>
             <input
@@ -130,26 +132,18 @@ export default function CookieConsent() {
             />
           </label>
 
-          <label className="flex items-start justify-between gap-4 rounded-lg border border-ink-100 p-4">
-            <div>
-              <p className="text-sm font-semibold text-ink-900">Marketing</p>
-              <p className="text-xs text-ink-500">
-                {config?.marketingDescription ?? 'Usadas para mostrar contenido y anuncios relevantes.'}
-              </p>
-            </div>
-            <input
-              type="checkbox"
-              className="mt-1 h-5 w-5 rounded border-ink-300 text-pine-700 focus:ring-pine-600"
-              checked={marketing}
-              onChange={(e) => setMarketing(e.target.checked)}
-            />
-          </label>
+          <p className="text-xs text-ink-500">
+            Este sitio no usa cookies publicitarias ni de seguimiento entre sitios.{' '}
+            <Link href="/cookies" className="font-medium text-pine-700 underline" onClick={() => setShowModal(false)}>
+              Política de cookies
+            </Link>
+          </p>
 
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={rejectNonEssential}>
-              Rechazar todo
+            <Button variant="outline" onClick={() => persist(false)}>
+              Rechazar no esenciales
             </Button>
-            <Button onClick={savePreferences}>Guardar preferencias</Button>
+            <Button onClick={() => persist(analytics)}>Guardar preferencias</Button>
           </div>
         </div>
       </Modal>

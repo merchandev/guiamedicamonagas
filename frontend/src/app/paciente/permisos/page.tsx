@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
 import { api, ApiError } from '@/lib/api';
 import { PATIENT_CONSENT_VERSION } from '@/lib/legal';
 import { ALL_SCOPES, SCOPE_INFO, type PatientDataScope } from '@/lib/patient-scopes';
@@ -162,8 +163,12 @@ export default function PatientPermissionsPage() {
               ))}
             </fieldset>
             <p className="text-xs text-ink-400">
-              Tu cédula nunca se comparte. Consentimiento v{PATIENT_CONSENT_VERSION}. Una nueva autorización al mismo médico
-              reemplaza la anterior.
+              Tu cédula nunca se comparte. Una nueva autorización al mismo médico reemplaza la anterior. Al autorizar aceptas
+              la{' '}
+              <Link href="/privacidad/autorizacion-medica" target="_blank" className="underline">
+                Autorización de acceso médico (v{PATIENT_CONSENT_VERSION})
+              </Link>
+              .
             </p>
             <Button onClick={grant} loading={saving} disabled={!professionalId || scopes.length === 0}>
               Autorizar

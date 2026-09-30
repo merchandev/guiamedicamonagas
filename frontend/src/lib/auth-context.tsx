@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { api, ApiError, setAccessToken, refreshAccessToken } from './api';
+import type { LegalDocumentKey } from './legal';
 
 export type Role = 'USER' | 'PROFESSIONAL' | 'ORGANIZATION' | 'ADMIN' | 'SUPERADMIN';
 
@@ -13,6 +14,7 @@ export type Permission =
   | 'VERIFY_PATIENT_IDENTITY'
   | 'REVIEW_PAYMENTS'
   | 'MANAGE_ORGANIZATIONS'
+  | 'MANAGE_LEGAL_REQUESTS'
   | 'MANAGE_CATALOG'
   | 'MANAGE_PLANS'
   | 'MANAGE_SITE'
@@ -37,7 +39,9 @@ export interface AuthUser {
   createdAt: string;
   permissions: Permission[];
   needsLegalAcceptance: boolean;
-  legal: { termsVersion: string; privacyVersion: string };
+  /** Textos que esta cuenta debe aceptar (versión nueva o nunca aceptados). */
+  pendingLegalDocuments: LegalDocumentKey[];
+  legal: { termsVersion: string; privacyVersion: string; versions: Record<LegalDocumentKey, string> };
   professionalProfile?: {
     id: string;
     slug: string;
@@ -54,6 +58,12 @@ export interface RegisterPayload {
   password: string;
   role: 'USER' | 'PROFESSIONAL' | 'ORGANIZATION';
   acceptLegal: true;
+  /** Paciente: consentimiento para el tratamiento de sus datos de salud. */
+  acceptHealthConsent?: true;
+  /** Paciente: declara tener 18 años o más. */
+  declareAdult?: true;
+  /** Profesional: Condiciones para profesionales. */
+  acceptProfessionalTerms?: true;
   firstName?: string;
   lastName?: string;
   cedula?: string;
@@ -73,7 +83,8 @@ interface AuthContextValue {
   login: (email: string, password: string) => Promise<LoginOutcome>;
   verifyMfa: (challengeToken: string, code: string) => Promise<AuthUser>;
   register: (payload: RegisterPayload) => Promise<AuthUser>;
-  acceptLegal: () => Promise<void>;
+  /** Acepta los textos pendientes; deben ir todos los de pendingLegalDocuments. */
+  acceptLegal: (documents: LegalDocumentKey[]) => Promise<void>;
   logout: () => Promise<void>;
   /** Cambia la contraseña; el servidor cierra las demás sesiones y renueva esta. */
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
@@ -144,8 +155,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [startSession],
   );
 
-  const acceptLegal = useCallback(async () => {
-    const me = await api.post<AuthUser>('/auth/accept-legal');
+  const acceptLegal = useCallback(async (documents: LegalDocumentKey[]) => {
+    const me = await api.post<AuthUser>('/auth/accept-legal', { documents });
     setUser(me);
   }, []);
 

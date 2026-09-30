@@ -173,9 +173,18 @@ export default async function PlansPage() {
 
       <Reveal delay={0.15}>
         <p className="mx-auto mt-10 max-w-2xl text-center text-xs text-ink-400">
-          Los precios se cotizan en USD. El pago se realiza por Pago Móvil en bolívares al equivalente vigente el día
-          del pago. La verificación de credenciales y el perfil básico son gratuitos, y la verificación es la misma en todos
-          los planes: pagar nunca sustituye ni acelera la revisión de documentos.
+          Los precios se cotizan en USD. El pago se realiza por Pago Móvil en bolívares, a la tasa oficial del BCV vigente
+          al suscribirse. Los planes son mensuales y no se renuevan ni se cobran de forma automática. La verificación de
+          credenciales y el perfil básico son gratuitos, y la verificación es la misma en todos los planes: pagar nunca
+          sustituye ni acelera la revisión de documentos, ni indica superioridad clínica. Condiciones completas en{' '}
+          <Link href="/pagos-y-suscripciones" className="underline">
+            Pagos y suscripciones
+          </Link>{' '}
+          y{' '}
+          <Link href="/reembolsos" className="underline">
+            Cancelación y reembolsos
+          </Link>
+          .
         </p>
       </Reveal>
     </div>

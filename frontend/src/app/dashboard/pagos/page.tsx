@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { api, ApiError } from '@/lib/api';
 import { Alert } from '@/components/ui/Alert';
 import { Badge } from '@/components/ui/Badge';
@@ -82,6 +83,20 @@ export default function PaymentsPage() {
       </div>
 
       {error && <Alert tone="error">{error}</Alert>}
+
+      {!subscription && plans.length > 0 && (
+        <p className="text-xs text-ink-500">
+          Al elegir un plan aceptas las condiciones de{' '}
+          <Link href="/pagos-y-suscripciones" target="_blank" className="font-medium text-pine-700 underline">
+            Pagos y suscripciones
+          </Link>{' '}
+          y de{' '}
+          <Link href="/reembolsos" target="_blank" className="font-medium text-pine-700 underline">
+            Cancelación y reembolsos
+          </Link>
+          . Un plan añade herramientas y visibilidad: no compra ni acelera la verificación.
+        </p>
+      )}
 
       {!subscription ? (
         <div className="grid gap-4 sm:grid-cols-2">
