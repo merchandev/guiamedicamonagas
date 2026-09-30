@@ -417,3 +417,34 @@ export function paidPlanAssignedTemplate(rawName: string, rawPlanName: string, e
      ${button(dashboardUrl, 'Ver mi plan')}`,
   );
 }
+
+export function legalRequestReceivedTemplate(rawName: string, ticket: string, rawCategory: string, statusUrl: string) {
+  const name = escapeHtml(rawName);
+  return layout(
+    `Recibimos tu solicitud ${ticket}`,
+    `<h1 style="font-size:20px;margin:0 0 12px;">Hola, ${name}</h1>
+     <p style="font-size:14px;line-height:1.6;color:#3a3a3a;">
+       Recibimos tu solicitud en ${BRAND_NAME}. Su número es <strong>${escapeHtml(ticket)}</strong>
+       (${escapeHtml(rawCategory)}). Guárdalo: con él y tu correo puedes consultar su estado.
+     </p>
+     <p style="font-size:14px;line-height:1.6;color:#3a3a3a;">
+       Te escribiremos a este correo cuando tengamos una respuesta.
+     </p>
+     ${button(statusUrl, 'Consultar el estado')}`,
+    `Recibiste este correo porque enviaste una solicitud a ${BRAND_NAME}.`,
+  );
+}
+
+export function legalRequestUpdatedTemplate(rawName: string, ticket: string, rawStatus: string, rawResolution: string | null, statusUrl: string) {
+  const name = escapeHtml(rawName);
+  return layout(
+    `Tu solicitud ${ticket}: ${rawStatus}`,
+    `<h1 style="font-size:20px;margin:0 0 12px;">Hola, ${name}</h1>
+     <p style="font-size:14px;line-height:1.6;color:#3a3a3a;">
+       Tu solicitud <strong>${escapeHtml(ticket)}</strong> ahora está: <strong>${escapeHtml(rawStatus)}</strong>.
+     </p>
+     ${rawResolution ? `<p style="font-size:14px;line-height:1.6;color:#3a3a3a;"><strong>Respuesta:</strong> ${escapeHtml(rawResolution)}</p>` : ''}
+     ${button(statusUrl, 'Ver la solicitud')}`,
+    `Recibiste este correo porque enviaste una solicitud a ${BRAND_NAME}.`,
+  );
+}

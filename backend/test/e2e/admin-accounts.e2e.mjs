@@ -216,6 +216,22 @@ try {
   check('no asigna plan a cuenta dada de baja',r.status===409);
   check('acciones auditadas',(await db.query('SELECT count(*)::int n FROM "AuditLog" WHERE "userId"=$1 AND action IN (\'ACCOUNT_DELETE\',\'ACCOUNT_SUSPEND\',\'ACCOUNT_RESTORE\',\'PAID_PLAN_ASSIGNED\')',[ids.admin])).rows[0].n>=6);
 
+  // Canal de reclamos: la administración atiende y responde con evidencia.
+  const requestId = randomUUID();
+  const ticket = `R-${randomBytes(6).toString('hex').slice(0, 8).toUpperCase()}`;
+  await db.query('INSERT INTO "LegalRequest" (id,ticket,category,"requesterName","requesterEmail",description,"updatedAt") VALUES ($1,$2,\'MISLEADING_CONTENT\',\'Reclamante\',$3,\'El perfil promete curas garantizadas.\',now())',
+    [requestId, ticket, `rec-${run}@test.invalid`]);
+  r=await call('GET','/legal-requests/admin?status=OPEN');
+  check('la administración ve las solicitudes abiertas',r.status===200 && r.data.items.some(x=>x.id===requestId) && r.data.open>=1);
+  r=await call('PATCH',`/legal-requests/admin/${requestId}`,{status:'RESOLVED'});
+  check('resolver exige una respuesta para el solicitante',r.status===400);
+  r=await call('PATCH',`/legal-requests/admin/${requestId}`,{status:'RESOLVED',resolution:'Retiramos la afirmación engañosa del perfil y advertimos al profesional.'});
+  check('resolver avisa al solicitante y queda auditado',r.status===200 && r.data.resolvedAt
+    && await count('SELECT count(*)::int n FROM "MessageLog" WHERE recipient=$1 AND template=\'legal_request_updated\'',[`rec-${run}@test.invalid`])===1
+    && await count('SELECT count(*)::int n FROM "AuditLog" WHERE "userId"=$1 AND action=\'LEGAL_REQUEST_UPDATED\' AND "resourceId"=$2',[ids.admin,requestId])===1);
+  r=await call('POST','/legal-requests/lookup',{ticket,email:`rec-${run}@test.invalid`},null);
+  check('el solicitante consulta la respuesta con su número',r.status===200 && r.data.status==='RESOLVED' && r.data.resolution.startsWith('Retiramos'));
+
   // Eliminación definitiva: solo SUPERADMIN, solo cuentas dadas de baja, con confirmación escrita.
   r=await call('PATCH',`/admin/accounts/professionals/${ids.modDoctor}`,mod('DELETE'));
   check('dar de baja al médico verificado',r.status===200);

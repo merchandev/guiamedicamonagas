@@ -23,7 +23,7 @@ interface CancelledAppointmentNotice {
 
 /**
  * Eliminación definitiva de una cuenta ya dada de baja (solo SUPERADMIN).
- * Cumple la Política de privacidad (sección 8): borra los datos personales y
+ * Cumple la Política de retención y eliminación (/privacidad/retencion): borra los datos personales y
  * los archivos, y conserva solo lo que la ley obliga a guardar:
  *
  * - Pagos y suscripciones (normativa tributaria). Cuelgan del perfil del
@@ -128,6 +128,9 @@ export class AccountPurgeService {
 
       if (professional) await this.scrubProfessional(tx, professional.id, now, fileKeys);
       await this.scrubPatientProfile(tx, id, now, fileKeys);
+      // La evidencia de qué textos aceptó se conserva, sin IP ni navegador
+      // (la tabla solo admite esta anonimización; ver su migración).
+      await tx.legalAcceptance.updateMany({ where: { userId: id }, data: { ipAddress: null, userAgent: null } });
 
       if (professional) {
         // Registro anónimo: sus pagos (que no se pueden borrar) dependen de él.

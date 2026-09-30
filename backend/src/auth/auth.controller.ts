@@ -4,6 +4,7 @@ import { Throttle } from '@nestjs/throttler';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { EnvConfig } from '../config/env.validation';
 import { Public } from '../common/decorators/public.decorator';
+import { AcceptLegalDto } from '../legal/legal-request.dto';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../common/types/authenticated-user';
 import { AuthService, LoginResult } from './auth.service';
@@ -54,7 +55,7 @@ export class AuthController {
     @Req() req: FastifyRequest,
     @Res({ passthrough: true }) reply: FastifyReply,
   ) {
-    const { accessToken, refreshToken, refreshTokenExpiresAt } = await this.auth.register(dto, req.ip);
+    const { accessToken, refreshToken, refreshTokenExpiresAt } = await this.auth.register(dto, req.ip, req.headers['user-agent']);
     this.setRefreshCookie(reply, refreshToken, refreshTokenExpiresAt);
     return { accessToken };
   }
@@ -180,7 +181,7 @@ export class AuthController {
 
   @HttpCode(HttpStatus.OK)
   @Post('accept-legal')
-  acceptLegal(@CurrentUser() user: AuthenticatedUser, @Req() req: FastifyRequest) {
-    return this.auth.acceptLegal(user.id, req.ip);
+  acceptLegal(@CurrentUser() user: AuthenticatedUser, @Body() dto: AcceptLegalDto, @Req() req: FastifyRequest) {
+    return this.auth.acceptLegal(user.id, dto.documents, req.ip, req.headers['user-agent']);
   }
 }

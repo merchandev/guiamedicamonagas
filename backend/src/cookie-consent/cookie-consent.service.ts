@@ -6,10 +6,10 @@ const COOKIE_CONFIG_KEY = 'cookie_config';
 
 const DEFAULT_CONFIG: UpdateCookieConfigDto = {
   message:
-    'Usamos cookies necesarias para el funcionamiento del sitio y, con tu permiso, cookies de análisis y marketing para mejorar tu experiencia.',
-  necessaryDescription: 'Imprescindibles para que el sitio funcione (sesión, seguridad). Siempre activas.',
-  analyticsDescription: 'Nos ayudan a entender cómo se usa el sitio para mejorarlo.',
-  marketingDescription: 'Usadas para mostrar contenido y anuncios relevantes.',
+    'Usamos solo lo necesario para que el sitio funcione y sea seguro. Con tu permiso, también contamos visitas y clics de forma anónima para mejorar el directorio. No usamos publicidad ni rastreo de terceros.',
+  necessaryDescription: 'Imprescindibles para iniciar sesión y proteger tu cuenta. Siempre activas.',
+  analyticsDescription: 'Conteos anónimos de visitas a perfiles y clics en WhatsApp o teléfono, sin tu IP ni tu navegador.',
+  marketingDescription: 'No usamos cookies de publicidad ni de marketing.',
 };
 
 @Injectable()

@@ -20,6 +20,8 @@ export enum Permission {
   MANAGE_PLANS = 'MANAGE_PLANS',
   MANAGE_SITE = 'MANAGE_SITE',
   VIEW_ADMIN_STATS = 'VIEW_ADMIN_STATS',
+  /** Canal de reclamos, denuncias y solicitudes legales (datos personales del solicitante). */
+  MANAGE_LEGAL_REQUESTS = 'MANAGE_LEGAL_REQUESTS',
 }
 
 export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
@@ -35,6 +37,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     Permission.MANAGE_ORGANIZATIONS,
     Permission.MANAGE_CATALOG,
     Permission.VIEW_ADMIN_STATS,
+    Permission.MANAGE_LEGAL_REQUESTS,
   ],
   SUPERADMIN: Object.values(Permission),
 };

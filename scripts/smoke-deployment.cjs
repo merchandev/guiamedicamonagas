@@ -89,7 +89,7 @@ async function main() {
 
   const registered = ok(await request('/api/v1/auth/register', {
     method: 'POST',
-    body: { email, password: initialPassword, role: 'PROFESSIONAL', firstName: 'Prueba', lastName: 'Despliegue', acceptLegal: true },
+    body: { email, password: initialPassword, role: 'PROFESSIONAL', firstName: 'Prueba', lastName: 'Despliegue', acceptLegal: true, acceptProfessionalTerms: true },
   }), 'Temporary professional registration');
   const token = registered.accessToken;
   assert.ok(token);
@@ -156,6 +156,9 @@ main().catch(error => {
       if (user.professionalProfile?.photoUrl) await storage.deleteObject(user.professionalProfile.photoUrl);
       await prisma.messageLog.deleteMany({ where: { recipient: email } });
       await prisma.auditLog.deleteMany({ where: { userId: user.id } });
+      // LegalAcceptance es de solo inserción: sus filas quedan sin cuenta (el
+      // borrado las desvincula) y aquí se les quita la IP y el navegador.
+      await prisma.legalAcceptance.updateMany({ where: { userId: user.id }, data: { ipAddress: null, userAgent: null } });
       await prisma.user.delete({ where: { id: user.id } });
       console.log('CLEANUP Temporary test account and object removed');
     }

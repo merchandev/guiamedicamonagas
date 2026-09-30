@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { Prisma, Role } from '@prisma/client';
+import { LegalDocument, Prisma, Role } from '@prisma/client';
 import { createHash, randomBytes, randomInt, timingSafeEqual } from 'crypto';
 import type { EnvConfig } from '../config/env.validation';
 import { PrismaService } from '../prisma/prisma.service';
@@ -19,7 +19,8 @@ import { hashPassword, verifyPassword } from '../common/utils/password.util';
 import { generatePatientCode } from '../patients/patient-code.util';
 import { PatientDataCodec } from '../patients/patient-data.codec';
 import { consumeInvitation } from '../organizations/organization-invitations';
-import { PRIVACY_VERSION, TERMS_VERSION } from '../common/legal-versions';
+import { LEGAL_DOCUMENT_TITLES, LEGAL_VERSIONS, PRIVACY_VERSION, TERMS_VERSION, requiredLegalDocuments } from '../common/legal-versions';
+import { LegalAcceptanceService } from '../legal/legal-acceptance.service';
 import { ROLE_PERMISSIONS } from '../common/permissions';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -69,11 +70,12 @@ export class AuthService {
     private readonly mail: MailService,
     private readonly audit: AuditService,
     private readonly patientCodec: PatientDataCodec,
+    private readonly legal: LegalAcceptanceService,
   ) {
     this.refreshExpirationDays = this.config.get('JWT_REFRESH_EXPIRATION_DAYS', { infer: true });
   }
 
-  async register(dto: RegisterDto, ipAddress?: string) {
+  async register(dto: RegisterDto, ipAddress?: string, userAgent?: string) {
     const existing = await this.prisma.user.findUnique({ where: { email: dto.email.toLowerCase() } });
     if (existing) {
       throw new ConflictException('Ya existe una cuenta con este correo');
@@ -84,6 +86,16 @@ export class AuthService {
     }
     if (dto.role === 'USER' && (!dto.firstName || !dto.lastName || !dto.cedula)) {
       throw new BadRequestException('Nombre, apellido y cédula son obligatorios para registrarte como paciente');
+    }
+    // Consentimientos separados: los datos de salud y la mayoría de edad del
+    // paciente, y las condiciones propias de los profesionales.
+    if (dto.role === 'USER' && (dto.acceptHealthConsent !== true || dto.declareAdult !== true)) {
+      throw new BadRequestException(
+        'Para registrarte como paciente debes aceptar el consentimiento de datos de salud y declarar que tienes 18 años o más',
+      );
+    }
+    if (dto.role === 'PROFESSIONAL' && dto.acceptProfessionalTerms !== true) {
+      throw new BadRequestException('Para registrarte como médico debes aceptar las Condiciones para profesionales');
     }
     if (dto.invitationToken && dto.role !== 'ORGANIZATION') {
       throw new BadRequestException('Las invitaciones de equipo se aceptan con una cuenta de organización');
@@ -116,6 +128,7 @@ export class AuthService {
             legalAcceptedAt: new Date(),
           },
         });
+        await this.legal.record(tx, created.id, requiredLegalDocuments(dto.role), { context: 'REGISTER', ipAddress, userAgent });
 
         if (dto.role === 'PROFESSIONAL') {
           const base = slugify(`${dto.firstName} ${dto.lastName}`);
@@ -534,18 +547,31 @@ export class AuthService {
     return this.issueTokens(updated, ipAddress, userAgent);
   }
 
-  /** Registra que el usuario aceptó las versiones vigentes de los textos legales. */
-  async acceptLegal(userId: string, ipAddress?: string) {
-    await this.prisma.user.update({
-      where: { id: userId },
-      data: { termsVersionAccepted: TERMS_VERSION, privacyVersionAccepted: PRIVACY_VERSION, legalAcceptedAt: new Date() },
+  /**
+   * Registra la aceptación de las versiones vigentes. Cada documento
+   * pendiente debe venir aceptado de forma expresa: no se da por aceptado
+   * nada que el usuario no haya marcado.
+   */
+  async acceptLegal(userId: string, documents: LegalDocument[], ipAddress?: string, userAgent?: string) {
+    const { role } = await this.prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { role: true } });
+    const pending = await this.legal.pendingFor(userId, role);
+    const missing = pending.filter((document) => !documents.includes(document));
+    if (missing.length) {
+      throw new BadRequestException(`Para continuar debes aceptar ${missing.map((d) => LEGAL_DOCUMENT_TITLES[d]).join(', ')}`);
+    }
+    await this.prisma.$transaction(async (tx) => {
+      await this.legal.record(tx, userId, pending, { context: 'UPDATE', ipAddress, userAgent });
+      await tx.user.update({
+        where: { id: userId },
+        data: { termsVersionAccepted: TERMS_VERSION, privacyVersionAccepted: PRIVACY_VERSION, legalAcceptedAt: new Date() },
+      });
     });
     await this.audit.record({
       userId,
       action: 'LEGAL_ACCEPTED',
       resource: 'User',
       resourceId: userId,
-      details: { termsVersion: TERMS_VERSION, privacyVersion: PRIVACY_VERSION },
+      details: { documents: pending.map((document) => `${document}@${LEGAL_VERSIONS[document]}`) },
       ipAddress,
     });
     return this.me(userId);
@@ -580,12 +606,13 @@ export class AuthService {
         },
       },
     });
+    const pendingLegalDocuments = await this.legal.pendingFor(userId, user.role);
     return {
       ...user,
       permissions: ROLE_PERMISSIONS[user.role],
-      legal: { termsVersion: TERMS_VERSION, privacyVersion: PRIVACY_VERSION },
-      needsLegalAcceptance:
-        user.termsVersionAccepted !== TERMS_VERSION || user.privacyVersionAccepted !== PRIVACY_VERSION,
+      legal: { termsVersion: TERMS_VERSION, privacyVersion: PRIVACY_VERSION, versions: LEGAL_VERSIONS },
+      pendingLegalDocuments,
+      needsLegalAcceptance: pendingLegalDocuments.length > 0,
     };
   }
 }

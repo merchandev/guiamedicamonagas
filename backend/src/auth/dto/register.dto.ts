@@ -1,4 +1,4 @@
-import { Equals, IsEmail, IsIn, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
+import { Equals, IsBoolean, IsEmail, IsIn, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
 
 export class RegisterDto {
   @IsEmail({}, { message: 'Correo inválido' })
@@ -19,6 +19,21 @@ export class RegisterDto {
   /** Aceptación explícita de los Términos y la Política de privacidad vigentes. */
   @Equals(true, { message: 'Debes aceptar los términos y la política de privacidad' })
   acceptLegal!: boolean;
+
+  /** Pacientes: consentimiento para tratar sus datos de salud (obligatorio para USER). */
+  @IsOptional()
+  @IsBoolean()
+  acceptHealthConsent?: boolean;
+
+  /** Pacientes: declaran tener 18 años o más (obligatorio para USER). */
+  @IsOptional()
+  @IsBoolean()
+  declareAdult?: boolean;
+
+  /** Médicos: Condiciones para profesionales (obligatorio para PROFESSIONAL). */
+  @IsOptional()
+  @IsBoolean()
+  acceptProfessionalTerms?: boolean;
 
   @IsOptional()
   @IsString()

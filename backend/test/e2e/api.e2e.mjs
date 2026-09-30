@@ -15,6 +15,15 @@ const check = (name, cond, extra = '') => {
   console.log(`${cond ? 'PASS' : 'FAIL'}  ${name}${extra ? ` — ${extra}` : ''}`);
   if (!cond) failures += 1;
 };
+// El registro admite 5 intentos por minuto: si la suite los agota, espera el minuto y reintenta una vez.
+async function register(body) {
+  let res = await call('POST', '/auth/register', body);
+  if (res.status === 429) {
+    await new Promise((resolve) => setTimeout(resolve, 61_000));
+    res = await call('POST', '/auth/register', body);
+  }
+  return res;
+}
 async function call(method, path, body, token, extraHeaders = {}) {
   const res = await fetch(API + path, {
     method,
@@ -30,16 +39,24 @@ const pw = 'Prueba12345x';
 const phone = '0414-' + String(Date.now()).slice(-7);
 
 // 1. Registro con aceptación legal obligatoria
-let r = await call('POST', '/auth/register', { email: `p-${run}@t.local`, password: pw, role: 'USER', firstName: 'Pedro', lastName: 'Luna', cedula: 'V-2' + run.slice(-6).replace(/\D/g, '7').padEnd(6, '1') });
+let r = await register({ email: `p-${run}@t.local`, password: pw, role: 'USER', firstName: 'Pedro', lastName: 'Luna', cedula: 'V-2' + run.slice(-6).replace(/\D/g, '7').padEnd(6, '1') });
 check('registro sin acceptLegal → 400', r.status === 400, String(r.status));
 const cedula = `V-3${String(Date.now()).slice(-7)}`;
-r = await call('POST', '/auth/register', { email: `p-${run}@t.local`, password: pw, role: 'USER', firstName: 'Pedro', lastName: 'Luna', cedula, acceptLegal: true });
+r = await register({ email: `p-${run}@t.local`, password: pw, role: 'USER', firstName: 'Pedro', lastName: 'Luna', cedula, acceptLegal: true });
+check('paciente sin consentimiento de salud ni mayoría de edad → 400', r.status === 400, String(r.status));
+r = await register({ email: `p-${run}@t.local`, password: pw, role: 'USER', firstName: 'Pedro', lastName: 'Luna', cedula, acceptLegal: true, acceptHealthConsent: true, declareAdult: true });
 check('registro paciente', r.status === 201, String(r.status));
 const patientToken = r.data?.accessToken;
-r = await call('POST', '/auth/register', { email: `p2-${run}@t.local`, password: pw, role: 'USER', firstName: 'X', lastName: 'Y', cedula: cedula.replace('-', '').toLowerCase(), acceptLegal: true });
+r = await register({ email: `p2-${run}@t.local`, password: pw, role: 'USER', firstName: 'X', lastName: 'Y', cedula: cedula.replace('-', '').toLowerCase(), acceptLegal: true, acceptHealthConsent: true, declareAdult: true });
 check('cédula duplicada (normalizada) → 409', r.status === 409, String(r.status));
 r = await call('GET', '/auth/me', null, patientToken);
-check('me: versiones legales aceptadas', r.data?.needsLegalAcceptance === false && r.data?.termsVersionAccepted === '2.2');
+check('me: versiones legales aceptadas', r.data?.needsLegalAcceptance === false && r.data?.termsVersionAccepted === '3.0' && r.data?.pendingLegalDocuments?.length === 0);
+const patientUserId = r.data?.id;
+const legalRows = (await db.query('select document, context, "ipAddress" is not null as ip from "LegalAcceptance" where "userId"=$1 order by document::text', [patientUserId])).rows;
+check('evidencia: términos, privacidad, datos de salud y mayoría de edad, con IP', legalRows.map((x) => x.document).join(',') === 'AGE_DECLARATION,PATIENT_HEALTH_CONSENT,PRIVACY,TERMS'
+  && legalRows.every((x) => x.context === 'REGISTER' && x.ip));
+check('la evidencia no se puede borrar ni editar', await db.query('delete from "LegalAcceptance" where "userId"=$1', [patientUserId]).then(() => false, () => true)
+  && await db.query(`update "LegalAcceptance" set version='0.1' where "userId"=$1`, [patientUserId]).then(() => false, () => true));
 
 // 2. Ficha cifrada
 r = await call('PATCH', '/patients/me', { phone: phone, bloodType: 'A+', allergies: 'Ninguna', conditionSummary: 'Asma leve', medications: [{ name: 'Salbutamol', schedule: 'SOS' }] }, patientToken);
@@ -50,7 +67,9 @@ let row = (await db.query(`select row_to_json(p)::text j from "PatientProfile" p
 check('BD sin texto plano de salud/cédula/teléfono', !/Salbutamol|5550001|Asma|A\+/.test(row.j) && !row.j.includes(cedula.slice(2)));
 
 // 3. Médico verificado con agenda
-r = await call('POST', '/auth/register', { email: `d-${run}@t.local`, password: pw, role: 'PROFESSIONAL', firstName: 'Diana', lastName: 'Rojas', acceptLegal: true });
+r = await register({ email: `d-${run}@t.local`, password: pw, role: 'PROFESSIONAL', firstName: 'Diana', lastName: 'Rojas', acceptLegal: true });
+check('médico sin aceptar las Condiciones para profesionales → 400', r.status === 400, String(r.status));
+r = await register({ email: `d-${run}@t.local`, password: pw, role: 'PROFESSIONAL', firstName: 'Diana', lastName: 'Rojas', acceptLegal: true, acceptProfessionalTerms: true });
 const doctorToken = r.data?.accessToken;
 const doc = (await db.query(`select p.id from "ProfessionalProfile" p join "User" u on u.id=p."userId" where u.email=$1`, [`d-${run}@t.local`])).rows[0];
 await db.query(`update "ProfessionalProfile" set "verificationStatus"='VERIFIED', "isPublished"=true, "planTier"='PROFESSIONAL', "verifiedAt"=now(), municipality='Maturín' where id=$1`, [doc.id]);
@@ -151,7 +170,7 @@ r = await call('GET', '/auth/me', null, ad);
 check('me expone permisos del rol', Array.isArray(r.data.permissions) && r.data.permissions.includes('REVIEW_PAYMENTS') && !r.data.permissions.includes('MANAGE_PLANS'));
 
 // 8. Organizaciones
-r = await call('POST', '/auth/register', { email: `o-${run}@t.local`, password: pw, role: 'ORGANIZATION', organizationName: `Farmacia Prueba ${run}`, organizationType: 'PHARMACY', organizationRif: 'J-12345678-9', acceptLegal: true });
+r = await register({ email: `o-${run}@t.local`, password: pw, role: 'ORGANIZATION', organizationName: `Farmacia Prueba ${run}`, organizationType: 'PHARMACY', organizationRif: 'J-12345678-9', acceptLegal: true });
 check('registro de organización', r.status === 201, String(r.status));
 const orgToken = r.data.accessToken;
 const mine = (await call('GET', '/organizations/me/list', null, orgToken)).data;
@@ -166,7 +185,7 @@ check('municipio fuera del catálogo → 400', r.status === 400, String(r.status
 r = await call('PUT', `/organizations/me/${orgId}`, { type: 'PHARMACY', name: `Farmacia Prueba ${run}`, rif: 'J-12345678-9', services: ['Entrega a domicilio'], paymentMethods: ['Pago Móvil'], locations: [loc] }, orgToken);
 check('autogestión del perfil', r.status === 200 && r.data.services[0] === 'Entrega a domicilio');
 await new Promise((res) => setTimeout(res, 61_000)); // límite de 5 registros/min por IP
-check('otra cuenta no ve la organización (404)', (await call('GET', `/organizations/me/${orgId}`, null, (await call('POST', '/auth/register', { email: `o2-${run}@t.local`, password: pw, role: 'ORGANIZATION', organizationName: `Otra ${run}`, organizationType: 'CLINIC', acceptLegal: true })).data.accessToken)).status === 404);
+check('otra cuenta no ve la organización (404)', (await call('GET', `/organizations/me/${orgId}`, null, (await register({ email: `o2-${run}@t.local`, password: pw, role: 'ORGANIZATION', organizationName: `Otra ${run}`, organizationType: 'CLINIC', acceptLegal: true })).data.accessToken)).status === 404);
 r = await call('PATCH', `/organizations/admin/${orgId}/review`, { approved: true }, ad);
 check('admin verifica organización', r.status === 200 && r.data.verificationStatus === 'VERIFIED');
 check('ya aparece en el directorio público', (await call('GET', '/organizations')).data.some((o) => o.id === orgId));
@@ -258,7 +277,7 @@ check('dueño invita a un editor (72 h, solo hash en BD)', r.status === 201 && i
 r = await call('GET', `/organizations/invitations/preview?token=${edToken}`);
 check('vista previa pública con correo enmascarado', r.status === 200 && r.data.email === 'e***@t.local' && r.data.role === 'EDITOR' && r.data.accountExists === false);
 const orgsBefore = (await db.query(`select count(*)::int n from "Organization"`)).rows[0].n;
-r = await call('POST', '/auth/register', { email: `ed-${run}@t.local`, password: pw, role: 'ORGANIZATION', acceptLegal: true, invitationToken: edToken });
+r = await register({ email: `ed-${run}@t.local`, password: pw, role: 'ORGANIZATION', acceptLegal: true, invitationToken: edToken });
 const edTokenAuth = r.data?.accessToken;
 const orgsAfter = (await db.query(`select count(*)::int n from "Organization"`)).rows[0].n;
 check('alta por invitación: se une sin crear otra organización', r.status === 201 && orgsAfter === orgsBefore, `${r.status} ${orgsBefore}→${orgsAfter}`);
@@ -325,7 +344,7 @@ r = await call('GET', '/documents/requirements', null, doctorToken);
 check('catálogo de documentos sin tipos retirados', r.status === 200 && !r.data.some((x) => x.type === 'SOLVENCIA_DEONTOLOGICA'));
 
 // 15c. Publicación: 60% de documentos aprobados + biografía + foto; Plus/Premium con el 100%
-r = await call('POST', '/auth/register', { email: `pub-${run}@t.local`, password: pw, role: 'PROFESSIONAL', firstName: 'Paula', lastName: 'Mora', acceptLegal: true });
+r = await register({ email: `pub-${run}@t.local`, password: pw, role: 'PROFESSIONAL', firstName: 'Paula', lastName: 'Mora', acceptLegal: true, acceptProfessionalTerms: true });
 const pubToken = r.data?.accessToken;
 const pub = (await db.query(`select p.id, p.slug from "ProfessionalProfile" p join "User" u on u.id=p."userId" where u.email=$1`, [`pub-${run}@t.local`])).rows[0];
 const pubDoc = async (type, status) => db.query(`insert into "ProfessionalDocument"(id,"professionalId",type,"fileKey","originalFileName","mimeType","fileSizeBytes",status,"updatedAt") values ($1,$2,$3,'documents/e2e.pdf','doc.pdf','application/pdf',1000,$4,now())`, [`pub-${run}-${type}`, pub.id, type, status]);
@@ -377,7 +396,46 @@ r = await call('GET', `/professionals/${docRow.slug}`);
 const publicJson = JSON.stringify(r.data ?? {});
 check('la ficha pública muestra el código pero nunca cédula, RIF ni correo', r.status === 200 && r.data.publicCode === docRow.publicCode && !publicJson.includes('99887766') && !publicJson.includes(`d-${run}@t.local`) && !('cedula' in r.data) && !('rif' in r.data));
 
-// 16. Migración de datos heredados completa
+// 16. Centro de privacidad del paciente: historial de accesos y copia de sus datos
+// (sesión nueva: más arriba el paciente cambió su contraseña y cerró todas sus sesiones)
+const patientSession = (await call('POST', '/auth/login', { email: `p-${run}@t.local`, password: 'Nueva12345x' })).data?.accessToken;
+r = await call('GET', '/patients/me/access-log', null, patientSession);
+check('el paciente ve quién leyó sus datos y las autorizaciones que revocó', r.status === 200
+  && r.data.some((e) => e.action === 'PATIENT_DATA_READ' && e.professional?.name === 'Dr(a). Diana Rojas')
+  && r.data.some((e) => e.action === 'PATIENT_DATA_REVOKED'));
+r = await call('GET', '/patients/me/export', null, patientSession);
+check('descarga de datos: ficha descifrada, citas, autorizaciones, accesos y aceptaciones', r.status === 200
+  && r.data.profile.cedula === cedula && r.data.appointments.some((a) => a.reason === 'Dolor de pecho')
+  && r.data.authorizations.length > 0 && r.data.accessLog.length > 0 && r.data.legalAcceptances.length === 4);
+check('la descarga no expone datos cifrados ni claves de búsqueda', !/healthDataEnc|cedulaLookup|gmm1\./.test(JSON.stringify(r.data)));
+check('un médico sin ficha de paciente no tiene historial → 404', (await call('GET', '/patients/me/access-log', null, doctorToken)).status === 404);
+
+// 17. Aceptación legal expresa y canal de reclamos
+const legalEmail = `legal-${run}@t.local`;
+await db.query(`insert into "User"(id,email,"passwordHash",role,"isEmailVerified","updatedAt") values (gen_random_uuid()::text,$1,$2,'USER',true,now())`,
+  [legalEmail, await argon2.hash(pw, { type: argon2.argon2id })]);
+const pendingToken = (await call('POST', '/auth/login', { email: legalEmail, password: pw })).data?.accessToken;
+r = await call('GET', '/auth/me', null, pendingToken);
+check('sin aceptaciones registradas pide los cuatro documentos del paciente', r.data?.needsLegalAcceptance === true && r.data.pendingLegalDocuments?.length === 4);
+r = await call('POST', '/auth/accept-legal', { documents: ['TERMS', 'PRIVACY'] }, pendingToken);
+check('aceptar solo una parte no alcanza → 400', r.status === 400, String(r.status));
+r = await call('POST', '/auth/accept-legal', { documents: ['TERMS', 'PRIVACY', 'PATIENT_HEALTH_CONSENT', 'AGE_DECLARATION'] }, pendingToken);
+check('aceptación expresa de todo → sin pendientes y con evidencia', r.status === 200 && r.data.needsLegalAcceptance === false
+  && (await db.query(`select count(*)::int n from "LegalAcceptance" a join "User" u on u.id=a."userId" where u.email=$1 and a.context='UPDATE'`, [legalEmail])).rows[0].n === 4);
+r = await call('POST', '/legal-requests', { category: 'FALSE_CREDENTIAL', requesterName: 'Denunciante Prueba', requesterEmail: `den-${run}@t.local`,
+  description: 'El perfil muestra una especialidad que no corresponde con sus credenciales.' });
+check('reclamo sin cuenta → número de solicitud', r.status === 201 && /^R-[A-Z0-9]{8}$/.test(r.data?.ticket ?? ''), String(r.status));
+const publicTicket = r.data?.ticket;
+r = await call('POST', '/legal-requests/lookup', { ticket: publicTicket, email: `den-${run}@t.local` });
+check('consulta del estado con número y correo', r.status === 200 && r.data.status === 'OPEN');
+check('con otro correo no revela la solicitud → 404', (await call('POST', '/legal-requests/lookup', { ticket: publicTicket, email: 'otro@t.local' })).status === 404);
+r = await call('POST', '/legal-requests/me', { category: 'ACCOUNT_DELETION', requesterName: 'Pedro Luna', requesterEmail: 'intento@otro.local',
+  description: 'Quiero cerrar mi cuenta y que se eliminen mis datos.' }, patientSession);
+check('con sesión la solicitud usa el correo de la cuenta', r.status === 201
+  && (await db.query('select "requesterEmail" e from "LegalRequest" where ticket=$1', [r.data.ticket])).rows[0].e === `p-${run}@t.local`);
+check('un paciente no ve la bandeja administrativa → 403', (await call('GET', '/legal-requests/admin', null, patientSession)).status === 403);
+
+// 18. Migración de datos heredados completa
 check('_PatientPlaintextLegacy no existe', (await db.query(`select to_regclass('public."_PatientPlaintextLegacy"') t`)).rows[0].t === null);
 
 console.log(failures === 0 ? '\nTODO OK' : `\n${failures} FALLO(S)`);

@@ -37,8 +37,9 @@ model User {
   /// reuso de refresh token), sin esperar a que expiren.
   tokenVersion        Int       @default(0)
 
-  /// Versión exacta de los Términos y de la Política de privacidad que el
-  /// usuario aceptó (ver frontend/src/lib/legal.ts) y cuándo lo hizo.
+  /// Versión vigente de los Términos y de la Política de privacidad que el
+  /// usuario aceptó y cuándo. La evidencia completa de cada aceptación (todos
+  /// los documentos, versiones, fecha, IP y navegador) está en LegalAcceptance.
   termsVersionAccepted   String?
   privacyVersionAccepted String?
   legalAcceptedAt        DateTime?
@@ -61,6 +62,9 @@ model User {
   patientVaultSessions PatientVaultSession[]
   sentOrganizationInvitations     OrganizationInvitation[] @relation("OrganizationInvitationSender")
   acceptedOrganizationInvitations OrganizationInvitation[] @relation("OrganizationInvitationAcceptor")
+  legalAcceptances    LegalAcceptance[]
+  legalRequests       LegalRequest[]         @relation("LegalRequestRequester")
+  resolvedLegalRequests LegalRequest[]       @relation("LegalRequestResolver")
 
   @@index([role])
 }
@@ -831,6 +835,82 @@ model AuditLog {
   createdAt  DateTime @default(now())
 
   @@index([resource, resourceId])
+}
+
+/// Textos legales que se aceptan uno por uno (ver common/legal-versions.ts).
+enum LegalDocument {
+  TERMS                  // Términos y condiciones
+  PRIVACY                // Política de privacidad
+  PROFESSIONAL_TERMS     // Condiciones para profesionales
+  PATIENT_HEALTH_CONSENT // Consentimiento del paciente para tratar sus datos de salud
+  AGE_DECLARATION        // Declaración de mayoría de edad (pacientes)
+}
+
+/// Evidencia de cada aceptación: quién, qué documento, qué versión, cuándo y
+/// desde dónde. Solo se agregan filas; nunca se editan. El texto de cada
+/// versión queda en el historial del repositorio.
+model LegalAcceptance {
+  id         String        @id @default(uuid())
+  userId     String?
+  user       User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  document   LegalDocument
+  version    String
+  /// REGISTER (al crear la cuenta) o UPDATE (al aceptar una versión nueva).
+  context    String
+  acceptedAt DateTime      @default(now())
+  ipAddress  String?
+  userAgent  String?
+
+  @@index([userId, document])
+}
+
+enum LegalRequestCategory {
+  PRIVACY_RIGHTS        // acceso, copia, rectificación u oposición
+  ACCOUNT_DELETION      // cierre y eliminación de la cuenta
+  UNAUTHORIZED_ACCESS   // acceso indebido a datos
+  FALSE_IDENTITY        // identidad falsa o suplantación
+  FALSE_CREDENTIAL      // título o credencial falsa
+  SUSPENDED_PROFESSIONAL
+  MISLEADING_CONTENT    // publicidad o contenido engañoso
+  SECURITY              // vulnerabilidad o incidente
+  BILLING               // cobros, pagos y reembolsos
+  INTELLECTUAL_PROPERTY
+  AUTHORITY_REQUEST     // requerimiento de una autoridad
+  OTHER
+}
+
+enum LegalRequestStatus {
+  OPEN
+  IN_REVIEW
+  RESOLVED
+  REJECTED
+}
+
+/// Canal de reclamos, denuncias y solicitudes legales (/reclamos). El ticket
+/// se entrega al solicitante; cada cambio de estado queda en la auditoría.
+model LegalRequest {
+  id             String               @id @default(uuid())
+  ticket         String               @unique
+  category       LegalRequestCategory
+  status         LegalRequestStatus   @default(OPEN)
+  requesterName  String
+  requesterEmail String
+  requesterPhone String?
+  userId         String?
+  user           User?                @relation("LegalRequestRequester", fields: [userId], references: [id], onDelete: SetNull)
+  /// Perfil, página o recurso al que se refiere (opcional).
+  subjectUrl     String?
+  description    String
+  resolution     String?
+  resolvedAt     DateTime?
+  resolvedById   String?
+  resolvedBy     User?                @relation("LegalRequestResolver", fields: [resolvedById], references: [id], onDelete: SetNull)
+  ipAddress      String?
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  @@index([status, createdAt])
+  @@index([category])
 }
 
 // Registro de consentimiento de cookies (evidencia de cumplimiento)

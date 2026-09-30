@@ -9,11 +9,14 @@ import { LegacyPatientDataMigrator } from './legacy-patient-data.migrator';
 import { PatientVaultController } from './patient-vault.controller';
 import { PatientVaultService } from './patient-vault.service';
 import { PatientVaultGuard } from './patient-vault.guard';
+import { PatientPrivacyController } from './patient-privacy.controller';
+import { PatientPrivacyService } from './patient-privacy.service';
+import { LegalModule } from '../legal/legal.module';
 
 @Module({
-  imports: [StorageModule, NotificationsModule],
-  controllers: [PatientsController, PatientIdentityAdminController, PatientVaultController],
-  providers: [PatientsService, PatientDataCodec, LegacyPatientDataMigrator, PatientVaultService, PatientVaultGuard],
+  imports: [StorageModule, NotificationsModule, LegalModule],
+  controllers: [PatientsController, PatientPrivacyController, PatientIdentityAdminController, PatientVaultController],
+  providers: [PatientsService, PatientPrivacyService, PatientDataCodec, LegacyPatientDataMigrator, PatientVaultService, PatientVaultGuard],
   exports: [PatientsService, PatientDataCodec, PatientVaultGuard, PatientVaultService],
 })
 export class PatientsModule {}
