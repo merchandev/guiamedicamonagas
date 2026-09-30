@@ -3,7 +3,7 @@
 > Bitácora central de cambios, implementaciones, decisiones técnicas y tareas de evolución del sistema.
 >
 > **Repositorio:** [`merchandev/guiamedicamonagas`](https://github.com/merchandev/guiamedicamonagas) · **Rama:** `main`<br>
-> **Última actualización de esta bitácora:** `2026-09-30 08:03:13 -04:00` · **Estado:** 🟢 Registro activo
+> **Última actualización de esta bitácora:** `2026-09-30 10:15:59 -04:00` · **Estado:** 🟢 Registro activo
 
 ![Estado](https://img.shields.io/badge/estado-registro%20activo-16a34a?style=flat-square)
 ![Rama](https://img.shields.io/badge/rama-main-2563eb?style=flat-square)
@@ -136,8 +136,9 @@ flowchart LR
     AE[🛂 2026-09-29\n12:48:40\nACT-0031 · Cuentas, planes pagados\ny eliminación definitiva]
     AF[🎬 2026-09-29\n14:17:09\nACT-0032 · Precios nuevos y plan\nAgencia con video de presentación]
     AG[⚖️ 2026-09-30\n08:03:13\nACT-0033 · Marco legal venezolano,\nreclamos y derechos del paciente]
+    AH[🗑️ 2026-09-30\n10:15:59\nACT-0034 · Reactivar desde «Médicos»\ny eliminar cuentas desactivadas]
 
-    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L --> M --> N --> O --> P --> Q --> R --> S --> T --> U --> V --> W --> X --> Y --> Z --> AA --> AB --> AC --> AD --> AE --> AF --> AG
+    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L --> M --> N --> O --> P --> Q --> R --> S --> T --> U --> V --> W --> X --> Y --> Z --> AA --> AB --> AC --> AD --> AE --> AF --> AG --> AH
 ```
 
 ### Resumen cuantitativo
@@ -145,8 +146,8 @@ flowchart LR
 | Indicador | Resultado |
 |---|---:|
 | Actividades históricas importadas desde Git | `3` |
-| Actividades documentales añadidas con esta bitácora | `30` |
-| Actividades registradas en total | `33` |
+| Actividades documentales añadidas con esta bitácora | `31` |
+| Actividades registradas en total | `34` |
 | Rama de referencia | `main` |
 | Commit base consultado | [`81b1091`](https://github.com/merchandev/guiamedicamonagas/commit/81b1091) |
 | Zona horaria de control | `America/Caracas` (`-04:00`) |
@@ -1459,6 +1460,68 @@ El titular pidió «blindarse legalmente» y adaptar el sistema a las leyes vene
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
+<a id="act-0034"></a>
+
+### 🗑️ ACT-0034 · «Reactivar» desde la lista de médicos y eliminación definitiva de cuentas desactivadas
+
+<details>
+<summary><strong>2026-09-30 10:15:59 -04:00</strong> · <code>1ac6272</code> · 🟢 Completado</summary>
+
+**Responsable:** `Claude Opus 5.5` · **Tipo:** `administración | corrección | privacidad | despliegue` · **Commit:** [`1ac6272`](https://github.com/merchandev/guiamedicamonagas/commit/1ac6272)
+
+El titular reportó, con una captura de «Médicos registrados», que tras dar de baja a un médico el botón «Reactivar» no funcionaba. Pidió además que una cuenta desactivada, de médico o de paciente, se pueda borrar permanentemente, para que la persona pueda registrarse de nuevo. El detalle técnico está en [`CONTROLES-ADMINISTRATIVOS.md`](CONTROLES-ADMINISTRATIVOS.md).
+
+**Causa del botón que no respondía:**
+- «Reactivar» en «Médicos» llamaba al control del **perfil** (`PATCH /professionals/admin/:id/suspend`). Ese control rechaza con 403 una cuenta suspendida o dada de baja, y la página no mostraba el error.
+- La eliminación definitiva ya existía desde [ACT-0031](#act-0031), pero solo en «Cuentas y planes de médicos» y con el filtro «Dadas de baja». Sin filtro, la cuenta dada de baja desaparecía de la vista.
+
+**Cambios:**
+- **Lista «Médicos»:** recibe el estado de la cuenta y lo muestra («Cuenta suspendida» o «Cuenta dada de baja»).
+  - Con la cuenta desactivada, «Reactivar» reactiva la **cuenta**, con motivo y aviso al titular, y al lado aparece «Eliminar definitivamente».
+  - Con la cuenta activa, el botón actúa solo sobre el perfil y ahora dice «Suspender perfil» o «Reactivar perfil».
+  - Los errores y el resultado de cada acción se muestran en la página.
+- **Eliminación definitiva:** se puede aplicar a cualquier cuenta desactivada, suspendida o dada de baja; antes solo a las bajas. Una cuenta activa sigue rechazándose. Lo demás no cambia: solo el SUPERADMIN, con motivo y escribiendo «ELIMINAR».
+- **Gestión de cuentas (médicos y pacientes):** la vista sin filtro lista todas las cuentas, y «Suspendidas» ya no incluye las bajas.
+- **Volver a registrarse:** el correo (y la cédula del paciente) queda libre. La persona entra como una cuenta nueva, sin documentos, verificación ni historial anteriores. El último correo al titular se lo dice.
+- **Reactivar a un médico sin documentos cargados** lo deja en «Pendiente de documentos»; antes quedaba «En revisión» sin nada que revisar.
+- Un solo diálogo compartido ([`AccountActionDialog`](frontend/src/components/admin/AccountActionDialog.tsx)) reemplaza los dos modales que tenía la gestión de cuentas.
+- Sin migración: la restricción `User_purged_deleted` se cumple porque, al eliminar una cuenta que solo estaba suspendida, `deletedAt` se fija en ese momento.
+
+**Verificación local** (PostgreSQL desechable):
+- 105 pruebas unitarias, tipos y compilación de backend y frontend.
+- Suite general e2e `TODO OK` y suite administrativa **85/85** (antes 79), en el mismo orden que el CI. Casos nuevos: eliminar una cuenta suspendida, registrarse de nuevo con el mismo correo, filtros de la lista y estado de la cuenta en la lista de médicos.
+- En el navegador, con cuentas de prueba:
+  - «Reactivar» sobre una cuenta dada de baja desde «Médicos» funcionó.
+  - «Eliminar definitivamente» sobre una cuenta suspendida no se habilitó hasta escribir «ELIMINAR», y la cuenta salió de la lista.
+  - Baja y reactivación desde la gestión de cuentas: la baja siguió visible sin filtro.
+  - Eliminación de un paciente suspendido, con la bóveda abierta.
+  - Médico y paciente eliminados se registraron de nuevo con el mismo correo (y la misma cédula).
+- No se pudo capturar pantalla ni probar el ancho móvil: el panel del navegador no estaba dibujando. El contenido se comprobó leyendo la página.
+- «Suspender perfil» sigue pidiendo el motivo con un cuadro del navegador y no se probó con clics.
+
+**CI de GitHub:** «CI» y «Seguridad» en verde para `1ac6272`.
+
+**Despliegue en el VPS** (`gmm-independent`):
+- El primer intento (log `deploy-act34.log`) falló al construir la imagen web: la descarga de las tipografías de Google durante `next build` agotó el tiempo. No llegó a migrar ni a recrear contenedores; producción siguió con la versión anterior.
+- El segundo intento (log `deploy-act34b.log`) terminó bien, sin cambios en el código.
+- Respaldos cifrados previos: `gmm-db-20260930T140859Z-pre-deploy.dump.gpg` y `gmm-db-20260930T141047Z-pre-deploy.dump.gpg`.
+- Sin migraciones pendientes. Se recrearon `api` y `web`, que quedaron *healthy*. Prueba de humo **25/25**.
+- Los otros proyectos del servidor siguen desde hace 4 días, sin reinicios.
+- Las rutas administrativas responden 401 sin sesión. En producción no se hicieron pruebas de escritura.
+- Estado de las cuentas al desplegar: 2 médicos y 2 pacientes dados de baja, y el superadministrador activo. Ningún médico tiene pagos pendientes de revisión, así que la eliminación no se bloquea.
+
+**Archivos destacados:**
+- [`frontend/src/app/admin/medicos/page.tsx`](frontend/src/app/admin/medicos/page.tsx)
+- [`frontend/src/components/admin/AccountActionDialog.tsx`](frontend/src/components/admin/AccountActionDialog.tsx)
+- [`frontend/src/components/AdminAccountManager.tsx`](frontend/src/components/AdminAccountManager.tsx)
+- [`backend/src/admin/account-purge.service.ts`](backend/src/admin/account-purge.service.ts)
+- [`backend/src/admin/account-management.service.ts`](backend/src/admin/account-management.service.ts)
+- [`backend/test/e2e/admin-accounts.e2e.mjs`](backend/test/e2e/admin-accounts.e2e.mjs)
+
+</details>
+
+<p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
+
 <a id="registro-por-area"></a>
 
 ## 🧩 Registro por área
@@ -1474,7 +1537,7 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | 💳 Monetización | Planes, Pago Móvil, aprobación, tasa BCV, evidencia de tasa por cuota, catálogo de bancos, referencia única atómica, Plus/Premium/Agencia solo con el 100% de documentos, pagos externos registrados por la administración con renovación anticipada, precios de septiembre de 2026 (3,99 / 5,99 / 10,99 / 69,99 USD), plan Agencia y políticas de pagos y de reembolsos | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0010](#act-0010) · [ACT-0011](#act-0011) · [ACT-0015](#act-0015) · [ACT-0019](#act-0019) · [ACT-0021](#act-0021) · [ACT-0031](#act-0031) · [ACT-0032](#act-0032) · [ACT-0033](#act-0033) |
 | 📅 Agenda y citas | Horarios, disponibilidad, reservas, máquina de estados, anti-doble-reserva, zona America/Caracas | [ACT-0007](#act-0007) · [ACT-0015](#act-0015) |
 | 🔒 Pacientes | Código pseudónimo, cifrado de datos de salud, consentimiento por alcance y tiempo, lecturas auditadas, registro propio, foto de identificación verificada por un admin, reserva con la ficha propia, código y QR para compartir, directorio del médico por código, bóveda de administración y noindex, registro visible desde el inicio, supresión de la cuenta conservando solo la evidencia legal, consentimiento expreso de datos de salud y mayoría de edad, descarga de los datos propios e historial de accesos | [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0023](#act-0023) · [ACT-0027](#act-0027) · [ACT-0029](#act-0029) · [ACT-0031](#act-0031) · [ACT-0033](#act-0033) |
-| 🛠️ Administración | Médicos, pagos, SEO, cookies, especialidades, planes, verificaciones, organizaciones, bancos, geografía, identidad de pacientes, cuentas (suspensión, baja, eliminación definitiva), planes pagados, video de presentación de los médicos y bandeja de solicitudes legales | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0031](#act-0031) · [ACT-0032](#act-0032) · [ACT-0033](#act-0033) |
+| 🛠️ Administración | Médicos, pagos, SEO, cookies, especialidades, planes, verificaciones, organizaciones, bancos, geografía, identidad de pacientes, cuentas (suspensión, baja, eliminación definitiva), planes pagados, video de presentación de los médicos y bandeja de solicitudes legales | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0031](#act-0031) · [ACT-0032](#act-0032) · [ACT-0033](#act-0033) · [ACT-0034](#act-0034) |
 | 📊 Observabilidad | Auditoría, analítica con consentimiento y sin IP, notificaciones, salud, pruebas, CI, escaneo de imágenes y Dependabot | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) |
 | 🎨 Experiencia | Directorios, dashboard, componentes UI, motion, legal, formularios legibles y utilizables con teclado, sección de pacientes en el inicio, tipografía Montserrat + Open Sans, suiches, botones y foco de campos corregidos, centro legal con 21 documentos versionados y avisos breves (descargo médico, verificación, QR) | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0013](#act-0013) · [ACT-0014](#act-0014) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0017](#act-0017) · [ACT-0019](#act-0019) · [ACT-0022](#act-0022) · [ACT-0023](#act-0023) · [ACT-0025](#act-0025) · [ACT-0026](#act-0026) · [ACT-0028](#act-0028) · [ACT-0033](#act-0033) |
 | 🚢 Operación | Variables de entorno, Compose, almacenamiento, correo, proxy, imágenes mínimas y antivirus | [ACT-0001](#act-0001) · [ACT-0002](#act-0002) · [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0008](#act-0008) · [ACT-0009](#act-0009) · [ACT-0011](#act-0011) · [ACT-0016](#act-0016) · [ACT-0017](#act-0017) · [ACT-0018](#act-0018) · [ACT-0019](#act-0019) · [ACT-0024](#act-0024) · [ACT-0027](#act-0027) |
@@ -1551,6 +1614,7 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | IMP-062 | Aceptación expresa por documento y por tipo de cuenta, con evidencia de solo inserción (documento, versión, fecha, contexto, IP y navegador); Términos y Privacidad 3.0 | 🟢 Completado | [`backend/src/legal/legal-acceptance.service.ts`](backend/src/legal/legal-acceptance.service.ts), [`frontend/src/components/legal/LegalConsentChecklist.tsx`](frontend/src/components/legal/LegalConsentChecklist.tsx) |
 | IMP-063 | Canal de reclamos, denuncias y solicitudes legales con número de seguimiento, consulta de estado y bandeja administrativa auditada (`MANAGE_LEGAL_REQUESTS`) | 🟢 Completado | [`backend/src/legal/legal-requests.service.ts`](backend/src/legal/legal-requests.service.ts), [`frontend/src/app/admin/solicitudes/page.tsx`](frontend/src/app/admin/solicitudes/page.tsx) |
 | IMP-064 | Derechos del paciente: descarga de sus datos, historial de accesos y solicitudes desde «Privacidad y mis datos» | 🟢 Completado | [`backend/src/patients/patient-privacy.service.ts`](backend/src/patients/patient-privacy.service.ts), [`frontend/src/app/paciente/privacidad/page.tsx`](frontend/src/app/paciente/privacidad/page.tsx) |
+| IMP-065 | Reactivar y eliminar definitivamente desde la lista de médicos; eliminación de cualquier cuenta desactivada (suspendida o dada de baja) y registro posterior con el mismo correo | 🟢 Completado | [`frontend/src/components/admin/AccountActionDialog.tsx`](frontend/src/components/admin/AccountActionDialog.tsx), [`backend/src/admin/account-purge.service.ts`](backend/src/admin/account-purge.service.ts) |
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
@@ -1598,6 +1662,8 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | 🟠 Media | Decidir si un perfil «en curso» (60% de documentos) puede publicarse sin el título y el registro del MPPS aprobados. La matriz legal recomienda exigir las credenciales esenciales; hoy la política de verificación describe la regla actual y el título del sitio dice «Directorio médico verificado» | 🔴 Pendiente del titular | Regla decidida y reflejada en el código y en `/verificacion-profesionales`; hay un borrador en la rama `wip`. Ver [ACT-0033](#act-0033) |
 | 🟡 Baja | Eliminación de cuenta por autoservicio (hoy se pide por el canal de reclamos y la ejecuta un administrador) y registro de la aceptación de las condiciones comerciales al contratar un plan | 🔵 Planificado | Botón en «Privacidad y mis datos» con confirmación por contraseña; fila en `LegalAcceptance` al suscribirse |
 | 🟡 Baja | Si se porta la CSP estricta de la rama `wip`, permitir `frame-src https://www.youtube-nocookie.com` e `img-src https://i.ytimg.com`, o el video de presentación deja de verse | 🔵 Planificado | Ver [ACT-0032](#act-0032) |
+| 🟡 Baja | La imagen web descarga las tipografías de Google durante `next build`; si esa descarga falla, el despliegue se detiene antes de tocar producción (pasó una vez en [ACT-0034](#act-0034) y el reintento funcionó). Guardar las tipografías en el repositorio (`next/font/local`) quita esa dependencia | 🔵 Planificado | Build de la imagen web sin acceso a `fonts.gstatic.com` |
+| 🟡 Baja | «Suspender perfil» en la lista de médicos pide el motivo con un cuadro del navegador (`window.prompt`); pasarlo al mismo diálogo que usan las cuentas | 🔵 Planificado | Motivo en un formulario, con validación. Ver [ACT-0034](#act-0034) |
 | 🟡 Baja | Revisar los PR #13 y #14 de Dependabot (actualizaciones menores abiertas tras ACT-0031) | 🔵 Planificado | Su chequeo de gitleaks falló por el hallazgo histórico ya ignorado en `342745a`; pasa al rebasarlos |
 | 🟠 Media | Proteger la rama `main` (al menos contra *force push* y borrado) y activar las alertas de Dependabot | 🔴 Bloqueado | Decisión del usuario sobre los ajustes del repositorio; ver [ACT-0017](#act-0017) |
 | 🟢 Continua | Registrar cada modificación nueva con fecha, hora, responsable y evidencia | 🟢 Activo | No existen cambios relevantes sin entrada en esta bitácora |
@@ -1679,6 +1745,7 @@ Para cada cambio futuro, añadir una entrada en la línea de tiempo y actualizar
 | `2026-09-29 12:48:40 -04:00` | Incorporación de ACT-0031 (revisión de la gestión de cuentas de Codex, eliminación definitiva, planes pagados con renovación, Next 16.3.7) con su despliegue; dos pendientes nuevos | 🟢 Completado |
 | `2026-09-29 14:17:09 -04:00` | Incorporación de ACT-0032 (precios nuevos, plan Agencia con video de presentación de YouTube e insignia dorada, semilla que ya no pisa los planes editados) con su despliegue; dos pendientes nuevos (términos del plan Agencia y CSP de la rama `wip`) | 🟢 Completado |
 | `2026-09-30 08:03:13 -04:00` | Incorporación de ACT-0033 (marco legal venezolano: 21 documentos versionados, aceptaciones con evidencia, canal de reclamos, derechos del paciente y avisos breves) con su despliegue; se cierra el pendiente de los términos del plan Agencia y se abren cinco del titular (datos del operador, abogado, plazos, proveedores y credenciales esenciales) | 🟢 Completado |
+| `2026-09-30 10:15:59 -04:00` | Incorporación de ACT-0034 («Reactivar» desde la lista de médicos, eliminación definitiva de cuentas suspendidas o dadas de baja y registro posterior con el mismo correo) con su despliegue; dos pendientes nuevos (tipografías en el build de la imagen web y motivo de «Suspender perfil» en un formulario) | 🟢 Completado |
 
 ---
 
