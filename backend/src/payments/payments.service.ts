@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { EnvConfig } from '../config/env.validation';
 import { PrismaService } from '../prisma/prisma.service';
@@ -12,6 +12,27 @@ import type { SecuredFile } from '../uploads/upload-security.service';
 import { recomputeDirectoryScore } from '../professionals/directory-score';
 import { isUniqueViolation } from '../common/utils/prisma-errors';
 import { ReportPaymentDto } from './dto/report-payment.dto';
+import { UpdatePagoMovilAccountDto } from './dto/update-pago-movil-account.dto';
+import type { AuthenticatedUser } from '../common/types/authenticated-user';
+
+const PAGO_MOVIL_ACCOUNT_KEY = 'pago_movil_account';
+
+interface StoredPagoMovilAccount {
+  holderName: string;
+  documentId: string;
+  bankCode: string;
+  accountNumber: string;
+  phone: string;
+}
+
+export type PagoMovilAccount = { configured: boolean; bankName: string | null } & {
+  [K in keyof StoredPagoMovilAccount]: StoredPagoMovilAccount[K] | null;
+};
+
+/** V12345678 → V-12345678. El dígito verificador de un RIF se deja como se escribió. */
+function formatDocumentId(raw: string): string {
+  return `${raw[0]}-${raw.slice(1).replace(/^-/, '')}`;
+}
 
 @Injectable()
 export class PaymentsService {
@@ -23,13 +44,65 @@ export class PaymentsService {
     private readonly config: ConfigService<EnvConfig, true>,
   ) {}
 
-  async getPagoMovilAccount() {
-    return {
-      bankName: this.config.get('PAGO_MOVIL_BANK_NAME', { infer: true }),
-      bankCode: this.config.get('PAGO_MOVIL_BANK_CODE', { infer: true }),
-      phone: this.config.get('PAGO_MOVIL_PHONE', { infer: true }),
-      documentId: this.config.get('PAGO_MOVIL_ID', { infer: true }),
+  /**
+   * Cuenta que recibe los Pagos Móviles. La registra la administración en
+   * «Pagos» (antes venía de variables del servidor, con valores de ejemplo).
+   * Mientras no exista, `configured` es false y el panel no ofrece reportar
+   * un pago.
+   */
+  async getPagoMovilAccount(): Promise<PagoMovilAccount> {
+    const row = await this.prisma.siteSettings.findUnique({ where: { key: PAGO_MOVIL_ACCOUNT_KEY } });
+    const saved = row?.value as unknown as StoredPagoMovilAccount | undefined;
+    if (!saved) {
+      return { configured: false, holderName: null, documentId: null, bankCode: null, bankName: null, accountNumber: null, phone: null };
+    }
+    const bank = await this.prisma.financialInstitution.findUnique({ where: { code: saved.bankCode }, select: { name: true } });
+    return { configured: true, ...saved, bankName: bank?.name ?? saved.bankCode };
+  }
+
+  /** Un paciente o una cuenta sin suscripción posible no necesita ver a dónde se paga. */
+  async getPagoMovilAccountForPayer(user: Pick<AuthenticatedUser, 'id' | 'role'>) {
+    const payer =
+      user.role === 'PROFESSIONAL' ||
+      user.role === 'ORGANIZATION' ||
+      !!(await this.prisma.organizationMember.findFirst({ where: { userId: user.id }, select: { id: true } }));
+    if (!payer) throw new ForbiddenException('Estos datos se muestran en el panel de médicos y organizaciones');
+    return this.getPagoMovilAccount();
+  }
+
+  async updatePagoMovilAccount(dto: UpdatePagoMovilAccountDto, adminId: string, ipAddress?: string) {
+    const bank = await this.prisma.financialInstitution.findUnique({ where: { code: dto.bankCode } });
+    if (!bank || !bank.isActive || !bank.supportsPagoMovil) {
+      throw new BadRequestException('Ese banco no está activo para Pago Móvil en el catálogo de bancos');
+    }
+    // Las cuentas venezolanas tienen 20 dígitos y empiezan por el código del banco.
+    if (!dto.accountNumber.startsWith(dto.bankCode)) {
+      throw new BadRequestException(`El número de cuenta debe empezar por el código del banco (${dto.bankCode})`);
+    }
+    const value: StoredPagoMovilAccount = {
+      holderName: dto.holderName,
+      documentId: formatDocumentId(dto.documentId),
+      bankCode: dto.bankCode,
+      accountNumber: dto.accountNumber,
+      phone: `${dto.phone.slice(0, 4)}-${dto.phone.slice(4)}`,
     };
+    const previous = await this.getPagoMovilAccount();
+    await this.prisma.siteSettings.upsert({
+      where: { key: PAGO_MOVIL_ACCOUNT_KEY },
+      create: { key: PAGO_MOVIL_ACCOUNT_KEY, value: value as never },
+      update: { value: value as never },
+    });
+    // A dónde llega el dinero: cada cambio queda registrado con quién lo hizo.
+    const changed = (Object.keys(value) as (keyof StoredPagoMovilAccount)[]).filter((field) => previous[field] !== value[field]);
+    await this.audit.record({
+      userId: adminId,
+      action: 'PAGO_MOVIL_ACCOUNT_UPDATED',
+      resource: 'SiteSettings',
+      resourceId: PAGO_MOVIL_ACCOUNT_KEY,
+      details: { changed, bankCode: value.bankCode, accountEnding: value.accountNumber.slice(-4), phoneEnding: value.phone.slice(-4) },
+      ipAddress,
+    });
+    return this.getPagoMovilAccount();
   }
 
   listBanks() {

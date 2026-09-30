@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/Input';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { PageSpinner } from '@/components/ui/Spinner';
 import { PAYMENT_STATUS_LABELS } from '@/lib/labels';
+import { PagoMovilAccountCard } from '@/components/admin/PagoMovilAccountCard';
 
 interface QueuePayment {
   id: string;
@@ -22,11 +23,18 @@ interface QueuePayment {
   createdAt: string;
   installment: {
     subscription: {
-      professional: { firstName: string; lastName: string; slug: string };
+      professional: { firstName: string; lastName: string; slug: string } | null;
+      organization: { name: string } | null;
       plan: { name: string };
     };
   };
 }
+
+/** El titular de la suscripción es un médico o una organización. */
+const payerName = (p: QueuePayment) => {
+  const { professional, organization } = p.installment.subscription;
+  return professional ? `${professional.firstName} ${professional.lastName}` : organization?.name ?? 'Titular sin nombre';
+};
 
 export default function AdminPaymentsPage() {
   const [items, setItems] = useState<QueuePayment[] | null>(null);
@@ -71,7 +79,11 @@ export default function AdminPaymentsPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl">Verificación de pagos móviles</h1>
+      <h1 className="text-2xl">Pagos</h1>
+
+      <PagoMovilAccountCard />
+
+      <h2 className="text-lg font-semibold text-ink-900">Pagos reportados por revisar</h2>
 
       {items.length === 0 ? (
         <EmptyState title="No hay pagos pendientes de revisión" />
@@ -80,7 +92,7 @@ export default function AdminPaymentsPage() {
           <table className="w-full text-left text-sm">
             <thead className="border-b border-ink-100 bg-ink-50/50">
               <tr>
-                <th className="p-4 font-medium text-ink-600">Profesional</th>
+                <th className="p-4 font-medium text-ink-600">Titular y plan</th>
                 <th className="p-4 font-medium text-ink-600">Banco</th>
                 <th className="p-4 font-medium text-ink-600">Teléfono</th>
                 <th className="p-4 font-medium text-ink-600">Referencia</th>
@@ -95,8 +107,8 @@ export default function AdminPaymentsPage() {
                 return (
                   <tr key={p.id}>
                     <td className="p-4 font-medium text-ink-900">
-                      {p.installment.subscription.professional.firstName}{' '}
-                      {p.installment.subscription.professional.lastName}
+                      {payerName(p)}
+                      <span className="block text-xs font-normal text-ink-500">{p.installment.subscription.plan.name}</span>
                     </td>
                     <td className="p-4">{p.senderBankName}</td>
                     <td className="p-4">{p.senderPhone}</td>
@@ -125,8 +137,7 @@ export default function AdminPaymentsPage() {
         {reviewing && (
           <div className="space-y-4">
             <p className="text-sm text-ink-600">
-              Bs. {reviewing.amountBs} — {reviewing.installment.subscription.professional.firstName}{' '}
-              {reviewing.installment.subscription.professional.lastName}
+              Bs. {reviewing.amountBs} — {payerName(reviewing)} · {reviewing.installment.subscription.plan.name}
             </p>
             {error && <Alert tone="error">{error}</Alert>}
             <Textarea

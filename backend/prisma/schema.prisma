@@ -277,7 +277,7 @@ model ProfessionalRegistration {
 }
 
 /**
- * Sedes adicionales de consulta, disponibles desde el plan Profesional Plus.
+ * Sedes adicionales de consulta, disponibles desde el plan Plus.
  */
 model ProfessionalLocation {
   id             String              @id @default(uuid())
@@ -298,7 +298,7 @@ model ProfessionalLocation {
 }
 
 // Instagram/Facebook/TikTok (redes) y Web, disponibles según el plan:
-// Profesional Plus = hasta 2 redes; Premium, Agencia y Organización = las 3 redes + web.
+// Plus = hasta 2 redes; Premium, Agencia y Organización = las 3 redes + web.
 enum SocialPlatform {
   INSTAGRAM
   FACEBOOK

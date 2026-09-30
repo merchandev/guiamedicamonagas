@@ -16,7 +16,7 @@ const DOCTOR_TIER_COLORS: Record<PlanTier, string> = {
 const DOCTOR_TIER_TITLES: Record<PlanTier, string> = {
   FREE: 'Credenciales verificadas · Perfil Básico',
   PROFESSIONAL: 'Credenciales verificadas · Perfil Profesional',
-  PROFESSIONAL_PLUS: 'Credenciales verificadas · Perfil Profesional Plus',
+  PROFESSIONAL_PLUS: 'Credenciales verificadas · Perfil Plus',
   PREMIUM: 'Credenciales verificadas · Perfil Premium',
   AGENCY: 'Credenciales verificadas · Perfil Agencia',
   ORGANIZATION: 'Credenciales verificadas',

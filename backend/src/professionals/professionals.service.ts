@@ -413,13 +413,13 @@ export class ProfessionalsService implements OnApplicationBootstrap {
     return this.signPhoto(updated);
   }
 
-  // --- Sedes adicionales (Profesional Plus en adelante) ----------------
+  // --- Sedes adicionales (Plus en adelante) ----------------
 
   async listOwnLocations(userId: string) {
     const profile = await this.prisma.professionalProfile.findUnique({ where: { userId } });
     if (!profile) throw new NotFoundException('No tienes un perfil profesional');
     if (!tierAtLeast(profile.planTier, 'PROFESSIONAL_PLUS')) {
-      throw new ForbiddenException('Agregar varias sedes requiere el plan Profesional Plus o superior');
+      throw new ForbiddenException('Agregar varias sedes requiere el plan Plus o superior');
     }
     return this.prisma.professionalLocation.findMany({
       where: { professionalId: profile.id },
@@ -431,7 +431,7 @@ export class ProfessionalsService implements OnApplicationBootstrap {
     const profile = await this.prisma.professionalProfile.findUnique({ where: { userId } });
     if (!profile) throw new NotFoundException('No tienes un perfil profesional');
     if (!tierAtLeast(profile.planTier, 'PROFESSIONAL_PLUS')) {
-      throw new ForbiddenException('Agregar varias sedes requiere el plan Profesional Plus o superior');
+      throw new ForbiddenException('Agregar varias sedes requiere el plan Plus o superior');
     }
 
     const plan = await this.prisma.subscriptionPlan.findUnique({ where: { tier: profile.planTier } });
@@ -472,7 +472,7 @@ export class ProfessionalsService implements OnApplicationBootstrap {
     });
   }
 
-  // --- Redes sociales / web (Profesional Plus en adelante) -------------
+  // --- Redes sociales / web (Plus en adelante) -------------
 
   async setOwnSocialLinks(userId: string, dto: UpsertSocialLinksDto) {
     const profile = await this.prisma.professionalProfile.findUnique({ where: { userId } });

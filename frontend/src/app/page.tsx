@@ -48,7 +48,7 @@ const VERIFICATION_STEPS = [
   },
   {
     title: 'Perfil público',
-    body: 'Con el 100% aprobado recibes el sello de verificado y puedes contratar Profesional Plus, Premium o Agencia.',
+    body: 'Con el 100% aprobado recibes el sello de verificado y puedes contratar Plus, Premium o Agencia.',
     icon: BadgeCheckIcon,
   },
 ];

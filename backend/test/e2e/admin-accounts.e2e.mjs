@@ -74,6 +74,29 @@ try {
   let r = await call('PATCH','/patients/me',{ cedula: patientCedula, phone: patientPhone },patientToken);
   check('el paciente carga su cédula y teléfono (cifrados)', r.status === 200);
 
+  // Pago Móvil de la plataforma: lo registra el SUPERADMIN y solo se ve con sesión de médico u organización.
+  await db.query('DELETE FROM "SiteSettings" WHERE key=\'pago_movil_account\'');
+  const pmBank=(await db.query('SELECT code FROM "FinancialInstitution" WHERE "isActive"=true AND "supportsPagoMovil"=true LIMIT 1')).rows[0];
+  const pm={holderName:'  Titular de Prueba ',documentId:'v12345678',bankCode:pmBank.code,accountNumber:`${pmBank.code} 0000 00 0000000001`,phone:'0414-1234567'};
+  const pmPath='/payments/admin/pago-movil-account';
+  check('los datos de Pago Móvil no son públicos',(await call('GET','/payments/pago-movil-account',null,null)).status===401);
+  check('un paciente no ve los datos de Pago Móvil',(await call('GET','/payments/pago-movil-account',null,patientToken)).status===403);
+  r=await call('GET','/payments/pago-movil-account',null,doctorToken);
+  check('sin registrar, el médico ve que aún no hay datos para pagar',r.status===200 && r.data.configured===false && r.data.phone===null);
+  check('ADMIN consulta los datos pero no cambia a dónde llegan los pagos',(await call('GET',pmPath)).status===200 && (await call('PUT',pmPath,pm)).status===403);
+  check('un médico no usa la ruta administrativa',(await call('PUT',pmPath,pm,doctorToken)).status===403);
+  check('cuenta que no empieza por el código del banco → 400',(await call('PUT',pmPath,{...pm,accountNumber:`9999${'0'.repeat(16)}`},superToken)).status===400);
+  check('cuenta sin 20 dígitos, teléfono o cédula inválidos → 400',(await call('PUT',pmPath,{...pm,accountNumber:`${pmBank.code}123`},superToken)).status===400
+    && (await call('PUT',pmPath,{...pm,phone:'12345'},superToken)).status===400 && (await call('PUT',pmPath,{...pm,documentId:'12345678'},superToken)).status===400);
+  check('banco fuera del catálogo → 400',(await call('PUT',pmPath,{...pm,bankCode:'9998',accountNumber:`9998${'0'.repeat(16)}`},superToken)).status===400);
+  r=await call('PUT',pmPath,pm,superToken);
+  check('el SUPERADMIN registra su Pago Móvil, normalizado y auditado',r.status===200 && r.data.configured===true && r.data.holderName==='Titular de Prueba'
+    && r.data.documentId==='V-12345678' && r.data.accountNumber===`${pmBank.code}0000000000000001` && r.data.phone==='0414-1234567' && !!r.data.bankName
+    && await count('SELECT count(*)::int n FROM "AuditLog" WHERE "userId"=$1 AND action=\'PAGO_MOVIL_ACCOUNT_UPDATED\'',[ids.superadmin])===1);
+  r=await call('GET','/payments/pago-movil-account',null,doctorToken);
+  check('el médico ve los datos dentro de su panel para pagar y reportar',r.status===200 && r.data.configured===true && r.data.holderName==='Titular de Prueba'
+    && r.data.accountNumber.length===20 && r.data.bankCode===pmBank.code);
+
   r = await call('GET','/admin/accounts/professionals',null,doctorToken);
   check('profesional no puede listar cuentas administrativas', r.status === 403);
   r = await call('PATCH',`/admin/accounts/professionals/${ids.doctor}`,mod('DELETE'),patientToken);
@@ -145,6 +168,10 @@ try {
   const catalog=Object.fromEntries((r.data??[]).map(p=>[p.tier,Number(p.priceUsd)]));
   check('catálogo con los precios nuevos y el plan Agencia',catalog.PROFESSIONAL===3.99 && catalog.PROFESSIONAL_PLUS===5.99
     && catalog.PREMIUM===10.99 && catalog.AGENCY===69.99);
+  const planNames=Object.fromEntries((r.data??[]).map(p=>[p.tier,p.name]));
+  check('los planes se llaman Perfil Básico, Profesional, Plus, Premium y Agencia',planNames.FREE==='Perfil Básico' && planNames.PROFESSIONAL==='Profesional'
+    && planNames.PROFESSIONAL_PLUS==='Plus' && planNames.PREMIUM==='Premium' && planNames.AGENCY==='Agencia'
+    && !JSON.stringify(r.data).includes('Profesional Plus'));
   const videoId='dQw4w9WgXcQ';
   r=await call('PUT','/professionals/me/presentation-video',{url:`https://youtu.be/${videoId}?si=e2e`},modToken);
   check('sin el plan Agencia el médico no puede poner video',r.status===403);

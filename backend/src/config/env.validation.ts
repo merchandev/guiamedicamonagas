@@ -109,11 +109,6 @@ const baseEnvSchema = z.object({
   // Obligatorio en producción; vacío solo en desarrollo y pruebas.
   CLAMAV_HOST: z.string().optional().default(''),
   CLAMAV_PORT: z.coerce.number().default(3310),
-
-  PAGO_MOVIL_BANK_NAME: z.string().default('Banesco'),
-  PAGO_MOVIL_BANK_CODE: z.string().default('0134'),
-  PAGO_MOVIL_PHONE: z.string().default(''),
-  PAGO_MOVIL_ID: z.string().default(''),
 });
 
 /**

@@ -174,7 +174,8 @@ export default async function PlansPage() {
       <Reveal delay={0.15}>
         <p className="mx-auto mt-10 max-w-2xl text-center text-xs text-ink-400">
           Los precios se cotizan en USD. El pago se realiza por Pago Móvil en bolívares, a la tasa oficial del BCV vigente
-          al suscribirse. Los planes son mensuales y no se renuevan ni se cobran de forma automática. La verificación de
+          al suscribirse. Los datos para pagar se muestran dentro de tu panel de médico, en «Suscripción y pagos», y desde
+          ahí mismo reportas el pago. Los planes son mensuales y no se renuevan ni se cobran de forma automática. La verificación de
           credenciales y el perfil básico son gratuitos, y la verificación es la misma en todos los planes: pagar nunca
           sustituye ni acelera la revisión de documentos, ni indica superioridad clínica. Condiciones completas en{' '}
           <Link href="/pagos-y-suscripciones" className="underline">

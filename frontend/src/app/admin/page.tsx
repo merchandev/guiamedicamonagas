@@ -18,6 +18,7 @@ interface AdminStats {
 
 export default function AdminHome() {
   const [stats, setStats] = useState<AdminStats | null>(null);
+  const [showActivity, setShowActivity] = useState(false);
 
   useEffect(() => {
     api.get<AdminStats>('/admin/stats').then(setStats).catch(() => undefined);
@@ -47,20 +48,43 @@ export default function AdminHome() {
         ))}
       </div>
 
-      <div className="card p-6">
-        <h2 className="mb-4 text-lg font-semibold text-ink-900">Actividad reciente</h2>
-        <div className="space-y-2">
-          {stats.recentAuditLogs.map((log) => (
-            <div key={log.id} className="flex items-center justify-between border-b border-ink-50 py-2 text-sm last:border-0">
-              <span className="text-ink-700">
-                {log.action} — {log.resource}
+      {/* Cerrada por defecto: es un registro técnico que se consulta a demanda. */}
+      <div className="card">
+        <h2>
+          <button
+            type="button"
+            onClick={() => setShowActivity((open) => !open)}
+            aria-expanded={showActivity}
+            aria-controls="actividad-reciente"
+            className="flex w-full items-center justify-between gap-4 rounded-xl2 px-6 py-4 text-left"
+          >
+            <span className="text-lg font-semibold text-ink-900">Actividad reciente</span>
+            <span className="flex items-center gap-2 text-sm text-pine-700">
+              {showActivity ? 'Ocultar' : `Ver las últimas ${stats.recentAuditLogs.length}`}
+              <span aria-hidden className={`text-lg transition-transform duration-300 ${showActivity ? 'rotate-45' : ''}`}>
+                +
               </span>
-              <span className="text-xs text-ink-400">
-                {log.user?.email ?? 'sistema'} · {new Date(log.createdAt).toLocaleString('es-VE')}
-              </span>
-            </div>
-          ))}
-        </div>
+            </span>
+          </button>
+        </h2>
+        {showActivity && (
+          <div id="actividad-reciente" className="space-y-2 px-6 pb-6">
+            {stats.recentAuditLogs.length === 0 && <p className="text-sm text-ink-500">Todavía no hay actividad registrada.</p>}
+            {stats.recentAuditLogs.map((log) => (
+              <div
+                key={log.id}
+                className="flex flex-col gap-1 border-b border-ink-50 py-2 text-sm last:border-0 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <span className="text-ink-700">
+                  {log.action} — {log.resource}
+                </span>
+                <span className="break-all text-xs text-ink-400">
+                  {log.user?.email ?? 'sistema'} · {new Date(log.createdAt).toLocaleString('es-VE')}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

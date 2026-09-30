@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { api, ApiError } from '@/lib/api';
 import { useBanks } from '@/lib/catalogs';
 import { Alert } from '@/components/ui/Alert';
@@ -17,11 +18,38 @@ export interface PendingInstallment {
   rateCapturedAt?: string | null;
 }
 
+/** La registra la administración en «Pagos»; solo se consulta con sesión de médico u organización. */
 interface PagoMovilAccount {
-  bankName: string;
-  bankCode: string;
-  phone: string;
-  documentId: string;
+  configured: boolean;
+  holderName: string | null;
+  documentId: string | null;
+  bankCode: string | null;
+  bankName: string | null;
+  accountNumber: string | null;
+  phone: string | null;
+}
+
+function AccountRow({ label, value }: { label: string; value: string }) {
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Sin permiso de portapapeles: el dato sigue visible para copiarlo a mano.
+    }
+  };
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+      <p className="min-w-0 break-words">
+        <strong>{label}:</strong> {value}
+      </p>
+      <button type="button" onClick={copy} className="text-xs font-medium text-pine-700 underline" aria-label={`Copiar ${label.toLowerCase()}`}>
+        {copied ? 'Copiado' : 'Copiar'}
+      </button>
+    </div>
+  );
 }
 
 /**
@@ -43,12 +71,13 @@ export function PagoMovilReportForm({
   const banks = useBanks();
   const rate = useExchangeRate();
   const [account, setAccount] = useState<PagoMovilAccount | null>(null);
+  const [accountError, setAccountError] = useState(false);
   const [bankCode, setBankCode] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    api.get<PagoMovilAccount>('/payments/pago-movil-account').then(setAccount).catch(() => undefined);
+    api.get<PagoMovilAccount>('/payments/pago-movil-account').then(setAccount).catch(() => setAccountError(true));
   }, []);
 
   const exchangeRate = rate?.usdToBs ?? null;
@@ -70,7 +99,22 @@ export function PagoMovilReportForm({
     }
   };
 
+  if (accountError) {
+    return <Alert tone="error">No pudimos cargar los datos para el Pago Móvil. Recarga la página para intentarlo de nuevo.</Alert>;
+  }
   if (!account) return null;
+  if (!account.configured) {
+    return (
+      <Alert tone="warning">
+        Los datos para hacer el Pago Móvil todavía no están publicados. Tu plan queda reservado: podrás pagar y reportar el
+        pago desde esta misma página en cuanto estén disponibles. Si necesitas ayuda, escríbenos por el{' '}
+        <Link href="/reclamos?tipo=BILLING" className="font-medium underline">
+          canal de solicitudes
+        </Link>
+        .
+      </Alert>
+    );
+  }
 
   return (
     <div className="card p-6">
@@ -78,16 +122,15 @@ export function PagoMovilReportForm({
         <h2 className="text-lg font-semibold text-ink-900">Reportar Pago Móvil</h2>
         <BcvRateBadge className="rounded-full bg-pine-50 px-2.5 py-1 text-xs text-pine-800" />
       </div>
-      <div className="mt-3 rounded-lg bg-pine-50 p-4 text-sm text-pine-900">
-        <p>
-          <strong>Banco:</strong> {account.bankName} ({account.bankCode})
-        </p>
-        <p>
-          <strong>Teléfono:</strong> {account.phone}
-        </p>
-        <p>
-          <strong>Cédula/RIF:</strong> {account.documentId}
-        </p>
+      <p className="mt-2 text-sm text-ink-600">
+        1. Haz el Pago Móvil desde tu banco a estos datos. 2. Reporta aquí el pago con su referencia y el comprobante.
+      </p>
+      <div className="mt-3 space-y-1.5 rounded-lg bg-pine-50 p-4 text-sm text-pine-900">
+        {account.holderName && <AccountRow label="Titular" value={account.holderName} />}
+        {account.documentId && <AccountRow label="Cédula o RIF" value={account.documentId} />}
+        {account.bankCode && <AccountRow label="Banco" value={`${account.bankCode} · ${account.bankName ?? ''}`.trim()} />}
+        {account.phone && <AccountRow label="Teléfono" value={account.phone} />}
+        {account.accountNumber && <AccountRow label="N.º de cuenta" value={account.accountNumber} />}
         <p className="mt-1 text-base">
           <strong>Monto a pagar hoy:</strong> Bs. {formatBs(liveAmountBs)}
         </p>

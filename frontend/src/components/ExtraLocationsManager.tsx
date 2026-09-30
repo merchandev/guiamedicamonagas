@@ -77,7 +77,7 @@ export function ExtraLocationsManager() {
   if (locked) {
     return (
       <EmptyState
-        title="Varias sedes es un beneficio del plan Profesional Plus"
+        title="Varias sedes es un beneficio del plan Plus"
         description="Actualiza tu plan para agregar consultorios adicionales."
         action={
           <Link href="/dashboard/pagos">

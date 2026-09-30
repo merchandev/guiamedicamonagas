@@ -22,7 +22,7 @@ const TIER_ORDER: Record<DoctorTier, number> = {
 const TABS: { tier: DemoTier; label: string }[] = [
   { tier: 'FREE', label: 'Básico' },
   { tier: 'PROFESSIONAL', label: 'Profesional' },
-  { tier: 'PROFESSIONAL_PLUS', label: 'Profesional Plus' },
+  { tier: 'PROFESSIONAL_PLUS', label: 'Plus' },
   { tier: 'PREMIUM', label: 'Premium' },
   { tier: 'AGENCY', label: 'Agencia' },
   { tier: 'ORGANIZATION', label: 'Organizaciones' },
@@ -160,7 +160,7 @@ function DoctorDemo({ tier }: { tier: DoctorTier }) {
                 )}
               </div>
             ) : (
-              <Locked label="Varias sedes desde el plan Profesional Plus" />
+              <Locked label="Varias sedes desde el plan Plus" />
             )}
           </div>
         </div>
@@ -175,7 +175,7 @@ function DoctorDemo({ tier }: { tier: DoctorTier }) {
               <div className="h-8 w-28 rounded-md bg-pine-700/90" />
             </div>
           ) : (
-            <Locked label="Formulario de mensajes desde el plan Profesional Plus" />
+            <Locked label="Formulario de mensajes desde el plan Plus" />
           )}
         </div>
       </div>
@@ -203,7 +203,7 @@ function DoctorDemo({ tier }: { tier: DoctorTier }) {
             )}
           </div>
         ) : (
-          <Locked label="Publicaciones disponibles desde el plan Profesional Plus" />
+          <Locked label="Publicaciones disponibles desde el plan Plus" />
         )}
       </div>
 
@@ -224,7 +224,7 @@ function DoctorDemo({ tier }: { tier: DoctorTier }) {
             </span>
           </div>
         ) : (
-          <Locked label="Redes sociales y web desde el plan Profesional Plus" />
+          <Locked label="Redes sociales y web desde el plan Plus" />
         )}
       </div>
 

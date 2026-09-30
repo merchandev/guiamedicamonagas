@@ -65,7 +65,7 @@ export function SocialLinksManager({ planTier, initialLinks }: { planTier: PlanT
   if (limits.maxLinks === 0) {
     return (
       <EmptyState
-        title="Redes sociales y web es un beneficio desde el plan Profesional Plus"
+        title="Redes sociales y web es un beneficio desde el plan Plus"
         description="Actualiza tu plan para mostrar tus redes sociales y tu sitio web en tu perfil público."
         action={
           <Link href="/dashboard/pagos">

@@ -12,6 +12,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { PaymentsService } from './payments.service';
 import { ReportPaymentDto } from './dto/report-payment.dto';
 import { UpsertBankDto } from './dto/upsert-bank.dto';
+import { UpdatePagoMovilAccountDto } from './dto/update-pago-movil-account.dto';
 import { Permission, RequirePermissions } from '../common/permissions';
 
 @Controller('payments')
@@ -22,10 +23,24 @@ export class PaymentsController {
     private readonly prisma: PrismaService,
   ) {}
 
-  @Public()
+  // Los datos de la cuenta que cobra solo se muestran dentro del panel de
+  // quien puede reportar un pago: médicos y miembros de una organización.
   @Get('pago-movil-account')
-  getPagoMovilAccount() {
+  getPagoMovilAccount(@CurrentUser() user: AuthenticatedUser) {
+    return this.payments.getPagoMovilAccountForPayer(user);
+  }
+
+  @RequirePermissions(Permission.REVIEW_PAYMENTS)
+  @Get('admin/pago-movil-account')
+  adminGetPagoMovilAccount() {
     return this.payments.getPagoMovilAccount();
+  }
+
+  // Cambiar a dónde llegan los pagos es una decisión del titular (SUPERADMIN).
+  @RequirePermissions(Permission.REVIEW_PAYMENTS, Permission.MANAGE_PLANS)
+  @Put('admin/pago-movil-account')
+  updatePagoMovilAccount(@CurrentUser() admin: AuthenticatedUser, @Body() dto: UpdatePagoMovilAccountDto, @Req() req: FastifyRequest) {
+    return this.payments.updatePagoMovilAccount(dto, admin.id, req.ip);
   }
 
   @Public()

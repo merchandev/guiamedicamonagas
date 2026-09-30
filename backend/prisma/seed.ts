@@ -65,7 +65,7 @@ const PLANS = [
   },
   {
     tier: 'PROFESSIONAL_PLUS' as const,
-    name: 'Profesional Plus',
+    name: 'Plus',
     description: 'Para profesionales que quieren crecer su presencia y captar más pacientes.',
     priceUsd: 5.99,
     billingCycle: 'MONTHLY' as const,
@@ -89,7 +89,7 @@ const PLANS = [
     maxLocations: 5,
     postsLimit: null,
     features: [
-      'Todo lo del plan Profesional Plus',
+      'Todo lo del plan Plus',
       'Insignia de verificado (dorada)',
       'Espacio «Destacado» rotativo en el directorio (señalado como patrocinado)',
       'Publicaciones ilimitadas',

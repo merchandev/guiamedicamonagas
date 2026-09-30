@@ -360,7 +360,7 @@ const pubPublic = await call('GET', `/professionals/${pub.slug}`);
 check('4 de 6 aprobados + biografía + foto → público, aún sin sello «Verificado»', r.status === 200 && pubPublic.status === 200 && pubPublic.data?.verificationStatus === 'IN_REVIEW', `${r.status}/${pubPublic.status}/${pubPublic.data?.verificationStatus}`);
 const plans = (await call('GET', '/subscriptions/plans')).data ?? [];
 r = await call('POST', '/subscriptions/me', { planId: plans.find((p) => p.tier === 'PROFESSIONAL_PLUS')?.id }, pubToken);
-check('Profesional Plus sin el 100% de documentos → 403', r.status === 403, String(r.status));
+check('Plus sin el 100% de documentos → 403', r.status === 403, String(r.status));
 r = await call('PATCH', '/professionals/me', { firstName: 'Paula', lastName: 'Mora', bio: 'Corta' }, pubToken);
 check('sin biografía completa deja de ser público', r.status === 200 && (await call('GET', `/professionals/${pub.slug}`)).status === 404);
 

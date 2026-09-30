@@ -30,7 +30,7 @@ export const FEATURED_TIERS: PlanTier[] = ['AGENCY', 'PREMIUM'];
 /**
  * Redes sociales/web permitidas por plan. El WhatsApp NO vive aquí: es un
  * campo aparte, ya desbloqueado desde el plan Profesional.
- * - Profesional Plus: hasta 2 redes (Instagram/Facebook/TikTok), sin web.
+ * - Plus: hasta 2 redes (Instagram/Facebook/TikTok), sin web.
  * - Premium, Agencia y Organización: las 3 redes + el ícono de Web.
  */
 export const SOCIAL_LINK_LIMITS: Record<PlanTier, { maxLinks: number; allowedPlatforms: SocialPlatform[] }> = {

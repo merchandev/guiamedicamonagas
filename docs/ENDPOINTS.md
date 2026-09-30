@@ -56,7 +56,9 @@ Cada access token lleva la versión de sesión del usuario (`tv`); si no coincid
 * `GET /subscriptions/plans` · `GET /subscriptions/exchange-rate` (públicos).
 * `GET|POST /subscriptions/me` (médico) · `GET|POST /subscriptions/organizations/:id` (organización).
 * `POST /payments` — reporte de Pago Móvil con comprobante (el médico, o dueño/admin de la organización). Una referencia del mismo banco no puede repetirse en pagos vigentes (409, garantizado por índice único).
+* `GET /payments/pago-movil-account` — cuenta a la que se paga (titular, cédula o RIF, banco, teléfono y número de cuenta). Solo con sesión de médico o de miembro de una organización: se muestra dentro del panel, junto al formulario de reporte. Devuelve `configured: false` mientras la administración no la registre.
 * Admin: cola, comprobante (apertura auditada: `PAYMENT_RECEIPT_VIEWED`) y revisión (`REVIEW_PAYMENTS`); planes y tasa manual (`MANAGE_PLANS`).
+* Admin: `GET /payments/admin/pago-movil-account` (`REVIEW_PAYMENTS`) y `PUT /payments/admin/pago-movil-account` (además `MANAGE_PLANS`, es decir SUPERADMIN; auditado como `PAGO_MOVIL_ACCOUNT_UPDATED`). Se guarda en `SiteSettings` (`pago_movil_account`).
 
 ## Analítica
 * `POST /analytics/track` — el frontend solo lo llama con consentimiento de análisis; no se guarda IP ni user-agent.

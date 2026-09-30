@@ -12,7 +12,7 @@ export class PostsService {
     const profile = await this.prisma.professionalProfile.findUnique({ where: { userId } });
     if (!profile) throw new NotFoundException('No tienes un perfil profesional');
     if (!tierAtLeast(profile.planTier, 'PROFESSIONAL_PLUS')) {
-      throw new ForbiddenException('Las publicaciones requieren el plan Profesional Plus o superior');
+      throw new ForbiddenException('Las publicaciones requieren el plan Plus o superior');
     }
     return profile;
   }

@@ -31,7 +31,7 @@ const SECTIONS: LegalSection[] = [
           ; esa página es la referencia al momento de contratar.
         </P>
         <P>
-          Los planes Profesional Plus, Premium y Agencia solo pueden contratarse con el 100 % de los documentos exigidos
+          Los planes Plus, Premium y Agencia solo pueden contratarse con el 100 % de los documentos exigidos
           aprobados.
         </P>
         <P>

@@ -295,7 +295,7 @@ La referencia completa está en [.env.example](.env.example).
 | Sesiones | JWT_SECRET, JWT_EXPIRATION, JWT_REFRESH_SECRET, JWT_REFRESH_EXPIRATION_DAYS, COOKIE_SECRET |
 | Correo | SMTP_HOST, SMTP_PORT, SMTP_SECURE, SMTP_USER, SMTP_PASS, MAIL_FROM |
 | WhatsApp | WHATSAPP_ENABLED, WHATSAPP_API_VERSION, WHATSAPP_PHONE_NUMBER_ID, WHATSAPP_ACCESS_TOKEN |
-| Pago Móvil | PAGO_MOVIL_BANK_NAME, PAGO_MOVIL_BANK_CODE, PAGO_MOVIL_PHONE, PAGO_MOVIL_ID |
+| Pago Móvil | Sin variables: la cuenta que cobra se registra en Administración → Pagos y se guarda en la base de datos |
 
 Nunca subas .env, tokens, contraseñas, comprobantes, documentos de verificación ni credenciales de proveedores al repositorio.
 

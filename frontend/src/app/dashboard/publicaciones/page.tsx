@@ -76,7 +76,7 @@ export default function PostsPage() {
   if (locked) {
     return (
       <EmptyState
-        title="Las publicaciones son parte del plan Profesional Plus"
+        title="Las publicaciones son parte del plan Plus"
         description="Actualiza tu plan para compartir novedades, promociones o consejos de salud en tu perfil público."
         action={
           <Link href="/dashboard/pagos">

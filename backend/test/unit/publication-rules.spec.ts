@@ -74,7 +74,7 @@ describe('publicación del médico: 60% aprobado + biografía + foto', () => {
   });
 });
 
-describe('planes Profesional Plus y Premium: 100% de documentos aprobados', () => {
+describe('planes Plus y Premium: 100% de documentos aprobados', () => {
   it('Plus y Premium lo exigen; Profesional no', () => {
     const partial = documentProgress(false, FOUR);
     expect(canSubscribeToTier('PROFESSIONAL', partial)).toBe(true);
