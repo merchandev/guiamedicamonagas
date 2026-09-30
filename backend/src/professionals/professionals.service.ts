@@ -455,15 +455,15 @@ export class ProfessionalsService implements OnApplicationBootstrap {
     return { message: 'Sede eliminada' };
   }
 
-  // --- Video de presentación (plan Agencia) -----------------------------
+  // --- Video de presentación (plan Marca Médica) -----------------------------
 
   async setOwnPresentationVideo(userId: string, url: string | null | undefined) {
     const profile = await this.prisma.professionalProfile.findUnique({ where: { userId }, select: { id: true, planTier: true } });
     if (!profile) throw new NotFoundException('No tienes un perfil profesional');
     const presentationVideoId = resolvePresentationVideo(url);
-    // Quitarlo siempre se puede; ponerlo o cambiarlo es del plan Agencia.
+    // Quitarlo siempre se puede; ponerlo o cambiarlo es del plan Marca Médica.
     if (presentationVideoId && !tierAtLeast(profile.planTier, PRESENTATION_VIDEO_MIN_TIER)) {
-      throw new ForbiddenException('El video de presentación es un beneficio del plan Agencia');
+      throw new ForbiddenException('El video de presentación es un beneficio del plan Marca Médica');
     }
     return this.prisma.professionalProfile.update({
       where: { id: profile.id },

@@ -204,3 +204,12 @@ export function VideoIcon(props: IconProps) {
     </svg>
   );
 }
+
+export function ChartIcon(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M4 20h16" />
+      <path d="M7 16v-5M12 16V7M17 16v-8" />
+    </svg>
+  );
+}

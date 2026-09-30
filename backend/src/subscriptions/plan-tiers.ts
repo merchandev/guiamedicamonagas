@@ -18,7 +18,7 @@ export function tierAtLeast(tier: PlanTier, min: PlanTier): boolean {
 /** Agenda y citas son un beneficio desde el plan Profesional en adelante. */
 export const AGENDA_MIN_TIER: PlanTier = 'PROFESSIONAL';
 
-/** El video de presentación en la ficha es exclusivo del plan Agencia. */
+/** El video de presentación en la ficha es exclusivo del plan Marca Médica. */
 export const PRESENTATION_VIDEO_MIN_TIER: PlanTier = 'AGENCY';
 
 /**

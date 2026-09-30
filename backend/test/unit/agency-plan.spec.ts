@@ -47,7 +47,7 @@ describe('video de presentación: solo IDs de YouTube', () => {
   });
 });
 
-describe('plan Agencia', () => {
+describe('plan Marca Médica', () => {
   it('es el plan de médico más alto y conserva todo lo de Premium', () => {
     expect(Math.max(...Object.values(DOCTOR_TIER_RANK))).toBe(DOCTOR_TIER_RANK.AGENCY);
     expect(tierAtLeast('AGENCY', 'PREMIUM')).toBe(true);

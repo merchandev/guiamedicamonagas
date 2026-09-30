@@ -10,6 +10,7 @@ import { PageSpinner } from '@/components/ui/Spinner';
 import { SubscriptionPlan } from '@/lib/types';
 import { PLAN_TIER_LABELS } from '@/lib/labels';
 import { ExchangeRate, formatBs, timeAgo } from '@/components/BcvRateBadge';
+import { PlanShowcaseCard } from '@/components/admin/PlanShowcaseCard';
 
 export default function AdminPlansPage() {
   const [plans, setPlans] = useState<SubscriptionPlan[] | null>(null);
@@ -144,6 +145,8 @@ export default function AdminPlansPage() {
           {rateSaved && <Badge tone="pine">Guardada</Badge>}
         </div>
       </div>
+
+      <PlanShowcaseCard />
 
       <div className="space-y-4">
         {plans.map((plan) => {

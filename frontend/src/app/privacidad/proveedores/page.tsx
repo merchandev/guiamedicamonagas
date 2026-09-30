@@ -49,7 +49,7 @@ const SECTIONS: LegalSection[] = [
             ],
             [
               'Video',
-              'Sirve la imagen de portada y reproduce el video de presentación de un perfil, alojado en YouTube. El reproductor se carga solo cuando el visitante pulsa para verlo.',
+              'Sirve la imagen de portada y reproduce el video de presentación de un perfil, alojado en YouTube. El reproductor se carga solo cuando el visitante pulsa para verlo. El video de muestra de «Planes y precios» no carga nada de YouTube hasta que se pulsa.',
               'Datos técnicos del navegador del visitante, como su dirección IP. No recibe datos de la cuenta.',
             ],
             [

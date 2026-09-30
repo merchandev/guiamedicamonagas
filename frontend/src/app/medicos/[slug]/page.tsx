@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/Badge';
 import { ContactForm } from '@/components/ContactForm';
 import { WhatsAppButton, PhoneButton } from '@/components/ContactButtons';
 import { ProfileViewTracker } from '@/components/ProfileViewTracker';
-import { VerificationBadge } from '@/components/VerificationBadge';
+import { MarcaMedicaLabel, VerificationBadge } from '@/components/VerificationBadge';
 import { SocialLinksRow } from '@/components/SocialLinksRow';
 import { YouTubePresentation } from '@/components/YouTubePresentation';
 import { MedicalDisclaimer } from '@/components/legal/MedicalDisclaimer';
@@ -107,6 +107,7 @@ export default async function DoctorProfilePage({ params }: { params: Promise<{ 
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-2xl text-ink-950">{fullName}</h1>
               <VerificationBadge kind="doctor" tier={doctor.planTier} verified={doctor.verificationStatus === 'VERIFIED'} />
+              {doctor.planTier === 'AGENCY' && <MarcaMedicaLabel />}
               {doctor.isFeatured && <Badge tone="gold">Destacado</Badge>}
             </div>
             <p className="mt-1 text-pine-700">

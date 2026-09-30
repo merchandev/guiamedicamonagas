@@ -58,7 +58,7 @@ export interface ProfessionalDetail extends ProfessionalListItem {
   /** «Resumen corto» del médico: alimenta la descripción automática para buscadores. */
   seoDescription: string | null;
   noIndex: boolean;
-  /** ID del video de YouTube de presentación (solo plan Agencia; si no, null). */
+  /** ID del video de YouTube de presentación (solo plan Marca Médica; si no, null). */
   presentationVideoId?: string | null;
   verifiedAt: string | null;
   locations: ProfessionalExtraLocation[];

@@ -24,7 +24,7 @@ export class ProfessionalAccountsController {
   moderate(@Param('id', ParseUUIDPipe) id: string, @Body() dto: ModerateAccountDto, @CurrentUser() actor: AuthenticatedUser, @Req() req: FastifyRequest) {
     return this.accounts.moderate(id, 'PROFESSIONAL', dto, actor.id, req.ip);
   }
-  /** Video de presentación del plan Agencia (lo produce la Guía con el médico). */
+  /** Video de presentación del plan Marca Médica (lo produce la Guía con el médico). */
   @Put(':id/presentation-video')
   setPresentationVideo(@Param('id', ParseUUIDPipe) id: string, @Body() dto: PresentationVideoDto, @CurrentUser() actor: AuthenticatedUser, @Req() req: FastifyRequest) {
     return this.accounts.setPresentationVideo(id, dto.url, actor.id, req.ip);

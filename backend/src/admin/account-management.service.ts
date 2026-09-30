@@ -158,7 +158,7 @@ export class AccountManagementService {
   }
 
   /**
-   * Video de presentación que produce la Guía con el médico (plan Agencia).
+   * Video de presentación que produce la Guía con el médico (plan Marca Médica).
    * Se puede cargar antes de asignarle el plan: la ficha solo lo muestra
    * mientras el plan sea Agencia.
    */

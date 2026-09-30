@@ -9,6 +9,7 @@ const LINKS = [
   { href: '/dashboard/agenda', label: 'Agenda' },
   { href: '/dashboard/citas', label: 'Citas' },
   { href: '/dashboard/pacientes', label: 'Pacientes' },
+  { href: '/dashboard/estadisticas', label: 'Estadísticas' },
   { href: '/dashboard/documentos', label: 'Documentos' },
   { href: '/dashboard/pagos', label: 'Suscripción y pagos' },
   { href: '/dashboard/publicaciones', label: 'Publicaciones' },

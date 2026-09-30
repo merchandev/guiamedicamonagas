@@ -10,6 +10,7 @@ import type { AuthenticatedUser } from '../common/types/authenticated-user';
 import { SubscriptionsService } from './subscriptions.service';
 import { UpsertPlanDto } from './dto/upsert-plan.dto';
 import { UpdateExchangeRateDto } from './dto/exchange-rate.dto';
+import { PresentationVideoDto } from '../professionals/dto/presentation-video.dto';
 import { Permission, RequirePermissions } from '../common/permissions';
 
 @Controller('subscriptions')
@@ -33,6 +34,18 @@ export class SubscriptionsController {
   @Get('exchange-rate')
   getExchangeRate() {
     return this.subscriptions.getExchangeRate();
+  }
+
+  @Public()
+  @Get('showcase')
+  getShowcase() {
+    return this.subscriptions.getShowcase();
+  }
+
+  @RequirePermissions(Permission.MANAGE_PLANS)
+  @Put('admin/showcase')
+  updateShowcase(@Body() dto: PresentationVideoDto, @CurrentUser() actor: AuthenticatedUser, @Req() req: FastifyRequest) {
+    return this.subscriptions.updateShowcase(dto.url, actor.id, req.ip);
   }
 
   @RequirePermissions(Permission.MANAGE_PLANS)

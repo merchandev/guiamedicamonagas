@@ -11,8 +11,8 @@ import { parseYouTubeVideoId, youTubeShortUrl } from '@/lib/youtube';
 import type { PlanTier } from '@/lib/types';
 
 /**
- * Video de presentación de la ficha (plan Agencia). Con otro plan se muestra
- * lo que incluye Agencia; si el médico bajó de plan, su video sigue guardado
+ * Video de presentación de la ficha (plan Marca Médica). Con otro plan se muestra
+ * lo que incluye Marca Médica; si el médico bajó de plan, su video sigue guardado
  * (oculto en la ficha) y lo puede quitar.
  */
 export function PresentationVideoManager({ planTier, initialVideoId }: { planTier: PlanTier; initialVideoId: string | null }) {
@@ -50,8 +50,8 @@ export function PresentationVideoManager({ planTier, initialVideoId }: { planTie
       <div className="card space-y-3 border-gold-200 bg-gold-50/40 p-6">
         <h2 className="text-lg font-semibold text-ink-900">Video de presentación</h2>
         <p className="text-sm text-ink-600">
-          Con el plan <strong>Agencia</strong> tu ficha muestra un video de YouTube para presentarte a tus pacientes, grabas
-          2 videos en colaboración con Guía Médica Monagas y llevas la insignia de verificado dorada.
+          Con el plan <strong>Marca Médica</strong> producimos contigo 2 videos profesionales cada mes (guion, grabación,
+          edición y subtítulos) y uno de ellos puede ser el video de presentación de tu ficha.
         </p>
         {videoId && (
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-ink-100 bg-white p-3 text-sm">
@@ -74,8 +74,8 @@ export function PresentationVideoManager({ planTier, initialVideoId }: { planTie
       <div>
         <h2 className="text-lg font-semibold text-ink-900">Video de presentación</h2>
         <p className="mt-1 text-sm text-ink-600">
-          Tu plan Agencia incluye 2 videos en colaboración con Guía Médica Monagas. Cuando estén en YouTube, pega aquí el
-          enlace del que quieras mostrar en tu ficha.
+          Tu plan Marca Médica incluye 2 videos profesionales cada mes, producidos con Guía Médica Monagas. Cuando estén en
+          YouTube, pega aquí el enlace del que quieras mostrar en tu ficha.
         </p>
       </div>
       {error && <Alert tone="error">{error}</Alert>}

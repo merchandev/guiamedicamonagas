@@ -10,6 +10,9 @@ import { UpdateExchangeRateDto } from './dto/exchange-rate.dto';
 import { loadSubscriptionOwner } from './subscription-owner';
 import { recomputeDirectoryScore } from '../professionals/directory-score';
 import { canSubscribeToTier, documentProgress } from '../professionals/publication-rules';
+import { resolvePresentationVideo } from '../professionals/presentation-video';
+
+const PLAN_SHOWCASE_KEY = 'plan_showcase';
 
 const SUBSCRIPTION_INCLUDE = {
   plan: true,
@@ -37,6 +40,35 @@ export class SubscriptionsService {
 
   syncExchangeRateFromBcv() {
     return this.bcvScraper.syncNow();
+  }
+
+  // --- Video de muestra del plan Marca Médica (página pública de planes) ---
+
+  async getShowcase(): Promise<{ sampleVideoId: string | null }> {
+    const row = await this.prisma.siteSettings.findUnique({ where: { key: PLAN_SHOWCASE_KEY } });
+    const value = row?.value as { sampleVideoId?: string | null } | undefined;
+    return { sampleVideoId: value?.sampleVideoId ?? null };
+  }
+
+  /** Un video real producido por la Guía; sin él, la página muestra una ilustración. */
+  async updateShowcase(url: string | null | undefined, actorId: string, ipAddress?: string) {
+    const sampleVideoId = resolvePresentationVideo(url);
+    await this.prisma.siteSettings.upsert({
+      where: { key: PLAN_SHOWCASE_KEY },
+      create: { key: PLAN_SHOWCASE_KEY, value: { sampleVideoId } },
+      update: { value: { sampleVideoId } },
+    });
+    await this.prisma.auditLog.create({
+      data: {
+        userId: actorId,
+        action: sampleVideoId ? 'PLAN_SAMPLE_VIDEO_SET' : 'PLAN_SAMPLE_VIDEO_CLEARED',
+        resource: 'SiteSettings',
+        resourceId: PLAN_SHOWCASE_KEY,
+        details: { videoId: sampleVideoId },
+        ipAddress,
+      },
+    });
+    return { sampleVideoId };
   }
 
   // --- Catálogo de planes ---

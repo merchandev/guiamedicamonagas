@@ -10,7 +10,7 @@ import { PRESENTATION_VIDEO_MIN_TIER, SOCIAL_LINK_LIMITS, tierAtLeast } from '..
  *   foto de perfil.
  * - La insignia «Verificado» (verificationStatus VERIFIED) sigue exigiendo el
  *   100% de los documentos aprobados.
- * - Plus, Premium y Agencia solo se contratan con el 100% aprobado.
+ * - Plus, Premium y Marca Médica solo se contratan con el 100% aprobado.
  */
 export const PUBLICATION_MIN_DOCUMENT_RATIO = 0.6;
 export const MIN_BIO_LENGTH = 80;
@@ -88,7 +88,7 @@ export function canBePublished(p: PublicationInput): boolean {
   return p.verificationStatus !== 'SUSPENDED' && publicationRequirements(p).every((r) => r.done);
 }
 
-/** Plus, Premium y Agencia exigen el 100% de los documentos aprobados. */
+/** Plus, Premium y Marca Médica exigen el 100% de los documentos aprobados. */
 export function canSubscribeToTier(tier: PlanTier, documents: DocumentProgress): boolean {
   return !FULL_DOCUMENTS_TIERS.includes(tier) || documents.approved === documents.required;
 }
@@ -147,7 +147,7 @@ export function professionalChecklist(p: ChecklistInput) {
       label: 'Documentos de verificación',
       done: docs.approved === docs.required,
       fraction: docs.required ? docs.approved / docs.required : 0,
-      detail: `${docs.approved} de ${docs.required} aprobados · mínimo ${docs.minimumToPublish} para publicarte y todos para Plus, Premium o Agencia`,
+      detail: `${docs.approved} de ${docs.required} aprobados · mínimo ${docs.minimumToPublish} para publicarte y todos para Plus, Premium o Marca Médica`,
       href: '/dashboard/documentos',
       requiredToPublish: true,
     },

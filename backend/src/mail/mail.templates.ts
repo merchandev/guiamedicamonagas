@@ -117,7 +117,7 @@ export function profilePublishedTemplate(rawName: string, profileUrl: string, ap
      <p style="font-size:14px;line-height:1.6;color:#3a3a3a;">
        Tu perfil ya aparece en el directorio de ${BRAND_NAME}: tienes ${approved} de ${required} documentos aprobados,
        tu biografía y tu foto de perfil. Mientras terminamos de revisar el resto, se muestra como «verificación en curso».
-       Con todos tus documentos aprobados obtienes el sello «Verificado» y puedes contratar Plus, Premium o Agencia.
+       Con todos tus documentos aprobados obtienes el sello «Verificado» y puedes contratar Plus, Premium o Marca Médica.
      </p>
      ${button(profileUrl, 'Ver mi perfil público')}`,
   );

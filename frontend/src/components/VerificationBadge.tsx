@@ -8,8 +8,9 @@ const DOCTOR_TIER_COLORS: Record<PlanTier, string> = {
   PROFESSIONAL: 'text-blue-500',
   PROFESSIONAL_PLUS: 'text-indigo-600',
   PREMIUM: 'text-gold-500',
-  // Dorado más intenso, con borde y brillo: el sello del plan Agencia.
-  AGENCY: 'text-gold-400 drop-shadow-[0_0_3px_rgba(214,154,60,0.65)]',
+  // Mismo dorado que Premium: lo que distingue a Marca Médica es su etiqueta
+  // aparte (MarcaMedicaLabel), no un sello que parezca «más verificado».
+  AGENCY: 'text-gold-500',
   ORGANIZATION: 'text-ink-300',
 };
 
@@ -18,7 +19,7 @@ const DOCTOR_TIER_TITLES: Record<PlanTier, string> = {
   PROFESSIONAL: 'Credenciales verificadas · Perfil Profesional',
   PROFESSIONAL_PLUS: 'Credenciales verificadas · Perfil Plus',
   PREMIUM: 'Credenciales verificadas · Perfil Premium',
-  AGENCY: 'Credenciales verificadas · Perfil Agencia',
+  AGENCY: 'Credenciales verificadas · Plan Marca Médica',
   ORGANIZATION: 'Credenciales verificadas',
 };
 
@@ -50,8 +51,8 @@ type Props =
 /**
  * Ícono de verificación. El sello lleno significa credenciales verificadas al
  * 100%, igual para todos los planes: el color solo indica el nivel de perfil
- * (gris Básico, azul Profesional, índigo Plus, dorado Premium y Agencia, este
- * con borde y brillo) o el tipo de organización.
+ * (gris Perfil Básico, azul Profesional, índigo Plus, dorado Premium y Marca
+ * Médica) o el tipo de organización.
  * Un médico público con documentos aún en revisión lleva el sello en contorno.
  */
 export function VerificationBadge(props: Props) {
@@ -70,15 +71,35 @@ export function VerificationBadge(props: Props) {
 
   const color = props.kind === 'doctor' ? DOCTOR_TIER_COLORS[props.tier] : ORG_TYPE_COLORS[props.type];
   const title = props.kind === 'doctor' ? DOCTOR_TIER_TITLES[props.tier] : ORG_TYPE_TITLES[props.type];
-  const agency = props.kind === 'doctor' && props.tier === 'AGENCY';
 
   return (
     <span title={title} className={cn('inline-flex flex-shrink-0', color, props.className)}>
       <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
-        <path fill="currentColor" d={SEAL_PATH} {...(agency ? { stroke: '#9c6521', strokeWidth: 0.9 } : {})} />
+        <path fill="currentColor" d={SEAL_PATH} />
         <path d="M8.3 12.1l2.4 2.4 4.9-5.2" fill="none" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
       <span className="sr-only">{title}</span>
+    </span>
+  );
+}
+
+/**
+ * Etiqueta comercial del plan Marca Médica. Va aparte del sello: el sello dice
+ * que las credenciales están verificadas (igual en todos los planes) y esta
+ * etiqueta solo dice qué servicio contrató el médico.
+ */
+export function MarcaMedicaLabel({ className }: { className?: string }) {
+  const title = 'Plan Marca Médica: servicio de contenido contratado. No es una verificación adicional ni una recomendación clínica.';
+  return (
+    <span
+      title={title}
+      className={cn(
+        'inline-flex flex-shrink-0 items-center rounded-full border border-gold-300 bg-gold-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-gold-800',
+        className,
+      )}
+    >
+      Marca Médica
+      <span className="sr-only"> — {title}</span>
     </span>
   );
 }

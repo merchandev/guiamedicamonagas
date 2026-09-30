@@ -132,7 +132,7 @@ export function AdminAccountManager({ kind }: { kind: 'professionals' | 'patient
     try {
       const saved = await api.put<{ presentationVideoId: string | null }>(`${endpoint}/${videoFor.id}/presentation-video`, { url: next });
       setSuccess(saved.presentationVideoId
-        ? `Video guardado para ${nameOf(videoFor)}.${videoFor.professionalProfile?.planTier === 'AGENCY' ? '' : ' Se mostrará en su ficha cuando tenga el plan Agencia.'}`
+        ? `Video guardado para ${nameOf(videoFor)}.${videoFor.professionalProfile?.planTier === 'AGENCY' ? '' : ' Se mostrará en su ficha cuando tenga el plan Marca Médica.'}`
         : `Video quitado de la ficha de ${nameOf(videoFor)}.`);
       setVideoFor(null); await load();
     } catch (e) { handleError(e); } finally { setBusy(false); }
@@ -185,7 +185,7 @@ export function AdminAccountManager({ kind }: { kind: 'professionals' | 'patient
               {profile.subscriptions[0]?.currentPeriodEnd && ` · Hasta ${new Date(profile.subscriptions[0].currentPeriodEnd).toLocaleDateString('es-VE')}`}</p>}
             <div className="mt-2 flex flex-wrap gap-2"><Badge tone={account.isActive ? 'pine' : 'red'}>{account.deletedAt ? 'Baja' : account.isActive ? 'Cuenta activa' : 'Cuenta suspendida'}</Badge>
               {verification && <Badge tone={verification.tone}>{verification.label}</Badge>}
-              {profile?.presentationVideoId && <Badge tone={profile.planTier === 'AGENCY' ? 'gold' : 'neutral'}>{profile.planTier === 'AGENCY' ? 'Con video' : 'Video oculto (sin plan Agencia)'}</Badge>}
+              {profile?.presentationVideoId && <Badge tone={profile.planTier === 'AGENCY' ? 'gold' : 'neutral'}>{profile.planTier === 'AGENCY' ? 'Con video' : 'Video oculto (sin plan Marca Médica)'}</Badge>}
               {profile?.isPublished && <Link href={`/medicos/${profile.slug}`} className="text-sm text-pine-700 underline">Ver perfil</Link>}
             </div>
           </div>
@@ -212,7 +212,7 @@ export function AdminAccountManager({ kind }: { kind: 'professionals' | 'patient
     <Modal open={!!videoFor} onClose={() => { if (!busy) setVideoFor(null); }} title="Video de presentación">
       {videoFor && <form className="space-y-4" onSubmit={e => { e.preventDefault(); if (videoDraft) void saveVideo(videoUrl.trim()); }}>
         <p className="font-semibold">{nameOf(videoFor)}</p>
-        <p className="text-sm text-ink-600">El plan Agencia incluye 2 videos en colaboración con la Guía. Pega el enlace de YouTube del que se mostrará en su ficha. Puedes cargarlo antes de asignar el plan: la ficha solo lo muestra mientras el plan sea Agencia. El médico también puede cambiarlo desde su perfil.</p>
+        <p className="text-sm text-ink-600">El plan Marca Médica incluye 2 videos profesionales cada mes, producidos con la Guía. Pega el enlace de YouTube del que se mostrará en su ficha. Puedes cargarlo antes de asignar el plan: la ficha solo lo muestra mientras el plan sea Marca Médica. El médico también puede cambiarlo desde su perfil.</p>
         <Input label="Enlace del video en YouTube" placeholder="https://youtu.be/…" maxLength={300} value={videoUrl} onChange={e => setVideoUrl(e.target.value)}
           error={videoUrl.trim() && !videoDraft ? 'Pega un enlace de YouTube (youtu.be/… o youtube.com/watch?v=…).' : undefined} />
         {videoDraft && <YouTubePresentation key={videoDraft} videoId={videoDraft} title={`Video de ${nameOf(videoFor)}`} />}

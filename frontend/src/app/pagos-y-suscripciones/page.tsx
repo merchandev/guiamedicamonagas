@@ -31,14 +31,20 @@ const SECTIONS: LegalSection[] = [
           ; esa página es la referencia al momento de contratar.
         </P>
         <P>
-          Los planes Plus, Premium y Agencia solo pueden contratarse con el 100 % de los documentos exigidos
+          Los planes Plus, Premium y Marca Médica solo pueden contratarse con el 100 % de los documentos exigidos
           aprobados.
         </P>
         <P>
-          <strong>Plan Agencia.</strong> Incluye la producción de dos videos en colaboración con Guía Médica Monagas, que
-          son para el profesional. Uno de ellos puede mostrarse como video de presentación en su ficha mientras el plan
-          Agencia esté vigente; si el plan vence, el video deja de mostrarse y queda guardado. Los detalles de producción
-          (fechas, contenido y entrega) se coordinan con cada profesional.
+          <strong>Plan Marca Médica.</strong> Además de todo lo de Premium, es un servicio de producción de contenido: cada
+          mes pagado incluye dos videos profesionales producidos junto a Guía Médica Monagas (guion, grabación, edición,
+          subtítulos y portada), su publicación colaborativa y un informe mensual de rendimiento. Uno de los videos puede
+          mostrarse como video de presentación en la ficha mientras el plan esté vigente; si el plan vence, el video deja de
+          mostrarse y queda guardado, y no se producen videos de los meses no pagados.
+        </P>
+        <P>
+          Los videos son para el profesional, que puede usarlos en sus redes sociales, en WhatsApp y en su propio sitio web.
+          Las fechas de grabación, los temas y la entrega se coordinan con cada profesional, y el contenido sigue las reglas
+          de <DocLink to="publicidad-medica" />: es informativo y no promete resultados.
         </P>
       </>
     ),
@@ -61,7 +67,8 @@ const SECTIONS: LegalSection[] = [
       <Ul
         items={[
           'El orden del directorio prioriza la relevancia de la búsqueda y los perfiles completos. Los planes de pago suman un impulso acotado.',
-          'El espacio rotativo «Destacado» forma parte de los planes Premium y Agencia, con prioridad para Agencia. Es publicidad y se muestra señalada como tal.',
+          'El espacio rotativo «Destacado» forma parte de los planes Premium y Marca Médica, con prioridad para Marca Médica. Es publicidad y se muestra señalada como tal.',
+          'La etiqueta «Marca Médica» junto al nombre indica el servicio contratado. No es una verificación adicional.',
           'Ninguna de estas ventajas indica superioridad clínica ni equivale a una recomendación de la plataforma.',
         ]}
       />

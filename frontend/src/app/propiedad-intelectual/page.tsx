@@ -79,8 +79,10 @@ const SECTIONS: LegalSection[] = [
     body: (
       <P>
         El video de presentación de un perfil está alojado en YouTube y se rige, además, por las condiciones de ese
-        servicio; el profesional debe tener derecho a publicarlo. Los videos producidos en colaboración dentro del plan
-        Agencia son para el profesional, en los términos que se coordinen con él.
+        servicio; el profesional debe tener derecho a publicarlo. Los videos producidos junto a Guía Médica Monagas dentro
+        del plan Marca Médica son para el profesional: puede usarlos en sus redes sociales, en WhatsApp y en su propio sitio
+        web. Guía Médica Monagas puede difundirlos en publicaciones colaborativas con el profesional, en los términos que
+        se coordinen con él.
       </P>
     ),
   },

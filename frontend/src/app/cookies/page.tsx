@@ -92,7 +92,8 @@ const SECTIONS: LegalSection[] = [
             <>
               <strong>Video de presentación</strong> en algunos perfiles: está alojado en YouTube. La página muestra la
               imagen de portada, que sirve YouTube, y el reproductor se carga únicamente cuando pulsas para verlo, en su
-              modo de privacidad mejorada.
+              modo de privacidad mejorada. El video de muestra del plan Marca Médica, en «Planes y precios», no carga nada
+              de YouTube hasta que pulsas para verlo.
             </>,
           ]}
         />

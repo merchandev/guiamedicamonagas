@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { ProfessionalListItem } from '@/lib/types';
-import { VerificationBadge } from '@/components/VerificationBadge';
+import { MarcaMedicaLabel, VerificationBadge } from '@/components/VerificationBadge';
 import { cn } from '@/lib/cn';
 
 export function DoctorCard({ doctor }: { doctor: ProfessionalListItem }) {
@@ -20,7 +20,7 @@ export function DoctorCard({ doctor }: { doctor: ProfessionalListItem }) {
       >
         {doctor.isFeatured && (
           <span
-            title="Espacio patrocinado: el médico tiene el plan Premium o Agencia. No es una recomendación clínica."
+            title="Espacio patrocinado: el médico tiene el plan Premium o Marca Médica. No es una recomendación clínica."
             className="badge absolute -top-2.5 right-4 bg-gold-500 text-white shadow-soft"
           >
             Destacado
@@ -39,11 +39,12 @@ export function DoctorCard({ doctor }: { doctor: ProfessionalListItem }) {
           </div>
         )}
         <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <h3 className="truncate font-semibold text-ink-900">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <h3 className="min-w-0 max-w-full truncate font-semibold text-ink-900">
               Dr(a). {doctor.firstName} {doctor.lastName}
             </h3>
             <VerificationBadge kind="doctor" tier={doctor.planTier} verified={doctor.verificationStatus === 'VERIFIED'} />
+            {doctor.planTier === 'AGENCY' && <MarcaMedicaLabel />}
           </div>
           <p className="mt-0.5 truncate text-sm text-ink-600">
             {doctor.specialties.map((s) => s.specialty.name).join(', ') || 'Medicina General'}

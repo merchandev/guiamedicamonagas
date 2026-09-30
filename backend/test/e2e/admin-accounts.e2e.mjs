@@ -163,31 +163,60 @@ try {
   check('inicia sesión tras reactivar',relogin.status===200 && !!relogin.data?.accessToken);
   const modToken=relogin.data.accessToken;
 
-  // Plan Agencia: precios del catálogo, asignación y video de presentación.
+  // Plan Marca Médica: precios del catálogo, asignación y video de presentación.
   r=await call('GET','/subscriptions/plans',null,null);
   const catalog=Object.fromEntries((r.data??[]).map(p=>[p.tier,Number(p.priceUsd)]));
-  check('catálogo con los precios nuevos y el plan Agencia',catalog.PROFESSIONAL===3.99 && catalog.PROFESSIONAL_PLUS===5.99
+  check('catálogo con los precios nuevos y el plan Marca Médica',catalog.PROFESSIONAL===3.99 && catalog.PROFESSIONAL_PLUS===5.99
     && catalog.PREMIUM===10.99 && catalog.AGENCY===69.99);
   const planNames=Object.fromEntries((r.data??[]).map(p=>[p.tier,p.name]));
-  check('los planes se llaman Perfil Básico, Profesional, Plus, Premium y Agencia',planNames.FREE==='Perfil Básico' && planNames.PROFESSIONAL==='Profesional'
-    && planNames.PROFESSIONAL_PLUS==='Plus' && planNames.PREMIUM==='Premium' && planNames.AGENCY==='Agencia'
-    && !JSON.stringify(r.data).includes('Profesional Plus'));
+  check('los planes se llaman Perfil Básico, Profesional, Plus, Premium y Marca Médica',planNames.FREE==='Perfil Básico' && planNames.PROFESSIONAL==='Profesional'
+    && planNames.PROFESSIONAL_PLUS==='Plus' && planNames.PREMIUM==='Premium' && planNames.AGENCY==='Marca Médica'
+    && !JSON.stringify(r.data).includes('Profesional Plus') && !JSON.stringify(r.data).includes('Agencia'));
+  check('Marca Médica deja explícitos los 2 videos cada mes',(r.data??[]).find(p=>p.tier==='AGENCY')?.features?.includes('2 videos profesionales cada mes'));
+
+  // Video de muestra de Marca Médica en /planes: lo cambia solo quien gestiona los planes (SUPERADMIN).
+  await db.query('DELETE FROM "SiteSettings" WHERE key=\'plan_showcase\'');
+  r=await call('GET','/subscriptions/showcase',null,null);
+  check('sin video de muestra, la página pública recibe null',r.status===200 && r.data.sampleVideoId===null);
+  check('ADMIN no cambia el video de muestra',(await call('PUT','/subscriptions/admin/showcase',{url:'https://youtube.com/shorts/aqz-KE-bpKQ'})).status===403);
+  check('el video de muestra tiene que ser de YouTube',(await call('PUT','/subscriptions/admin/showcase',{url:'https://vimeo.com/123456789'},superToken)).status===400);
+  r=await call('PUT','/subscriptions/admin/showcase',{url:'https://youtube.com/shorts/aqz-KE-bpKQ?feature=share'},superToken);
+  check('el SUPERADMIN publica un Short como muestra (solo el ID, auditado)',r.status===200 && r.data.sampleVideoId==='aqz-KE-bpKQ'
+    && (await call('GET','/subscriptions/showcase',null,null)).data.sampleVideoId==='aqz-KE-bpKQ'
+    && await count('SELECT count(*)::int n FROM "AuditLog" WHERE "userId"=$1 AND action=\'PLAN_SAMPLE_VIDEO_SET\'',[ids.superadmin])===1);
+  r=await call('PUT','/subscriptions/admin/showcase',{url:null},superToken);
+  check('quitar el video de muestra vuelve a la ilustración',r.status===200 && r.data.sampleVideoId===null);
+
+  // Estadísticas del médico según su plan.
+  const doctorTv=(await db.query('SELECT "tokenVersion" FROM "User" WHERE id=$1',[ids.doctor])).rows[0].tokenVersion;
+  r=await call('GET','/analytics/me',null,token(ids.doctor,'PROFESSIONAL',doctorTv));
+  check('el Perfil Básico no incluye estadísticas',r.status===200 && r.data.level==='NONE' && !r.data.events);
   const videoId='dQw4w9WgXcQ';
   r=await call('PUT','/professionals/me/presentation-video',{url:`https://youtu.be/${videoId}?si=e2e`},modToken);
-  check('sin el plan Agencia el médico no puede poner video',r.status===403);
+  check('sin el plan Marca Médica el médico no puede poner video',r.status===403);
   const agencyBank=(await db.query('SELECT code FROM "FinancialInstitution" WHERE "isActive"=true AND "supportsPagoMovil"=true LIMIT 1')).rows[0];
   r=await call('POST',`/subscriptions/admin/professionals/${ids.modProfile}/assign-paid-plan`,{
     planId:(await db.query('SELECT id FROM "SubscriptionPlan" WHERE tier=\'AGENCY\'')).rows[0].id,amountBs:25000,method:'PAGO_MOVIL',
     senderBankCode:agencyBank.code,referenceNumber:`AGENCY-${run}`.toUpperCase(),paidAt:new Date(Date.now()-60000).toISOString(),
-    reason:'Pago del plan Agencia revisado en prueba'});
-  check('asigna el plan Agencia a un médico con documentos completos',r.status===201
+    reason:'Pago del plan Marca Médica revisado en prueba'});
+  check('asigna el plan Marca Médica a un médico con documentos completos',r.status===201
     && (await db.query('SELECT "planTier" FROM "ProfessionalProfile" WHERE id=$1',[ids.modProfile])).rows[0].planTier==='AGENCY');
+  // Tres visitas y un clic de WhatsApp recientes, y una visita de hace 45 días.
+  for (const [type, days] of [['PROFILE_VIEW',1],['PROFILE_VIEW',2],['PROFILE_VIEW',3],['WHATSAPP_CLICK',1],['PROFILE_VIEW',45]]) {
+    await db.query('INSERT INTO "AnalyticsEvent" (id,"eventType","resourceId","createdAt") VALUES ($1,$2,$3,(now() at time zone \'utc\') - make_interval(days => $4))',
+      [randomUUID(), type, ids.modProfile, days]);
+  }
+  r=await call('GET','/analytics/me',null,modToken);
+  check('Marca Médica ve analítica avanzada: visitas, contactos, citas, comparación y 6 meses',r.status===200 && r.data.level==='ADVANCED'
+    && r.data.events.last30.PROFILE_VIEW===3 && r.data.events.previous30.PROFILE_VIEW===1 && r.data.events.total.PROFILE_VIEW===4
+    && r.data.events.last30.WHATSAPP_CLICK===1 && typeof r.data.appointments.last30.total==='number' && typeof r.data.messages.last30==='number'
+    && r.data.monthly.length===6);
   r=await call('PUT','/professionals/me/presentation-video',{url:'https://vimeo.com/123456789'},modToken);
   check('rechaza un enlace que no es de YouTube',r.status===400);
   r=await call('PUT','/professionals/me/presentation-video',{url:`https://youtu.be/${videoId}?si=e2e`},modToken);
   check('con Agencia se guarda solo el ID del video',r.status===200 && r.data.presentationVideoId===videoId);
   r=await call('GET',`/professionals/marta-${run}`,null,null);
-  check('la ficha pública muestra el video, el plan Agencia y el destacado',r.status===200 && r.data.presentationVideoId===videoId
+  check('la ficha pública muestra el video, el plan Marca Médica y el destacado',r.status===200 && r.data.presentationVideoId===videoId
     && r.data.planTier==='AGENCY' && r.data.isFeatured===true);
   r=await call('GET','/professionals',null,null);
   check('Agencia va primero en la franja «Destacado»',r.status===200 && r.data.featured?.[0]?.planTier==='AGENCY');

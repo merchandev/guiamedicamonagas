@@ -3,9 +3,9 @@ import Link from 'next/link';
 import { serverGet } from '@/lib/server-fetch';
 import { SubscriptionPlan } from '@/lib/types';
 import { Reveal, RevealGroup, RevealItem } from '@/components/motion/Reveal';
-import { BadgeCheckIcon, BuildingIcon, VideoIcon } from '@/components/icons';
-import { VerificationBadge } from '@/components/VerificationBadge';
+import { BadgeCheckIcon, BuildingIcon, ChartIcon, MegaphoneIcon, VideoIcon } from '@/components/icons';
 import { PlanComparisonDemo } from '@/components/PlanComparisonDemo';
+import { MarcaMedicaPhone } from '@/components/MarcaMedicaPhone';
 import { ORGANIZATIONS_LAUNCHED } from '@/lib/features';
 
 export const metadata: Metadata = {
@@ -15,13 +15,23 @@ export const metadata: Metadata = {
 
 const DOCTOR_TIERS = ['FREE', 'PROFESSIONAL', 'PROFESSIONAL_PLUS', 'PREMIUM'];
 
+// Lo que hace el equipo cada mes; la lista detallada sale del catálogo (/admin/planes).
+const MARCA_MEDICA_PILLARS = [
+  { title: 'Producción', body: 'Guion · grabación · edición · subtítulos', Icon: VideoIcon },
+  { title: 'Difusión', body: 'Publicación colaborativa · perfil destacado', Icon: MegaphoneIcon },
+  { title: 'Medición', body: 'Visitas · contactos · citas · informe mensual', Icon: ChartIcon },
+];
+
 function formatUsd(value: string) {
   const n = Number(value);
   return n === 0 ? 'Gratis' : `$${n}`;
 }
 
 export default async function PlansPage() {
-  const plans = (await serverGet<SubscriptionPlan[]>('/subscriptions/plans')) ?? [];
+  const [plans, showcase] = await Promise.all([
+    serverGet<SubscriptionPlan[]>('/subscriptions/plans').then((list) => list ?? []),
+    serverGet<{ sampleVideoId: string | null }>('/subscriptions/showcase'),
+  ]);
   const doctorPlans = DOCTOR_TIERS.map((tier) => plans.find((p) => p.tier === tier)).filter(
     (p): p is SubscriptionPlan => !!p,
   );
@@ -34,7 +44,8 @@ export default async function PlansPage() {
         <div className="mx-auto max-w-2xl text-center">
           <h1 className="text-4xl">Planes para tu perfil médico</h1>
           <p className="mt-3 text-lg text-ink-600">
-            Empieza gratis o desbloquea foto, biografía, WhatsApp, publicaciones, más visibilidad en el directorio y, con Agencia, tu video de presentación.
+            Empieza gratis o desbloquea foto, biografía, WhatsApp, publicaciones y más visibilidad en el directorio. Y si
+            quieres crecer también fuera de la plataforma, con Marca Médica producimos contigo contenido en video cada mes.
           </p>
         </div>
       </Reveal>
@@ -88,38 +99,76 @@ export default async function PlansPage() {
 
       {agencyPlan && (
         <Reveal delay={0.05}>
-          <div className="mt-8 rounded-xl2 border border-gold-300 bg-gradient-to-br from-gold-50 via-white to-gold-100 p-8 shadow-card md:flex md:items-center md:justify-between md:gap-10">
-            <div className="max-w-2xl">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-gold-700 px-2.5 py-1 text-xs font-semibold text-white">
-                <VideoIcon className="h-3.5 w-3.5" /> Con video de presentación
-              </span>
-              <div className="mt-3 flex items-center gap-2">
-                <h2 className="text-2xl font-semibold text-ink-950">Plan {agencyPlan.name}</h2>
-                <VerificationBadge kind="doctor" tier="AGENCY" />
+          {/* Marca Médica no es otro nivel de software: es un servicio de contenido. Va aparte y en grande. */}
+          <section
+            aria-labelledby="marca-medica"
+            className="mx-auto mt-14 max-w-6xl overflow-hidden rounded-[28px] bg-gradient-to-br from-ink-950 via-pine-950 to-ink-900 text-white shadow-card"
+          >
+            <div className="grid gap-10 p-6 sm:p-10 lg:p-14 xl:grid-cols-[1.2fr_0.8fr] xl:items-center xl:gap-14">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gold-300">Servicio de producción de contenido</p>
+                <h2 id="marca-medica" className="mt-3 text-3xl text-white sm:text-4xl">
+                  {agencyPlan.name}
+                </h2>
+                <p className="mt-1 text-lg text-gold-200">Tu conocimiento. Nuestra producción. Más visibilidad.</p>
+                <p className="mt-6 text-2xl font-semibold leading-snug text-white sm:text-3xl">
+                  Convierte tu experiencia médica en contenido profesional
+                </p>
+                <p className="mt-3 max-w-xl text-pine-100">
+                  Tú aportas el conocimiento. Nosotros nos encargamos de convertirlo en contenido: lo planificamos, lo grabamos,
+                  lo editamos y lo difundimos contigo, sin que tengas que hacerlo por tu cuenta.
+                </p>
+                <div className="mt-8 flex flex-wrap items-end gap-x-6 gap-y-3">
+                  <p className="text-5xl font-bold text-white">
+                    {formatUsd(agencyPlan.priceUsd)}
+                    <span className="text-base font-normal text-pine-200"> /mes</span>
+                  </p>
+                  <p className="rounded-full bg-gold-400/15 px-4 py-2 text-sm font-semibold text-gold-200 ring-1 ring-gold-300/40">
+                    2 videos profesionales cada mes
+                  </p>
+                </div>
+                <ul className="mt-8 grid gap-3 sm:grid-cols-3">
+                  {MARCA_MEDICA_PILLARS.map(({ title, body, Icon }) => (
+                    <li key={title} className="rounded-2xl bg-white/5 p-4 ring-1 ring-white/10">
+                      <Icon className="h-5 w-5 text-gold-300" aria-hidden="true" />
+                      <p className="mt-2 font-semibold text-white">{title}</p>
+                      <p className="mt-1 text-sm text-pine-100">{body}</p>
+                    </li>
+                  ))}
+                </ul>
+                <div className="mt-8 flex flex-col items-start gap-2">
+                  <Link
+                    href="/registro?tipo=medico"
+                    className="rounded-xl bg-gold-400 px-6 py-3 text-base font-semibold text-ink-950 transition-transform hover:-translate-y-0.5 hover:bg-gold-300"
+                  >
+                    Quiero impulsar mi marca
+                  </Link>
+                  <p className="text-xs text-pine-200">Sin renovación automática · Pago mensual · Sin permanencia</p>
+                </div>
               </div>
-              {agencyPlan.description && <p className="mt-2 text-ink-600">{agencyPlan.description}</p>}
-              <ul className="mt-4 grid gap-2.5 text-sm sm:grid-cols-2">
+              <MarcaMedicaPhone videoId={showcase?.sampleVideoId ?? null} />
+            </div>
+            <div className="border-t border-white/10 bg-white/[0.03] p-6 sm:p-10 lg:px-14">
+              <h3 className="text-lg font-semibold text-white">Incluido cada mes</h3>
+              <ul className="mt-4 grid gap-x-10 gap-y-2.5 sm:grid-cols-2">
                 {(agencyPlan.features ?? []).map((feature) => (
-                  <li key={feature} className="flex items-start gap-2">
-                    <BadgeCheckIcon className="mt-0.5 h-4 w-4 flex-shrink-0 text-gold-600" />
-                    <span className="text-ink-700">{feature}</span>
+                  <li key={feature} className="flex items-start gap-2 text-sm text-pine-50">
+                    <BadgeCheckIcon className="mt-0.5 h-4 w-4 flex-shrink-0 text-gold-300" />
+                    <span>{feature}</span>
                   </li>
                 ))}
               </ul>
-            </div>
-            <div className="mt-6 flex flex-shrink-0 flex-col items-start gap-3 md:mt-0 md:items-end">
-              <p className="text-4xl font-bold text-gold-700">
-                {formatUsd(agencyPlan.priceUsd)}
-                <span className="text-sm font-normal text-ink-400">/mes</span>
+              <p className="mt-8 text-base font-medium text-white">Tú hablas de medicina. Nosotros nos encargamos del contenido.</p>
+              <p className="mt-2 max-w-3xl text-xs leading-relaxed text-pine-200">
+                Producción realizada junto a Guía Médica Monagas. El contenido es informativo y sigue la{' '}
+                <Link href="/publicidad-medica" className="underline">
+                  Política de publicidad médica
+                </Link>
+                : no promete resultados. El plan requiere el 100 % de tus documentos aprobados, se contrata y se paga desde tu
+                panel de médico, y no cambia tu verificación.
               </p>
-              <Link
-                href="/registro?tipo=medico"
-                className="rounded-lg bg-gold-700 px-5 py-2.5 text-sm font-semibold text-white transition-transform hover:-translate-y-0.5 hover:bg-gold-800"
-              >
-                Elegir el plan Agencia
-              </Link>
             </div>
-          </div>
+          </section>
         </Reveal>
       )}
 

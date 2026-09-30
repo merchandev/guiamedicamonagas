@@ -6,7 +6,7 @@ import { cn } from '@/lib/cn';
 const VIDEO_ID = /^[A-Za-z0-9_-]{11}$/;
 
 /**
- * Video de presentación del médico (plan Agencia). Hasta que alguien pulsa
+ * Video de presentación del médico (plan Marca Médica). Hasta que alguien pulsa
  * «Reproducir» solo se carga la miniatura: YouTube no instala nada ni recibe
  * datos de quien solo mira la ficha. El reproductor es el de
  * youtube-nocookie.com (modo de privacidad mejorada).

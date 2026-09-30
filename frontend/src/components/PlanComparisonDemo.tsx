@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { cn } from '@/lib/cn';
 import { Badge } from '@/components/ui/Badge';
 import { BadgeCheckIcon, BuildingIcon, LockIcon, MapPinIcon, SparklesIcon, VideoIcon, WhatsAppIcon } from '@/components/icons';
-import { VerificationBadge } from '@/components/VerificationBadge';
+import { MarcaMedicaLabel, VerificationBadge } from '@/components/VerificationBadge';
 import { DOCTOR_SOCIAL_LIMITS, SOCIAL_PLATFORM_COLORS, SOCIAL_PLATFORM_ICONS, type SocialPlatform } from '@/lib/social';
 
 type DoctorTier = 'FREE' | 'PROFESSIONAL' | 'PROFESSIONAL_PLUS' | 'PREMIUM' | 'AGENCY';
@@ -20,11 +20,11 @@ const TIER_ORDER: Record<DoctorTier, number> = {
 };
 
 const TABS: { tier: DemoTier; label: string }[] = [
-  { tier: 'FREE', label: 'Básico' },
+  { tier: 'FREE', label: 'Perfil Básico' },
   { tier: 'PROFESSIONAL', label: 'Profesional' },
   { tier: 'PROFESSIONAL_PLUS', label: 'Plus' },
   { tier: 'PREMIUM', label: 'Premium' },
-  { tier: 'AGENCY', label: 'Agencia' },
+  { tier: 'AGENCY', label: 'Marca Médica' },
   { tier: 'ORGANIZATION', label: 'Organizaciones' },
 ];
 
@@ -38,9 +38,9 @@ const FEATURE_ROWS: { label: string; min: DoctorTier }[] = [
   { label: 'Redes sociales (hasta 2: Instagram/Facebook/TikTok)', min: 'PROFESSIONAL_PLUS' },
   { label: 'Espacio «Destacado» rotativo (señalado como patrocinado)', min: 'PREMIUM' },
   { label: 'Publicaciones ilimitadas, redes + web y analítica avanzada', min: 'PREMIUM' },
-  { label: 'Video de presentación de YouTube en la ficha', min: 'AGENCY' },
-  { label: '2 videos en colaboración con Guía Médica Monagas', min: 'AGENCY' },
-  { label: 'Prioridad en el espacio «Destacado» e insignia dorada con brillo', min: 'AGENCY' },
+  { label: '2 videos profesionales cada mes: guion, grabación, edición y subtítulos', min: 'AGENCY' },
+  { label: 'Uno de tus videos como presentación en la ficha', min: 'AGENCY' },
+  { label: 'Prioridad en «Destacado», informe mensual y etiqueta «Marca Médica»', min: 'AGENCY' },
 ];
 
 /** Chip de ícono no interactivo, solo para la vista previa (no navega ni trackea clics reales). */
@@ -86,6 +86,7 @@ function DoctorDemo({ tier }: { tier: DoctorTier }) {
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="text-xl text-ink-950">Dra. Valentina Blanco</h3>
             <VerificationBadge kind="doctor" tier={tier} />
+            {agency && <MarcaMedicaLabel />}
             {featured && <Badge tone="gold">Destacado</Badge>}
           </div>
           <p className="mt-1 text-sm text-pine-700">Cardiología · Maturín, Monagas</p>
@@ -115,7 +116,7 @@ function DoctorDemo({ tier }: { tier: DoctorTier }) {
             </span>
           </div>
         ) : (
-          <Locked label="Video de presentación en la ficha con el plan Agencia" />
+          <Locked label="Video de presentación en la ficha con Marca Médica" />
         )}
       </div>
 
@@ -293,8 +294,9 @@ export function PlanComparisonDemo() {
           Un mismo perfil de ejemplo, mostrado tal como lo verían tus pacientes en cada plan.
         </p>
         <p className="mt-1 text-xs text-ink-400">
-          Todos pasan la misma verificación; el check solo cambia de color según el plan: gris (Básico), azul (Profesional), índigo (Plus),
-          dorado (Premium), dorado con brillo (Agencia) — y para organizaciones, verde (farmacias), morado (laboratorios) y naranja (clínicas).
+          Todos pasan la misma verificación; el check solo cambia de color según el plan: gris (Perfil Básico), azul (Profesional),
+          índigo (Plus), dorado (Premium y Marca Médica) — y para organizaciones, verde (farmacias), morado (laboratorios) y naranja
+          (clínicas). La etiqueta «Marca Médica» indica el servicio contratado, no una verificación mayor.
         </p>
       </div>
 

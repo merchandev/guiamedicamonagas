@@ -54,6 +54,7 @@ Cada access token lleva la versión de sesión del usuario (`tv`); si no coincid
 
 ## Suscripciones y pagos
 * `GET /subscriptions/plans` · `GET /subscriptions/exchange-rate` (públicos).
+* `GET /subscriptions/showcase` (público): `{ sampleVideoId }`, el video de muestra del plan Marca Médica en `/planes` (o null). `PUT /subscriptions/admin/showcase` (`MANAGE_PLANS`, `{ url }` de YouTube o null; auditado como `PLAN_SAMPLE_VIDEO_SET`/`PLAN_SAMPLE_VIDEO_CLEARED`).
 * `GET|POST /subscriptions/me` (médico) · `GET|POST /subscriptions/organizations/:id` (organización).
 * `POST /payments` — reporte de Pago Móvil con comprobante (el médico, o dueño/admin de la organización). Una referencia del mismo banco no puede repetirse en pagos vigentes (409, garantizado por índice único).
 * `GET /payments/pago-movil-account` — cuenta a la que se paga (titular, cédula o RIF, banco, teléfono y número de cuenta). Solo con sesión de médico o de miembro de una organización: se muestra dentro del panel, junto al formulario de reporte. Devuelve `configured: false` mientras la administración no la registre.
@@ -62,3 +63,4 @@ Cada access token lleva la versión de sesión del usuario (`tv`); si no coincid
 
 ## Analítica
 * `POST /analytics/track` — el frontend solo lo llama con consentimiento de análisis; no se guarda IP ni user-agent.
+* `GET /analytics/me` (médico) — «Estadísticas» del panel según el plan: Perfil Básico `NONE`; Profesional `BASIC` (visitas, WhatsApp y teléfono, últimos 30 días y total); Plus `FULL` (además clics en redes, mensajes y citas pedidas por estado); Premium y Marca Médica `ADVANCED` (además comparación con los 30 días anteriores y los últimos 6 meses).
