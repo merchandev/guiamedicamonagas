@@ -49,18 +49,20 @@ export function PatientVaultGate({ children }: { children: React.ReactNode }) {
   }, []);
 
   const expiresAt = status?.unlocked && status.expiresAt ? new Date(status.expiresAt).getTime() : null;
+  // Al vencer los 15 minutos se vuelve a pedir el código (el backend también la cierra).
+  const expired = expiresAt !== null && now >= expiresAt;
 
   useEffect(() => {
     if (!expiresAt) return;
-    const timer = setInterval(() => setNow(Date.now()), 1000);
+    const timer = setInterval(() => {
+      const t = Date.now();
+      setNow(t);
+      if (t >= expiresAt) clearInterval(timer);
+    }, 1000);
     return () => clearInterval(timer);
   }, [expiresAt]);
 
   const relock = useCallback(() => setStatus((prev) => (prev ? { ...prev, unlocked: false, expiresAt: null } : prev)), []);
-
-  useEffect(() => {
-    if (expiresAt && now >= expiresAt) relock();
-  }, [expiresAt, now, relock]);
 
   const unlock = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -94,7 +96,7 @@ export function PatientVaultGate({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (!status.unlocked || !expiresAt) {
+  if (!status.unlocked || !expiresAt || expired) {
     return (
       <form onSubmit={unlock} className="card mx-auto max-w-md space-y-4 p-6" aria-labelledby="boveda-titulo">
         <span className="flex h-11 w-11 items-center justify-center rounded-full bg-pine-50 text-pine-700">

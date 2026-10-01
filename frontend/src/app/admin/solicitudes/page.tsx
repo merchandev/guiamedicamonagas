@@ -70,17 +70,19 @@ export default function AdminLegalRequestsPage() {
   const [modalError, setModalError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const load = useCallback(async (s: LegalRequestStatus | '', p: number) => {
-    setData(null);
-    setError(null);
-    try {
-      const query = new URLSearchParams({ page: String(p) });
-      if (s) query.set('status', s);
-      setData(await api.get<LegalRequestPage>(`/legal-requests/admin?${query.toString()}`));
-    } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'No se pudieron cargar las solicitudes');
-      setData({ items: [], total: 0, open: 0, page: 1, totalPages: 0 });
-    }
+  const load = useCallback((s: LegalRequestStatus | '', p: number) => {
+    const query = new URLSearchParams({ page: String(p) });
+    if (s) query.set('status', s);
+    return api.get<LegalRequestPage>(`/legal-requests/admin?${query.toString()}`).then(
+      (result) => {
+        setError(null);
+        setData(result);
+      },
+      (e) => {
+        setError(e instanceof ApiError ? e.message : 'No se pudieron cargar las solicitudes');
+        setData({ items: [], total: 0, open: 0, page: 1, totalPages: 0 });
+      },
+    );
   }, []);
 
   useEffect(() => {
@@ -131,6 +133,8 @@ export default function AdminLegalRequestsPage() {
           <button
             key={tab.label}
             onClick={() => {
+              if (tab.status === status && page === 1) return;
+              setData(null);
               setStatus(tab.status);
               setPage(1);
             }}

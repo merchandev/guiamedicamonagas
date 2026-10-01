@@ -46,7 +46,7 @@ export default function OrganizationMembersPage() {
   const [members, setMembers] = useState<Member[] | null>(null);
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [email, setEmail] = useState('');
-  const [role, setRole] = useState<OrgRole>('EDITOR');
+  const [chosenRole, setRole] = useState<OrgRole>('EDITOR');
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -65,9 +65,9 @@ export default function OrganizationMembersPage() {
 
   useEffect(load, [load]);
 
-  useEffect(() => {
-    if (org?.invitableRoles?.length && !org.invitableRoles.includes(role)) setRole(org.invitableRoles[0]);
-  }, [org, role]);
+  // Solo se puede invitar con los roles que permite el propio rol.
+  const role: OrgRole =
+    org?.invitableRoles?.length && !org.invitableRoles.includes(chosenRole) ? org.invitableRoles[0] : chosenRole;
 
   if (!org || !members) return <PageSpinner />;
 

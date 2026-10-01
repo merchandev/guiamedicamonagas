@@ -19,25 +19,20 @@ export default function VerifyEmailPage() {
 function VerifyEmailContent() {
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
-  const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
-  const [message, setMessage] = useState('');
+  const [result, setResult] = useState<{ status: 'loading' | 'success' | 'error'; message: string }>({
+    status: 'loading',
+    message: '',
+  });
+  const { status, message } = token ? result : { status: 'error' as const, message: 'Falta el token de verificación.' };
 
   useEffect(() => {
-    if (!token) {
-      setStatus('error');
-      setMessage('Falta el token de verificación.');
-      return;
-    }
+    if (!token) return;
     api
       .get<{ message: string }>(`/auth/verify-email?token=${encodeURIComponent(token)}`)
-      .then((res) => {
-        setStatus('success');
-        setMessage(res.message);
-      })
-      .catch((e) => {
-        setStatus('error');
-        setMessage(e instanceof ApiError ? e.message : 'No se pudo verificar el correo');
-      });
+      .then((res) => setResult({ status: 'success', message: res.message }))
+      .catch((e) =>
+        setResult({ status: 'error', message: e instanceof ApiError ? e.message : 'No se pudo verificar el correo' }),
+      );
   }, [token]);
 
   if (status === 'loading') return <PageSpinner />;

@@ -44,10 +44,8 @@ export default function PatientShareCodePage() {
   }, []);
 
   // El QR se dibuja en el navegador: el código no viaja a ningún servicio externo.
-  const qrSvg = useMemo(
-    () => (data?.url ? brandQrSvg(data.url) : null),
-    [data?.url],
-  );
+  const shareUrl = data?.url;
+  const qrSvg = useMemo(() => (shareUrl ? brandQrSvg(shareUrl) : null), [shareUrl]);
 
   const generate = async () => {
     setBusy('generate');

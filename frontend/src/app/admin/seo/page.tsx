@@ -28,6 +28,11 @@ interface PageSeo {
 
 const KNOWN_PATHS = ['/', '/medicos', '/especialidades', '/farmacias'];
 
+/** Lo guardado para una ruta, o un formulario vacío si aún no tiene SEO propio. */
+function formFor(path: string, pages: PageSeo[]): PageSeo {
+  return pages.find((p) => p.path === path) ?? { path };
+}
+
 export default function AdminSeoPage() {
   const [tab, setTab] = useState<'global' | 'pages'>('global');
   const [global, setGlobal] = useState<GlobalSeo | null>(null);
@@ -42,13 +47,14 @@ export default function AdminSeoPage() {
     Promise.all([api.get<GlobalSeo>('/seo/global'), api.get<PageSeo[]>('/seo/pages')]).then(([g, p]) => {
       setGlobal(g);
       setPages(p);
+      setPageForm((current) => formFor(current.path, p));
     });
   }, []);
 
-  useEffect(() => {
-    const existing = pages.find((p) => p.path === selectedPath);
-    setPageForm(existing ?? { path: selectedPath });
-  }, [selectedPath, pages]);
+  const selectPath = (path: string) => {
+    setSelectedPath(path);
+    setPageForm(formFor(path, pages));
+  };
 
   const saveGlobal = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,6 +89,7 @@ export default function AdminSeoPage() {
       });
       const refreshed = await api.get<PageSeo[]>('/seo/pages');
       setPages(refreshed);
+      setPageForm(formFor(pageForm.path, refreshed));
       setSaved(true);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'No se pudo guardar');
@@ -156,7 +163,7 @@ export default function AdminSeoPage() {
           <Select
             label="Página"
             value={selectedPath}
-            onChange={setSelectedPath}
+            onChange={selectPath}
             options={KNOWN_PATHS.map((p) => ({ value: p, label: p }))}
           />
           <Input

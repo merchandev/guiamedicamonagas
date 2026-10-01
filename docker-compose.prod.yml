@@ -180,6 +180,10 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+      # Commit y fecha del build: /api/v1/health los muestra (los define deploy.sh).
+      args:
+        GIT_SHA: ${GMM_GIT_SHA:-dev}
+        BUILD_DATE: ${GMM_BUILD_DATE:-}
     image: gmm-independent-api:${GMM_IMAGE_TAG:-local}
     logging: *default-logging
     restart: unless-stopped
@@ -262,6 +266,9 @@ services:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
         NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL}
         NEXT_BUILD_CPUS: 1
+        # Commit y fecha del build: /version.json los muestra (los define deploy.sh).
+        GIT_SHA: ${GMM_GIT_SHA:-dev}
+        BUILD_DATE: ${GMM_BUILD_DATE:-}
     image: gmm-independent-web:${GMM_IMAGE_TAG:-local}
     logging: *default-logging
     restart: unless-stopped

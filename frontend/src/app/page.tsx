@@ -114,11 +114,14 @@ export default async function HomePage() {
   const doctors = doctorsResult?.items ?? [];
   const orgsPreview = (organizations ?? []).slice(0, 3);
 
+  // Cifras exactas: «+» solo en los médicos (crecen y la portada se regenera
+  // cada minuto). Sin médicos publicados todavía se dice «Pronto», no «0».
+  const doctorsTotal = doctorsResult?.total ?? 0;
   const stats = [
-    { value: doctorsResult?.total ?? 0, label: 'Médicos verificados', icon: StethoscopeIcon },
-    { value: specialtiesList.length, label: 'Especialidades', icon: BadgeCheckIcon },
-    { value: organizations?.length ?? 0, label: 'Farmacias y clínicas', icon: BuildingIcon, soon: !ORGANIZATIONS_LAUNCHED },
-    { value: 13, label: 'Municipios de Monagas', icon: MapPinIcon },
+    { value: doctorsTotal, suffix: '+', label: 'Médicos verificados', icon: StethoscopeIcon, soon: doctorsTotal === 0 },
+    { value: specialtiesList.length, suffix: '', label: 'Especialidades', icon: BadgeCheckIcon },
+    { value: organizations?.length ?? 0, suffix: '+', label: 'Farmacias y clínicas', icon: BuildingIcon, soon: !ORGANIZATIONS_LAUNCHED },
+    { value: 13, suffix: '', label: 'Municipios de Monagas', icon: MapPinIcon },
   ];
 
   return (
@@ -177,7 +180,7 @@ export default async function HomePage() {
               <div key={s.label} className="flex flex-col items-center">
                 <s.icon className="mb-2 h-6 w-6 text-pine-200" />
                 <p className="text-3xl font-bold">
-                  {s.soon ? 'Pronto' : <Counter value={s.value} suffix="+" />}
+                  {s.soon ? 'Pronto' : <Counter value={s.value} suffix={s.suffix} />}
                 </p>
                 <p className="mt-1 text-xs uppercase tracking-wide text-pine-100">{s.label}</p>
               </div>
@@ -208,7 +211,7 @@ export default async function HomePage() {
                 </span>
                 <span>
                   {s.name}
-                  {typeof s._count?.professionals === 'number' && (
+                  {!!s._count?.professionals && (
                     <span className="mt-1 block text-xs font-normal text-ink-400">
                       {s._count.professionals} profesional{s._count.professionals === 1 ? '' : 'es'}
                     </span>

@@ -68,14 +68,31 @@ export default function AdminCatalogsPage() {
   }, [loadBanks, loadStates]);
 
   useEffect(() => {
-    setMunicipalityId('');
     void loadMunicipalities();
   }, [loadMunicipalities]);
 
+  // Las parroquias solo se muestran con un municipio elegido; al cambiar de
+  // municipio se vacían en el clic (selectMunicipality) y llegan aquí.
   useEffect(() => {
-    if (municipalityId) api.get<{ id: string; name: string }[]>(`/geo/municipalities/${municipalityId}/parishes`).then(setParishes);
-    else setParishes([]);
+    if (!municipalityId) return;
+    let active = true;
+    api
+      .get<{ id: string; name: string }[]>(`/geo/municipalities/${municipalityId}/parishes`)
+      .then((items) => active && setParishes(items));
+    return () => {
+      active = false;
+    };
   }, [municipalityId]);
+
+  const selectState = (slug: string) => {
+    setStateSlug(slug);
+    setMunicipalityId('');
+  };
+
+  const selectMunicipality = (id: string) => {
+    setParishes([]);
+    setMunicipalityId(id);
+  };
 
   if (!banks) return <PageSpinner />;
 
@@ -150,7 +167,7 @@ export default function AdminCatalogsPage() {
           </p>
         </div>
         <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
-          <Select label="Estado" value={stateSlug} onChange={setStateSlug} options={states.map((s) => ({ value: s.slug, label: s.name }))} />
+          <Select label="Estado" value={stateSlug} onChange={selectState} options={states.map((s) => ({ value: s.slug, label: s.name }))} />
           {currentState && (
             <Switch
               checked={currentState.isActive}
@@ -172,7 +189,7 @@ export default function AdminCatalogsPage() {
               <button
                 key={m.id}
                 type="button"
-                onClick={() => setMunicipalityId(m.id)}
+                onClick={() => selectMunicipality(m.id)}
                 className={`rounded-full px-3 py-1 text-sm ${municipalityId === m.id ? 'bg-pine-700 text-white' : 'bg-ink-50 text-ink-700'}`}
               >
                 {m.name}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api, ApiError } from '@/lib/api';
 import { Alert } from '@/components/ui/Alert';
@@ -42,23 +42,29 @@ export default function PaymentsPage() {
   const rate = useExchangeRate();
   const exchangeRate = rate?.usdToBs ?? null;
 
-  const load = async () => {
-    const sub = await api.get<Subscription | null>('/subscriptions/me').catch(() => null);
-    setSubscription(sub);
-    if (!sub) {
-      const [allPlans, own] = await Promise.all([
-        api.get<Plan[]>('/subscriptions/plans').catch(() => []),
-        api.get<{ progress?: ProfessionalProgress }>('/professionals/me').catch(() => null),
-      ]);
-      setPlans(allPlans.filter((p) => p.tier !== 'FREE' && p.tier !== 'ORGANIZATION'));
-      setDocuments(own?.progress?.documents ?? null);
-    }
-    setLoading(false);
-  };
+  const load = useCallback(
+    () =>
+      api
+        .get<Subscription | null>('/subscriptions/me')
+        .catch(() => null)
+        .then(async (sub) => {
+          setSubscription(sub);
+          if (!sub) {
+            const [allPlans, own] = await Promise.all([
+              api.get<Plan[]>('/subscriptions/plans').catch(() => []),
+              api.get<{ progress?: ProfessionalProgress }>('/professionals/me').catch(() => null),
+            ]);
+            setPlans(allPlans.filter((p) => p.tier !== 'FREE' && p.tier !== 'ORGANIZATION'));
+            setDocuments(own?.progress?.documents ?? null);
+          }
+          setLoading(false);
+        }),
+    [],
+  );
 
   useEffect(() => {
-    load();
-  }, []);
+    void load();
+  }, [load]);
 
   const subscribe = async (planId: string) => {
     setError(null);

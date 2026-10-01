@@ -32,14 +32,12 @@ function InvitationContent() {
   const router = useRouter();
   const { user, loading, refreshMe } = useAuth();
   const [invitation, setInvitation] = useState<InvitationPreview | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [requestError, setError] = useState<string | null>(null);
   const [accepting, setAccepting] = useState(false);
+  const error = token ? requestError : 'El enlace de invitación está incompleto';
 
   useEffect(() => {
-    if (!token) {
-      setError('El enlace de invitación está incompleto');
-      return;
-    }
+    if (!token) return;
     api
       .get<InvitationPreview>(`/organizations/invitations/preview?token=${encodeURIComponent(token)}`)
       .then(setInvitation)

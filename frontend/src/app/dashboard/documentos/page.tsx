@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { api, ApiError } from '@/lib/api';
 import { Alert } from '@/components/ui/Alert';
 import { Badge } from '@/components/ui/Badge';
-import { Button } from '@/components/ui/Button';
 import { PageSpinner } from '@/components/ui/Spinner';
 import { FileButton } from '@/components/ui/FileButton';
 import { DOCUMENT_STATUS_LABELS, DOCUMENT_TYPE_LABELS } from '@/lib/labels';

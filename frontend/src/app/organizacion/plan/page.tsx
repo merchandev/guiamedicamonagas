@@ -44,16 +44,17 @@ export default function OrganizationPlanPage() {
 
   const manager = canManage(org?.myRole);
 
-  const load = useCallback(async () => {
-    if (!org) return;
-    const [sub, plans, st] = await Promise.all([
+  const load = useCallback(() => {
+    if (!org) return Promise.resolve();
+    return Promise.all([
       manager ? api.get<Subscription | null>(`/subscriptions/organizations/${org.id}`).catch(() => null) : Promise.resolve(null),
       api.get<SubscriptionPlan[]>('/subscriptions/plans').catch(() => []),
       api.get<Record<string, number>>(`/organizations/me/${org.id}/stats`).catch(() => ({})),
-    ]);
-    setSubscription(sub);
-    setPlan(plans.find((p) => p.tier === 'ORGANIZATION') ?? null);
-    setStats(st);
+    ]).then(([sub, plans, st]) => {
+      setSubscription(sub);
+      setPlan(plans.find((p) => p.tier === 'ORGANIZATION') ?? null);
+      setStats(st);
+    });
   }, [org, manager]);
 
   useEffect(() => {

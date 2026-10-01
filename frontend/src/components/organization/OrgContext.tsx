@@ -81,9 +81,7 @@ export function OrganizationProvider({ children }: { children: React.ReactNode }
   const [currentId, setCurrentId] = useState<string | null>(null);
   const [current, setCurrent] = useState<OrgDetail | null>(null);
 
-  const loadDetail = useCallback(async (id: string) => {
-    setCurrent(await api.get<OrgDetail>(`/organizations/me/${id}`));
-  }, []);
+  const loadDetail = useCallback((id: string) => api.get<OrgDetail>(`/organizations/me/${id}`).then(setCurrent), []);
 
   useEffect(() => {
     api

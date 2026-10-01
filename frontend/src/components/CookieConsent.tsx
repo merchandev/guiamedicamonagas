@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 import { COOKIE_CONSENT_STORAGE_KEY } from '@/lib/analytics';
@@ -32,6 +32,50 @@ function randomId() {
     : `anon-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
+// La decisión vive en localStorage. Se lee con useSyncExternalStore: en el
+// servidor (y durante la hidratación) no se conoce y el aviso no se dibuja;
+// en el navegador aparece solo si no hay una decisión guardada. Si el
+// navegador no deja guardar (modo privado estricto), la decisión vale para
+// esta visita.
+const consentListeners = new Set<() => void>();
+let unsavedConsent: string | null = null;
+
+function subscribeConsent(listener: () => void) {
+  consentListeners.add(listener);
+  window.addEventListener('storage', listener);
+  return () => {
+    consentListeners.delete(listener);
+    window.removeEventListener('storage', listener);
+  };
+}
+
+function readConsentRaw(): string | null {
+  try {
+    return window.localStorage.getItem(STORAGE_KEY) ?? unsavedConsent;
+  } catch {
+    return unsavedConsent;
+  }
+}
+
+function writeConsent(record: StoredConsent) {
+  const raw = JSON.stringify(record);
+  try {
+    window.localStorage.setItem(STORAGE_KEY, raw);
+  } catch {
+    unsavedConsent = raw;
+  }
+  consentListeners.forEach((listener) => listener());
+}
+
+function parseConsent(raw: string | null): StoredConsent | null {
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as StoredConsent;
+  } catch {
+    return null;
+  }
+}
+
 export function openCookiePreferences() {
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new Event(OPEN_EVENT));
@@ -39,40 +83,31 @@ export function openCookiePreferences() {
 }
 
 export default function CookieConsent() {
-  const [stored, setStored] = useState<StoredConsent | null>(null);
+  // undefined = todavía no se sabe (servidor o hidratación).
+  const raw = useSyncExternalStore(subscribeConsent, readConsentRaw, () => undefined);
+  const stored = useMemo(() => (raw === undefined ? null : parseConsent(raw)), [raw]);
+  const showBanner = raw !== undefined && stored === null;
   const [config, setConfig] = useState<CookieConfig | null>(null);
-  const [showBanner, setShowBanner] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [analytics, setAnalytics] = useState(false);
 
-  useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const parsed: StoredConsent = JSON.parse(raw);
-        setStored(parsed);
-        setAnalytics(parsed.analytics);
-      } else {
-        setShowBanner(true);
-      }
-    } catch {
-      setShowBanner(true);
-    }
-
-    api.get<CookieConfig>('/cookie-consent/config').then(setConfig).catch(() => undefined);
-
-    const onOpen = () => setShowModal(true);
-    window.addEventListener(OPEN_EVENT, onOpen);
-    return () => window.removeEventListener(OPEN_EVENT, onOpen);
+  // El interruptor del diálogo parte siempre de la decisión guardada.
+  const openModal = useCallback(() => {
+    setAnalytics(parseConsent(readConsentRaw())?.analytics ?? false);
+    setShowModal(true);
   }, []);
+
+  useEffect(() => {
+    api.get<CookieConfig>('/cookie-consent/config').then(setConfig).catch(() => undefined);
+    window.addEventListener(OPEN_EVENT, openModal);
+    return () => window.removeEventListener(OPEN_EVENT, openModal);
+  }, [openModal]);
 
   const persist = async (acceptAnalytics: boolean) => {
     const subjectId = stored?.subjectId ?? randomId();
     const record: StoredConsent = { subjectId, analytics: acceptAnalytics, marketing: false, decidedAt: new Date().toISOString() };
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(record));
-    setStored(record);
+    writeConsent(record);
     setAnalytics(acceptAnalytics);
-    setShowBanner(false);
     setShowModal(false);
     await api.post('/cookie-consent', { subjectId, analytics: acceptAnalytics, marketing: false }).catch(() => undefined);
   };
@@ -90,7 +125,7 @@ export default function CookieConsent() {
               </Link>
             </p>
             <div className="flex flex-shrink-0 flex-wrap gap-2">
-              <Button variant="outline" size="sm" onClick={() => setShowModal(true)}>
+              <Button variant="outline" size="sm" onClick={openModal}>
                 Configurar
               </Button>
               <Button variant="outline" size="sm" onClick={() => persist(false)}>

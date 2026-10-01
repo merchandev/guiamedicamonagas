@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { api, ApiError } from '@/lib/api';
 import { Alert } from '@/components/ui/Alert';
 import { Badge } from '@/components/ui/Badge';
@@ -23,24 +23,27 @@ export default function AdminPlansPage() {
   const [savingPlanId, setSavingPlanId] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<Record<string, { priceUsd: string; featuresText: string; isActive: boolean }>>({});
 
-  const load = async () => {
-    const [planList, rateData] = await Promise.all([
-      api.get<SubscriptionPlan[]>('/subscriptions/admin/plans'),
-      api.get<ExchangeRate>('/subscriptions/exchange-rate'),
-    ]);
-    setPlans(planList);
-    setExchangeRate(rateData);
-    setRate(rateData.usdToBs);
-    setDrafts(
-      Object.fromEntries(
-        planList.map((p) => [p.id, { priceUsd: p.priceUsd, featuresText: (p.features ?? []).join('\n'), isActive: p.isActive }]),
-      ),
-    );
-  };
+  const load = useCallback(
+    () =>
+      Promise.all([
+        api.get<SubscriptionPlan[]>('/subscriptions/admin/plans'),
+        api.get<ExchangeRate>('/subscriptions/exchange-rate'),
+      ]).then(([planList, rateData]) => {
+        setPlans(planList);
+        setExchangeRate(rateData);
+        setRate(rateData.usdToBs);
+        setDrafts(
+          Object.fromEntries(
+            planList.map((p) => [p.id, { priceUsd: p.priceUsd, featuresText: (p.features ?? []).join('\n'), isActive: p.isActive }]),
+          ),
+        );
+      }),
+    [],
+  );
 
   useEffect(() => {
-    load();
-  }, []);
+    void load();
+  }, [load]);
 
   const saveRate = async () => {
     setSavingRate(true);

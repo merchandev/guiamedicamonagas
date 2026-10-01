@@ -138,6 +138,11 @@ if (( ${#MISSING_IMAGES[@]} )); then
   exit 1
 fi
 echo "Construyendo API y web..."
+# El commit queda dentro de las imágenes: /api/v1/health y /version.json lo
+# muestran y, al final, se comprueba que es el que se acaba de publicar.
+GMM_GIT_SHA="$(git -C "${PROJECT_DIR}" rev-parse HEAD 2>/dev/null || echo dev)"
+GMM_BUILD_DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+export GMM_GIT_SHA GMM_BUILD_DATE
 BUILD_ARGS=()
 if [[ -n "${GMM_BUILDER:-}" ]]; then
   BUILD_ARGS+=(--builder "${GMM_BUILDER}")
@@ -209,6 +214,18 @@ if [[ "${SMTP_HOST}" == "mailpit" ]]; then
   echo "Prueba de humo..."
   "${COMPOSE[@]}" exec -T -e SEED_SUPERADMIN_EMAIL -e SEED_SUPERADMIN_PASSWORD api node - < "${PROJECT_DIR}/scripts/smoke-deployment.cjs"
 fi
+
+# Producción debe responder con el commit recién construido (API y web, por el
+# mismo camino que el tráfico real): si no, algo quedó con la versión anterior.
+EXPECTED_VERSION="${GMM_GIT_SHA:0:12}"
+for path in /api/v1/health /version.json; do
+  served="$(curl -sf -m 10 "http://127.0.0.1:${CADDY_PORT:-8088}${path}" | sed -n 's/.*"version":"\([^"]*\)".*/\1/p')"
+  if [[ "${served}" != "${EXPECTED_VERSION}" ]]; then
+    echo "ERROR: ${path} informa la versión '${served}' y se esperaba ${EXPECTED_VERSION}." >&2
+    exit 1
+  fi
+done
+echo "Versión publicada: ${EXPECTED_VERSION} (API y web)."
 
 "${COMPOSE[@]}" ps
 DEPLOYED_SHA="$(git -C "${PROJECT_DIR}" rev-parse HEAD 2>/dev/null || echo desconocido)"

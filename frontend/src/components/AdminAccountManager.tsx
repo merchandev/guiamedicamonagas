@@ -57,7 +57,8 @@ export function AdminAccountManager({ kind }: { kind: 'professionals' | 'patient
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState('');
   const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState(false);
+  const [loadedUrl, setLoadedUrl] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -82,17 +83,26 @@ export function AdminAccountManager({ kind }: { kind: 'professionals' | 'patient
     if (isVaultLocked(e)) { setResults(null); relock(); return; }
     setError(e instanceof ApiError ? e.message : 'No se pudo completar la operación. Intenta de nuevo.');
   }, [relock]);
-  const load = useCallback(async () => {
-    if (!canManage) return;
+  // La lista vigente es la de estos filtros; mientras no llega su respuesta
+  // se muestra «Cargando», y una respuesta de filtros anteriores se descarta.
+  const listUrl = canManage
+    ? `${endpoint}?${new URLSearchParams({ page: String(page), ...(status ? { status } : {}), ...(query ? { search: query } : {}) })}`
+    : null;
+  const loading = refreshing || (listUrl !== null && loadedUrl !== listUrl);
+  const fetchList = useCallback((url: string) => {
     const id = ++requestId.current;
-    setLoading(true);
-    try {
-      const data = await api.get<Results>(`${endpoint}?${new URLSearchParams({ page: String(page), ...(status ? { status } : {}), ...(query ? { search: query } : {}) })}`);
-      if (id === requestId.current) setResults(data);
-    } catch (e) { if (id === requestId.current) { setResults(null); handleError(e); } }
-    finally { if (id === requestId.current) setLoading(false); }
-  }, [canManage, endpoint, page, status, query, handleError]);
-  useEffect(() => { void load(); return () => { requestId.current++; }; }, [load]);
+    return api.get<Results>(url).then(
+      (data) => { if (id === requestId.current) { setResults(data); setLoadedUrl(url); } },
+      (e) => { if (id === requestId.current) { setResults(null); setLoadedUrl(url); handleError(e); } },
+    );
+  }, [handleError]);
+  useEffect(() => { if (listUrl) void fetchList(listUrl); }, [listUrl, fetchList]);
+  // Recarga después de una acción o con «Actualizar».
+  const load = useCallback(async () => {
+    if (!listUrl) return;
+    setRefreshing(true);
+    try { await fetchList(listUrl); } finally { setRefreshing(false); }
+  }, [listUrl, fetchList]);
 
   const openAction = (account: Account, action: AccountAction) => {
     setSelected({ account, action }); setError(null); setSuccess(null);

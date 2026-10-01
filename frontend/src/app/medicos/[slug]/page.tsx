@@ -86,7 +86,6 @@ export default async function DoctorProfilePage({ params }: { params: Promise<{ 
       <ProfileViewTracker professionalId={doctor.id} />
       {/* JSON.stringify output is escaped before injection: a bio/name containing
           "</script>" could otherwise break out of the script tag (JSON-LD XSS). */}
-      {/* eslint-disable-next-line react/no-danger */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c') }}

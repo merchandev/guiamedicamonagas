@@ -44,6 +44,12 @@ COPY --from=builder /app/certs ./certs
 # El seed comparte el algoritmo de contraseñas con la API.
 COPY --from=builder /app/src/common/utils/password.util.ts ./src/common/utils/password.util.ts
 
+# Commit y fecha del build (los pasa deploy.sh) para comprobar desde fuera qué
+# versión corre. Van al final: no invalidan la caché de las capas anteriores.
+ARG GIT_SHA=dev
+ARG BUILD_DATE=
+ENV GMM_BUILD_SHA=${GIT_SHA} GMM_BUILT_AT=${BUILD_DATE}
+
 # Cambiar a usuario sin privilegios (ya incluido en node:alpine)
 USER node
 

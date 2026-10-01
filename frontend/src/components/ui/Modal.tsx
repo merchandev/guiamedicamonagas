@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useEffectEvent, useRef } from 'react';
 import { cn } from '@/lib/cn';
 
 const FOCUSABLE =
@@ -20,8 +20,8 @@ export function Modal({
   widthClassName?: string;
 }) {
   const dialogRef = useRef<HTMLDivElement>(null);
-  const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
+  // Escape usa siempre el onClose vigente sin reiniciar el efecto del foco.
+  const closeFromKeyboard = useEffectEvent(() => onClose());
 
   // Teclado: al abrir, el foco entra al diálogo; Tab y Shift+Tab quedan
   // dentro; Escape cierra, y al cerrar el foco vuelve a donde estaba.
@@ -35,7 +35,7 @@ export function Modal({
 
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        onCloseRef.current();
+        closeFromKeyboard();
         return;
       }
       if (e.key !== 'Tab') return;

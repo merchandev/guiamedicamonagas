@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api, ApiError } from '@/lib/api';
 import { Alert } from '@/components/ui/Alert';
@@ -26,23 +26,22 @@ export default function PostsPage() {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
 
-  const load = async () => {
-    try {
-      const items = await api.get<Post[]>('/posts/me');
-      setPosts(items);
-    } catch (e) {
-      if (e instanceof ApiError && e.status === 403) {
-        setLocked(true);
-        setPosts([]);
-      } else {
-        setError('No se pudieron cargar tus publicaciones');
-      }
-    }
-  };
+  const load = useCallback(
+    () =>
+      api.get<Post[]>('/posts/me').then(setPosts, (e) => {
+        if (e instanceof ApiError && e.status === 403) {
+          setLocked(true);
+          setPosts([]);
+        } else {
+          setError('No se pudieron cargar tus publicaciones');
+        }
+      }),
+    [],
+  );
 
   useEffect(() => {
-    load();
-  }, []);
+    void load();
+  }, [load]);
 
   const create = async (e: React.FormEvent) => {
     e.preventDefault();

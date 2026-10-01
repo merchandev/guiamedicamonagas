@@ -1,6 +1,7 @@
 'use client';
 
-import { Suspense, useEffect, useState, useCallback } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import { PaginatedResult, ProfessionalListItem, Specialty } from '@/lib/types';
@@ -12,6 +13,8 @@ import { Select } from '@/components/ui/Select';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { PageSpinner, Spinner } from '@/components/ui/Spinner';
+
+type DirectoryResult = PaginatedResult<ProfessionalListItem> & { featured?: ProfessionalListItem[] };
 
 export default function MedicosPage() {
   return (
@@ -26,32 +29,45 @@ function MedicosPageContent() {
   const searchParams = useSearchParams();
 
   const [specialties, setSpecialties] = useState<Specialty[]>([]);
-  const [result, setResult] = useState<(PaginatedResult<ProfessionalListItem> & { featured?: ProfessionalListItem[] }) | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Cada respuesta guarda la búsqueda que la pidió: mientras no llega la de
+  // los filtros actuales se muestra el indicador de carga, y una respuesta
+  // lenta de filtros anteriores nunca reemplaza a la vigente.
+  const [response, setResponse] = useState<{ query: string; data: DirectoryResult | null } | null>(null);
   const [search, setSearch] = useState(searchParams.get('q') ?? '');
   const municipalities = useMunicipalities();
 
   const especialidad = searchParams.get('especialidad') ?? '';
   const municipio = searchParams.get('municipio') ?? '';
+  const q = searchParams.get('q') ?? '';
   const page = Number(searchParams.get('page') ?? '1');
+  const filtered = Boolean(especialidad || municipio || q);
+
+  const query = useMemo(() => {
+    const params = new URLSearchParams();
+    if (especialidad) params.set('specialty', especialidad);
+    if (municipio) params.set('municipality', municipio);
+    if (q) params.set('search', q);
+    params.set('page', String(page));
+    return params.toString();
+  }, [especialidad, municipio, q, page]);
+
+  const loading = response?.query !== query;
+  const result = loading ? null : response.data;
 
   useEffect(() => {
     api.get<Specialty[]>('/specialties').then(setSpecialties).catch(() => undefined);
   }, []);
 
   useEffect(() => {
-    setLoading(true);
-    const params = new URLSearchParams();
-    if (especialidad) params.set('specialty', especialidad);
-    if (municipio) params.set('municipality', municipio);
-    if (searchParams.get('q')) params.set('search', searchParams.get('q')!);
-    params.set('page', String(page));
-    api
-      .get<PaginatedResult<ProfessionalListItem> & { featured?: ProfessionalListItem[] }>(`/professionals?${params.toString()}`)
-      .then(setResult)
-      .catch(() => setResult(null))
-      .finally(() => setLoading(false));
-  }, [especialidad, municipio, page, searchParams]);
+    let active = true;
+    api.get<DirectoryResult>(`/professionals?${query}`).then(
+      (data) => active && setResponse({ query, data }),
+      () => active && setResponse({ query, data: null }),
+    );
+    return () => {
+      active = false;
+    };
+  }, [query]);
 
   const updateParam = useCallback(
     (key: string, value: string) => {
@@ -128,10 +144,33 @@ function MedicosPageContent() {
           <div className="flex justify-center py-16">
             <Spinner className="h-8 w-8" />
           </div>
-        ) : !result || result.items.length === 0 ? (
+        ) : !result ? (
+          <EmptyState
+            title="No pudimos cargar el directorio"
+            description="Revisa tu conexión e intenta de nuevo en unos minutos."
+          />
+        ) : result.items.length === 0 && filtered ? (
           <EmptyState
             title="No encontramos médicos con esos filtros"
             description="Intenta con otra especialidad o municipio."
+            action={
+              <Link href="/medicos" className="text-sm font-semibold text-pine-700 hover:underline">
+                Ver todo el directorio
+              </Link>
+            }
+          />
+        ) : result.items.length === 0 ? (
+          <EmptyState
+            title="Estamos verificando a los primeros médicos"
+            description="Cada perfil se publica solo después de revisar sus documentos uno por uno. Vuelve pronto."
+            action={
+              <Link
+                href="/registro?tipo=medico"
+                className="rounded-lg bg-pine-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-pine-800"
+              >
+                ¿Eres médico en Monagas? Registra tu perfil
+              </Link>
+            }
           />
         ) : (
           <>

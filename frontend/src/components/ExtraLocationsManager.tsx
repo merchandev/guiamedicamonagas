@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api, ApiError } from '@/lib/api';
 import { Alert } from '@/components/ui/Alert';
@@ -25,21 +25,20 @@ export function ExtraLocationsManager() {
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({ name: '', address: '', municipality: '', phone: '', whatsapp: '' });
 
-  const load = async () => {
-    try {
-      const items = await api.get<Location[]>('/professionals/me/locations');
-      setLocations(items);
-    } catch (e) {
-      if (e instanceof ApiError && e.status === 403) {
-        setLocked(true);
-        setLocations([]);
-      }
-    }
-  };
+  const load = useCallback(
+    () =>
+      api.get<Location[]>('/professionals/me/locations').then(setLocations, (e) => {
+        if (e instanceof ApiError && e.status === 403) {
+          setLocked(true);
+          setLocations([]);
+        }
+      }),
+    [],
+  );
 
   useEffect(() => {
-    load();
-  }, []);
+    void load();
+  }, [load]);
 
   const add = async (e: React.FormEvent) => {
     e.preventDefault();

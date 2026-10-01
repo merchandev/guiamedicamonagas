@@ -67,17 +67,15 @@ function IdentityQueue() {
   const [submitting, setSubmitting] = useState(false);
 
   const load = useCallback(
-    async (s: IdentityStatus) => {
-      setItems(null);
-      try {
-        const res = await api.get<{ items: QueueItem[] }>(`/patients/admin/identity?status=${s}`);
-        setItems(res.items);
-      } catch (e) {
-        if (isVaultLocked(e)) return relock();
-        setItems([]);
-        setError(e instanceof ApiError ? e.message : 'No se pudo cargar la cola');
-      }
-    },
+    (s: IdentityStatus) =>
+      api.get<{ items: QueueItem[] }>(`/patients/admin/identity?status=${s}`).then(
+        (res) => setItems(res.items),
+        (e) => {
+          if (isVaultLocked(e)) return relock();
+          setItems([]);
+          setError(e instanceof ApiError ? e.message : 'No se pudo cargar la cola');
+        },
+      ),
     [relock],
   );
 
@@ -135,7 +133,11 @@ function IdentityQueue() {
         {TABS.map((tab) => (
           <button
             key={tab.status}
-            onClick={() => setStatus(tab.status)}
+            onClick={() => {
+              if (tab.status === status) return;
+              setItems(null);
+              setStatus(tab.status);
+            }}
             className={cn(
               'rounded-lg px-3 py-1.5 text-sm font-medium',
               status === tab.status ? 'bg-pine-700 text-white' : 'bg-ink-100 text-ink-700 hover:bg-ink-200',

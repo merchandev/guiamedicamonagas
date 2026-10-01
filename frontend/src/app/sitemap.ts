@@ -2,6 +2,7 @@ import type { MetadataRoute } from 'next';
 import { serverGet } from '@/lib/server-fetch';
 import { Organization, Specialty } from '@/lib/types';
 import { LEGAL_DOCS } from '@/lib/legal';
+import { ORGANIZATIONS_LAUNCHED } from '@/lib/features';
 
 interface SitemapPage {
   items: { slug: string; updatedAt: string }[];
@@ -24,7 +25,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${siteUrl}/`, changeFrequency: 'daily', priority: 1 },
     { url: `${siteUrl}/medicos`, changeFrequency: 'daily', priority: 0.9 },
     { url: `${siteUrl}/especialidades`, changeFrequency: 'weekly', priority: 0.7 },
-    { url: `${siteUrl}/farmacias`, changeFrequency: 'weekly', priority: 0.7 },
+    // «Próximamente» hasta el lanzamiento de farmacias, laboratorios y clínicas: no se ofrece a buscadores.
+    ...(ORGANIZATIONS_LAUNCHED ? [{ url: `${siteUrl}/farmacias`, changeFrequency: 'weekly' as const, priority: 0.7 }] : []),
     { url: `${siteUrl}/planes`, changeFrequency: 'monthly', priority: 0.4 },
     { url: `${siteUrl}/legal`, changeFrequency: 'yearly', priority: 0.2 },
     ...LEGAL_DOCS.map((doc) => ({ url: `${siteUrl}${doc.href}`, changeFrequency: 'yearly' as const, priority: 0.2 })),

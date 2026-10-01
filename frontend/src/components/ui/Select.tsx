@@ -75,18 +75,18 @@ export function Select({
     return () => document.removeEventListener('pointerdown', onPointerDown);
   }, [open]);
 
-  useEffect(() => {
-    if (open) {
-      const idx = options.findIndex((o) => o.value === value);
-      setHighlighted(idx >= 0 ? idx : 0);
-    }
-  }, [open, options, value]);
-
   // Mantiene visible la opción activa al moverse con las flechas.
   useEffect(() => {
     if (open) document.getElementById(optionId(highlighted))?.scrollIntoView({ block: 'nearest' });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, highlighted]);
+
+  // Al abrir, la opción activa es la elegida (o la primera).
+  const openList = () => {
+    const idx = options.findIndex((o) => o.value === value);
+    setHighlighted(idx >= 0 ? idx : 0);
+    setOpen(true);
+  };
 
   const choose = (index: number) => {
     const opt = options[index];
@@ -110,7 +110,7 @@ export function Select({
     if (!open) {
       if (['Enter', ' ', 'ArrowDown', 'ArrowUp'].includes(e.key)) {
         e.preventDefault();
-        setOpen(true);
+        openList();
       } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
         jumpTo(e.key);
       }
@@ -171,7 +171,7 @@ export function Select({
         aria-invalid={error ? true : undefined}
         aria-required={required || undefined}
         aria-describedby={error ? errorId : hint ? hintId : undefined}
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => (open ? setOpen(false) : openList())}
         onKeyDown={onKeyDown}
         className={cn(
           'flex h-11 w-full items-center justify-between gap-2 rounded-lg border border-ink-300 bg-white px-3.5 text-left text-sm text-ink-800 shadow-sm transition-colors',

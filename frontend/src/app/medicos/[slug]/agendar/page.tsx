@@ -69,14 +69,26 @@ export default function AgendarCitaPage({ params }: { params: Promise<{ slug: st
       .catch(() => setNotFound(true));
   }, [slug]);
 
+  // Una respuesta lenta de otro día no pisa la del día elegido.
   useEffect(() => {
     if (!doctor) return;
-    setSelectedSlot(null);
+    let active = true;
     api
       .get<string[]>(`/appointments/availability?professionalId=${doctor.id}&from=${selectedDay}&to=${selectedDay}`)
-      .then(setSlots)
-      .catch(() => setSlots([]));
+      .then((items) => active && setSlots(items))
+      .catch(() => active && setSlots([]));
+    return () => {
+      active = false;
+    };
   }, [doctor, selectedDay]);
+
+  // Al cambiar de día se limpian la hora elegida y las horas del día anterior.
+  const selectDay = (key: string) => {
+    if (key === selectedDay) return;
+    setSelectedSlot(null);
+    setSlots(null);
+    setSelectedDay(key);
+  };
 
   const book = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -149,7 +161,7 @@ export default function AgendarCitaPage({ params }: { params: Promise<{ slug: st
                       key={key}
                       type="button"
                       aria-pressed={selectedDay === key}
-                      onClick={() => setSelectedDay(key)}
+                      onClick={() => selectDay(key)}
                       className={`flex-shrink-0 rounded-lg border px-3 py-2 text-xs transition-colors ${
                         selectedDay === key ? 'border-pine-700 bg-pine-700 text-white' : 'border-ink-300 bg-white text-ink-700 hover:bg-ink-50'
                       }`}

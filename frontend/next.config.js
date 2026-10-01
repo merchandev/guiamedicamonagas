@@ -7,6 +7,12 @@ const httpsSite = (process.env.NEXT_PUBLIC_SITE_URL || '').startsWith('https://'
 const nextConfig = {
   reactStrictMode: true,
   output: 'standalone',
+  // Las páginas con ISR se regeneran cada minuto. Por defecto Next permite a
+  // las cachés intermedias (CDN, proxies, lectores de enlaces) servir una copia
+  // vencida hasta un año («stale-while-revalidate»); así, alguien podía seguir
+  // viendo una versión vieja del sitio después de un despliegue. Con esto, una
+  // copia nunca tiene más de una hora.
+  expireTime: 3600,
   experimental: {
     cpus: Math.max(1, Number.parseInt(process.env.NEXT_BUILD_CPUS || '1', 10) || 1),
   },

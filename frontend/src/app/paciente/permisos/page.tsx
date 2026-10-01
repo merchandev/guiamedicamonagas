@@ -57,19 +57,20 @@ export default function PatientPermissionsPage() {
   const [saving, setSaving] = useState(false);
   const [revokingId, setRevokingId] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    try {
-      const [g, p] = await Promise.all([
-        api.get<Grant[]>('/patients/me/grants'),
-        api.get<Professional[]>('/patients/me/professionals'),
-      ]);
-      setGrants(g);
-      setProfessionals(p);
-    } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'No se pudieron cargar tus permisos');
-      setGrants([]);
-    }
-  }, []);
+  const load = useCallback(
+    () =>
+      Promise.all([api.get<Grant[]>('/patients/me/grants'), api.get<Professional[]>('/patients/me/professionals')]).then(
+        ([g, p]) => {
+          setGrants(g);
+          setProfessionals(p);
+        },
+        (e) => {
+          setError(e instanceof ApiError ? e.message : 'No se pudieron cargar tus permisos');
+          setGrants([]);
+        },
+      ),
+    [],
+  );
 
   useEffect(() => {
     void load();

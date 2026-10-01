@@ -112,7 +112,7 @@ jobs:
         run: cat api.log
 
   frontend:
-    name: Frontend · tipos y build
+    name: Frontend · tipos, lint y build
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -128,5 +128,7 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
-      - run: npx tsc --noEmit
+      - run: npm run typecheck
+      # ESLint (Next.js, React Hooks, accesibilidad, TypeScript) sin advertencias.
+      - run: npm run lint
       - run: npm run build
