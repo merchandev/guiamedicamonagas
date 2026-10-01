@@ -34,7 +34,7 @@ import { LegalModule } from './legal/legal.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
-import { HealthController } from './health.controller';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -68,8 +68,8 @@ import { HealthController } from './health.controller';
     AnalyticsModule,
     AdminModule,
     LegalModule,
+    HealthModule,
   ],
-  controllers: [HealthController],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },

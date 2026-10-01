@@ -71,6 +71,11 @@ export class StorageService implements OnModuleInit {
     return `${prefix}/${randomUUID()}.${extension}`;
   }
 
+  /** Comprueba que el almacenamiento responde y que el bucket existe (monitoreo). */
+  async ping(): Promise<void> {
+    await this.client.send(new HeadBucketCommand({ Bucket: this.bucket }));
+  }
+
   async uploadPrivateObject(key: string, body: Buffer, contentType: string): Promise<void> {
     await this.client.send(
       new PutObjectCommand({

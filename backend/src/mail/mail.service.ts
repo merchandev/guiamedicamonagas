@@ -37,6 +37,11 @@ export class MailService {
     });
   }
 
+  /** Conexión e inicio de sesión con el servidor SMTP, sin enviar nada (monitoreo). */
+  async verifyConnection(): Promise<void> {
+    await this.transporter.verify();
+  }
+
   /** Envío best-effort: nunca lanza, siempre queda auditado en MessageLog. */
   async send(options: SendMailOptions): Promise<void> {
     try {

@@ -32,6 +32,14 @@
 		-Server
 	}
 
+	# Estado de las dependencias de la API (base de datos, almacenamiento,
+	# antivirus y SMTP): solo para el monitoreo del propio servidor, que entra
+	# directo al contenedor (scripts/healthcheck.sh). Cada consulta toca todas
+	# las dependencias, así que no se expone a Internet.
+	handle /api/v1/health/ready {
+		respond 404
+	}
+
 	# API — solo /api/* llega al backend NestJS
 	handle /api/* {
 		# Ni la API ni los archivos privados deben aparecer en buscadores.
