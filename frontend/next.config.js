@@ -71,6 +71,11 @@ const nextConfig = {
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
           { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
           { key: 'Content-Security-Policy', value: contentSecurityPolicy },
+          // Aislamiento entre orígenes: otra pestaña o sitio no conserva una
+          // referencia a esta ventana ni carga sus recursos desde otro dominio.
+          // (Sin Cross-Origin-Embedder-Policy: bloquearía YouTube y el mapa.)
+          { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
+          { key: 'Cross-Origin-Resource-Policy', value: 'same-origin' },
         ],
       },
     ];

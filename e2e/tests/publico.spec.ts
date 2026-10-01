@@ -92,6 +92,8 @@ test('cabeceras de seguridad y área del paciente fuera de buscadores', async ({
   expect(home['x-content-type-options']).toBe('nosniff');
   expect(home['referrer-policy']).toBe('strict-origin-when-cross-origin');
   expect(home['x-powered-by'], 'no se anuncia el software del servidor').toBeUndefined();
+  expect(home['cross-origin-opener-policy']).toBe('same-origin');
+  expect(home['cross-origin-resource-policy']).toBe('same-origin');
   const csp = home['content-security-policy'] ?? '';
   expect(csp).toContain("default-src 'self'");
   expect(csp).toContain("object-src 'none'");
