@@ -3,7 +3,7 @@
 > Bitácora central de cambios, implementaciones, decisiones técnicas y tareas de evolución del sistema.
 >
 > **Repositorio:** [`merchandev/guiamedicamonagas`](https://github.com/merchandev/guiamedicamonagas) · **Rama:** `main`<br>
-> **Última actualización de esta bitácora:** `2026-09-30 19:44:09 -04:00` · **Estado:** 🟢 Registro activo
+> **Última actualización de esta bitácora:** `2026-10-01 00:10:50 -04:00` · **Estado:** 🟢 Registro activo
 
 ![Estado](https://img.shields.io/badge/estado-registro%20activo-16a34a?style=flat-square)
 ![Rama](https://img.shields.io/badge/rama-main-2563eb?style=flat-square)
@@ -139,8 +139,10 @@ flowchart LR
     AH[🗑️ 2026-09-30\n10:15:59\nACT-0034 · Reactivar desde «Médicos»\ny eliminar cuentas desactivadas]
     AI[💳 2026-09-30\n19:44:09\nACT-0035 · Plan Plus, actividad\ndesplegable y Pago Móvil propio]
     AJ[🎬 2026-09-30\n19:44:09\nACT-0036 · Marca Médica y\nestadísticas del médico]
+    AK[🧹 2026-09-30\n21:35:16\nACT-0037 · Lint, versión verificable\ny portada sin ceros]
+    AL[🛰️ 2026-10-01\n00:07:32\nACT-0038 · Alertas, respaldos externos\ny custodia de claves]
 
-    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L --> M --> N --> O --> P --> Q --> R --> S --> T --> U --> V --> W --> X --> Y --> Z --> AA --> AB --> AC --> AD --> AE --> AF --> AG --> AH --> AI --> AJ
+    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L --> M --> N --> O --> P --> Q --> R --> S --> T --> U --> V --> W --> X --> Y --> Z --> AA --> AB --> AC --> AD --> AE --> AF --> AG --> AH --> AI --> AJ --> AK --> AL
 ```
 
 ### Resumen cuantitativo
@@ -148,8 +150,8 @@ flowchart LR
 | Indicador | Resultado |
 |---|---:|
 | Actividades históricas importadas desde Git | `3` |
-| Actividades documentales añadidas con esta bitácora | `33` |
-| Actividades registradas en total | `36` |
+| Actividades documentales añadidas con esta bitácora | `35` |
+| Actividades registradas en total | `38` |
 | Rama de referencia | `main` |
 | Commit base consultado | [`81b1091`](https://github.com/merchandev/guiamedicamonagas/commit/81b1091) |
 | Zona horaria de control | `America/Caracas` (`-04:00`) |
@@ -1617,6 +1619,119 @@ El titular compartió un análisis del plan Agencia: a $69.99 frente a los $10.9
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
+<a id="act-0037"></a>
+
+### 🧹 ACT-0037 · Cierre de la V1 (1/3): lint del frontend, versión verificable en producción, portada sin ceros y caché acotada
+
+<details>
+<summary><strong>2026-09-30 21:35:16 -04:00</strong> · <code>1195b7f</code> · 🟢 Completado</summary>
+
+**Responsable:** `Claude Opus 5.5` · **Tipo:** `calidad | operación | experiencia | despliegue` · **Commits:** [`1195b7f`](https://github.com/merchandev/guiamedicamonagas/commit/1195b7f), [`7c260a8`](https://github.com/merchandev/guiamedicamonagas/commit/7c260a8), [`fd981db`](https://github.com/merchandev/guiamedicamonagas/commit/fd981db)
+
+El titular compartió un análisis de «qué falta para llegar al 100 %» y pidió mejorarlo y aplicarlo. Antes de tocar nada se revisó contra el código y el servidor. Dos supuestos del análisis no se sostenían:
+
+- **Producción no estaba atrasada:** servía `7dcf4dc`, con Marca Médica y sin «Agencia». La copia vieja que vio el análisis se explica por la caché: Next.js autorizaba a cualquier caché intermedia a servir una página vencida hasta un año (`stale-while-revalidate=31535940`).
+- **Los «0 profesionales» eran reales:** no hay médicos publicados (los 2 perfiles de la base están suspendidos). Lo que fallaba era cómo se mostraba.
+
+El resto del análisis se confirmó y se ordenó en la nueva [hoja de ruta](docs/ROADMAP.md) y en el [GO / NO-GO](docs/operations/go-no-go.md).
+
+**Cambios:**
+- **Lint:** Next.js 16 eliminó `next lint`, el script fallaba y CI no lo ejecutaba. Ahora ESLint 9 con `eslint-config-next` (Next, React Hooks, accesibilidad y TypeScript); CI corre `typecheck` y `lint` sin advertencias. Se corrigió lo que encontró:
+  - estados que se reiniciaban dentro de efectos (ahora en el evento que los cambia o derivados al dibujar);
+  - una referencia escrita durante el render (`Modal`, ahora con `useEffectEvent`);
+  - una memoización que no se podía conservar y código sin usar.
+- **Respuestas tardías:** el directorio y la reserva de citas descartan la respuesta de un filtro o un día anterior. En la reserva ya no se puede elegir una hora del día anterior mientras cargan las del nuevo.
+- **Versión verificable:** `/api/v1/health` y la nueva `/version.json` dicen el commit con que se construyó cada imagen. `deploy.sh` falla si, al terminar, producción no responde con el commit recién desplegado.
+- **Caché acotada:** con `expireTime: 3600`, una copia en caché nunca tiene más de una hora (`stale-while-revalidate=3540`).
+- **Portada sin ceros:**
+  - el HTML del servidor trae las cifras reales (antes decía «0+» en todo hasta que corría la animación, y eso veían buscadores y vistas previas);
+  - «Pronto» mientras no haya médicos publicados; sin «+» en cifras exactas (18 especialidades, 13 municipios); sin «0 profesionales»;
+  - en `/especialidades`, una especialidad sin médicos lleva al directorio filtrado y ya no a una página 404;
+  - el directorio vacío explica que se están verificando los primeros médicos e invita a registrarse;
+  - `/farmacias` sale del mapa del sitio hasta su lanzamiento.
+
+**Incidencias del camino** (ninguna llegó a producción):
+- El build de la imagen web falló: el npm 11.6 local generó un `package-lock.json` sin los paquetes opcionales `@emnapi/*` y `npm ci` falla en Linux. Se regeneró con npm 11.19, el de la imagen (`7c260a8`).
+- Ese commit arrastró a medias el traslado de `health.controller.ts`, preparado para [ACT-0038](#act-0038), y el backend no compilaba. Se completó en `fd981db`.
+
+**Verificación local:** typecheck, ESLint sin advertencias y `next build`; 109 unitarias del backend. En el navegador:
+- públicas: portada, directorio vacío y filtrado, especialidades, aviso de cookies y diálogo con Escape;
+- administración: catálogos, SEO por página, planes, solicitudes, cuentas y bóveda de pacientes (incluido su vencimiento);
+- médico: pagos y publicaciones; paciente: permisos y código QR.
+
+**CI de GitHub:** «CI» y «Seguridad» en verde para `fd981db`.
+
+**Despliegue en el VPS** (`fd981db`, log `deploy-act37.log`):
+- Respaldo previo `gmm-db-20261001T035948Z-pre-deploy.dump.gpg`; sin migraciones pendientes; Caddy recreado después de validar su configuración nueva.
+- Prueba de humo **25/25** y «Versión publicada: fd981db78bb3 (API y web)».
+- En producción: cifras «Pronto · 18 · Pronto · 13», sin «0 profesionales» ni «0+», especialidades que llevan al directorio, sin `/farmacias` en el mapa del sitio y `stale-while-revalidate=3540`.
+- Los otros proyectos del VPS siguen en marcha desde hace 5 días, sin reinicios.
+
+**Archivos destacados:**
+- [`frontend/eslint.config.mjs`](frontend/eslint.config.mjs)
+- [`frontend/src/app/version.json/route.ts`](frontend/src/app/version.json/route.ts)
+- [`frontend/src/components/motion/Counter.tsx`](frontend/src/components/motion/Counter.tsx)
+- [`frontend/src/app/medicos/page.tsx`](frontend/src/app/medicos/page.tsx)
+- [`scripts/deploy.sh`](scripts/deploy.sh)
+
+</details>
+
+<p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
+
+<a id="act-0038"></a>
+
+### 🛰️ ACT-0038 · Cierre de la V1 (2/3): alertas que llegan al teléfono, respaldos fuera del servidor, custodia de claves y GO / NO-GO ampliado
+
+<details>
+<summary><strong>2026-10-01 00:07:32 -04:00</strong> · <code>0b25e0f</code> · 🟢 Completado</summary>
+
+**Responsable:** `Claude Opus 5.5` · **Tipo:** `operación | seguridad | respaldos | monitoreo` · **Commits:** [`fd981db`](https://github.com/merchandev/guiamedicamonagas/commit/fd981db), [`0b25e0f`](https://github.com/merchandev/guiamedicamonagas/commit/0b25e0f), [`69a2c9b`](https://github.com/merchandev/guiamedicamonagas/commit/69a2c9b)
+
+Lo que el análisis marcaba como NO-GO de operación ya tenía la base hecha (respaldos cifrados, prueba de restauración, `healthcheck.sh`), pero dependía de configuración que nunca se hizo y no avisaba a nadie. Ahora el código cubre cada punto; lo que falta es elegir proveedores y cargar credenciales, y eso lo hace el titular.
+
+**Cambios:**
+- **Estado de las dependencias** (`fd981db`): `/api/v1/health/ready` consulta base de datos, almacenamiento, antivirus y SMTP, con 5 s de límite cada uno. Responde 503 si alguno falla e informa los correos sin entregar de la última hora. Caddy la bloquea desde Internet (404).
+- **Alertas** ([`scripts/healthcheck.sh`](scripts/healthcheck.sh)):
+  - canales Telegram, correo (solo con SMTP real), ntfy, Slack o Discord, e «interruptor de hombre muerto» (`GMM_HEARTBEAT_URL`); los secretos le llegan a `curl` por la entrada estándar, nunca como argumentos;
+  - controles nuevos: web, dominio con HTTPS por Traefik, las cuatro dependencias, correos fallidos, antigüedad de la copia externa y última prueba de restauración fallida;
+  - repite cada 12 h lo que siga fallando; modos `--status` y `--test`.
+- **Copia fuera del servidor** ([`scripts/backup.sh`](scripts/backup.sh)): `GMM_BACKUP_REMOTE` en `backup.env`, con rclone (B2, R2, S3, SFTP) o rsync por SSH.
+  - Solo agrega: nunca borra ni reemplaza en el destino, así una credencial de solo escritura protege de un servidor comprometido.
+  - Verifica con `rclone check` el respaldo recién copiado.
+  - Si la copia falla, el respaldo local sigue valiendo y el monitoreo avisa.
+- **Restauración desde afuera** ([`scripts/restore-test.sh`](scripts/restore-test.sh)): `--from-remote` (mensual por cron, con credencial de solo lectura opcional), `--keys-file`, `--passphrase-file` y `--escrow-file` para el simulacro de desastre. El registro dice el origen del respaldo y de las claves.
+- **Custodia de claves** ([`scripts/key-escrow.sh`](scripts/key-escrow.sh)): huellas, copia cifrada con una frase que elige el titular, verificación de esa copia, confirmación y estado. Nunca muestra las claves.
+- **GO / NO-GO ampliado** ([`scripts/deploy.sh`](scripts/deploy.sh)):
+  - controles nuevos: SMTP real, canal de alertas, custodia vigente (vuelve a NO-GO si las claves cambian), copia externa al día y probada en los últimos 35 días, y datos del titular publicados;
+  - avisa 14 días antes de que venza la excepción de MFA;
+  - `deploy.sh --informe` imprime el informe sin desplegar;
+  - instala el cron del repositorio cuando cambia.
+- **Monitor externo:** flujo «Disponibilidad» de GitHub Actions. Revisa el sitio, el directorio, la API y el certificado cada 30 minutos desde Internet, con 3 intentos; si falla, GitHub avisa por correo. No requiere cuentas nuevas.
+- **Documentación:**
+  - nuevas o reescritas: [monitoreo y alertas](docs/operations/monitoreo-y-alertas.md), [respaldos, custodia y simulacro de desastre](docs/operations/respaldos-y-restauracion.md), [GO / NO-GO](docs/operations/go-no-go.md) y la [hoja de ruta](docs/ROADMAP.md) (V1 construida, pasos antes del lanzamiento, V1.1, V2, V3 y deuda conocida);
+  - [vulnerabilidades](docs/security/vulnerabilidades.md): Prisma 7.10.0 sigue siendo la última 7.x y la 8 es *release candidate*, así que las dos excepciones HIGH (no alcanzables) siguen hasta el 2026-12-31; ESLint 9 figura sin soporte, pero solo corre en desarrollo.
+- **Dependabot:** los PR #13 y #14 fallan solo en gitleaks, por el hallazgo histórico que `main` ya ignora; pasan al rebasarlos y se fusionan con la aprobación del titular.
+
+**Verificación:** shellcheck sin advertencias en los cinco scripts. Localmente se probaron la custodia (huellas, detección de una rotación, copia cifrada) y los patrones de `curl`. En el servidor:
+- `healthcheck.sh --status`: 14/14 controles en verde; `--test` confirma que todavía no hay canal configurado.
+- Respaldo de verificación `gmm-db-20261001T040750Z-verificacion-act38.dump.gpg`, sin copia externa: avisa y no falla.
+- Prueba de restauración con el script nuevo: `origen=local claves=servidor`, cifrados 2/2 y 0 legibles con claves falsas. `--from-remote --if-configured` se omite.
+- `key-escrow.sh status`: «Sin custodia confirmada».
+
+**Despliegue en el VPS:** solo scripts, documentación y el flujo de GitHub, así que bastó `git merge --ff-only` en el servidor (sin reconstruir imágenes) e instalar el cron nuevo.
+
+**Informe GO / NO-GO de hoy** (`deploy.sh --informe`, 6 pendientes, todos del titular):
+1. MFA de administradores con excepción hasta el 2026-10-24;
+2. sin copia de respaldos fuera del servidor;
+3. claves y frase de respaldos sin custodia externa;
+4. correo sin SMTP real;
+5. sin canal de alertas;
+6. datos del titular sin publicar.
+
+</details>
+
+<p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
+
 <a id="registro-por-area"></a>
 
 ## 🧩 Registro por área
@@ -1633,9 +1748,9 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | 📅 Agenda y citas | Horarios, disponibilidad, reservas, máquina de estados, anti-doble-reserva, zona America/Caracas | [ACT-0007](#act-0007) · [ACT-0015](#act-0015) |
 | 🔒 Pacientes | Código pseudónimo, cifrado de datos de salud, consentimiento por alcance y tiempo, lecturas auditadas, registro propio, foto de identificación verificada por un admin, reserva con la ficha propia, código y QR para compartir, directorio del médico por código, bóveda de administración y noindex, registro visible desde el inicio, supresión de la cuenta conservando solo la evidencia legal, consentimiento expreso de datos de salud y mayoría de edad, descarga de los datos propios e historial de accesos | [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0023](#act-0023) · [ACT-0027](#act-0027) · [ACT-0029](#act-0029) · [ACT-0031](#act-0031) · [ACT-0033](#act-0033) |
 | 🛠️ Administración | Médicos, pagos, SEO, cookies, especialidades, planes, verificaciones, organizaciones, bancos, geografía, identidad de pacientes, cuentas (suspensión, baja, eliminación definitiva), planes pagados, video de presentación de los médicos, bandeja de solicitudes legales, Pago Móvil propio, video de muestra de Marca Médica y actividad reciente desplegable | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0031](#act-0031) · [ACT-0032](#act-0032) · [ACT-0033](#act-0033) · [ACT-0034](#act-0034) · [ACT-0035](#act-0035) · [ACT-0036](#act-0036) |
-| 📊 Observabilidad | Auditoría, analítica con consentimiento y sin IP, estadísticas del médico según su plan, notificaciones, salud, pruebas, CI, escaneo de imágenes y Dependabot | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0036](#act-0036) |
-| 🎨 Experiencia | Directorios, dashboard, componentes UI, motion, legal, formularios legibles y utilizables con teclado, sección de pacientes en el inicio, tipografía Montserrat + Open Sans, suiches, botones y foco de campos corregidos, centro legal con 21 documentos versionados y avisos breves (descargo médico, verificación, QR) | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0013](#act-0013) · [ACT-0014](#act-0014) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0017](#act-0017) · [ACT-0019](#act-0019) · [ACT-0022](#act-0022) · [ACT-0023](#act-0023) · [ACT-0025](#act-0025) · [ACT-0026](#act-0026) · [ACT-0028](#act-0028) · [ACT-0033](#act-0033) |
-| 🚢 Operación | Variables de entorno, Compose, almacenamiento, correo, proxy, imágenes mínimas y antivirus | [ACT-0001](#act-0001) · [ACT-0002](#act-0002) · [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0008](#act-0008) · [ACT-0009](#act-0009) · [ACT-0011](#act-0011) · [ACT-0016](#act-0016) · [ACT-0017](#act-0017) · [ACT-0018](#act-0018) · [ACT-0019](#act-0019) · [ACT-0024](#act-0024) · [ACT-0027](#act-0027) |
+| 📊 Observabilidad | Auditoría, analítica con consentimiento y sin IP, estadísticas del médico según su plan, notificaciones, salud, pruebas, CI, escaneo de imágenes y Dependabot, ESLint del frontend en CI, versión publicada verificable, estado de las dependencias (`/health/ready`), alertas por Telegram/correo/ntfy/webhook, interruptor de hombre muerto y monitor externo de GitHub | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0036](#act-0036) · [ACT-0037](#act-0037) · [ACT-0038](#act-0038) |
+| 🎨 Experiencia | Directorios, dashboard, componentes UI, motion, legal, formularios legibles y utilizables con teclado, sección de pacientes en el inicio, tipografía Montserrat + Open Sans, suiches, botones y foco de campos corregidos, centro legal con 21 documentos versionados y avisos breves (descargo médico, verificación, QR), portada con cifras reales y directorio que explica cuando está vacío | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0013](#act-0013) · [ACT-0014](#act-0014) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0017](#act-0017) · [ACT-0019](#act-0019) · [ACT-0022](#act-0022) · [ACT-0023](#act-0023) · [ACT-0025](#act-0025) · [ACT-0026](#act-0026) · [ACT-0028](#act-0028) · [ACT-0033](#act-0033) · [ACT-0037](#act-0037) |
+| 🚢 Operación | Variables de entorno, Compose, almacenamiento, correo, proxy, imágenes mínimas y antivirus, copia de respaldos fuera del servidor, restauración desde la copia externa, custodia de claves, simulacro de desastre e informe GO / NO-GO ampliado | [ACT-0001](#act-0001) · [ACT-0002](#act-0002) · [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0008](#act-0008) · [ACT-0009](#act-0009) · [ACT-0011](#act-0011) · [ACT-0016](#act-0016) · [ACT-0017](#act-0017) · [ACT-0018](#act-0018) · [ACT-0019](#act-0019) · [ACT-0024](#act-0024) · [ACT-0027](#act-0027) · [ACT-0037](#act-0037) · [ACT-0038](#act-0038) |
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
@@ -1713,6 +1828,14 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | IMP-066 | Pago Móvil de la plataforma (titular, cédula o RIF, banco, teléfono y cuenta) registrado desde Administración → Pagos, auditado, y visible solo dentro del panel del médico junto al reporte de pago | 🟢 Completado | [`frontend/src/components/admin/PagoMovilAccountCard.tsx`](frontend/src/components/admin/PagoMovilAccountCard.tsx), [`backend/src/payments/payments.service.ts`](backend/src/payments/payments.service.ts) |
 | IMP-067 | Plan Marca Médica: servicio de contenido con 2 videos profesionales cada mes, sección propia en `/planes` con video de muestra configurable y etiqueta comercial separada del sello de verificación | 🟢 Completado | [`frontend/src/app/planes/page.tsx`](frontend/src/app/planes/page.tsx), [`frontend/src/components/MarcaMedicaPhone.tsx`](frontend/src/components/MarcaMedicaPhone.tsx) |
 | IMP-068 | «Estadísticas» en el panel del médico según su plan (básicas, completas y analítica avanzada con comparación y 6 meses) | 🟢 Completado | [`frontend/src/app/dashboard/estadisticas/page.tsx`](frontend/src/app/dashboard/estadisticas/page.tsx), [`backend/src/analytics/analytics.service.ts`](backend/src/analytics/analytics.service.ts) |
+| IMP-069 | ESLint 9 del frontend (Next, React Hooks, accesibilidad, TypeScript) en CI sin advertencias, con las correcciones que encontró | 🟢 Completado | [`frontend/eslint.config.mjs`](frontend/eslint.config.mjs), [`.github/workflows/ci.yml`](.github/workflows/ci.yml) |
+| IMP-070 | Versión publicada verificable (`/api/v1/health`, `/version.json`) y comprobada por `deploy.sh`; caché de páginas ISR acotada a una hora | 🟢 Completado | [`frontend/src/app/version.json/route.ts`](frontend/src/app/version.json/route.ts), [`frontend/next.config.js`](frontend/next.config.js) |
+| IMP-071 | Portada con cifras reales en el HTML y sin «0 profesionales»; directorio que explica cuando está vacío; especialidades sin médicos sin páginas 404 | 🟢 Completado | [`frontend/src/components/motion/Counter.tsx`](frontend/src/components/motion/Counter.tsx), [`frontend/src/app/medicos/page.tsx`](frontend/src/app/medicos/page.tsx) |
+| IMP-072 | Estado de las dependencias (`/api/v1/health/ready`: base de datos, almacenamiento, antivirus, SMTP), solo para el monitoreo del servidor | 🟢 Completado | [`backend/src/health/readiness.service.ts`](backend/src/health/readiness.service.ts), [`Caddyfile`](Caddyfile) |
+| IMP-073 | Alertas por Telegram, correo, ntfy o webhook, interruptor de hombre muerto y monitor externo de GitHub cada 30 minutos | 🟢 Completado | [`scripts/healthcheck.sh`](scripts/healthcheck.sh), [`.github/workflows/disponibilidad.yml`](.github/workflows/disponibilidad.yml) |
+| IMP-074 | Copia de respaldos fuera del servidor (rclone o rsync, solo agrega y verifica) y restauración probada desde la copia externa | 🟢 Completado | [`scripts/backup.sh`](scripts/backup.sh), [`scripts/restore-test.sh`](scripts/restore-test.sh) |
+| IMP-075 | Custodia de las claves de datos y de la frase de respaldos fuera del servidor, con huellas y detección de rotaciones | 🟢 Completado | [`scripts/key-escrow.sh`](scripts/key-escrow.sh) |
+| IMP-076 | Informe GO / NO-GO ampliado (SMTP, alertas, custodia, copia externa, datos del titular) y `deploy.sh --informe` | 🟢 Completado | [`scripts/deploy.sh`](scripts/deploy.sh), [`docs/operations/go-no-go.md`](docs/operations/go-no-go.md) |
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
@@ -1735,11 +1858,11 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | 🟢 Continua | ~~SEC-03 · Permisos granulares (eliminar el bypass universal de SUPERADMIN)~~ | 🟢 Completado | Ver [ACT-0015](#act-0015) |
 | 🟢 Continua | ~~SEC-05 · Cifrado de campos sensibles del paciente~~ — hecho para el perfil y las citas; `ClinicalNote` deberá usar el mismo servicio al implementarse | 🟢 Completado | Ver [ACT-0015](#act-0015) |
 | 🟢 Continua | ~~SEC-02 (resto) · `tokenVersion` para invalidar access tokens vigentes~~ | 🟢 Completado | Ver [ACT-0016](#act-0016) |
-| 🔴 Alta | Respaldar fuera del VPS las claves `DATA_ENCRYPTION_KEYS`/`DATA_LOOKUP_KEY` de producción (sin ellas los datos cifrados son irrecuperables) | 🔴 Bloqueado | Copia en una bóveda del usuario, separada de los respaldos de la BD — ver [`docs/security/sec-02-05-privacidad-y-acceso.md`](docs/security/sec-02-05-privacidad-y-acceso.md) |
+| 🔴 Alta | Custodiar fuera del VPS las claves `DATA_ENCRYPTION_KEYS`/`DATA_LOOKUP_KEY` y la frase de los respaldos (sin ellas los datos cifrados son irrecuperables). La herramienta ya existe: `scripts/key-escrow.sh export`, `verify` y `confirm` | 🔴 Pendiente del titular | `deploy.sh --informe` deja de marcarlo. Ver [ACT-0038](#act-0038) y [`docs/operations/respaldos-y-restauracion.md`](docs/operations/respaldos-y-restauracion.md) |
 | 🔴 Alta | SMTP real → `ADMIN_MFA_ENABLED=true` y retirar `ADMIN_MFA_WAIVER_UNTIL` (vence el 2026-10-24; después `deploy.sh` no despliega) | 🔴 Bloqueado | Login de administrador con código por correo en producción; requiere las credenciales SMTP del usuario |
-| 🔴 Alta | Copia de los respaldos fuera del VPS (`GMM_BACKUP_REMOTE`) y guardar fuera del servidor la frase de cifrado de respaldos | 🔴 Bloqueado | Regla 3-2-1; ver [`docs/operations/respaldos-y-restauracion.md`](docs/operations/respaldos-y-restauracion.md) |
+| 🔴 Alta | Copia de los respaldos fuera del VPS: elegir destino (B2, R2, S3 u otro servidor) con credencial de solo escritura y cargarlo en `backup.env`; luego `restore-test.sh --from-remote` y el simulacro con la custodia. El código ya está | 🔴 Pendiente del titular | Regla 3-2-1. Ver [ACT-0038](#act-0038) y [`docs/operations/respaldos-y-restauracion.md`](docs/operations/respaldos-y-restauracion.md) |
 | 🔴 Alta | Datos del operador para el Aviso legal y la Política de privacidad: nombre o razón social, RIF, domicilio, responsable del tratamiento y correos (legal, privacidad, soporte y seguridad). Hasta tenerlos, los textos legales son borradores y el Aviso legal los muestra como «pendiente de publicación» | 🔴 Pendiente del titular | `DATA_CONTROLLER` en `frontend/src/lib/legal.ts` + nueva versión de la política. Ver [ACT-0033](#act-0033) |
-| 🟡 Baja | Canal de alertas del monitoreo (`GMM_ALERT_WEBHOOK_URL`) | 🔵 Planificado | Avisos de caída, disco, respaldos y certificado fuera del log |
+| 🔴 Alta | Canal de alertas en el teléfono: crear el bot de Telegram (o elegir correo, ntfy o webhook) y un interruptor de hombre muerto, y cargarlos en `alerts.env`. El código y el monitor externo de GitHub ya están | 🔴 Pendiente del titular | `healthcheck.sh --test` entrega el aviso. Ver [ACT-0038](#act-0038) y [`docs/operations/monitoreo-y-alertas.md`](docs/operations/monitoreo-y-alertas.md) |
 | 🟠 Media | Imagen de MinIO: `quay.io` ya no la sirve sin autenticación ([ACT-0020](#act-0020)). Guardar una copia (`docker save`) fuera del servidor o planificar su reemplazo | 🔵 Planificado | Un servidor nuevo puede levantar el almacenamiento sin depender de ese registro |
 | 🟠 Media | Pagos C2P/P2C o API bancaria autorizada en lugar del reporte manual de Pago Móvil | 🔵 Planificado | Conciliación automática con evidencia del banco |
 | 🟡 Baja | Agenda: duración por servicio, consulta online, precio, política de cancelación, feriados, varias agendas y lista de espera | 🔵 Planificado | Sugeridos por la auditoría de [ACT-0015](#act-0015) |
@@ -1752,7 +1875,7 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | 🔴 Alta | Cambiar el código de seguridad de la bóveda de pacientes: el actual se compartió por chat. En el servidor, `bash scripts/set-patient-vault-code.sh` (lo pide sin mostrarlo) | 🔴 Pendiente del titular | Código nuevo que solo conozca el titular; el anterior deja de abrir la bóveda |
 | 🟡 Baja | Decidir si el directorio de pacientes y el registro por código se abren al plan básico (hoy desde el plan Profesional, como la agenda) | 🔵 Planificado | Decisión del titular; es un cambio de una línea en `AGENDA_MIN_TIER` o una verificación propia |
 | 🟡 Baja | Decidir si el plan básico muestra foto y biografía en público (hoy son obligatorias para publicarse pero se ocultan en ese plan; por eso su tarjeta al compartir usa iniciales y su descripción SEO no usa la biografía) | 🔵 Planificado | Decisión del titular; `gateByTier` en `professionals.service.ts` |
-| 🟠 Media | Revisar y decidir los borradores de otra herramienta guardados en la rama local `wip/borradores-locales-2026-09-29` (sin subir): documentos esenciales para publicar, consentimiento del QR de 30 a 7 días, CSP estricta, lint en CI, bloqueo por correo sin verificar y `/health/ready`. Cambian reglas de producto: no se despliegan sin revisión | 🔴 Bloqueado | Decisión del titular; ver [ACT-0031](#act-0031) |
+| 🟠 Media | Revisar y decidir los borradores de otra herramienta guardados en la rama local `wip/borradores-locales-2026-09-29` (sin subir). El lint en CI y el estado de las dependencias ya se hicieron aparte ([ACT-0037](#act-0037), [ACT-0038](#act-0038)); quedan reglas de producto: documentos esenciales para publicar, consentimiento del QR de 30 a 7 días, CSP estricta y bloqueo por correo sin verificar | 🔴 Bloqueado | Decisión del titular; ver [ACT-0031](#act-0031) |
 | 🟢 Continua | ~~Actualizar los textos legales para el plan Agencia~~ — hecho: la política de pagos incluye a Agencia en la regla del 100% de documentos y describe los 2 videos (para el profesional; uno puede mostrarse en la ficha). Los detalles de producción se coordinan con cada profesional | 🟢 Completado | Ver [ACT-0033](#act-0033) |
 | 🔴 Alta | Revisión de los 21 textos legales por un abogado venezolano antes del lanzamiento comercial (incluida la mención a la Ley sobre Mensajes de Datos y Firmas Electrónicas) | 🔴 Pendiente del titular | Textos aprobados; cada cambio sustancial sube la versión del documento. Ver [ACT-0033](#act-0033) |
 | 🟠 Media | Definir los plazos que hoy figuran «en definición»: retención de accesos, auditoría, autorizaciones, reclamos y constancias de cookies; tiempo entre la baja y la eliminación definitiva; plazos, medio y moneda de los reembolsos; y la sede de jurisdicción | 🔴 Pendiente del titular | Plazos publicados en `/privacidad/retencion` y `/reembolsos` con nueva versión. Ver [ACT-0033](#act-0033) |
@@ -1767,8 +1890,10 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | 🟠 Media | Confirmar lo que se publicó de Marca Médica: 2 videos cada mes (uno puede ser el de presentación, no un tercero), informe mensual y publicación colaborativa; y definir qué pasa si en un mes pagado no se entregan los videos (la política de reembolsos no lo cubre) | 🔴 Pendiente del titular | Textos de `/planes` y `/pagos-y-suscripciones` confirmados o ajustados. Ver [ACT-0036](#act-0036) |
 | 🟡 Baja | Decidir si «Registrar pago y asignar plan» (pagos recibidos por fuera, que registra la administración) se mantiene, ahora que el pago se reporta desde el panel del médico | 🔵 Planificado | Decisión del titular. Ver [ACT-0035](#act-0035) |
 | 🟡 Baja | El sello de verificación todavía cambia de color según el plan (gris, azul, índigo, dorado). Si se quiere el mismo sello para todos y solo etiquetas de plan, como ya se hizo con Marca Médica, es un cambio pequeño | 🔵 Planificado | Decisión del titular. Ver [ACT-0036](#act-0036) |
-| 🟡 Baja | Revisar los PR #13 y #14 de Dependabot (actualizaciones menores abiertas tras ACT-0031) | 🔵 Planificado | Su chequeo de gitleaks falló por el hallazgo histórico ya ignorado en `342745a`; pasa al rebasarlos |
+| 🟡 Baja | Revisar los PR #13 y #14 de Dependabot (`react-hook-form`, `@nestjs/throttler`, `@types/node`): sus pruebas pasan; solo falla gitleaks por el hallazgo histórico ya ignorado en `342745a` | 🔴 Pendiente del titular | Aprobación para rebasarlos y fusionarlos |
 | 🟠 Media | Proteger la rama `main` (al menos contra *force push* y borrado) y activar las alertas de Dependabot | 🔴 Bloqueado | Decisión del usuario sobre los ajustes del repositorio; ver [ACT-0017](#act-0017) |
+| 🔴 Alta | Cierre de la V1 (3/3): pruebas de extremo a extremo del frontend con Playwright (escritorio y móvil, accesibilidad), matriz de autorización automatizada, escaneo pasivo y CSP | 🔵 Siguiente | Suite en CI. Después, pentest humano antes de cargar datos reales. Ver [hoja de ruta](docs/ROADMAP.md) |
+| 🔴 Alta | Pendientes del titular para lanzar, en orden: datos del operador, SMTP real (y con él MFA), custodia de claves, copia externa, alertas, médicos reales publicados, revisión legal, Search Console, Pago Móvil y video de muestra, código nuevo de la bóveda | 🔴 Pendiente del titular | `deploy.sh --informe` en verde y la lista de [`docs/ROADMAP.md`](docs/ROADMAP.md) completa |
 | 🟢 Continua | Registrar cada modificación nueva con fecha, hora, responsable y evidencia | 🟢 Activo | No existen cambios relevantes sin entrada en esta bitácora |
 | 🟢 Continua | Confirmar en el repositorio remoto cada cambio cerrado localmente | 🟢 Activo | `git status` limpio y `origin/main` sincronizado al cierre de cada sesión |
 
@@ -1850,6 +1975,7 @@ Para cada cambio futuro, añadir una entrada en la línea de tiempo y actualizar
 | `2026-09-30 08:03:13 -04:00` | Incorporación de ACT-0033 (marco legal venezolano: 21 documentos versionados, aceptaciones con evidencia, canal de reclamos, derechos del paciente y avisos breves) con su despliegue; se cierra el pendiente de los términos del plan Agencia y se abren cinco del titular (datos del operador, abogado, plazos, proveedores y credenciales esenciales) | 🟢 Completado |
 | `2026-09-30 10:15:59 -04:00` | Incorporación de ACT-0034 («Reactivar» desde la lista de médicos, eliminación definitiva de cuentas suspendidas o dadas de baja y registro posterior con el mismo correo) con su despliegue; dos pendientes nuevos (tipografías en el build de la imagen web y motivo de «Suspender perfil» en un formulario) | 🟢 Completado |
 | `2026-09-30 19:44:09 -04:00` | Incorporación de ACT-0035 (plan «Plus», actividad reciente desplegable y Pago Móvil de la plataforma registrado desde Pagos) y ACT-0036 (plan Marca Médica como servicio de contenido, video de muestra, etiqueta aparte del sello y estadísticas del médico), desplegadas juntas; cinco pendientes nuevos del titular (registrar el Pago Móvil, video de muestra, confirmar lo publicado de Marca Médica, pagos registrados por la administración y color del sello) | 🟢 Completado |
+| `2026-10-01 00:10:50 -04:00` | Incorporación de ACT-0037 (lint del frontend en CI, versión verificable, portada sin ceros y caché acotada) y ACT-0038 (alertas, respaldos fuera del servidor, custodia de claves, GO / NO-GO ampliado y monitor externo), con su despliegue; pendientes de operación reformulados como configuración del titular y dos nuevos (cierre 3/3 y lista de lanzamiento) | 🟢 Completado |
 
 ---
 
