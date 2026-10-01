@@ -31,6 +31,6 @@ test('reclamo sin cuenta → número de seguimiento → consulta del estado', as
   // Con otro correo no se revela nada de la solicitud.
   await page.getByLabel(/^Correo con el que la enviaste/).fill(`otro-${email}`);
   await page.getByRole('button', { name: 'Consultar' }).click();
-  await expect(page.getByRole('alert')).toBeVisible();
+  await expect(page.locator('main').getByRole('alert')).toBeVisible();
   expect(errors, 'errores en la consola').toEqual([]);
 });

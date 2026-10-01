@@ -88,7 +88,8 @@ test('una contraseña equivocada muestra el error y no abre la sesión', async (
     declareAdult: true,
   });
   await loginWithForm(page, email, `${PASSWORD}-no`);
-  await expect(page.getByRole('alert')).toBeVisible();
+  // En «main»: Next.js tiene además un anunciador de rutas con rol «alert», vacío.
+  await expect(page.locator('main').getByRole('alert')).toBeVisible();
   await expect(page).toHaveURL(/\/iniciar-sesion/);
 });
 
@@ -114,7 +115,7 @@ test.describe('con correo (Mailpit)', () => {
     const link = mail.html.match(/href="([^"]*verificar-correo[^"]*)"/)?.[1];
     expect(link, 'enlace de verificación en el correo').toBeTruthy();
     await page.goto(new URL(link!.replace(/&amp;/g, '&')).pathname + new URL(link!.replace(/&amp;/g, '&')).search);
-    await expect(page.getByRole('alert')).toContainText(/verificad/i);
+    await expect(page.locator('main')).toContainText(/Correo verificado/i);
   });
 
   test('recuperación de la contraseña: correo, enlace y nueva contraseña', async ({ page }) => {
@@ -143,7 +144,8 @@ test.describe('con correo (Mailpit)', () => {
     await page.getByLabel('Nueva contraseña').fill(newPassword);
     await page.getByLabel('Confirmar contraseña').fill(newPassword);
     await page.getByRole('button').filter({ hasText: /restablecer|guardar|cambiar/i }).first().click();
-    await expect(page.getByRole('alert').or(page.getByRole('status')).first()).toBeVisible();
+    const main = page.locator('main');
+    await expect(main.getByRole('alert').or(main.getByRole('status')).first()).toBeVisible();
 
     await loginWithForm(page, email, newPassword);
     await expect(page).toHaveURL(/\/paciente/);

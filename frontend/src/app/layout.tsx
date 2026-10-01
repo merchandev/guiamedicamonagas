@@ -8,6 +8,7 @@ import { Footer } from '@/components/layout/Footer';
 import CookieConsent from '@/components/CookieConsent';
 import { LegalAcceptanceGate } from '@/components/LegalAcceptanceGate';
 import { ORGANIZATIONS_LAUNCHED } from '@/lib/features';
+import { SITE_NAME } from '@/lib/seo';
 
 // Solo dos familias en todo el sitio: Montserrat para títulos (h1–h4 y el
 // logo) y Open Sans para el texto, los botones y los formularios.
@@ -23,6 +24,10 @@ export const metadata: Metadata = {
   description: `Encuentra ${
     ORGANIZATIONS_LAUNCHED ? 'médicos, especialistas, farmacias y clínicas verificadas' : 'médicos y especialistas verificados'
   } en el estado Monagas. Cada profesional pasa por un proceso de verificación legal y gremial.`,
+  // Tarjeta al compartir (WhatsApp, Facebook, X): la imagen sale de
+  // app/opengraph-image.tsx; la ficha de cada médico define la suya.
+  openGraph: { type: 'website', siteName: SITE_NAME, locale: 'es_VE' },
+  twitter: { card: 'summary_large_image' },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

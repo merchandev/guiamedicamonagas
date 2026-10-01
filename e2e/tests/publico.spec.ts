@@ -61,6 +61,25 @@ test('centro legal: lista los documentos y cada uno muestra su versión', async 
   await expect(page.getByText(/Versión \d+(\.\d+)?/).first()).toBeVisible();
 });
 
+test('SEO: URL canónica (sin filtros) y tarjeta para compartir en las páginas principales', async ({ request }) => {
+  const pages: [string, string][] = [
+    ['/', '/'],
+    ['/planes', '/planes'],
+    ['/especialidades', '/especialidades'],
+    ['/medicos?especialidad=cardiologia', '/medicos'],
+  ];
+  for (const [path, canonical] of pages) {
+    const html = await (await request.get(path)).text();
+    const href = html.match(/<link rel="canonical" href="([^"]+)"/)?.[1];
+    expect(href, `canónica de ${path}`).toBeTruthy();
+    expect(new URL(href!).pathname, `canónica de ${path}`).toBe(canonical);
+    expect(html, `og:image de ${path}`).toMatch(/<meta property="og:image" content="[^"]*opengraph-image/);
+  }
+  const card = await request.get('/opengraph-image');
+  expect(card.ok()).toBeTruthy();
+  expect(card.headers()['content-type']).toContain('image/png');
+});
+
 test('/version.json dice qué versión está publicada y no se guarda en caché', async ({ request }) => {
   const res = await request.get('/version.json');
   expect(res.ok()).toBeTruthy();

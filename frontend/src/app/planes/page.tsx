@@ -10,7 +10,10 @@ import { ORGANIZATIONS_LAUNCHED } from '@/lib/features';
 
 export const metadata: Metadata = {
   title: 'Planes y precios',
-  description: 'Planes para médicos, farmacias, laboratorios y clínicas en Guía Médica Monagas. Regístrate gratis o publica un perfil verificado completo.',
+  description: ORGANIZATIONS_LAUNCHED
+    ? 'Planes para médicos, farmacias, laboratorios y clínicas en Guía Médica Monagas. Regístrate gratis o publica un perfil verificado completo.'
+    : 'Planes para médicos en Guía Médica Monagas: Perfil Básico gratis, Profesional, Plus, Premium y Marca Médica. Regístrate gratis y publica un perfil verificado.',
+  alternates: { canonical: '/planes' },
 };
 
 const DOCTOR_TIERS = ['FREE', 'PROFESSIONAL', 'PROFESSIONAL_PLUS', 'PREMIUM'];

@@ -6,7 +6,7 @@ sus propias cuentas (sufijo único), así que la suite puede repetirse sobre la 
 
 | Archivo | Qué prueba |
 |---|---|
-| `publico.spec.ts` | Portada, planes, directorio, especialidades, centro legal, reclamos, registro e inicio de sesión: cargan sin errores, sin desbordarse en el teléfono y sin fallas graves de accesibilidad (axe, WCAG 2 A/AA); cifras reales en el HTML; Marca Médica en `/planes`; `/version.json`; cabeceras de seguridad y CSP; pacientes fuera de buscadores |
+| `publico.spec.ts` | Portada, planes, directorio, especialidades, centro legal, reclamos, registro e inicio de sesión: cargan sin errores, sin desbordarse en el teléfono y sin fallas graves de accesibilidad (axe, WCAG 2 A/AA); cifras reales en el HTML; Marca Médica en `/planes`; URL canónica y tarjeta para compartir; `/version.json`; cabeceras de seguridad y CSP; pacientes fuera de buscadores |
 | `cuentas.spec.ts` | Registro de paciente y de médico desde los formularios, salir y volver a entrar, contraseña equivocada; con Mailpit, verificación del correo y recuperación de la contraseña |
 | `directorio.spec.ts` | Un médico publicado se encuentra por apellido, código GM y especialidad; su ficha muestra lo profesional y nada privado; página de la especialidad |
 | `paciente.spec.ts` | Reserva de una cita en línea que el médico recibe; código del paciente → el médico lo registra → el paciente revoca → el médico pierde el acceso |

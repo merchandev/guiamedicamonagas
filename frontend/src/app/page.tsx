@@ -1,6 +1,8 @@
 import Link from 'next/link';
+import type { Metadata } from 'next';
 import { serverGet } from '@/lib/server-fetch';
 import { ORGANIZATIONS_LAUNCHED } from '@/lib/features';
+import { SITE_NAME } from '@/lib/seo';
 import { Organization, PaginatedResult, ProfessionalListItem, Specialty } from '@/lib/types';
 import { Badge } from '@/components/ui/Badge';
 import { DoctorCard } from '@/components/DoctorCard';
@@ -102,6 +104,19 @@ const FAQ_ITEMS = [
       'Desde "Soy médico, quiero registrarme": creas tu cuenta, completas tu perfil, subes tus documentos y activas tu suscripción por Pago Móvil. Tu perfil se publica cuando un administrador aprueba al menos el 60% de tus documentos y cargas tu biografía y tu foto; el sello de verificado llega con el 100%.',
   },
 ];
+
+export const metadata: Metadata = {
+  alternates: { canonical: '/' },
+  openGraph: {
+    type: 'website',
+    siteName: SITE_NAME,
+    locale: 'es_VE',
+    url: '/',
+    title: 'Guía Médica Monagas — Directorio médico verificado',
+    description:
+      'Directorio de médicos y especialistas del estado Monagas con verificación documental de sus credenciales. Busca por especialidad, municipio o código.',
+  },
+};
 
 export default async function HomePage() {
   const [specialties, doctorsResult, organizations] = await Promise.all([

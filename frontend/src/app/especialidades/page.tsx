@@ -6,6 +6,7 @@ import { Specialty } from '@/lib/types';
 export const metadata: Metadata = {
   title: 'Especialidades médicas',
   description: 'Explora médicos por especialidad en el estado Monagas: pediatría, cardiología, ginecología y más.',
+  alternates: { canonical: '/especialidades' },
 };
 
 export default async function EspecialidadesPage() {

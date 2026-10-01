@@ -9,6 +9,10 @@ const styles: Record<Tone, string> = {
   error: 'bg-red-50 border-red-200 text-red-800',
 };
 
+/**
+ * Mensaje en un recuadro. Los lectores de pantalla anuncian los errores al
+ * aparecer (role="alert") y el resto sin interrumpir (role="status").
+ */
 export function Alert({
   children,
   tone = 'info',
@@ -21,7 +25,7 @@ export function Alert({
   className?: string;
 }) {
   return (
-    <div className={cn('rounded-lg border px-4 py-3 text-sm', styles[tone], className)}>
+    <div role={tone === 'error' ? 'alert' : 'status'} className={cn('rounded-lg border px-4 py-3 text-sm', styles[tone], className)}>
       {title && <p className="mb-1 font-semibold">{title}</p>}
       <div>{children}</div>
     </div>
