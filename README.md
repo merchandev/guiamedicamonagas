@@ -255,7 +255,8 @@ cd frontend
 npm run dev
 npm run build
 npm run start
-npm run lint
+npm run typecheck
+npm run lint        # ESLint (Next.js 16 ya no trae `next lint`); en CI, sin advertencias
 ~~~
 
 ### Backend

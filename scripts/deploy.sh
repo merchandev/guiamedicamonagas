@@ -21,6 +21,7 @@ if [[ ! -f "${ENV_FILE}" ]]; then
 fi
 # This deployment file is trusted configuration owned by the operator.
 set -a
+# shellcheck source=/dev/null
 source "${ENV_FILE}"
 set +a
 
@@ -65,7 +66,16 @@ if [[ "${ADMIN_MFA_ENABLED:-false}" != "true" ]]; then
     echo "ERROR: la excepción de MFA venció el ${ADMIN_MFA_WAIVER_UNTIL}: configurar SMTP real y ADMIN_MFA_ENABLED=true." >&2
     exit 1
   fi
+  WAIVER_DAYS=$(( ( $(date -u -d "${ADMIN_MFA_WAIVER_UNTIL}" +%s) - $(date -u -d "${TODAY}" +%s) ) / 86400 ))
+  if (( WAIVER_DAYS <= 14 )); then
+    echo "AVISO: la excepción de MFA vence en ${WAIVER_DAYS} días (${ADMIN_MFA_WAIVER_UNTIL}); desde ese día este script no despliega sin SMTP real y ADMIN_MFA_ENABLED=true."
+  fi
 fi
+
+# Configuración del servidor fuera del repositorio: copia externa de respaldos y alertas.
+CONFIG_DIR="/root/.config/guiamedicamonagas"
+# shellcheck source=/dev/null
+[[ -r "${CONFIG_DIR}/backup.env" ]] && source "${CONFIG_DIR}/backup.env"
 
 # --- Informe GO / NO-GO para operar con pacientes reales -----------------------
 NO_GO=()
@@ -78,9 +88,31 @@ done
 [[ "${ADMIN_MFA_ENABLED:-false}" == "true" ]] || NO_GO+=("MFA de administradores con excepción hasta ${ADMIN_MFA_WAIVER_UNTIL}")
 [[ -n "${PATIENT_VAULT_CODE_HASH:-}" ]] || NO_GO+=("bóveda de pacientes sin código de seguridad (scripts/set-patient-vault-code.sh)")
 [[ -r "${PASSPHRASE_FILE}" ]] || NO_GO+=("sin frase de cifrado de respaldos (${PASSPHRASE_FILE})")
-[[ -n "${GMM_BACKUP_REMOTE:-}" ]] || NO_GO+=("respaldos sin copia fuera del servidor (GMM_BACKUP_REMOTE)")
 if ! grep -q ' OK ' "${BACKUP_ROOT}/restore-tests.log" 2>/dev/null; then
   NO_GO+=("sin prueba de restauración correcta registrada")
+fi
+# Copia externa: configurada, al día (≤ 26 h) y probada desde afuera (≤ 35 días).
+if [[ -z "${GMM_BACKUP_REMOTE:-}" ]]; then
+  NO_GO+=("respaldos sin copia fuera del servidor (GMM_BACKUP_REMOTE en ${CONFIG_DIR}/backup.env)")
+else
+  [[ -n "$(find "${BACKUP_ROOT}/last-remote-success" -mmin -1560 2>/dev/null)" ]] \
+    || NO_GO+=("la copia externa de respaldos no se completó en las últimas 26 h")
+  LAST_REMOTE_TEST="$(grep -E ' OK .*origen=remoto' "${BACKUP_ROOT}/restore-tests.log" 2>/dev/null | tail -1 | cut -d' ' -f1)"
+  if [[ -z "${LAST_REMOTE_TEST}" ]] || (( $(date -u +%s) - $(date -u -d "${LAST_REMOTE_TEST}" +%s) > 35 * 86400 )); then
+    NO_GO+=("sin prueba de restauración desde la copia externa en los últimos 35 días (scripts/restore-test.sh --from-remote)")
+  fi
+fi
+# Claves de datos y frase de respaldos custodiadas fuera del servidor (y que sigan siendo las vigentes).
+bash "${PROJECT_DIR}/scripts/key-escrow.sh" status >/dev/null 2>&1 \
+  || NO_GO+=("claves de cifrado y frase de respaldos sin custodia externa vigente (scripts/key-escrow.sh)")
+# Correo real: con Mailpit no llegan verificaciones, recuperaciones de contraseña ni códigos de MFA.
+[[ "${SMTP_HOST}" != "mailpit" ]] || NO_GO+=("correo sin SMTP real (Mailpit no entrega fuera del servidor)")
+# Alguien debe enterarse de una caída.
+grep -qsE '^(GMM_ALERT_TELEGRAM_BOT_TOKEN|GMM_ALERT_EMAIL_TO|GMM_ALERT_NTFY_URL|GMM_ALERT_WEBHOOK_URL|GMM_HEARTBEAT_URL)=.+' "${CONFIG_DIR}/alerts.env" \
+  || NO_GO+=("monitoreo sin canal de alertas (${CONFIG_DIR}/alerts.env; ver docs/operations/monitoreo-y-alertas.md)")
+# Responsable legal publicado en el Aviso legal y la Política de privacidad.
+if sed -n '/^export const DATA_CONTROLLER/,/^};/p' "${PROJECT_DIR}/frontend/src/lib/legal.ts" | grep -q ': null'; then
+  NO_GO+=("datos del titular sin publicar en el Aviso legal y la Política de privacidad (DATA_CONTROLLER en frontend/src/lib/legal.ts)")
 fi
 if (( ${#NO_GO[@]} )); then
   echo "NO-GO para pacientes reales (el despliegue continúa salvo GMM_REQUIRE_GO=true):"
@@ -226,6 +258,15 @@ for path in /api/v1/health /version.json; do
   fi
 done
 echo "Versión publicada: ${EXPECTED_VERSION} (API y web)."
+
+# Tareas programadas del proyecto (respaldos, pruebas de restauración y
+# monitoreo): si el archivo del repositorio cambió, se instala el nuevo.
+CRON_SRC="${PROJECT_DIR}/scripts/cron/guiamedicamonagas"
+CRON_DST="/etc/cron.d/guiamedicamonagas"
+if [[ -w /etc/cron.d ]] && ! cmp -s "${CRON_SRC}" "${CRON_DST}"; then
+  install -m 644 "${CRON_SRC}" "${CRON_DST}"
+  echo "Tareas programadas actualizadas (${CRON_DST})."
+fi
 
 "${COMPOSE[@]}" ps
 DEPLOYED_SHA="$(git -C "${PROJECT_DIR}" rev-parse HEAD 2>/dev/null || echo desconocido)"

@@ -1,0 +1,62 @@
+name: Disponibilidad
+
+# Monitor externo: revisa el sitio público desde GitHub cada 30 minutos. Si
+# algo falla tres veces seguidas, el flujo falla y GitHub avisa por correo a
+# quien lo mantiene (notificaciones de Actions). Complementa
+# scripts/healthcheck.sh, que corre dentro del servidor y no puede avisar si
+# el servidor entero se cae. GitHub puede retrasar las ejecuciones programadas
+# unos minutos y las pausa tras 60 días sin actividad en el repositorio.
+# Ver docs/operations/monitoreo-y-alertas.md.
+
+on:
+  schedule:
+    - cron: '7,37 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: disponibilidad
+  cancel-in-progress: false
+
+jobs:
+  sitio:
+    name: Sitio, API y certificado
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    env:
+      SITE: https://guiamedicamonagas.com
+      DOMAIN: guiamedicamonagas.com
+    steps:
+      - name: Comprobar desde Internet (3 intentos, para no avisar por un corte de segundos)
+        run: |
+          set -u
+          check() {
+            local fails=() code health end days
+            code="$(curl -s -o /dev/null -m 20 -w '%{http_code}' "$SITE/")"
+            [ "$code" = 200 ] || fails+=("portada: HTTP $code")
+            code="$(curl -s -o /dev/null -m 20 -w '%{http_code}' "$SITE/medicos")"
+            [ "$code" = 200 ] || fails+=("directorio: HTTP $code")
+            health="$(curl -s -m 20 "$SITE/api/v1/health")"
+            grep -q '"status":"ok"' <<< "$health" || fails+=("API: ${health:0:120}")
+            end="$(echo | openssl s_client -connect "$DOMAIN:443" -servername "$DOMAIN" 2>/dev/null | openssl x509 -noout -enddate 2>/dev/null | cut -d= -f2)"
+            if [ -n "$end" ]; then
+              days=$(( ( $(date -d "$end" +%s) - $(date +%s) ) / 86400 ))
+              [ "$days" -ge 14 ] || fails+=("el certificado vence en $days días")
+            else
+              fails+=("no se pudo leer el certificado")
+            fi
+            printf '%s\n' "${fails[@]}"
+          }
+          for attempt in 1 2 3; do
+            problems="$(check)"
+            if [ -z "$problems" ]; then
+              echo "OK (intento $attempt). Versión publicada: $(curl -s -m 20 "$SITE/version.json" | head -c 200)"
+              exit 0
+            fi
+            echo "Intento $attempt: $problems"
+            [ "$attempt" = 3 ] || sleep 60
+          done
+          echo "::error title=Guía Médica Monagas no responde bien desde Internet::$(tr '\n' ';' <<< "$problems")"
+          exit 1

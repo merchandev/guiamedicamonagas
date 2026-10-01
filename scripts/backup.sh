@@ -14,17 +14,27 @@
 #   incluyen: un respaldo robado no permite leer cédulas ni datos de salud.
 # - Cada respaldo deja un manifiesto con conteos de filas, que usa
 #   scripts/restore-test.sh para comprobar la restauración.
+# - Copia fuera del servidor (regla 3-2-1) si GMM_BACKUP_REMOTE está definido
+#   en /root/.config/guiamedicamonagas/backup.env:
+#     rclone:<remoto>:<bucket/ruta>   S3, Backblaze B2, Cloudflare R2, SFTP… (rclone)
+#     usuario@host:/ruta              otro servidor por SSH (rsync)
+#   Solo agrega archivos: nunca borra ni reemplaza nada en el destino.
 # Ver docs/operations/respaldos-y-restauracion.md.
 # =============================================================================
 set -euo pipefail
+
+# Destino externo y retención: configuración del servidor, fuera del repositorio.
+BACKUP_ENV="${GMM_BACKUP_ENV_FILE:-/root/.config/guiamedicamonagas/backup.env}"
+# shellcheck source=/dev/null
+[[ -r "${BACKUP_ENV}" ]] && source "${BACKUP_ENV}"
 
 PROJECT_NAME="gmm-independent"
 BACKUP_ROOT="${GMM_BACKUP_DIR:-/var/backups/guiamedicamonagas}"
 PASSPHRASE_FILE="${GMM_BACKUP_PASSPHRASE_FILE:-/root/.config/guiamedicamonagas/backup-passphrase}"
 KEEP_DB_DAYS="${GMM_BACKUP_KEEP_DB_DAYS:-14}"
 KEEP_FILES_DAYS="${GMM_BACKUP_KEEP_FILES_DAYS:-56}"
-# Copia fuera del servidor (regla 3-2-1): destino rsync "usuario@host:/ruta".
-# Mientras no esté configurado, el respaldo existe solo en este VPS.
+# Copia fuera del servidor (regla 3-2-1). Mientras no esté configurada, el
+# respaldo existe solo en este VPS.
 REMOTE_TARGET="${GMM_BACKUP_REMOTE:-}"
 
 WITH_FILES=false
@@ -104,12 +114,39 @@ fi
 find "${BACKUP_ROOT}/db" -type f -name 'gmm-db-*' -mtime +"${KEEP_DB_DAYS}" -delete
 find "${BACKUP_ROOT}/files" -type f -name 'gmm-files-*' -mtime +"${KEEP_FILES_DAYS}" -delete
 
-# --- Copia fuera del servidor ----------------------------------------------------
-if [[ -n "${REMOTE_TARGET}" ]]; then
-  rsync -a --chmod=F600 "${BACKUP_ROOT}/" "${REMOTE_TARGET}/"
-  echo "OK copia externa → ${REMOTE_TARGET}"
-else
-  echo "AVISO: sin copia fuera del servidor (GMM_BACKUP_REMOTE vacío): no cumple la regla 3-2-1."
-fi
-
+# El respaldo local ya está completo: una copia externa que falle no lo invalida
+# (healthcheck.sh avisa aparte si la copia externa se atrasa).
 date -u +%Y-%m-%dT%H:%M:%SZ > "${BACKUP_ROOT}/last-success"
+
+# --- Copia fuera del servidor ----------------------------------------------------
+if [[ -z "${REMOTE_TARGET}" ]]; then
+  echo "AVISO: sin copia fuera del servidor (GMM_BACKUP_REMOTE vacío): no cumple la regla 3-2-1."
+  exit 0
+fi
+offsite_failed() {
+  echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) $1" >> "${BACKUP_ROOT}/remote-errors.log"
+  echo "ERROR: copia externa: $1" >&2
+  exit 3
+}
+case "${REMOTE_TARGET}" in
+  rclone:*)
+    REMOTE="${REMOTE_TARGET#rclone:}"
+    command -v rclone >/dev/null || offsite_failed "rclone no está instalado"
+    # --immutable: un archivo que ya existe en el destino nunca se reemplaza.
+    # Sin «sync» ni «delete»: la credencial puede (y debe) ser de solo escritura.
+    for dir in db files; do
+      rclone copy --immutable --no-update-modtime "${BACKUP_ROOT}/${dir}" "${REMOTE}/${dir}" \
+        || offsite_failed "rclone copy ${dir} falló"
+    done
+    # Comprueba que el respaldo recién hecho llegó completo (tamaño y hash).
+    rclone check --one-way --include "$(basename "${DB_FILE%.dump.gpg}").*" "${BACKUP_ROOT}/db" "${REMOTE}/db" \
+      || offsite_failed "el respaldo copiado no coincide con el original"
+    ;;
+  *)
+    # rsync por SSH; sin --delete: lo que ya está en el destino no se toca.
+    rsync -a --chmod=F600 --exclude 'remote-errors.log' "${BACKUP_ROOT}/" "${REMOTE_TARGET}/" \
+      || offsite_failed "rsync falló"
+    ;;
+esac
+date -u +%Y-%m-%dT%H:%M:%SZ > "${BACKUP_ROOT}/last-remote-success"
+echo "OK copia externa → ${REMOTE_TARGET%%:*}:…"

@@ -32,3 +32,13 @@ Estado: vigente desde el 2026-09-24 (ACT-0019) · Responsable: `merchandev`
 
 La única corrección que ofrece npm para ambas es bajar la CLI de Prisma a 6.19.3 (incompatible con el cliente 7.10).
 Se revisan en cada actualización de Prisma.
+
+**Revisión del 2026-10-01 (ACT-0038):** sin cambios. Prisma 7.10.0 sigue siendo la última versión 7.x y la 8 solo
+existe como *release candidate* (`8.0.0-rc.19`, etiquetada `latest` en npm): no se adopta una versión candidata en
+producción. Volver a revisar cuando la 8 sea estable o salga una 7.x con la corrección.
+
+## Herramientas de desarrollo
+
+- **ESLint 9** (frontend, desde ACT-0037) figura como «sin soporte» en npm. Solo corre en desarrollo y en CI, nunca
+  en la imagen de producción. Se usa la 9 porque `eslint-plugin-react` (dentro de `eslint-config-next`) todavía no
+  admite la 10; pasar a la 10 cuando la admita.

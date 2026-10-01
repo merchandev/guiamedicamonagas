@@ -69,13 +69,14 @@ El builder dedicado está limitado a **2 GB de memoria y 1,5 CPU**. `scripts/bui
 `scripts/deploy.sh` resuelve su directorio independientemente del directorio de invocación y fija `--project-directory`, `--env-file .env.prod`, `-p gmm-independent` y `-f docker-compose.prod.yml` en cada comando. Su secuencia es:
 
 1. Validar variables: además de las obligatorias, exige `CLAMAV_HOST` y MFA de administradores (`ADMIN_MFA_ENABLED=true` o una excepción `ADMIN_MFA_WAIVER_UNTIL` vigente; vencida, el despliegue se detiene).
-2. Imprimir el informe **GO / NO-GO** para pacientes reales (HTTPS, cookies seguras, puerto 8088 publicado, MFA, respaldos externos, prueba de restauración). Con `GMM_REQUIRE_GO=true` cualquier NO-GO detiene el despliegue. Ver [operations/go-no-go.md](operations/go-no-go.md).
+2. Imprimir el informe **GO / NO-GO** para pacientes reales (HTTPS, cookies seguras, puerto 8088 publicado, MFA, SMTP real, copia externa de respaldos al día y probada, custodia de claves, canal de alertas, prueba de restauración y datos del titular). Con `GMM_REQUIRE_GO=true` cualquier NO-GO detiene el despliegue. Ver [operations/go-no-go.md](operations/go-no-go.md).
 3. Respaldo cifrado previo (`scripts/backup.sh --label pre-deploy`) y punto de retorno: imágenes `gmm-independent-{api,web}:rollback` y commit anterior en `/var/backups/guiamedicamonagas/deploys.log`.
 4. Descargar solo las imágenes externas necesarias y compilar API y web con el builder indicado.
 5. Iniciar los servicios de datos, Mailpit y ClamAV; inicializar MinIO.
 6. Aplicar migraciones con `compose run --rm --no-deps api node_modules/.bin/prisma migrate deploy` (la imagen no incluye npm/npx) y ejecutar el seed compilado `node dist/prisma/seed.js`.
 7. Esperar a que ClamAV cargue sus firmas (la API rechaza subidas sin antivirus) e iniciar API, web y Caddy.
 8. Verificar que la tabla temporal `_PatientPlaintextLegacy` ya no existe (si existe, el despliegue falla) y, con el Mailpit interno, ejecutar `scripts/smoke-deployment.cjs`.
+9. Comprobar que `/api/v1/health` y `/version.json` responden con el commit recién construido (si no, el despliegue falla) e instalar las tareas programadas del repositorio si cambiaron.
 
 Validar después el endpoint de salud, inicio de sesión, páginas con renderizado del servidor y descarga de archivos mediante URLs firmadas. Si falla una etapa, resolver el error de este proyecto antes de continuar; los scripts no ejecutan limpieza o reinicios globales.
 
