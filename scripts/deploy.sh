@@ -261,6 +261,19 @@ for path in /api/v1/health /version.json; do
 done
 echo "Versión publicada: ${EXPECTED_VERSION} (API y web)."
 
+# Limpieza de disco (solo con GMM_PRUNE_AFTER_DEPLOY=true): imágenes de ESTE
+# proyecto que ya no usa nada (las etiquetadas, incluida la de rollback, se
+# conservan) y la caché del builder propio por encima de GMM_BUILD_CACHE_KEEP.
+# No toca imágenes, volúmenes ni cachés de los otros proyectos del servidor.
+if [[ "${GMM_PRUNE_AFTER_DEPLOY:-false}" == "true" ]]; then
+  echo "Limpiando imágenes sin uso del proyecto y la caché del builder..."
+  docker image prune -f --filter "label=com.docker.compose.project=${PROJECT_NAME}" >/dev/null
+  if [[ -n "${GMM_BUILDER:-}" ]]; then
+    docker buildx prune -f --builder "${GMM_BUILDER}" --max-used-space "${GMM_BUILD_CACHE_KEEP:-5gb}" >/dev/null
+  fi
+  echo "Disco: $(df --output=pcent / | tail -1 | tr -d ' ') usado."
+fi
+
 # Tareas programadas del proyecto (respaldos, pruebas de restauración y
 # monitoreo): si el archivo del repositorio cambió, se instala el nuevo.
 CRON_SRC="${PROJECT_DIR}/scripts/cron/guiamedicamonagas"

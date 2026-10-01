@@ -77,6 +77,7 @@ El builder dedicado está limitado a **2 GB de memoria y 1,5 CPU**. `scripts/bui
 7. Esperar a que ClamAV cargue sus firmas (la API rechaza subidas sin antivirus) e iniciar API, web y Caddy.
 8. Verificar que la tabla temporal `_PatientPlaintextLegacy` ya no existe (si existe, el despliegue falla) y, con el Mailpit interno, ejecutar `scripts/smoke-deployment.cjs`.
 9. Comprobar que `/api/v1/health` y `/version.json` responden con el commit recién construido (si no, el despliegue falla) e instalar las tareas programadas del repositorio si cambiaron.
+10. Solo con `GMM_PRUNE_AFTER_DEPLOY=true`: borrar las imágenes de este proyecto que ya no usa nada (se conservan las etiquetadas, incluida `rollback`) y dejar la caché del builder propio en `GMM_BUILD_CACHE_KEEP` (5 GB). No toca nada de los otros proyectos. El 2026-10-01 esa caché ocupaba 33,7 GB, casi todo el crecimiento del disco.
 
 Validar después el endpoint de salud, inicio de sesión, páginas con renderizado del servidor y descarga de archivos mediante URLs firmadas. Si falla una etapa, resolver el error de este proyecto antes de continuar; los scripts no ejecutan limpieza o reinicios globales.
 
