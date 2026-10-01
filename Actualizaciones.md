@@ -3,7 +3,7 @@
 > Bitácora central de cambios, implementaciones, decisiones técnicas y tareas de evolución del sistema.
 >
 > **Repositorio:** [`merchandev/guiamedicamonagas`](https://github.com/merchandev/guiamedicamonagas) · **Rama:** `main`<br>
-> **Última actualización de esta bitácora:** `2026-10-01 00:10:50 -04:00` · **Estado:** 🟢 Registro activo
+> **Última actualización de esta bitácora:** `2026-10-01 06:05:44 -04:00` · **Estado:** 🟢 Registro activo
 
 ![Estado](https://img.shields.io/badge/estado-registro%20activo-16a34a?style=flat-square)
 ![Rama](https://img.shields.io/badge/rama-main-2563eb?style=flat-square)
@@ -141,8 +141,9 @@ flowchart LR
     AJ[🎬 2026-09-30\n19:44:09\nACT-0036 · Marca Médica y\nestadísticas del médico]
     AK[🧹 2026-09-30\n21:35:16\nACT-0037 · Lint, versión verificable\ny portada sin ceros]
     AL[🛰️ 2026-10-01\n00:07:32\nACT-0038 · Alertas, respaldos externos\ny custodia de claves]
+    AM[🧪 2026-10-01\n05:22:09\nACT-0039 · Pruebas de punta a punta,\nseguridad y accesibilidad]
 
-    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L --> M --> N --> O --> P --> Q --> R --> S --> T --> U --> V --> W --> X --> Y --> Z --> AA --> AB --> AC --> AD --> AE --> AF --> AG --> AH --> AI --> AJ --> AK --> AL
+    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L --> M --> N --> O --> P --> Q --> R --> S --> T --> U --> V --> W --> X --> Y --> Z --> AA --> AB --> AC --> AD --> AE --> AF --> AG --> AH --> AI --> AJ --> AK --> AL --> AM
 ```
 
 ### Resumen cuantitativo
@@ -150,8 +151,8 @@ flowchart LR
 | Indicador | Resultado |
 |---|---:|
 | Actividades históricas importadas desde Git | `3` |
-| Actividades documentales añadidas con esta bitácora | `35` |
-| Actividades registradas en total | `38` |
+| Actividades documentales añadidas con esta bitácora | `36` |
+| Actividades registradas en total | `39` |
 | Rama de referencia | `main` |
 | Commit base consultado | [`81b1091`](https://github.com/merchandev/guiamedicamonagas/commit/81b1091) |
 | Zona horaria de control | `America/Caracas` (`-04:00`) |
@@ -1732,6 +1733,73 @@ Lo que el análisis marcaba como NO-GO de operación ya tenía la base hecha (re
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
+<a id="act-0039"></a>
+
+### 🧪 ACT-0039 · Cierre de la V1 (3/3): pruebas de punta a punta del sitio, pruebas de seguridad automáticas, CSP y lo que encontraron
+
+<details>
+<summary><strong>2026-10-01 05:22:09 -04:00</strong> · <code>a0a99d7</code> · 🟢 Completado</summary>
+
+**Responsable:** `Claude Opus 5.5` · **Tipo:** `calidad | seguridad | accesibilidad | experiencia | despliegue` · **Commits:** [`a0a99d7`](https://github.com/merchandev/guiamedicamonagas/commit/a0a99d7), [`12fce85`](https://github.com/merchandev/guiamedicamonagas/commit/12fce85), [`0d3de42`](https://github.com/merchandev/guiamedicamonagas/commit/0d3de42), [`ab8e60a`](https://github.com/merchandev/guiamedicamonagas/commit/ab8e60a), [`0c45024`](https://github.com/merchandev/guiamedicamonagas/commit/0c45024), [`0f8304d`](https://github.com/merchandev/guiamedicamonagas/commit/0f8304d)
+
+El análisis señalaba que el backend tenía pruebas serias y el frontend ninguna, y pedía una prueba de seguridad dinámica antes de cargar pacientes reales. Ahora cada cambio pasa por el sitio completo, en el navegador, como lo usa una persona.
+
+**Pruebas de punta a punta** ([`e2e/`](e2e/README.md), Playwright): la web y la API reales, compiladas como en producción, con PostgreSQL, correo de prueba (Mailpit), almacenamiento S3 (S3Mock) y MFA de administradores, en un job nuevo de CI. En escritorio y en un teléfono Android (412 px):
+- **Páginas públicas:** cargan sin errores, no se desbordan en el teléfono y no tienen fallas graves de accesibilidad (axe, WCAG 2 A/AA). También: cifras reales en la portada, Marca Médica en `/planes`, versión publicada, cabeceras de seguridad y pacientes fuera de buscadores.
+- **Cuentas:** registro de paciente y de médico desde los formularios, salir y volver a entrar, contraseña equivocada; con el correo, verificación de la cuenta y recuperación de la contraseña.
+- **Directorio:** un médico publicado se encuentra por apellido, código GM y especialidad; su ficha no muestra nada privado.
+- **Paciente:** reserva una cita en línea que el médico recibe; entrega su código, el médico lo registra, el paciente revoca y el médico pierde el acceso.
+- **Reclamos:** solicitud sin cuenta, número de seguimiento y consulta del estado (con otro correo no se revela nada).
+- **Administración:** inicio de sesión con código por correo (MFA) y aceptación de textos legales nuevos; aprobar el último documento publica al médico con su sello; suspender y eliminar definitivamente una cuenta libera el correo.
+- **Pagos:** la administración registra su Pago Móvil, el médico elige un plan, lo ve dentro de su panel, reporta el pago con comprobante y la administración lo aprueba: el plan queda activo.
+
+**Seguridad automatizada** ([detalle y alcance del pentest humano](docs/security/pruebas-de-seguridad.md)):
+- **Política de rutas** (unitaria): lee los decoradores de las 178 rutas de la API. Solo 37 responden sin sesión (lista revisada; una nueva hace fallar la prueba), toda ruta de administración exige un permiso concreto y las rutas «me» del médico exigen su rol.
+- **En el sitio en marcha:** un médico no lee los datos de un paciente ajeno ni entra a administración (403); un paciente no ve ni cancela citas de otro; sin sesión las rutas privadas responden 401; un token con el rol cambiado o sin firma no sirve; la fuerza bruta en el inicio de sesión se frena (429); un perfil con código incrustado se muestra como texto y no se ejecuta.
+- **ZAP pasivo** (OWASP, workflow mensual y a pedido) sobre el sitio publicado: falla si vuelve a faltar una protección básica.
+- **CSP** en todas las páginas (solo el propio dominio, más el video de YouTube al pulsar, sus miniaturas y el mapa del consultorio), `X-Frame-Options: DENY` y sin `X-Powered-By`.
+
+**SEO para compartir y buscadores:** la portada, `/planes`, `/especialidades` y `/medicos` no tenían URL canónica ni etiquetas Open Graph, así que al compartir el sitio por WhatsApp no salía tarjeta. Ahora:
+- cada una tiene su canónica (con filtros, `/medicos?especialidad=…` sigue apuntando a `/medicos`);
+- el sitio tiene su tarjeta 1200×630 con la marca; la ficha de cada médico conserva la suya, con foto;
+- el formulario de reserva queda fuera de buscadores;
+- la descripción de `/planes` ya no menciona farmacias ni clínicas mientras no estén lanzadas.
+
+**Lo que encontraron las pruebas, ya corregido:**
+- **Contraste:** el gris claro de 58 textos (`ink-400`) no llegaba al mínimo de lectura (3,4:1); pasa a `ink-500` (5,3:1).
+- **Campos sin etiqueta:** los campos controlados (sin `id` ni `name`) quedaban sin su etiqueta asociada, así que un lector de pantalla no los anunciaba y tocar la etiqueta no los enfocaba («Motivo de consulta», los diálogos de cuentas y de verificación, entre otros). Ahora reciben un `id` propio.
+- **Errores sin anunciar:** los 65 mensajes de error del sitio (contraseña equivocada, consultas fallidas…) no se anunciaban a los lectores de pantalla. Ahora los errores son `role="alert"` y los demás avisos `role="status"`.
+- Los dos selectores del buscador de la portada no tenían nombre accesible.
+- Los enlaces de la ruta de navegación («Centro legal ›», especialidades) se distinguían solo por el color.
+- La tabla de comparación de planes, que se desplaza a lo ancho en el teléfono, no se podía mover con el teclado.
+- **Aviso de cookies:** en un navegador nuevo quedaba encima de los diálogos y tapaba sus botones.
+- **«Salir»:** desde una página privada llevaba a «Iniciar sesión» en vez de a la portada. Ahora salir recarga la portada y borra de la memoria todo lo cargado en la sesión.
+- **Contraseña restablecida:** después de cambiarla, la página llevaba a «Iniciar sesión» sin decir nada. Ahora el inicio de sesión confirma «tu contraseña se cambió».
+
+**Incidencia del camino:** en CI falló la verificación del correo, aunque la pantalla decía «Correo verificado correctamente». La prueba tomaba el primer elemento con rol `alert`, y Next.js agrega un anunciador de rutas vacío con ese rol. Al acotar la búsqueda al contenido de la página apareció algo más: dos pruebas de mensajes de error pasaban sin mirar el mensaje real. De ahí salió la corrección de los avisos.
+
+**Verificación local:** suite completa contra la compilación de producción de la web: 51 pruebas en escritorio y teléfono (5 se omiten en local porque necesitan correo o almacenamiento; corren en CI). Tipos y ESLint sin advertencias; 115 unitarias del backend.
+
+**CI de GitHub:** «CI» con el job nuevo (**56/56** pruebas de punta a punta en 1,6 min, con correo, almacenamiento y MFA) y «Seguridad» en verde para `ab8e60a` y `0f8304d`.
+
+**Despliegue en el VPS** (logs `deploy-act39.log` para `ab8e60a` y `deploy-act39b.log` para `0f8304d`):
+- Respaldos previos `gmm-db-20261001T094348Z-pre-deploy.dump.gpg` y `gmm-db-20261001T100112Z-pre-deploy.dump.gpg`; sin migraciones; prueba de humo **25/25** las dos veces; «Versión publicada: 0f8304dbb6e5 (API y web)».
+- En producción: CSP, `X-Frame-Options: DENY`, COOP y CORP `same-origin`, sin `X-Powered-By`; canónicas y tarjeta para compartir en la portada, `/planes`, `/especialidades` y `/medicos`; las rutas principales responden 200; el monitoreo da 14/14 controles en verde. Los otros proyectos del VPS siguen en marcha desde hace 5 días.
+- **ZAP sobre producción:** ninguna regla obligatoria falla. Quedan dos avisos medios por `'unsafe-inline'` en la CSP (necesario para las páginas estáticas de Next.js) y uno bajo por no enviar Cross-Origin-Embedder-Policy, que bloquearía YouTube y el mapa. Los otros dos avisos bajos del primer escaneo (COOP y CORP) se corrigieron en `0f8304d`.
+- **Disco:** la caché de compilación del builder propio ocupa 33,7 GB (32,6 GB liberables) y hay 11 imágenes del proyecto sin uso: es casi todo lo que subió el disco (51 % → 56 % en el día). `deploy.sh` ya puede limpiarlas sin tocar los otros proyectos (`GMM_PRUNE_AFTER_DEPLOY=true`, `0c45024`), pero queda apagado hasta que el titular lo apruebe.)
+
+**Archivos destacados:**
+- [`e2e/tests/support.ts`](e2e/tests/support.ts)
+- [`e2e/tests/seguridad.spec.ts`](e2e/tests/seguridad.spec.ts)
+- [`backend/test/unit/route-policy.spec.ts`](backend/test/unit/route-policy.spec.ts)
+- [`frontend/next.config.js`](frontend/next.config.js)
+- [`frontend/src/components/ui/Input.tsx`](frontend/src/components/ui/Input.tsx)
+- [`.github/workflows/zap.yml`](.github/workflows/zap.yml)
+
+</details>
+
+<p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
+
 <a id="registro-por-area"></a>
 
 ## 🧩 Registro por área
@@ -1741,15 +1809,15 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | Área | Implementaciones registradas | Actividades relacionadas |
 |---|---|---|
 | 🧱 Fundación técnica | NestJS, Next.js, Prisma, Docker, Caddy, Tailwind | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) |
-| 🔐 Auth y seguridad | JWT, refresh cookie, roles, correo, recuperación, throttling, Argon2id, permisos granulares, reuso de tokens, `tokenVersion`, cerrar todas las sesiones, MFA obligatorio en producción, subidas seguras, antivirus obligatorio y rotación de claves, bóveda de registros de pacientes con código de seguridad, aceptaciones legales con evidencia de solo inserción, política de uso aceptable y reporte de vulnerabilidades | [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0012](#act-0012) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0019](#act-0019) · [ACT-0024](#act-0024) · [ACT-0027](#act-0027) · [ACT-0033](#act-0033) |
+| 🔐 Auth y seguridad | JWT, refresh cookie, roles, correo, recuperación, throttling, Argon2id, permisos granulares, reuso de tokens, `tokenVersion`, cerrar todas las sesiones, MFA obligatorio en producción, subidas seguras, antivirus obligatorio y rotación de claves, bóveda de registros de pacientes con código de seguridad, aceptaciones legales con evidencia de solo inserción, política de uso aceptable y reporte de vulnerabilidades, CSP y pruebas de seguridad automáticas (política de rutas, IDOR/BOLA, tokens, fuerza bruta, XSS, ZAP) | [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0012](#act-0012) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0019](#act-0019) · [ACT-0024](#act-0024) · [ACT-0027](#act-0027) · [ACT-0033](#act-0033) · [ACT-0039](#act-0039) |
 | 👨‍⚕️ Profesionales | Perfiles, ubicaciones, documentos, verificación legal (sin solvencia deontológica), publicación con el 60% aprobado + biografía + foto, barra de progreso del registro, redes sociales, badges, código y QR del médico, SEO automático, tarjeta para compartir, video de presentación de YouTube (plan Agencia), condiciones para profesionales y políticas de verificación y de publicidad médica | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0020](#act-0020) · [ACT-0021](#act-0021) · [ACT-0028](#act-0028) · [ACT-0029](#act-0029) · [ACT-0030](#act-0030) · [ACT-0032](#act-0032) · [ACT-0033](#act-0033) |
 | 🏥 Organizaciones | Farmacias, laboratorios, clínicas, ubicaciones, autogestión, equipo con invitaciones y roles internos, médicos asociados y plan propio, sección «Próximamente» hasta cerrar alianzas | [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0015](#act-0015) · [ACT-0019](#act-0019) · [ACT-0025](#act-0025) |
 | 💳 Monetización | Planes, Pago Móvil, aprobación, tasa BCV, evidencia de tasa por cuota, catálogo de bancos, referencia única atómica, Plus/Premium/Agencia solo con el 100% de documentos, pagos externos registrados por la administración con renovación anticipada, precios de septiembre de 2026 (3,99 / 5,99 / 10,99 / 69,99 USD), planes Perfil Básico, Profesional, Plus, Premium y Marca Médica (servicio de contenido: 2 videos cada mes), Pago Móvil de la plataforma registrado desde Pagos y visible solo dentro del panel, y políticas de pagos y de reembolsos | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0010](#act-0010) · [ACT-0011](#act-0011) · [ACT-0015](#act-0015) · [ACT-0019](#act-0019) · [ACT-0021](#act-0021) · [ACT-0031](#act-0031) · [ACT-0032](#act-0032) · [ACT-0033](#act-0033) · [ACT-0035](#act-0035) · [ACT-0036](#act-0036) |
 | 📅 Agenda y citas | Horarios, disponibilidad, reservas, máquina de estados, anti-doble-reserva, zona America/Caracas | [ACT-0007](#act-0007) · [ACT-0015](#act-0015) |
 | 🔒 Pacientes | Código pseudónimo, cifrado de datos de salud, consentimiento por alcance y tiempo, lecturas auditadas, registro propio, foto de identificación verificada por un admin, reserva con la ficha propia, código y QR para compartir, directorio del médico por código, bóveda de administración y noindex, registro visible desde el inicio, supresión de la cuenta conservando solo la evidencia legal, consentimiento expreso de datos de salud y mayoría de edad, descarga de los datos propios e historial de accesos | [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0023](#act-0023) · [ACT-0027](#act-0027) · [ACT-0029](#act-0029) · [ACT-0031](#act-0031) · [ACT-0033](#act-0033) |
 | 🛠️ Administración | Médicos, pagos, SEO, cookies, especialidades, planes, verificaciones, organizaciones, bancos, geografía, identidad de pacientes, cuentas (suspensión, baja, eliminación definitiva), planes pagados, video de presentación de los médicos, bandeja de solicitudes legales, Pago Móvil propio, video de muestra de Marca Médica y actividad reciente desplegable | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0031](#act-0031) · [ACT-0032](#act-0032) · [ACT-0033](#act-0033) · [ACT-0034](#act-0034) · [ACT-0035](#act-0035) · [ACT-0036](#act-0036) |
-| 📊 Observabilidad | Auditoría, analítica con consentimiento y sin IP, estadísticas del médico según su plan, notificaciones, salud, pruebas, CI, escaneo de imágenes y Dependabot, ESLint del frontend en CI, versión publicada verificable, estado de las dependencias (`/health/ready`), alertas por Telegram/correo/ntfy/webhook, interruptor de hombre muerto y monitor externo de GitHub | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0036](#act-0036) · [ACT-0037](#act-0037) · [ACT-0038](#act-0038) |
-| 🎨 Experiencia | Directorios, dashboard, componentes UI, motion, legal, formularios legibles y utilizables con teclado, sección de pacientes en el inicio, tipografía Montserrat + Open Sans, suiches, botones y foco de campos corregidos, centro legal con 21 documentos versionados y avisos breves (descargo médico, verificación, QR), portada con cifras reales y directorio que explica cuando está vacío | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0013](#act-0013) · [ACT-0014](#act-0014) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0017](#act-0017) · [ACT-0019](#act-0019) · [ACT-0022](#act-0022) · [ACT-0023](#act-0023) · [ACT-0025](#act-0025) · [ACT-0026](#act-0026) · [ACT-0028](#act-0028) · [ACT-0033](#act-0033) · [ACT-0037](#act-0037) |
+| 📊 Observabilidad | Auditoría, analítica con consentimiento y sin IP, estadísticas del médico según su plan, notificaciones, salud, pruebas, CI, escaneo de imágenes y Dependabot, ESLint del frontend en CI, versión publicada verificable, estado de las dependencias (`/health/ready`), alertas por Telegram/correo/ntfy/webhook, interruptor de hombre muerto y monitor externo de GitHub, pruebas de punta a punta del sitio (Playwright) en escritorio y teléfono | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0036](#act-0036) · [ACT-0037](#act-0037) · [ACT-0038](#act-0038) · [ACT-0039](#act-0039) |
+| 🎨 Experiencia | Directorios, dashboard, componentes UI, motion, legal, formularios legibles y utilizables con teclado, sección de pacientes en el inicio, tipografía Montserrat + Open Sans, suiches, botones y foco de campos corregidos, centro legal con 21 documentos versionados y avisos breves (descargo médico, verificación, QR), portada con cifras reales y directorio que explica cuando está vacío, accesibilidad revisada con axe (contraste, etiquetas, avisos anunciados, teclado), «Salir» que vuelve a la portada y tarjeta para compartir del sitio | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0013](#act-0013) · [ACT-0014](#act-0014) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0017](#act-0017) · [ACT-0019](#act-0019) · [ACT-0022](#act-0022) · [ACT-0023](#act-0023) · [ACT-0025](#act-0025) · [ACT-0026](#act-0026) · [ACT-0028](#act-0028) · [ACT-0033](#act-0033) · [ACT-0037](#act-0037) · [ACT-0039](#act-0039) |
 | 🚢 Operación | Variables de entorno, Compose, almacenamiento, correo, proxy, imágenes mínimas y antivirus, copia de respaldos fuera del servidor, restauración desde la copia externa, custodia de claves, simulacro de desastre e informe GO / NO-GO ampliado | [ACT-0001](#act-0001) · [ACT-0002](#act-0002) · [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0008](#act-0008) · [ACT-0009](#act-0009) · [ACT-0011](#act-0011) · [ACT-0016](#act-0016) · [ACT-0017](#act-0017) · [ACT-0018](#act-0018) · [ACT-0019](#act-0019) · [ACT-0024](#act-0024) · [ACT-0027](#act-0027) · [ACT-0037](#act-0037) · [ACT-0038](#act-0038) |
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
@@ -1836,6 +1904,12 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | IMP-074 | Copia de respaldos fuera del servidor (rclone o rsync, solo agrega y verifica) y restauración probada desde la copia externa | 🟢 Completado | [`scripts/backup.sh`](scripts/backup.sh), [`scripts/restore-test.sh`](scripts/restore-test.sh) |
 | IMP-075 | Custodia de las claves de datos y de la frase de respaldos fuera del servidor, con huellas y detección de rotaciones | 🟢 Completado | [`scripts/key-escrow.sh`](scripts/key-escrow.sh) |
 | IMP-076 | Informe GO / NO-GO ampliado (SMTP, alertas, custodia, copia externa, datos del titular) y `deploy.sh --informe` | 🟢 Completado | [`scripts/deploy.sh`](scripts/deploy.sh), [`docs/operations/go-no-go.md`](docs/operations/go-no-go.md) |
+| IMP-077 | Pruebas de punta a punta del sitio (Playwright) en CI: escritorio y Android, accesibilidad (axe), correo (Mailpit), almacenamiento (S3Mock) y MFA del administrador | 🟢 Completado | [`e2e/`](e2e/README.md), [`.github/workflows/ci.yml`](.github/workflows/ci.yml) |
+| IMP-078 | Seguridad automatizada: política de acceso de todas las rutas, IDOR/BOLA, escalada de rol, tokens falsificados, fuerza bruta y XSS; ZAP pasivo mensual | 🟢 Completado | [`backend/test/unit/route-policy.spec.ts`](backend/test/unit/route-policy.spec.ts), [`e2e/tests/seguridad.spec.ts`](e2e/tests/seguridad.spec.ts), [`.github/workflows/zap.yml`](.github/workflows/zap.yml) |
+| IMP-079 | CSP en todas las páginas, `X-Frame-Options: DENY` y sin `X-Powered-By` | 🟢 Completado | [`frontend/next.config.js`](frontend/next.config.js) |
+| IMP-080 | Accesibilidad: contraste del texto gris, etiquetas asociadas a todos los campos, nombres accesibles, errores anunciados, tabla navegable con teclado y diálogos sobre el aviso de cookies | 🟢 Completado | [`frontend/src/components/ui/Input.tsx`](frontend/src/components/ui/Input.tsx), [`frontend/src/components/ui/Alert.tsx`](frontend/src/components/ui/Alert.tsx) |
+| IMP-081 | URL canónicas y tarjeta del sitio para compartir; reserva fuera de buscadores | 🟢 Completado | [`frontend/src/app/opengraph-image.tsx`](frontend/src/app/opengraph-image.tsx), [`frontend/src/app/medicos/layout.tsx`](frontend/src/app/medicos/layout.tsx) |
+| IMP-082 | «Salir» recarga la portada y borra de la memoria lo cargado en la sesión | 🟢 Completado | [`frontend/src/lib/auth-context.tsx`](frontend/src/lib/auth-context.tsx) |
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
@@ -1892,7 +1966,10 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | 🟡 Baja | El sello de verificación todavía cambia de color según el plan (gris, azul, índigo, dorado). Si se quiere el mismo sello para todos y solo etiquetas de plan, como ya se hizo con Marca Médica, es un cambio pequeño | 🔵 Planificado | Decisión del titular. Ver [ACT-0036](#act-0036) |
 | 🟡 Baja | Revisar los PR #13 y #14 de Dependabot (`react-hook-form`, `@nestjs/throttler`, `@types/node`): sus pruebas pasan; solo falla gitleaks por el hallazgo histórico ya ignorado en `342745a` | 🔴 Pendiente del titular | Aprobación para rebasarlos y fusionarlos |
 | 🟠 Media | Proteger la rama `main` (al menos contra *force push* y borrado) y activar las alertas de Dependabot | 🔴 Bloqueado | Decisión del usuario sobre los ajustes del repositorio; ver [ACT-0017](#act-0017) |
-| 🔴 Alta | Cierre de la V1 (3/3): pruebas de extremo a extremo del frontend con Playwright (escritorio y móvil, accesibilidad), matriz de autorización automatizada, escaneo pasivo y CSP | 🔵 Siguiente | Suite en CI. Después, pentest humano antes de cargar datos reales. Ver [hoja de ruta](docs/ROADMAP.md) |
+| 🟢 Continua | ~~Cierre de la V1 (3/3): pruebas de punta a punta del sitio, seguridad automatizada, escaneo pasivo y CSP~~ — hecho | 🟢 Completado | Ver [ACT-0039](#act-0039) |
+| 🔴 Alta | Prueba de penetración humana contra un entorno de pruebas antes de cargar datos reales de pacientes (alcance en [`docs/security/pruebas-de-seguridad.md`](docs/security/pruebas-de-seguridad.md)) | 🔴 Pendiente del titular | Informe sin hallazgos altos o críticos explotables |
+| 🟡 Baja | Revisión manual en Firefox y Safari (iPhone) y en teléfonos reales; la suite ya los cubre a pedido con `E2E_TODOS_LOS_NAVEGADORES=1` | 🔵 Planificado | Ver [`e2e/README.md`](e2e/README.md) |
+| 🟠 Media | Aprobar la limpieza de disco del proyecto: 32,6 GB de caché de compilación y 11 imágenes sin uso (`GMM_PRUNE_AFTER_DEPLOY=true` en `deploy.sh`); no toca los otros proyectos ni la imagen de *rollback* | 🔴 Pendiente del titular | Disco por debajo del 50 % y limpieza en cada despliegue. Ver [ACT-0039](#act-0039) |
 | 🔴 Alta | Pendientes del titular para lanzar, en orden: datos del operador, SMTP real (y con él MFA), custodia de claves, copia externa, alertas, médicos reales publicados, revisión legal, Search Console, Pago Móvil y video de muestra, código nuevo de la bóveda | 🔴 Pendiente del titular | `deploy.sh --informe` en verde y la lista de [`docs/ROADMAP.md`](docs/ROADMAP.md) completa |
 | 🟢 Continua | Registrar cada modificación nueva con fecha, hora, responsable y evidencia | 🟢 Activo | No existen cambios relevantes sin entrada en esta bitácora |
 | 🟢 Continua | Confirmar en el repositorio remoto cada cambio cerrado localmente | 🟢 Activo | `git status` limpio y `origin/main` sincronizado al cierre de cada sesión |
@@ -1976,6 +2053,7 @@ Para cada cambio futuro, añadir una entrada en la línea de tiempo y actualizar
 | `2026-09-30 10:15:59 -04:00` | Incorporación de ACT-0034 («Reactivar» desde la lista de médicos, eliminación definitiva de cuentas suspendidas o dadas de baja y registro posterior con el mismo correo) con su despliegue; dos pendientes nuevos (tipografías en el build de la imagen web y motivo de «Suspender perfil» en un formulario) | 🟢 Completado |
 | `2026-09-30 19:44:09 -04:00` | Incorporación de ACT-0035 (plan «Plus», actividad reciente desplegable y Pago Móvil de la plataforma registrado desde Pagos) y ACT-0036 (plan Marca Médica como servicio de contenido, video de muestra, etiqueta aparte del sello y estadísticas del médico), desplegadas juntas; cinco pendientes nuevos del titular (registrar el Pago Móvil, video de muestra, confirmar lo publicado de Marca Médica, pagos registrados por la administración y color del sello) | 🟢 Completado |
 | `2026-10-01 00:10:50 -04:00` | Incorporación de ACT-0037 (lint del frontend en CI, versión verificable, portada sin ceros y caché acotada) y ACT-0038 (alertas, respaldos fuera del servidor, custodia de claves, GO / NO-GO ampliado y monitor externo), con su despliegue; pendientes de operación reformulados como configuración del titular y dos nuevos (cierre 3/3 y lista de lanzamiento) | 🟢 Completado |
+| `2026-10-01 06:05:44 -04:00` | Incorporación de ACT-0039 (pruebas de punta a punta del sitio, seguridad automatizada, CSP, accesibilidad y tarjeta para compartir) con su despliegue; se cierra el pendiente del cierre 3/3 y se abren dos (pentest humano y revisión manual en Firefox y Safari) | 🟢 Completado |
 
 ---
 
