@@ -31,7 +31,9 @@ function LoginContent() {
   const { login, verifyMfa } = useAuth();
   const router = useRouter();
   // p. ej. volver a la invitación de un equipo después de iniciar sesión
-  const next = safeInternalPath(useSearchParams().get('next'));
+  const searchParams = useSearchParams();
+  const next = safeInternalPath(searchParams.get('next'));
+  const passwordReset = searchParams.get('contrasena') === 'restablecida';
   const [error, setError] = useState<string | null>(null);
   const [challengeToken, setChallengeToken] = useState<string | null>(null);
   const [code, setCode] = useState('');
@@ -107,6 +109,9 @@ function LoginContent() {
         </form>
       ) : (
         <form onSubmit={handleSubmit(onSubmit)} className="card mt-6 space-y-4 p-6">
+          {passwordReset && !error && (
+            <Alert tone="success">Listo: tu contraseña se cambió. Entra con la nueva.</Alert>
+          )}
           {error && <Alert tone="error">{error}</Alert>}
           <Input label="Correo electrónico" type="email" required {...register('email')} error={errors.email?.message} />
           <Input label="Contraseña" type="password" required {...register('password')} error={errors.password?.message} />

@@ -143,9 +143,10 @@ test.describe('con correo (Mailpit)', () => {
     const newPassword = `${PASSWORD}-nueva`;
     await page.getByLabel('Nueva contraseña').fill(newPassword);
     await page.getByLabel('Confirmar contraseña').fill(newPassword);
-    await page.getByRole('button').filter({ hasText: /restablecer|guardar|cambiar/i }).first().click();
-    const main = page.locator('main');
-    await expect(main.getByRole('alert').or(main.getByRole('status')).first()).toBeVisible();
+    await page.getByRole('button', { name: 'Cambiar contraseña' }).click();
+    // El inicio de sesión confirma que el cambio se guardó.
+    await expect(page).toHaveURL(/\/iniciar-sesion\?contrasena=restablecida/);
+    await expect(page.locator('main').getByRole('status')).toContainText('tu contraseña se cambió');
 
     await loginWithForm(page, email, newPassword);
     await expect(page).toHaveURL(/\/paciente/);

@@ -46,7 +46,8 @@ function ResetPasswordContent() {
     setError(null);
     try {
       await api.post('/auth/reset-password', { token, newPassword: values.newPassword });
-      router.push('/iniciar-sesion');
+      // El inicio de sesión confirma que el cambio se guardó.
+      router.push('/iniciar-sesion?contrasena=restablecida');
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'No se pudo restablecer la contraseña');
     }
