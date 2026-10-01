@@ -3,6 +3,7 @@
 #
 #   scripts/deploy.sh                    # despliegue normal (avisa los NO-GO)
 #   GMM_REQUIRE_GO=true scripts/deploy.sh   # falla ante cualquier NO-GO (pacientes reales)
+#   scripts/deploy.sh --informe          # solo imprime el informe GO / NO-GO, sin desplegar
 #
 # Ver docs/operations/go-no-go.md y docs/DEPLOYMENT-INDEPENDENT.md.
 set -euo pipefail
@@ -124,6 +125,7 @@ if (( ${#NO_GO[@]} )); then
 else
   echo "GO: todos los controles de producción en verde."
 fi
+[[ "${1:-}" == "--informe" ]] && exit 0
 
 "${COMPOSE[@]}" config --quiet
 SERVICES="$("${COMPOSE[@]}" config --services)"
