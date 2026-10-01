@@ -109,7 +109,7 @@ export default function PostsPage() {
                 <div className="min-w-0">
                   <h3 className="font-semibold text-ink-900">{post.title}</h3>
                   <p className="mt-1 line-clamp-2 text-sm text-ink-600">{post.content}</p>
-                  <p className="mt-1 text-xs text-ink-400">{new Date(post.createdAt).toLocaleDateString('es-VE')}</p>
+                  <p className="mt-1 text-xs text-ink-500">{new Date(post.createdAt).toLocaleDateString('es-VE')}</p>
                 </div>
                 <Badge tone={post.published ? 'pine' : 'neutral'} className="flex-shrink-0">
                   {post.published ? 'Publicado' : 'Borrador'}

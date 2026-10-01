@@ -170,7 +170,7 @@ function IdentityQueue() {
                       {item.patientCode}
                     </Badge>
                   </p>
-                  <p className="text-xs text-ink-400">
+                  <p className="text-xs text-ink-500">
                     {item.identityReviewedAt
                       ? `Revisada el ${new Date(item.identityReviewedAt).toLocaleDateString('es-VE')}`
                       : `Actualizada el ${new Date(item.updatedAt).toLocaleDateString('es-VE')}`}

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import { homePathFor, useAuth } from '@/lib/auth-context';
 import { cn } from '@/lib/cn';
@@ -27,7 +27,6 @@ function SoonPill() {
 
 export function Header() {
   const pathname = usePathname();
-  const router = useRouter();
   const { user, logout } = useAuth();
   const [open, setOpen] = useState(false);
 
@@ -82,10 +81,7 @@ export function Header() {
                 Seguridad
               </Link>
               <button
-                onClick={async () => {
-                  await logout();
-                  router.push('/');
-                }}
+                onClick={() => void logout()}
                 className="rounded-lg px-3 py-2 text-sm font-medium text-ink-500 hover:bg-ink-100"
               >
                 Salir
@@ -147,10 +143,9 @@ export function Header() {
                   Seguridad de la cuenta
                 </Link>
                 <button
-                  onClick={async () => {
+                  onClick={() => {
                     setOpen(false);
-                    await logout();
-                    router.push('/');
+                    void logout();
                   }}
                   className="rounded-lg px-3 py-2 text-left text-sm font-medium text-ink-500 hover:bg-ink-100"
                 >

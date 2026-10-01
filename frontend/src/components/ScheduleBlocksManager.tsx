@@ -81,7 +81,7 @@ export function ScheduleBlocksManager() {
             <div key={dayOfWeek} className="rounded-lg border border-ink-100 p-3">
               <p className="text-sm font-semibold text-ink-800">{label}</p>
               {dayBlocks.length === 0 ? (
-                <p className="mt-1 text-xs text-ink-400">Sin horario</p>
+                <p className="mt-1 text-xs text-ink-500">Sin horario</p>
               ) : (
                 <ul className="mt-1 space-y-1">
                   {dayBlocks.map((b) => (

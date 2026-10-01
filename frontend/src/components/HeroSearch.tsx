@@ -35,6 +35,7 @@ export function HeroSearch({ specialties }: { specialties: Specialty[] }) {
       <Select
         value={especialidad}
         onChange={setEspecialidad}
+        ariaLabel="Especialidad"
         placeholder="Cualquier especialidad"
         options={[
           { value: '', label: 'Cualquier especialidad' },
@@ -44,6 +45,7 @@ export function HeroSearch({ specialties }: { specialties: Specialty[] }) {
       <Select
         value={municipio}
         onChange={setMunicipio}
+        ariaLabel="Municipio"
         placeholder="Cualquier municipio"
         options={municipalityOptions(municipalities, 'Cualquier municipio')}
       />

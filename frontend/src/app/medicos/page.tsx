@@ -129,7 +129,7 @@ function MedicosPageContent() {
         <section className="mt-8" aria-label="Perfiles destacados">
           <div className="mb-3 flex items-baseline gap-2">
             <h2 className="text-lg font-semibold text-ink-900">Destacados</h2>
-            <span className="text-xs text-ink-400">Espacio patrocinado · no es una recomendación clínica</span>
+            <span className="text-xs text-ink-500">Espacio patrocinado · no es una recomendación clínica</span>
           </div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {result.featured.map((doctor) => (

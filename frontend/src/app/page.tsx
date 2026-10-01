@@ -212,7 +212,7 @@ export default async function HomePage() {
                 <span>
                   {s.name}
                   {!!s._count?.professionals && (
-                    <span className="mt-1 block text-xs font-normal text-ink-400">
+                    <span className="mt-1 block text-xs font-normal text-ink-500">
                       {s._count.professionals} profesional{s._count.professionals === 1 ? '' : 'es'}
                     </span>
                   )}
@@ -221,7 +221,7 @@ export default async function HomePage() {
             </RevealItem>
           ))}
           {specialtiesList.length === 0 && (
-            <p className="col-span-full text-sm text-ink-400">Aún no hay especialidades cargadas.</p>
+            <p className="col-span-full text-sm text-ink-500">Aún no hay especialidades cargadas.</p>
           )}
         </RevealGroup>
       </section>

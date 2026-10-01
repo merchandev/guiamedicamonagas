@@ -69,7 +69,7 @@ export default async function PlansPage() {
                 <p className={`mt-3 text-3xl font-bold ${highlighted ? 'text-white' : 'text-pine-700'}`}>
                   {formatUsd(plan.priceUsd)}
                   {Number(plan.priceUsd) > 0 && (
-                    <span className={`text-sm font-normal ${highlighted ? 'text-pine-100' : 'text-ink-400'}`}>/mes</span>
+                    <span className={`text-sm font-normal ${highlighted ? 'text-pine-100' : 'text-ink-500'}`}>/mes</span>
                   )}
                 </p>
                 {plan.description && (
@@ -198,7 +198,7 @@ export default async function PlansPage() {
             <div className="mt-6 flex flex-shrink-0 flex-col items-start gap-3 md:mt-0 md:items-end">
               <p className="text-3xl font-bold text-pine-700">
                 ${orgPlan.priceUsd}
-                <span className="text-sm font-normal text-ink-400">/mes</span>
+                <span className="text-sm font-normal text-ink-500">/mes</span>
               </p>
               {ORGANIZATIONS_LAUNCHED ? (
                 <Link
@@ -221,7 +221,7 @@ export default async function PlansPage() {
       )}
 
       <Reveal delay={0.15}>
-        <p className="mx-auto mt-10 max-w-2xl text-center text-xs text-ink-400">
+        <p className="mx-auto mt-10 max-w-2xl text-center text-xs text-ink-500">
           Los precios se cotizan en USD. El pago se realiza por Pago Móvil en bolívares, a la tasa oficial del BCV vigente
           al suscribirse. Los datos para pagar se muestran dentro de tu panel de médico, en «Suscripción y pagos», y desde
           ahí mismo reportas el pago. Los planes son mensuales y no se renuevan ni se cobran de forma automática. La verificación de

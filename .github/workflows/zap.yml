@@ -1,0 +1,54 @@
+name: Seguridad dinámica (ZAP)
+
+# Escaneo pasivo con OWASP ZAP («baseline»): recorre las páginas públicas como
+# un buscador y revisa cabeceras, cookies y respuestas, sin atacar (solo GET).
+# Falla si vuelve a faltar una protección básica (reglas en .github/zap/reglas.tsv).
+# A pedido (Actions → «Seguridad dinámica (ZAP)» → Run workflow) y el día 1 de
+# cada mes. Un escaneo activo se hace contra un entorno de pruebas, nunca contra
+# producción. Ver docs/security/pruebas-de-seguridad.md.
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Sitio a revisar
+        default: https://guiamedicamonagas.com
+  schedule:
+    - cron: '0 10 1 * *'
+
+permissions:
+  contents: read
+
+jobs:
+  zap:
+    name: ZAP baseline (pasivo)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      TARGET: ${{ inputs.target || 'https://guiamedicamonagas.com' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Escaneo pasivo
+        run: |
+          mkdir -p zap
+          cp .github/zap/reglas.tsv zap/
+          chmod -R 777 zap
+          docker run --rm -v "$PWD/zap:/zap/wrk:rw" ghcr.io/zaproxy/zaproxy:2.17.0 \
+            zap-baseline.py -t "$TARGET" -c reglas.tsv -r informe.html -J informe.json -m 3 -I
+      - name: Resumen
+        if: always()
+        run: |
+          {
+            echo "### ZAP baseline · $TARGET"
+            if [ -f zap/informe.json ]; then
+              jq -r '[.site[].alerts[]] | sort_by(.riskcode) | reverse | .[] | "- \(.riskdesc) · \(.name) (\(.count))"' zap/informe.json
+            else
+              echo "Sin informe."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+      - if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: zap-informe
+          path: zap/
+          retention-days: 30

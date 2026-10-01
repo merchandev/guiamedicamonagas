@@ -313,7 +313,7 @@ export default function EditProfilePage() {
             {...register('seoDescription')}
           />
           <div className="rounded-lg border border-ink-200 bg-ink-50/50 p-4" aria-label="Vista previa en Google">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-400">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-500">
               Así te verán en Google (se genera solo)
             </p>
             <p className="truncate text-xs text-ink-500">

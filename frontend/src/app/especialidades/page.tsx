@@ -27,7 +27,7 @@ export default async function EspecialidadesPage() {
           >
             <span className="font-medium text-ink-800">{s.name}</span>
             {!!s._count?.professionals && (
-              <span className="mt-1 block text-xs text-ink-400">
+              <span className="mt-1 block text-xs text-ink-500">
                 {s._count.professionals} profesional{s._count.professionals === 1 ? '' : 'es'}
               </span>
             )}

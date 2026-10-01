@@ -66,7 +66,7 @@ function Tile({ label, value, total, before }: { label: string; value: number; t
     <div className="rounded-lg bg-ink-50 p-4">
       <p className="text-2xl font-semibold text-ink-900">{value}</p>
       <p className="text-xs text-ink-600">{label}</p>
-      {total !== undefined && <p className="mt-1 text-xs text-ink-400">Desde el inicio: {total}</p>}
+      {total !== undefined && <p className="mt-1 text-xs text-ink-500">Desde el inicio: {total}</p>}
       <Trend now={value} before={before} />
     </div>
   );
@@ -116,7 +116,7 @@ export default function DoctorStatsPage() {
         <p className="mt-1 text-sm text-ink-600">
           {LEVEL_TEXT[stats.level]} · plan {plan} · últimos {stats.periodDays} días
         </p>
-        <p className="mt-1 text-xs text-ink-400">
+        <p className="mt-1 text-xs text-ink-500">
           Visitas y clics son conteos anónimos de quienes aceptaron la analítica del sitio. Las citas y los mensajes salen de tu
           agenda y de tu bandeja.
         </p>
@@ -139,7 +139,7 @@ export default function DoctorStatsPage() {
           <h2 id="st-citas" className="text-lg font-semibold text-ink-900">
             Citas pedidas
           </h2>
-          <p className="text-xs text-ink-400">Por fecha en que se pidieron, con su estado actual.</p>
+          <p className="text-xs text-ink-500">Por fecha en que se pidieron, con su estado actual.</p>
           <div className="mt-4 grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
             <Tile label="Citas pedidas" value={stats.appointments.last30.total} before={stats.appointments.previous30?.total} />
             {Object.entries(STATUS_LABELS).map(([status, label]) => (

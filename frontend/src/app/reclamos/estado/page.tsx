@@ -13,7 +13,7 @@ export default function LegalRequestStatusPage() {
   return (
     <div className="container-page max-w-3xl py-12">
       <nav aria-label="Ruta" className="text-sm text-ink-500">
-        <Link href="/reclamos" className="text-pine-700 hover:underline">
+        <Link href="/reclamos" className="text-pine-700 underline underline-offset-2">
           Reclamos y solicitudes
         </Link>{' '}
         <span aria-hidden>›</span> Estado

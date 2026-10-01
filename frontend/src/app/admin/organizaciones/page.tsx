@@ -222,7 +222,7 @@ export default function AdminOrganizationsPage() {
                   {org.rif && ` · RIF ${org.rif}`}
                 </p>
                 {org.members.length > 0 && (
-                  <p className="text-xs text-ink-400">Administrada por {org.members.map((m) => m.user.email).join(', ')}</p>
+                  <p className="text-xs text-ink-500">Administrada por {org.members.map((m) => m.user.email).join(', ')}</p>
                 )}
                 {org.rejectionReason && <p className="text-xs text-red-600">Motivo: {org.rejectionReason}</p>}
                 <SocialLinksRow links={org.socialLinks} className="mt-2" />

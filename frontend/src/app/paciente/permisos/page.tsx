@@ -163,7 +163,7 @@ export default function PatientPermissionsPage() {
                 </label>
               ))}
             </fieldset>
-            <p className="text-xs text-ink-400">
+            <p className="text-xs text-ink-500">
               Tu cédula nunca se comparte. Una nueva autorización al mismo médico reemplaza la anterior. Al autorizar aceptas
               la{' '}
               <Link href="/privacidad/autorizacion-medica" target="_blank" className="underline">
@@ -196,7 +196,7 @@ export default function PatientPermissionsPage() {
                       <Badge tone={state.tone}>{state.label}</Badge>
                     </div>
                     <p className="mt-1 text-sm text-ink-600">{g.scopes.map((s) => SCOPE_INFO[s].label).join(' · ')}</p>
-                    <p className="text-xs text-ink-400">
+                    <p className="text-xs text-ink-500">
                       Desde {new Date(g.grantedAt).toLocaleDateString('es-VE')} hasta{' '}
                       {new Date(g.revokedAt ?? g.expiresAt).toLocaleDateString('es-VE')}
                     </p>

@@ -32,9 +32,9 @@ pacientes reales, con su control automático: [`docs/operations/go-no-go.md`](op
 | 7 | Restauración desde la copia externa y simulacro de desastre con la custodia | Configuración | 🔴 Pendiente (código listo) |
 | 8 | Canal de alertas en el teléfono (Telegram recomendado) e interruptor de hombre muerto | Titular → configuración | 🔴 Pendiente (código listo; el monitor de GitHub ya corre) |
 | 9 | ESLint del frontend en CI | Código | 🟢 Hecho ([ACT-0037](../Actualizaciones.md#act-0037)) |
-| 10 | Pruebas de extremo a extremo del frontend (Playwright): registro, verificación, búsqueda, reserva, QR, planes, Pago Móvil, reclamos, móvil | Código | 🔵 Siguiente |
-| 11 | Seguridad dinámica: matriz de autorización automatizada (IDOR/BOLA, escalada de rol), escaneo pasivo en CI y CSP; **pentest humano** antes de cargar datos reales | Código + tercero | 🔵 Siguiente |
-| 12 | QA completo en escritorio y móvil (360–430 px), Chrome, Firefox y Safari | Código + titular | 🔵 Planificado |
+| 10 | Pruebas de extremo a extremo del frontend (Playwright): registro, verificación, búsqueda, reserva, QR, planes, Pago Móvil, reclamos, móvil y accesibilidad | Código | 🟢 Hecho ([ACT-0039](../Actualizaciones.md#act-0039), [`e2e/`](../e2e/README.md)) |
+| 11 | Seguridad dinámica: política de rutas, IDOR/BOLA, escalada de rol, tokens falsificados, fuerza bruta y XSS automatizados; CSP; ZAP pasivo mensual. Falta el **pentest humano** antes de cargar datos reales ([alcance](security/pruebas-de-seguridad.md)) | Código + tercero | 🟡 Automático hecho ([ACT-0039](../Actualizaciones.md#act-0039)); falta el humano |
+| 12 | QA completo en escritorio y móvil (360–430 px), Chrome, Firefox y Safari | Código + titular | 🟡 Escritorio y Android automáticos en cada cambio; Firefox y Safari a pedido (`E2E_TODOS_LOS_NAVEGADORES=1`); falta la revisión manual |
 | 13 | Médicos reales publicados y búsqueda verificada. Referencia: 20–30 antes de hacer publicidad, 50+ para que el directorio sea útil, 100+ para trabajar SEO local | Titular | 🔴 Pendiente (hoy 0) |
 | 14 | Revisión legal por un abogado venezolano y plazos «en definición» (retención, reembolsos, jurisdicción) | Titular | 🔴 Pendiente |
 | 15 | Search Console (verificación por DNS) y envío del mapa del sitio | Titular | 🔴 Pendiente |

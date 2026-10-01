@@ -285,7 +285,7 @@ function PacientesContent() {
                   <div className="grid gap-3 rounded-lg bg-ink-50/60 p-4 sm:grid-cols-3">
                     {shown.identity && (
                       <div>
-                        <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-400">Identidad</p>
+                        <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-500">Identidad</p>
                         <Field label="Nombre" value={`${shown.identity.firstName ?? ''} ${shown.identity.lastName ?? ''}`.trim()} />
                         {shown.identity.identityVerified && (
                           <p className="mt-1 text-xs font-medium text-pine-700">✓ Identidad verificada por Guía Médica Monagas</p>
@@ -294,7 +294,7 @@ function PacientesContent() {
                     )}
                     {shown.contact && (
                       <div>
-                        <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-400">Contacto</p>
+                        <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-500">Contacto</p>
                         <Field label="Teléfono" value={shown.contact.phone} />
                         <Field label="Emergencia" value={shown.contact.emergencyMedicalPhone} />
                         <Field label="Dirección de emergencia" value={shown.contact.emergencyAddress} />
@@ -302,7 +302,7 @@ function PacientesContent() {
                     )}
                     {shown.health && (
                       <div>
-                        <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-400">Salud</p>
+                        <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-500">Salud</p>
                         <Field label="Nacimiento" value={shown.health.birthDate} />
                         <Field label="Sexo" value={shown.health.sex} />
                         <Field label="Grupo sanguíneo" value={shown.health.bloodType} />

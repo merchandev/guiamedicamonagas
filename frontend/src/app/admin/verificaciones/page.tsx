@@ -89,7 +89,7 @@ export default function VerificationsQueuePage() {
                     {doc.professional.isSpecialist && <Badge tone="gold" className="ml-2">Especialista</Badge>}
                   </p>
                   <p className="text-sm text-ink-600">{DOCUMENT_TYPE_LABELS[doc.type] ?? doc.type}</p>
-                  <p className="text-xs text-ink-400">
+                  <p className="text-xs text-ink-500">
                     {doc.originalFileName} · {new Date(doc.createdAt).toLocaleDateString('es-VE')}
                   </p>
                 </div>

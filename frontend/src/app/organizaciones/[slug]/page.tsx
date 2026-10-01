@@ -38,7 +38,7 @@ function ListBlock({ title, items }: { title: string; items?: string[] | null })
   if (!items || items.length === 0) return null;
   return (
     <div>
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-400">{title}</h2>
+      <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-500">{title}</h2>
       <div className="mt-2 flex flex-wrap gap-1.5">
         {items.map((item) => (
           <span key={item} className="rounded-full bg-ink-50 px-3 py-1 text-sm text-ink-700">

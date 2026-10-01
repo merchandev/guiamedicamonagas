@@ -49,7 +49,7 @@ export function DoctorCard({ doctor }: { doctor: ProfessionalListItem }) {
           <p className="mt-0.5 truncate text-sm text-ink-600">
             {doctor.specialties.map((s) => s.specialty.name).join(', ') || 'Medicina General'}
           </p>
-          {doctor.municipality && <p className="mt-0.5 text-xs text-ink-400">{doctor.municipality}, Monagas</p>}
+          {doctor.municipality && <p className="mt-0.5 text-xs text-ink-500">{doctor.municipality}, Monagas</p>}
           <div className="mt-2 flex flex-wrap gap-1.5 text-[11px] text-ink-500">
             {doctor.mppsNumber && <span className="rounded bg-ink-50 px-1.5 py-0.5">MPPS {doctor.mppsNumber}</span>}
             {doctor.colmedMonagasNumber && (

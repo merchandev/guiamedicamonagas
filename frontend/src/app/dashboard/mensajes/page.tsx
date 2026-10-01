@@ -59,7 +59,7 @@ export default function MessagesPage() {
                 <p className="font-semibold text-ink-900">{m.senderName}</p>
                 <div className="flex items-center gap-2">
                   {!m.isRead && <Badge tone="gold">Nuevo</Badge>}
-                  <span className="text-xs text-ink-400">{new Date(m.createdAt).toLocaleString('es-VE')}</span>
+                  <span className="text-xs text-ink-500">{new Date(m.createdAt).toLocaleString('es-VE')}</span>
                 </div>
               </div>
               <p className="text-sm text-ink-500">

@@ -78,7 +78,7 @@ export default function AdminHome() {
                 <span className="text-ink-700">
                   {log.action} — {log.resource}
                 </span>
-                <span className="break-all text-xs text-ink-400">
+                <span className="break-all text-xs text-ink-500">
                   {log.user?.email ?? 'sistema'} · {new Date(log.createdAt).toLocaleString('es-VE')}
                 </span>
               </div>

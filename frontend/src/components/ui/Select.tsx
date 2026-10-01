@@ -21,6 +21,8 @@ interface SelectProps {
   disabled?: boolean;
   className?: string;
   name?: string;
+  /** Nombre accesible cuando no hay etiqueta visible (un combobox no toma su nombre del texto). */
+  ariaLabel?: string;
 }
 
 /** Compara ignorando mayúsculas y tildes, para buscar tecleando («mat» → «Maturín»). */
@@ -52,6 +54,7 @@ export function Select({
   disabled,
   className,
   name,
+  ariaLabel,
 }: SelectProps) {
   const [open, setOpen] = useState(false);
   const [highlighted, setHighlighted] = useState(0);
@@ -165,6 +168,7 @@ export function Select({
         disabled={disabled}
         role="combobox"
         aria-haspopup="listbox"
+        aria-label={label ? undefined : ariaLabel ?? placeholder}
         aria-expanded={open}
         aria-controls={listId}
         aria-activedescendant={open && options.length ? optionId(highlighted) : undefined}
@@ -177,12 +181,12 @@ export function Select({
           'flex h-11 w-full items-center justify-between gap-2 rounded-lg border border-ink-300 bg-white px-3.5 text-left text-sm text-ink-800 shadow-sm transition-colors',
           // Igual que los campos de texto: borde y halo suave, sin anillo separado.
           'hover:border-ink-400 focus:border-pine-600 focus:outline-none focus:ring-2 focus:ring-pine-600/20 focus-visible:ring-offset-0',
-          disabled && 'cursor-not-allowed bg-ink-50 text-ink-400 hover:border-ink-300',
+          disabled && 'cursor-not-allowed bg-ink-50 text-ink-500 hover:border-ink-300',
           error && 'border-red-400 focus:border-red-500 focus:ring-red-500/20',
           className,
         )}
       >
-        <span className={cn('truncate', !selected && 'text-ink-400')}>{selected ? selected.label : placeholder}</span>
+        <span className={cn('truncate', !selected && 'text-ink-500')}>{selected ? selected.label : placeholder}</span>
         <svg
           width="16"
           height="16"
@@ -193,7 +197,7 @@ export function Select({
           strokeLinecap="round"
           strokeLinejoin="round"
           aria-hidden="true"
-          className={cn('flex-shrink-0 text-ink-400 transition-transform', open && 'rotate-180')}
+          className={cn('flex-shrink-0 text-ink-500 transition-transform', open && 'rotate-180')}
         >
           <path d="M6 9l6 6 6-6" />
         </svg>
@@ -212,7 +216,7 @@ export function Select({
             className="absolute z-30 mt-1.5 max-h-64 w-full min-w-[10rem] overflow-auto rounded-lg border border-ink-200 bg-white p-1 shadow-card"
           >
             {options.length === 0 ? (
-              <p className="px-3 py-2 text-sm text-ink-400">Sin opciones</p>
+              <p className="px-3 py-2 text-sm text-ink-500">Sin opciones</p>
             ) : (
               options.map((option, index) => {
                 const isSelected = option.value === value;

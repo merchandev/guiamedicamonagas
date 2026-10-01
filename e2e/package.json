@@ -1,0 +1,17 @@
+{
+  "name": "guia-medica-e2e",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Pruebas de extremo a extremo del sitio con Playwright, contra una API y una web reales",
+  "scripts": {
+    "test": "playwright test",
+    "test:movil": "playwright test --project=movil",
+    "report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
+    "@playwright/test": "^1.63.0",
+    "pg": "^8.23.1"
+  }
+}

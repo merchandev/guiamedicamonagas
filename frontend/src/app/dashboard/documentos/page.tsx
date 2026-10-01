@@ -81,7 +81,7 @@ export default function DocumentsPage() {
             <div key={req.type} className="card flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
               <div className="min-w-0 space-y-1">
                 <p id={`documento-${req.type}`} className="font-medium text-ink-900">
-                  <span className="text-ink-400">{index + 1}.</span> {DOCUMENT_TYPE_LABELS[req.type] ?? req.label}
+                  <span className="text-ink-500">{index + 1}.</span> {DOCUMENT_TYPE_LABELS[req.type] ?? req.label}
                 </p>
                 <p className="text-xs text-ink-500">{req.categoryLabel}</p>
                 {doc ? (

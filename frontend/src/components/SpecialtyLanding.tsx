@@ -50,13 +50,13 @@ export async function SpecialtyLanding({ specialtySlug, municipalitySlug }: { sp
 
   return (
     <div className="container-page py-10">
-      <nav className="text-sm text-ink-500">
-        <Link href="/especialidades" className="hover:underline">
+      <nav aria-label="Ruta" className="text-sm text-ink-500">
+        <Link href="/especialidades" className="text-pine-700 underline underline-offset-2">
           Especialidades
         </Link>
         {' / '}
         {municipality ? (
-          <Link href={`/especialidades/${specialty.slug}`} className="hover:underline">
+          <Link href={`/especialidades/${specialty.slug}`} className="text-pine-700 underline underline-offset-2">
             {specialty.name}
           </Link>
         ) : (

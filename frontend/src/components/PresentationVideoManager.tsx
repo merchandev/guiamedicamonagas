@@ -102,7 +102,7 @@ export function PresentationVideoManager({ planTier, initialVideoId }: { planTie
 
       {(draftId ?? videoId) && (
         <div className="space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-wide text-ink-400">
+          <p className="text-xs font-semibold uppercase tracking-wide text-ink-500">
             {draftId && draftId !== videoId ? 'Vista previa (aún sin guardar)' : 'Así se ve en tu ficha'}
           </p>
           <YouTubePresentation key={draftId ?? videoId} videoId={(draftId ?? videoId)!} title="Video de presentación" className="max-w-xl" />

@@ -160,10 +160,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(me);
   }, []);
 
+  // Al salir se recarga la portada por completo: se borra de la memoria del
+  // navegador todo lo cargado en la sesión (fichas, citas, pagos) y una página
+  // privada no alcanza a mandar a «Iniciar sesión» al quedarse sin usuario.
+  const leave = () => window.location.replace('/');
+
   const logout = useCallback(async () => {
     await api.post('/auth/logout').catch(() => undefined);
     setAccessToken(null);
-    setUser(null);
+    leave();
   }, []);
 
   const changePassword = useCallback(
@@ -177,7 +182,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logoutAll = useCallback(async () => {
     await api.post('/auth/logout-all');
     setAccessToken(null);
-    setUser(null);
+    leave();
   }, []);
 
   return (

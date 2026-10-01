@@ -55,7 +55,7 @@ function SocialIconChip({ platform }: { platform: SocialPlatform }) {
 
 function Locked({ label }: { label: string }) {
   return (
-    <div className="flex items-center gap-2 rounded-lg border border-dashed border-ink-200 bg-ink-50/60 px-4 py-3 text-sm text-ink-400">
+    <div className="flex items-center gap-2 rounded-lg border border-dashed border-ink-200 bg-ink-50/60 px-4 py-3 text-sm text-ink-500">
       <LockIcon className="h-4 w-4 flex-shrink-0" />
       <span>{label}</span>
     </div>
@@ -96,7 +96,7 @@ function DoctorDemo({ tier }: { tier: DoctorTier }) {
               ecocardiografía.
             </p>
           ) : (
-            <p className="mt-2 max-w-md text-sm italic text-ink-400">
+            <p className="mt-2 max-w-md text-sm italic text-ink-500">
               Este plan no incluye foto ni biografía en el perfil público.
             </p>
           )}
@@ -187,20 +187,20 @@ function DoctorDemo({ tier }: { tier: DoctorTier }) {
           <div className="space-y-2">
             <div className="rounded-lg border border-ink-100 p-3">
               <p className="text-sm font-semibold text-ink-900">5 hábitos para cuidar tu corazón</p>
-              <p className="mt-1 text-xs text-ink-400">Hace 3 días</p>
+              <p className="mt-1 text-xs text-ink-500">Hace 3 días</p>
             </div>
             {premiumLike ? (
               <>
                 <div className="rounded-lg border border-ink-100 p-3">
                   <p className="text-sm font-semibold text-ink-900">¿Cada cuánto hacerse un ecocardiograma?</p>
-                  <p className="mt-1 text-xs text-ink-400">Hace 1 semana</p>
+                  <p className="mt-1 text-xs text-ink-500">Hace 1 semana</p>
                 </div>
                 <p className="flex items-center gap-1.5 text-xs font-medium text-gold-700">
                   <SparklesIcon className="h-3.5 w-3.5" /> Publicaciones ilimitadas desde el plan Premium
                 </p>
               </>
             ) : (
-              <p className="text-xs text-ink-400">Hasta el límite de publicaciones de tu plan.</p>
+              <p className="text-xs text-ink-500">Hasta el límite de publicaciones de tu plan.</p>
             )}
           </div>
         ) : (
@@ -293,7 +293,7 @@ export function PlanComparisonDemo() {
         <p className="mt-2 text-ink-600">
           Un mismo perfil de ejemplo, mostrado tal como lo verían tus pacientes en cada plan.
         </p>
-        <p className="mt-1 text-xs text-ink-400">
+        <p className="mt-1 text-xs text-ink-500">
           Todos pasan la misma verificación; el check solo cambia de color según el plan: gris (Perfil Básico), azul (Profesional),
           índigo (Plus), dorado (Premium y Marca Médica) — y para organizaciones, verde (farmacias), morado (laboratorios) y naranja
           (clínicas). La etiqueta «Marca Médica» indica el servicio contratado, no una verificación mayor.
@@ -331,7 +331,13 @@ export function PlanComparisonDemo() {
       </div>
 
       {tier !== 'ORGANIZATION' && (
-        <div className="mx-auto mt-10 max-w-3xl overflow-x-auto">
+        <div
+          role="region"
+          aria-label="Qué incluye el plan elegido"
+          tabIndex={0}
+          className="mx-auto mt-10 max-w-3xl overflow-x-auto rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-pine-600"
+        >
+          {/* En el teléfono la tabla se desplaza a lo ancho: la zona recibe el foco para moverla con el teclado. */}
           <table className="w-full min-w-[480px] border-separate border-spacing-y-1.5 text-sm">
             <tbody>
               {FEATURE_ROWS.map((row) => {

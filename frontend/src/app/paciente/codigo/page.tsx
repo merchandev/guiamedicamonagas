@@ -143,7 +143,7 @@ export default function PatientShareCodePage() {
                 {data.code}
               </p>
               {data.createdAt && (
-                <p className="mt-1 text-xs text-ink-400">Generado el {new Date(data.createdAt).toLocaleDateString('es-VE')}</p>
+                <p className="mt-1 text-xs text-ink-500">Generado el {new Date(data.createdAt).toLocaleDateString('es-VE')}</p>
               )}
             </div>
             <div className="flex flex-wrap gap-2">

@@ -59,7 +59,7 @@ export function VerificationBadge(props: Props) {
   if (props.kind === 'doctor' && props.verified === false) {
     const title = 'Verificación en curso: parte de sus documentos ya fue aprobada';
     return (
-      <span title={title} className={cn('inline-flex flex-shrink-0 text-ink-400', props.className)}>
+      <span title={title} className={cn('inline-flex flex-shrink-0 text-ink-500', props.className)}>
         <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
           <path fill="none" stroke="currentColor" strokeWidth="1.5" d={SEAL_PATH} />
           <path d="M12 8v4.2l2.6 1.6" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />

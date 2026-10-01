@@ -110,7 +110,7 @@ export function SocialLinksManager({ planTier, initialLinks }: { planTier: PlanT
       )}
 
       {atMax ? (
-        <p className="text-xs text-ink-400">Ya agregaste el máximo de redes/web de tu plan.</p>
+        <p className="text-xs text-ink-500">Ya agregaste el máximo de redes/web de tu plan.</p>
       ) : (
         <form onSubmit={add} className="grid gap-3 sm:grid-cols-[160px_1fr_auto] sm:items-end">
           <Select

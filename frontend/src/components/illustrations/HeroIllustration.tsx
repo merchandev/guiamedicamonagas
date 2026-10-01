@@ -38,7 +38,7 @@ export function HeroIllustration() {
         <div className="mt-5 grid grid-cols-2 gap-2">
           {['MPPS', 'COLMED'].map((label) => (
             <div key={label} className="rounded-lg bg-ink-50 px-2 py-2 text-center">
-              <p className="text-[9px] font-semibold uppercase tracking-wide text-ink-400">{label}</p>
+              <p className="text-[9px] font-semibold uppercase tracking-wide text-ink-500">{label}</p>
               <p className="text-xs font-bold text-pine-800">✓</p>
             </div>
           ))}

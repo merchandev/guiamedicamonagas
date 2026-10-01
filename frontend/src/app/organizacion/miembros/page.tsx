@@ -128,7 +128,7 @@ export default function OrganizationMembersPage() {
             <div key={m.id} className="flex flex-wrap items-center justify-between gap-3 p-4">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-ink-900">{m.user.email}</span>
-                {isMe && <span className="text-xs text-ink-400">(tú)</span>}
+                {isMe && <span className="text-xs text-ink-500">(tú)</span>}
                 {!canManageRoles && (
                   <Badge tone={m.role === 'OWNER' ? 'gold' : 'neutral'}>{ORG_MEMBER_ROLE_LABELS[m.role]}</Badge>
                 )}
@@ -205,7 +205,7 @@ export default function OrganizationMembersPage() {
                     <p className="text-ink-900">
                       {inv.email} <Badge tone="neutral">{ORG_MEMBER_ROLE_LABELS[inv.role]}</Badge>
                     </p>
-                    <p className="text-xs text-ink-400">
+                    <p className="text-xs text-ink-500">
                       Vence el {new Date(inv.expiresAt).toLocaleString('es-VE', { timeZone: 'America/Caracas' })}
                       {inv.invitedBy ? ` · invitó ${inv.invitedBy.email}` : ''}
                     </p>

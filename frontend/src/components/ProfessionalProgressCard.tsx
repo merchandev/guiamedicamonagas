@@ -55,13 +55,13 @@ export function ProfessionalProgressCard({ progress, isPublished }: { progress: 
                 aria-hidden="true"
                 className={cn(
                   'mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-[11px] font-bold',
-                  item.done ? 'bg-pine-600 text-white' : locked ? 'bg-ink-100 text-ink-400' : 'border border-ink-300 text-ink-400',
+                  item.done ? 'bg-pine-600 text-white' : locked ? 'bg-ink-100 text-ink-500' : 'border border-ink-300 text-ink-500',
                 )}
               >
                 {item.done ? '✓' : locked ? <LockIcon className="h-3 w-3" /> : ''}
               </span>
               <div className="min-w-0 flex-1">
-                <p className={cn('text-sm', item.done ? 'text-ink-500' : locked ? 'text-ink-400' : 'font-medium text-ink-900')}>
+                <p className={cn('text-sm', item.done ? 'text-ink-500' : locked ? 'text-ink-500' : 'font-medium text-ink-900')}>
                   {item.label}
                   {item.requiredToPublish && !item.done && (
                     <span className="ml-2 text-xs font-normal text-amber-700">obligatorio para publicarte</span>

@@ -95,7 +95,7 @@ export default function PatientAppointmentsPage() {
                       timeZone: 'America/Caracas',
                     })}
                   </p>
-                  {a.location && <p className="text-xs text-ink-400">{a.location.name} · {a.location.address}</p>}
+                  {a.location && <p className="text-xs text-ink-500">{a.location.name} · {a.location.address}</p>}
                   {a.reason && <p className="mt-1 text-xs text-ink-500">Motivo: {a.reason}</p>}
                 </div>
                 {upcoming && (

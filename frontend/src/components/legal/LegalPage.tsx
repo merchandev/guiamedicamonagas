@@ -38,7 +38,7 @@ export function LegalPage({
   return (
     <div className="container-page max-w-3xl py-12">
       <nav aria-label="Ruta" className="text-sm text-ink-500">
-        <Link href="/legal" className="text-pine-700 hover:underline">
+        <Link href="/legal" className="text-pine-700 underline underline-offset-2">
           Centro legal
         </Link>{' '}
         <span aria-hidden>›</span> {doc.short}

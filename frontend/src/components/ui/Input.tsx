@@ -1,4 +1,4 @@
-import { InputHTMLAttributes, TextareaHTMLAttributes, forwardRef } from 'react';
+import { InputHTMLAttributes, TextareaHTMLAttributes, forwardRef, useId } from 'react';
 import { cn } from '@/lib/cn';
 
 interface FieldWrapperProps {
@@ -46,7 +46,10 @@ type InputProps = InputHTMLAttributes<HTMLInputElement> & FieldWrapperProps;
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
   ({ label, hint, error, required, className, id, ...props }, ref) => {
-    const inputId = id ?? props.name;
+    // Sin id ni name (campos controlados con value/onChange) la etiqueta quedaría
+    // sin asociar: el lector de pantalla no la anuncia y pulsarla no enfoca.
+    const autoId = useId();
+    const inputId = id ?? props.name ?? autoId;
     return (
       <div>
         {label && (
@@ -75,7 +78,10 @@ type TextareaProps = TextareaHTMLAttributes<HTMLTextAreaElement> & FieldWrapperP
 
 export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
   ({ label, hint, error, required, className, id, ...props }, ref) => {
-    const inputId = id ?? props.name;
+    // Sin id ni name (campos controlados con value/onChange) la etiqueta quedaría
+    // sin asociar: el lector de pantalla no la anuncia y pulsarla no enfoca.
+    const autoId = useId();
+    const inputId = id ?? props.name ?? autoId;
     return (
       <div>
         {label && (

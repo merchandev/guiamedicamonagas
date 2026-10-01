@@ -151,7 +151,7 @@ export default function PatientPrivacyPage() {
                       </p>
                     )}
                   </div>
-                  <time dateTime={entry.at} className="text-xs text-ink-400">
+                  <time dateTime={entry.at} className="text-xs text-ink-500">
                     {formatDateTime(entry.at)}
                   </time>
                 </li>
@@ -202,7 +202,7 @@ export default function PatientPrivacyPage() {
                     <p className="flex flex-wrap items-center gap-2">
                       <span className="font-mono font-semibold tracking-wider text-ink-950">{request.ticket}</span>
                       <Badge tone={status.tone}>{status.label}</Badge>
-                      <span className="text-xs text-ink-400">{new Date(request.createdAt).toLocaleDateString('es-VE')}</span>
+                      <span className="text-xs text-ink-500">{new Date(request.createdAt).toLocaleDateString('es-VE')}</span>
                     </p>
                     <p className="text-ink-700">{LEGAL_REQUEST_CATEGORY_LABELS[request.category]}</p>
                     {request.resolution && (

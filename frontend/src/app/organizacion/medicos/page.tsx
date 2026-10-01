@@ -100,7 +100,7 @@ export default function OrganizationDoctorsPage() {
                     <div key={r.id} className="flex items-center justify-between gap-3 py-2">
                       <span className="text-sm text-ink-900">
                         Dr(a). {r.firstName} {r.lastName}
-                        {r.municipality && <span className="text-ink-400"> · {r.municipality}</span>}
+                        {r.municipality && <span className="text-ink-500"> · {r.municipality}</span>}
                       </span>
                       <Button size="sm" variant="outline" disabled={linkedIds.has(r.id)} loading={busy === r.id} onClick={() => invite(r.id)}>
                         {linkedIds.has(r.id) ? 'Invitado' : 'Invitar'}

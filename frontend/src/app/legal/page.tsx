@@ -44,7 +44,7 @@ export default function LegalCenterPage() {
                   >
                     <span className="flex items-baseline justify-between gap-3">
                       <span className="font-medium text-pine-800">{doc.short}</span>
-                      <span className="flex-shrink-0 text-xs text-ink-400">v{doc.version}</span>
+                      <span className="flex-shrink-0 text-xs text-ink-500">v{doc.version}</span>
                     </span>
                     <span className="mt-1 block text-sm text-ink-600">{doc.summary}</span>
                   </Link>

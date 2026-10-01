@@ -73,7 +73,7 @@ export function Footer() {
           <p>
             {MEDICAL_DISCLAIMER_NOTICE} {EMERGENCY_NOTICE}
           </p>
-          <p className="text-ink-400">© {new Date().getFullYear()} Guía Médica Monagas.</p>
+          <p className="text-ink-500">© {new Date().getFullYear()} Guía Médica Monagas.</p>
         </div>
       </div>
     </footer>

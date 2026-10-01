@@ -269,7 +269,7 @@ export default async function DoctorProfilePage({ params }: { params: Promise<{ 
               {doctor.posts.map((post) => (
                 <article key={post.id} className="rounded-lg border border-ink-100 p-4">
                   <h4 className="font-semibold text-ink-900">{post.title}</h4>
-                  <p className="mt-1 text-xs text-ink-400">{new Date(post.createdAt).toLocaleDateString('es-VE')}</p>
+                  <p className="mt-1 text-xs text-ink-500">{new Date(post.createdAt).toLocaleDateString('es-VE')}</p>
                   <p className="mt-2 whitespace-pre-wrap text-sm text-ink-600">{post.content}</p>
                 </article>
               ))}

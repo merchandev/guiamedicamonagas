@@ -66,7 +66,8 @@ export function Modal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    // Por encima del aviso de cookies (z-50), que si no tapa los botones del diálogo.
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-ink-950/50 backdrop-blur-sm" onClick={onClose} aria-hidden />
       <div
         ref={dialogRef}
@@ -83,7 +84,7 @@ export function Modal({
               type="button"
               data-modal-close
               onClick={onClose}
-              className="rounded-full p-1.5 text-ink-400 hover:bg-ink-100 hover:text-ink-700"
+              className="rounded-full p-1.5 text-ink-500 hover:bg-ink-100 hover:text-ink-700"
               aria-label="Cerrar"
             >
               ✕

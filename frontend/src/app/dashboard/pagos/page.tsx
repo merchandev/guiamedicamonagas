@@ -112,7 +112,7 @@ export default function PaymentsPage() {
             plans.map((plan) => (
               <div key={plan.id} className={plan.tier === 'AGENCY' ? 'card border-gold-300 bg-gold-50/40 p-6' : 'card p-6'}>
                 <h3 className="text-lg font-semibold text-ink-900">{plan.name}</h3>
-                <p className="mt-1 text-2xl font-bold text-pine-700">${plan.priceUsd}<span className="text-sm font-normal text-ink-400">/mes</span></p>
+                <p className="mt-1 text-2xl font-bold text-pine-700">${plan.priceUsd}<span className="text-sm font-normal text-ink-500">/mes</span></p>
                 {exchangeRate && (
                   <p className="text-xs text-ink-500">
                     ≈ Bs. {(Number(plan.priceUsd) * exchangeRate).toFixed(2)} al pagar

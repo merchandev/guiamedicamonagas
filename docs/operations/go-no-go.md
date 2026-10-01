@@ -33,7 +33,7 @@ lanzamiento está en [`docs/ROADMAP.md`](../ROADMAP.md).
 | Revisión de los textos legales por un abogado venezolano | 🔴 Pendiente del titular | Ver [ACT-0033](../../Actualizaciones.md#act-0033) |
 | Plazos «en definición» (retención, baja → eliminación, reembolsos, jurisdicción) | 🔴 Pendiente del titular | `/privacidad/retencion` y `/reembolsos` con versión nueva |
 | Simulacro de desastre con la copia externa y la custodia | 🔴 Pendiente | `restore-test.sh --from-remote --escrow-file …` (ver respaldos) |
-| Pruebas de seguridad dinámicas (DAST / pentest) sin hallazgos altos | 🔵 Planificado | Ver [docs/ROADMAP.md](../ROADMAP.md) |
+| Pruebas de seguridad dinámicas (DAST / pentest) sin hallazgos altos | 🟡 Automáticas hechas | Política de rutas, IDOR/BOLA, tokens, fuerza bruta y XSS en CI; ZAP pasivo mensual. Falta el pentest humano ([alcance](../security/pruebas-de-seguridad.md)) |
 | Médicos reales publicados | 🔴 Pendiente del titular | Hoy hay 0 perfiles publicados; el directorio ya explica que está empezando |
 | Pago Móvil de la plataforma y video de muestra de Marca Médica | 🔴 Pendiente del titular | Administración → Pagos y Administración → Planes |
 | Search Console y sitemap enviados | 🔴 Pendiente del titular | Verificación por DNS del dominio y envío de `/sitemap.xml` |

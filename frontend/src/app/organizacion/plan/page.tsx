@@ -89,7 +89,7 @@ export default function OrganizationPlanPage() {
 
       <section className="card p-6">
         <h2 className="text-lg font-semibold text-ink-900">Estadísticas del perfil</h2>
-        <p className="text-xs text-ink-400">Conteos anónimos de visitantes que aceptaron la analítica.</p>
+        <p className="text-xs text-ink-500">Conteos anónimos de visitantes que aceptaron la analítica.</p>
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
           {Object.entries(STAT_LABELS).map(([key, label]) => (
             <div key={key} className="rounded-lg bg-ink-50 p-4">
@@ -108,7 +108,7 @@ export default function OrganizationPlanPage() {
             <h2 className="text-lg font-semibold text-ink-900">{plan.name}</h2>
             <p className="mt-1 text-2xl font-bold text-pine-700">
               ${plan.priceUsd}
-              <span className="text-sm font-normal text-ink-400">/mes</span>
+              <span className="text-sm font-normal text-ink-500">/mes</span>
             </p>
             {rate?.usdToBs ? (
               <p className="text-xs text-ink-500">≈ Bs. {(Number(plan.priceUsd) * rate.usdToBs).toFixed(2)} a la tasa BCV de hoy</p>
@@ -163,7 +163,7 @@ export default function OrganizationPlanPage() {
                     <div key={p.id} className="flex items-center justify-between rounded-lg border border-ink-100 p-3 text-sm">
                       <span>
                         Bs. {p.amountBs} — {new Date(p.createdAt).toLocaleDateString('es-VE')}
-                        {p.reviewNote && <span className="text-ink-400"> · {p.reviewNote}</span>}
+                        {p.reviewNote && <span className="text-ink-500"> · {p.reviewNote}</span>}
                       </span>
                       <Badge tone={PAYMENT_STATUS_LABELS[p.status]?.tone ?? 'neutral'}>
                         {PAYMENT_STATUS_LABELS[p.status]?.label ?? p.status}
