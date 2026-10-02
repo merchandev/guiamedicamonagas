@@ -84,22 +84,63 @@ export class AgendaService {
     return { message: 'Bloque eliminado' };
   }
 
+  /** El horario semanal completo de una vez (la cuadrícula del calendario). */
+  async replaceOwnBlocks(userId: string, blocks: UpsertScheduleBlockDto[]) {
+    const profile = await this.ownProfileOrThrow(userId);
+    for (const block of blocks) {
+      if (block.endTime <= block.startTime) {
+        throw new BadRequestException('Cada bloque debe terminar después de empezar');
+      }
+    }
+    for (let day = 0; day <= 6; day++) {
+      const sorted = blocks.filter((b) => b.dayOfWeek === day).sort((a, b) => a.startTime.localeCompare(b.startTime));
+      if (sorted.some((b, i) => i > 0 && b.startTime < sorted[i - 1].endTime)) {
+        throw new BadRequestException('Dos bloques del mismo día se solapan');
+      }
+    }
+    const schedule = await this.ensureSchedule(profile.id);
+    return this.prisma.$transaction(async (tx) => {
+      await tx.scheduleBlock.deleteMany({ where: { scheduleId: schedule.id } });
+      await tx.scheduleBlock.createMany({
+        data: blocks.map((b) => ({ scheduleId: schedule.id, dayOfWeek: b.dayOfWeek, startTime: b.startTime, endTime: b.endTime })),
+      });
+      return tx.scheduleBlock.findMany({
+        where: { scheduleId: schedule.id },
+        orderBy: [{ dayOfWeek: 'asc' }, { startTime: 'asc' }],
+      });
+    });
+  }
+
   async listOwnExceptions(userId: string) {
     const profile = await this.ownProfileOrThrow(userId);
     const schedule = await this.ensureSchedule(profile.id);
     return this.prisma.scheduleException.findMany({ where: { scheduleId: schedule.id }, orderBy: { date: 'asc' } });
   }
 
+  /**
+   * Bloqueado sin horas = el día entero; bloqueado con horas = solo ese tramo
+   * (desde el calendario); no bloqueado = horario especial ese día.
+   */
   async addOwnException(userId: string, dto: UpsertScheduleExceptionDto) {
     const profile = await this.ownProfileOrThrow(userId);
+    if (!!dto.startTime !== !!dto.endTime) {
+      throw new BadRequestException('Indica la hora de inicio y la de fin');
+    }
+    const hasTimes = !!dto.startTime && !!dto.endTime;
+    if (hasTimes && dto.endTime! <= dto.startTime!) {
+      throw new BadRequestException('La hora de fin debe ser posterior a la hora de inicio');
+    }
+    if (!dto.isBlocked && !hasTimes) {
+      throw new BadRequestException('Un horario especial necesita hora de inicio y de fin');
+    }
     const schedule = await this.ensureSchedule(profile.id);
     return this.prisma.scheduleException.create({
       data: {
         scheduleId: schedule.id,
-        date: new Date(dto.date),
+        date: new Date(dto.date.slice(0, 10)),
         isBlocked: dto.isBlocked,
-        startTime: dto.isBlocked ? undefined : dto.startTime,
-        endTime: dto.isBlocked ? undefined : dto.endTime,
+        startTime: hasTimes ? dto.startTime : null,
+        endTime: hasTimes ? dto.endTime : null,
         reason: dto.reason,
       },
     });

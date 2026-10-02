@@ -989,6 +989,13 @@ model Schedule {
   /// Si el médico acepta citas sin necesidad de confirmarlas manualmente
   autoConfirm Boolean @default(false)
 
+  /// Hasta cuántos días adelante puede reservar un paciente.
+  bookingWindowDays Int @default(60)
+
+  /// Antelación mínima (minutos) con la que un paciente puede reservar o
+  /// reprogramar. No aplica a las citas que carga o mueve el propio médico.
+  minNoticeMinutes Int @default(120)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -1014,8 +1021,10 @@ model ScheduleBlock {
 }
 
 /**
- * Excepción puntual en la agenda: día bloqueado (vacaciones, guardia)
- * o con horario diferente al habitual.
+ * Excepción puntual en la agenda (puede haber varias el mismo día):
+ * - isBlocked sin horas: día bloqueado (vacaciones, guardia);
+ * - isBlocked con horas: solo ese tramo bloqueado (desde el calendario);
+ * - no bloqueado con horas: horario especial ese día en lugar del habitual.
  */
 model ScheduleException {
   id         String   @id @default(uuid())
@@ -1023,9 +1032,9 @@ model ScheduleException {
   schedule   Schedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
 
   date      DateTime // fecha específica (solo se usa la parte de la fecha)
-  isBlocked Boolean  @default(true) // true = sin citas ese día
-  startTime String?  // si isBlocked=false: horario especial inicio
-  endTime   String?  // si isBlocked=false: horario especial fin
+  isBlocked Boolean  @default(true)
+  startTime String?  // inicio del tramo (bloqueado o del horario especial)
+  endTime   String?  // fin del tramo
   reason    String?  // "Vacaciones", "Congreso médico"
 
   @@index([scheduleId, date])
@@ -1254,11 +1263,50 @@ model Appointment {
 
   clinicalNote   ClinicalNote?
   financeRecords FinanceRecord[]
+  events         AppointmentEvent[]
 
   @@index([professionalId, startsAt])
   @@index([patientId])
   @@index([status])
   @@index([startsAt])
+}
+
+enum AppointmentEventType {
+  CREATED
+  CONFIRMED
+  RESCHEDULED
+  CANCELLED
+  COMPLETED
+  NO_SHOW
+}
+
+enum AppointmentActor {
+  PATIENT
+  PROFESSIONAL
+  SYSTEM
+  ADMIN
+}
+
+/**
+ * Historial de cada cita: quién hizo qué y cuándo. Solo se agregan filas, en
+ * la misma transacción que el cambio. Sin texto libre: el motivo de una
+ * cancelación queda en la cita.
+ */
+model AppointmentEvent {
+  id            String               @id @default(uuid())
+  appointmentId String
+  appointment   Appointment          @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  type          AppointmentEventType
+  actor         AppointmentActor
+  actorUserId   String?
+  /// Al reprogramar: de qué inicio a cuál.
+  previousStartsAt DateTime?
+  newStartsAt      DateTime?
+  /// El médico la puso fuera de su horario habitual.
+  outsideSchedule  Boolean   @default(false)
+  createdAt        DateTime  @default(now())
+
+  @@index([appointmentId, createdAt])
 }
 
 // ---------------------------------------------------------------------------

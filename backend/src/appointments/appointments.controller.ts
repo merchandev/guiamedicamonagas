@@ -13,6 +13,7 @@ import { CreateAppointmentDto } from './dto/create-appointment.dto';
 import { CreateManualAppointmentDto } from './dto/create-manual-appointment.dto';
 import { RescheduleAppointmentDto } from './dto/reschedule-appointment.dto';
 import { CancelAppointmentDto } from './dto/cancel-appointment.dto';
+import { AgendaRangeDto, AppointmentHistoryDto, DoctorSlotsDto } from './dto/agenda-query.dto';
 
 class RequestPatientAccessDto {
   @IsArray()
@@ -53,15 +54,31 @@ export class AppointmentsController {
     return this.appointments.createManual(user.id, dto);
   }
 
+  /** Citas de un rango (hasta 62 días); cada paciente según lo que autorizó. */
   @Roles(Role.PROFESSIONAL)
   @Get('me/agenda')
-  listOwnAgenda(
-    @CurrentUser() user: AuthenticatedUser,
-    @Query('from') from?: string,
-    @Query('to') to?: string,
-    @Query('status') status?: string,
-  ) {
-    return this.appointments.listOwnAgenda(user.id, from, to, status);
+  listOwnAgenda(@CurrentUser() user: AuthenticatedUser, @Query() query: AgendaRangeDto, @Req() req: FastifyRequest) {
+    return this.appointments.listOwnAgenda(user.id, query, req.ip);
+  }
+
+  /** Lo que dibuja el calendario: horario de cada día, lo bloqueado y las citas. */
+  @Roles(Role.PROFESSIONAL)
+  @Get('me/calendar')
+  calendar(@CurrentUser() user: AuthenticatedUser, @Query() query: AgendaRangeDto, @Req() req: FastifyRequest) {
+    return this.appointments.calendar(user.id, query, req.ip);
+  }
+
+  @Roles(Role.PROFESSIONAL)
+  @Get('me/history')
+  history(@CurrentUser() user: AuthenticatedUser, @Query() query: AppointmentHistoryDto, @Req() req: FastifyRequest) {
+    return this.appointments.history(user.id, query, req.ip);
+  }
+
+  /** Horarios libres de un día, para mover una cita sin arrastrarla. */
+  @Roles(Role.PROFESSIONAL)
+  @Get('me/slots')
+  doctorSlots(@CurrentUser() user: AuthenticatedUser, @Query() query: DoctorSlotsDto) {
+    return this.appointments.doctorSlots(user.id, query);
   }
 
   @Roles(Role.PROFESSIONAL)
@@ -99,6 +116,13 @@ export class AppointmentsController {
     @Body() dto: RequestPatientAccessDto,
   ) {
     return this.appointments.requestPatientAccess(user.id, patientId, dto.scopes);
+  }
+
+  /** Una cita con su historial (quién la creó, movió, confirmó o canceló). */
+  @Roles(Role.PROFESSIONAL)
+  @Get('me/:id')
+  getOwnAppointment(@CurrentUser() user: AuthenticatedUser, @Param('id', ParseUUIDPipe) id: string, @Req() req: FastifyRequest) {
+    return this.appointments.getOwnAppointment(user.id, id, req.ip);
   }
 
   @Roles(Role.PROFESSIONAL)

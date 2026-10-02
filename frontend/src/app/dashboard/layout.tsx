@@ -6,8 +6,7 @@ import { DashboardShell } from '@/components/layout/DashboardShell';
 const LINKS = [
   { href: '/dashboard', label: 'Resumen' },
   { href: '/dashboard/perfil', label: 'Mi perfil' },
-  { href: '/dashboard/agenda', label: 'Agenda' },
-  { href: '/dashboard/citas', label: 'Citas' },
+  { href: '/dashboard/agenda', label: 'Agenda y citas' },
   { href: '/dashboard/pacientes', label: 'Pacientes' },
   { href: '/dashboard/estadisticas', label: 'Estadísticas' },
   { href: '/dashboard/documentos', label: 'Documentos' },

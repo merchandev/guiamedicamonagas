@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
+import { use, useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { api, ApiError } from '@/lib/api';
@@ -13,20 +13,7 @@ import { ProfessionalDetail } from '@/lib/types';
 import { ALL_SCOPES, SCOPE_INFO, type PatientDataScope } from '@/lib/patient-scopes';
 import { PATIENT_CONSENT_VERSION } from '@/lib/legal';
 import { MedicalDisclaimer } from '@/components/legal/MedicalDisclaimer';
-
-function nextDays(count: number) {
-  return Array.from({ length: count }, (_, i) => {
-    const d = new Date();
-    d.setDate(d.getDate() + i);
-    return d;
-  });
-}
-
-// Día de calendario en Caracas (toISOString daría la fecha UTC: después de las
-// 8 p.m. en Venezuela ya sería "mañana").
-function dateKey(d: Date) {
-  return d.toLocaleDateString('en-CA', { timeZone: 'America/Caracas' });
-}
+import { SlotPicker } from '@/components/agenda/SlotPicker';
 
 interface OwnPatientProfile {
   firstName: string | null;
@@ -40,9 +27,6 @@ export default function AgendarCitaPage({ params }: { params: Promise<{ slug: st
   const router = useRouter();
   const [doctor, setDoctor] = useState<ProfessionalDetail | null>(null);
   const [notFound, setNotFound] = useState(false);
-  const days = nextDays(14);
-  const [selectedDay, setSelectedDay] = useState(dateKey(days[0]));
-  const [slots, setSlots] = useState<string[] | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [form, setForm] = useState({ reason: '', firstName: '', lastName: '', phone: '' });
   const [error, setError] = useState<string | null>(null);
@@ -69,26 +53,13 @@ export default function AgendarCitaPage({ params }: { params: Promise<{ slug: st
       .catch(() => setNotFound(true));
   }, [slug]);
 
-  // Una respuesta lenta de otro día no pisa la del día elegido.
-  useEffect(() => {
-    if (!doctor) return;
-    let active = true;
-    api
-      .get<string[]>(`/appointments/availability?professionalId=${doctor.id}&from=${selectedDay}&to=${selectedDay}`)
-      .then((items) => active && setSlots(items))
-      .catch(() => active && setSlots([]));
-    return () => {
-      active = false;
-    };
-  }, [doctor, selectedDay]);
-
-  // Al cambiar de día se limpian la hora elegida y las horas del día anterior.
-  const selectDay = (key: string) => {
-    if (key === selectedDay) return;
-    setSelectedSlot(null);
-    setSlots(null);
-    setSelectedDay(key);
-  };
+  // Horarios libres de un rango de días (el calendario pide el mes a la vista).
+  const doctorId = doctor?.id;
+  const loadSlots = useCallback(
+    (from: string, to: string) =>
+      api.get<string[]>(`/appointments/availability?professionalId=${doctorId}&from=${from}&to=${to}`),
+    [doctorId],
+  );
 
   const book = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -152,50 +123,9 @@ export default function AgendarCitaPage({ params }: { params: Promise<{ slug: st
             {error && <Alert tone="error">{error}</Alert>}
 
             <div>
-              <p id="agendar-fecha" className="field-label">Fecha</p>
-              <div role="group" aria-labelledby="agendar-fecha" className="flex gap-2 overflow-x-auto p-1">
-                {days.map((d) => {
-                  const key = dateKey(d);
-                  return (
-                    <button
-                      key={key}
-                      type="button"
-                      aria-pressed={selectedDay === key}
-                      onClick={() => selectDay(key)}
-                      className={`flex-shrink-0 rounded-lg border px-3 py-2 text-xs transition-colors ${
-                        selectedDay === key ? 'border-pine-700 bg-pine-700 text-white' : 'border-ink-300 bg-white text-ink-700 hover:bg-ink-50'
-                      }`}
-                    >
-                      {d.toLocaleDateString('es-VE', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'America/Caracas' })}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div>
-              <p id="agendar-hora" className="field-label">Hora</p>
-              {slots === null ? (
-                <PageSpinner />
-              ) : slots.length === 0 ? (
-                <p className="text-sm text-ink-500">No hay horarios disponibles ese día.</p>
-              ) : (
-                <div role="group" aria-labelledby="agendar-hora" className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-                  {slots.map((slot) => (
-                    <button
-                      key={slot}
-                      type="button"
-                      aria-pressed={selectedSlot === slot}
-                      onClick={() => setSelectedSlot(slot)}
-                      className={`rounded-lg border px-2 py-2 text-sm transition-colors ${
-                        selectedSlot === slot ? 'border-pine-700 bg-pine-700 text-white' : 'border-ink-300 bg-white text-ink-700 hover:bg-ink-50'
-                      }`}
-                    >
-                      {new Date(slot).toLocaleTimeString('es-VE', { timeStyle: 'short', timeZone: 'America/Caracas' })}
-                    </button>
-                  ))}
-                </div>
-              )}
+              <p className="field-label">Elige el día y la hora</p>
+              <p className="mb-3 text-xs text-ink-500">Los días resaltados tienen horarios libres. Las horas son de Caracas.</p>
+              <SlotPicker loadSlots={loadSlots} selectedSlot={selectedSlot} onSelectSlot={setSelectedSlot} monthsAhead={6} />
             </div>
 
             <Textarea

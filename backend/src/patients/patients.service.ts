@@ -52,6 +52,18 @@ type DirectoryPatient = {
   lastName: string | null;
 };
 
+/** Cómo ve el médico a un paciente en su agenda y en su historial de citas. */
+export interface PatientLabel {
+  patientId: string;
+  patientCode: string;
+  /** Solo si el paciente autorizó su identidad (o si el médico cargó la ficha). */
+  name: string | null;
+  /** Solo si el paciente autorizó su contacto (o si el médico cargó la ficha). */
+  phone: string | null;
+  access: 'WALK_IN' | 'GRANT' | 'NONE';
+  hasAccount: boolean;
+}
+
 @Injectable()
 export class PatientsService {
   constructor(
@@ -499,6 +511,63 @@ export class PatientsService {
       }),
     ]);
     return !!appointment || !!link;
+  }
+
+  /**
+   * Cómo ve el médico a cada paciente de su agenda: el nombre si el paciente
+   * autorizó su identidad, el teléfono si autorizó su contacto (o ambos si es
+   * una ficha que cargó el propio médico); si no, solo el código. Mostrar el
+   * nombre o el teléfono de un paciente con cuenta queda en la auditoría.
+   */
+  async labelsForProfessional(professionalId: string, patientIds: string[], requestedByUserId?: string, ipAddress?: string) {
+    const ids = [...new Set(patientIds)];
+    const labels = new Map<string, PatientLabel>();
+    if (!ids.length) return labels;
+    const [patients, grants] = await Promise.all([
+      this.prisma.patientProfile.findMany({
+        where: { id: { in: ids } },
+        select: { id: true, patientCode: true, userId: true, createdByProfessionalId: true, firstName: true, lastName: true, phoneEnc: true },
+      }),
+      this.prisma.patientDataGrant.findMany({
+        where: { professionalId, patientId: { in: ids }, revokedAt: null, expiresAt: { gt: new Date() },
+          patient: { user: { isActive: true } }, professional: { user: { isActive: true } } },
+        select: { patientId: true, scopes: true },
+      }),
+    ]);
+    const scopesByPatient = new Map<string, Set<PatientDataScope>>();
+    for (const grant of grants) {
+      const scopes = scopesByPatient.get(grant.patientId) ?? new Set<PatientDataScope>();
+      grant.scopes.forEach((scope) => scopes.add(scope));
+      scopesByPatient.set(grant.patientId, scopes);
+    }
+
+    const revealed: string[] = [];
+    for (const patient of patients) {
+      const walkIn = patient.createdByProfessionalId === professionalId && !patient.userId;
+      const scopes = walkIn ? new Set<PatientDataScope>(['IDENTITY', 'CONTACT']) : scopesByPatient.get(patient.id) ?? new Set<PatientDataScope>();
+      const name = scopes.has('IDENTITY') ? [patient.firstName, patient.lastName].filter(Boolean).join(' ') || null : null;
+      const phone = scopes.has('CONTACT') ? this.codec.decodePhone(patient) : null;
+      if (!walkIn && (name || phone)) revealed.push(patient.id);
+      labels.set(patient.id, {
+        patientId: patient.id,
+        patientCode: patient.patientCode,
+        name,
+        phone,
+        access: walkIn ? 'WALK_IN' : scopes.size ? 'GRANT' : 'NONE',
+        hasAccount: !!patient.userId,
+      });
+    }
+    if (revealed.length && requestedByUserId) {
+      await this.audit.record({
+        userId: requestedByUserId,
+        action: 'PATIENT_AGENDA_VIEWED',
+        resource: 'ProfessionalProfile',
+        resourceId: professionalId,
+        details: { patientIds: revealed.slice(0, 200), count: revealed.length },
+        ipAddress,
+      });
+    }
+    return labels;
   }
 
   /**

@@ -53,6 +53,13 @@ export function addDaysToDateKey(dateKey: string, days: number): string {
   return date.toISOString().slice(0, 10);
 }
 
+/** Días de calendario entre dos fechas (to − from). */
+export function daysBetween(fromDateKey: string, toDateKey: string): number {
+  const from = new Date(`${fromDateKey}T00:00:00Z`).getTime();
+  const to = new Date(`${toDateKey}T00:00:00Z`).getTime();
+  return Math.round((to - from) / 86_400_000);
+}
+
 /** Día de la semana de una fecha de calendario (0 = domingo); no depende de la zona. */
 export function dayOfWeekForDateKey(dateKey: string): number {
   return new Date(`${dateKey}T12:00:00Z`).getUTCDay();
@@ -65,11 +72,13 @@ interface ScheduleBlockLike {
 }
 
 interface ScheduleExceptionLike {
+  id?: string;
   /** Fecha de calendario a medianoche UTC. */
   date: Date;
   isBlocked: boolean;
   startTime: string | null;
   endTime: string | null;
+  reason?: string | null;
 }
 
 interface ScheduleConfigLike {
@@ -80,68 +89,157 @@ interface ScheduleConfigLike {
   exceptions: ScheduleExceptionLike[];
 }
 
+export interface Interval {
+  start: Date;
+  end: Date;
+}
+
+export interface DayPlan {
+  /** «2026-10-05» (calendario de Caracas). */
+  dateKey: string;
+  /** Tramos de atención del día, ya sin los tramos bloqueados. */
+  open: Interval[];
+  /** Día bloqueado entero o tramos bloqueados, con su motivo (y la excepción que lo bloquea). */
+  blocked: (Interval & { id?: string; allDay: boolean; reason: string | null })[];
+  /** Ese día rige un horario especial en lugar del semanal. */
+  special: boolean;
+}
+
+/** Tramos en minutos del día [desde, hasta). */
+type MinuteRange = [number, number];
+
+const toMinutes = (time: string) => {
+  const [h, m] = time.split(':').map(Number);
+  return h * 60 + m;
+};
+const toTime = (minutes: number) => `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
+
+/** Quita a cada tramo las partes que caen dentro de los bloqueados. */
+function subtractRanges(base: MinuteRange[], cut: MinuteRange[]): MinuteRange[] {
+  let result = base;
+  for (const [cutStart, cutEnd] of cut) {
+    result = result.flatMap(([start, end]) => {
+      if (cutEnd <= start || cutStart >= end) return [[start, end] as MinuteRange];
+      const pieces: MinuteRange[] = [];
+      if (cutStart > start) pieces.push([start, cutStart]);
+      if (cutEnd < end) pieces.push([cutEnd, end]);
+      return pieces;
+    });
+  }
+  return result;
+}
+
+/**
+ * Cómo queda cada día entre fromDateKey y toDateKey: horario de atención
+ * (semanal o especial) menos los tramos bloqueados, y lo bloqueado con su
+ * motivo. Las excepciones son fechas de calendario guardadas a medianoche UTC
+ * (el panel envía "YYYY-MM-DD"): su día es la parte de fecha en UTC, no el día
+ * en Caracas — convertirlas desplazaba el bloqueo al día anterior.
+ */
+export function planDays(schedule: Pick<ScheduleConfigLike, 'blocks' | 'exceptions'>, fromDateKey: string, toDateKey: string): DayPlan[] {
+  const exceptionsByDay = new Map<string, ScheduleExceptionLike[]>();
+  for (const exception of schedule.exceptions) {
+    const key = exception.date.toISOString().slice(0, 10);
+    exceptionsByDay.set(key, [...(exceptionsByDay.get(key) ?? []), exception]);
+  }
+
+  const days: DayPlan[] = [];
+  let dateKey = fromDateKey;
+  for (let i = 0; dateKey <= toDateKey && i < 400; i++) {
+    const exceptions = exceptionsByDay.get(dateKey) ?? [];
+    const fullDay = exceptions.find((e) => e.isBlocked && !(e.startTime && e.endTime));
+    if (fullDay) {
+      days.push({
+        dateKey,
+        open: [],
+        blocked: [
+          {
+            id: fullDay.id,
+            start: startOfCaracasDay(dateKey),
+            end: startOfCaracasDay(addDaysToDateKey(dateKey, 1)),
+            allDay: true,
+            reason: fullDay.reason ?? null,
+          },
+        ],
+        special: false,
+      });
+    } else {
+      const special = exceptions.find((e) => !e.isBlocked && e.startTime && e.endTime);
+      const dayOfWeek = dayOfWeekForDateKey(dateKey);
+      const base: MinuteRange[] = special
+        ? [[toMinutes(special.startTime!), toMinutes(special.endTime!)]]
+        : schedule.blocks
+            .filter((b) => b.dayOfWeek === dayOfWeek)
+            .map((b): MinuteRange => [toMinutes(b.startTime), toMinutes(b.endTime)])
+            .sort((a, b) => a[0] - b[0]);
+      const partial = exceptions.filter((e) => e.isBlocked && e.startTime && e.endTime);
+      const open = subtractRanges(
+        base,
+        partial.map((e): MinuteRange => [toMinutes(e.startTime!), toMinutes(e.endTime!)]),
+      ).filter(([start, end]) => end > start);
+      days.push({
+        dateKey,
+        open: open.map(([start, end]) => ({ start: combineDateAndTime(dateKey, toTime(start)), end: combineDateAndTime(dateKey, toTime(end)) })),
+        blocked: partial.map((e) => ({
+          id: e.id,
+          start: combineDateAndTime(dateKey, e.startTime!),
+          end: combineDateAndTime(dateKey, e.endTime!),
+          allDay: false,
+          reason: e.reason ?? null,
+        })),
+        special: !!special,
+      });
+    }
+    dateKey = addDaysToDateKey(dateKey, 1);
+  }
+  return days;
+}
+
+/** Una cita ya agendada: con su fin, o solo su inicio (dura lo de un horario). */
+export type BookedTime = Date | { startsAt: Date; endsAt: Date };
+
 /**
  * Calcula los horarios de inicio disponibles entre fromDateKey y toDateKey
  * (inclusive, formato "YYYY-MM-DD" en hora de Venezuela), excluyendo los que
- * ya están ocupados (existingStarts) y respetando excepciones y el máximo
- * diario. Nunca devuelve horarios en el pasado.
+ * se solapan con citas ya agendadas y respetando excepciones y el máximo
+ * diario. Nunca devuelve horarios anteriores a `earliest` (por defecto, ahora;
+ * para un paciente, ahora más la antelación mínima).
  */
 export function computeAvailableSlots(
   schedule: ScheduleConfigLike,
-  existingStarts: Date[],
+  existing: BookedTime[],
   fromDateKey: string,
   toDateKey: string,
-  now: Date = new Date(),
+  earliest: Date = new Date(),
 ): Date[] {
-  const takenIso = new Set(existingStarts.map((d) => d.toISOString()));
-  const existingCountByDay = new Map<string, number>();
-  for (const d of existingStarts) {
-    const key = toVetDateKey(d);
-    existingCountByDay.set(key, (existingCountByDay.get(key) ?? 0) + 1);
+  const slotMs = schedule.slotDurationMinutes * 60_000;
+  const stepMs = (schedule.slotDurationMinutes + schedule.bufferMinutes) * 60_000;
+  const booked = existing.map((b) =>
+    b instanceof Date ? { start: b.getTime(), end: b.getTime() + slotMs } : { start: b.startsAt.getTime(), end: b.endsAt.getTime() },
+  );
+  const countByDay = new Map<string, number>();
+  for (const b of booked) {
+    const key = toVetDateKey(new Date(b.start));
+    countByDay.set(key, (countByDay.get(key) ?? 0) + 1);
   }
-  // Las excepciones son fechas de calendario guardadas a medianoche UTC
-  // (el panel envía "YYYY-MM-DD"): su día es la parte de fecha en UTC, no el
-  // día en Caracas — convertirlas desplazaba el bloqueo al día anterior.
-  const exceptionByDay = new Map(schedule.exceptions.map((e) => [e.date.toISOString().slice(0, 10), e]));
 
   const slots: Date[] = [];
-  let dayKey = fromDateKey;
-  let iterations = 0;
-  while (dayKey <= toDateKey && iterations < 62) {
-    iterations += 1;
-    const exception = exceptionByDay.get(dayKey);
-
-    if (!exception?.isBlocked) {
-      const dayOfWeek = dayOfWeekForDateKey(dayKey);
-      const dayBlocks =
-        exception && exception.startTime && exception.endTime
-          ? [{ dayOfWeek, startTime: exception.startTime, endTime: exception.endTime }]
-          : schedule.blocks.filter((b) => b.dayOfWeek === dayOfWeek);
-
-      let remainingCapacity =
-        schedule.maxDailyAppointments != null
-          ? schedule.maxDailyAppointments - (existingCountByDay.get(dayKey) ?? 0)
-          : Infinity;
-
-      for (const block of dayBlocks) {
-        if (remainingCapacity <= 0) break;
-        let cursor = combineDateAndTime(dayKey, block.startTime);
-        const blockEnd = combineDateAndTime(dayKey, block.endTime);
-        const stepMs = (schedule.slotDurationMinutes + schedule.bufferMinutes) * 60_000;
-        const slotMs = schedule.slotDurationMinutes * 60_000;
-
-        while (cursor.getTime() + slotMs <= blockEnd.getTime() && remainingCapacity > 0) {
-          if (cursor.getTime() > now.getTime() && !takenIso.has(cursor.toISOString())) {
-            slots.push(new Date(cursor));
-            remainingCapacity -= 1;
-          }
-          cursor = new Date(cursor.getTime() + stepMs);
-        }
+  for (const day of planDays(schedule, fromDateKey, toDateKey).slice(0, 62)) {
+    let remaining = schedule.maxDailyAppointments != null ? schedule.maxDailyAppointments - (countByDay.get(day.dateKey) ?? 0) : Infinity;
+    for (const period of day.open) {
+      for (let cursor = period.start.getTime(); cursor + slotMs <= period.end.getTime() && remaining > 0; cursor += stepMs) {
+        if (cursor <= earliest.getTime()) continue;
+        const overlaps = booked.some((b) => cursor < b.end && cursor + slotMs > b.start);
+        if (overlaps) continue;
+        slots.push(new Date(cursor));
+        remaining -= 1;
       }
     }
-
-    dayKey = addDaysToDateKey(dayKey, 1);
   }
-
   return slots;
+}
+
+/** El intervalo cae dentro del horario de atención de ese día (para avisar «fuera de horario»). */
+export function withinOpenHours(day: DayPlan, start: Date, end: Date): boolean {
+  return day.open.some((period) => start >= period.start && end <= period.end);
 }

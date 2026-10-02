@@ -5,7 +5,7 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../common/types/authenticated-user';
 import { AgendaService } from './agenda.service';
 import { UpsertScheduleDto } from './dto/upsert-schedule.dto';
-import { UpsertScheduleBlockDto } from './dto/upsert-schedule-block.dto';
+import { ReplaceScheduleBlocksDto, UpsertScheduleBlockDto } from './dto/upsert-schedule-block.dto';
 import { UpsertScheduleExceptionDto } from './dto/upsert-schedule-exception.dto';
 
 @Controller('agenda')
@@ -34,6 +34,13 @@ export class AgendaController {
   @Post('me/blocks')
   addOwnBlock(@CurrentUser() user: AuthenticatedUser, @Body() dto: UpsertScheduleBlockDto) {
     return this.agenda.addOwnBlock(user.id, dto);
+  }
+
+  /** Reemplaza el horario semanal completo (cuadrícula del calendario). */
+  @Roles(Role.PROFESSIONAL)
+  @Put('me/blocks')
+  replaceOwnBlocks(@CurrentUser() user: AuthenticatedUser, @Body() dto: ReplaceScheduleBlocksDto) {
+    return this.agenda.replaceOwnBlocks(user.id, dto.blocks);
   }
 
   @Roles(Role.PROFESSIONAL)

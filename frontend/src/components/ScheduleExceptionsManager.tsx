@@ -93,7 +93,11 @@ export function ScheduleExceptionsManager() {
                   {new Date(ex.date).toLocaleDateString('es-VE', { timeZone: 'UTC' })}
                 </span>{' '}
                 <Badge tone={ex.isBlocked ? 'red' : 'amber'} className="ml-1">
-                  {ex.isBlocked ? 'Sin citas' : `${ex.startTime}–${ex.endTime}`}
+                  {ex.isBlocked
+                    ? ex.startTime
+                      ? `Bloqueado de ${ex.startTime} a ${ex.endTime}`
+                      : 'Sin citas'
+                    : `Horario especial ${ex.startTime}–${ex.endTime}`}
                 </Badge>
                 {ex.reason && <p className="mt-0.5 text-ink-500">{ex.reason}</p>}
               </div>

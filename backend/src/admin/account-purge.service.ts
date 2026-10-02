@@ -266,10 +266,18 @@ export class AccountPurgeService {
       await tx.patientProfile.delete({ where: { id: profile.id } });
       return;
     }
+    const upcoming = { patientId: profile.id, status: { in: [...UPCOMING_STATUSES] }, startsAt: { gt: now } };
+    const cancelled = await tx.appointment.findMany({ where: upcoming, select: { id: true } });
     await tx.appointment.updateMany({
-      where: { patientId: profile.id, status: { in: [...UPCOMING_STATUSES] }, startsAt: { gt: now } },
+      where: upcoming,
       data: { status: 'CANCELLED', cancelledAt: now, cancelledBy: 'PATIENT', cancellationReason: 'La cuenta del paciente se eliminó' },
     });
+    // Queda en el historial de cada cita: la canceló la administración al eliminar la cuenta.
+    if (cancelled.length) {
+      await tx.appointmentEvent.createMany({
+        data: cancelled.map((appointment) => ({ appointmentId: appointment.id, type: 'CANCELLED' as const, actor: 'ADMIN' as const, createdAt: now })),
+      });
+    }
     await tx.professionalPatient.deleteMany({ where: { patientId: profile.id } });
     await tx.patientDataGrant.updateMany({ where: { patientId: profile.id, revokedAt: null }, data: { revokedAt: now } });
     await tx.patientProfile.update({

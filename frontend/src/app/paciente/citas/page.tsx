@@ -8,6 +8,8 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { PageSpinner } from '@/components/ui/Spinner';
+import { Modal } from '@/components/ui/Modal';
+import { SlotPicker } from '@/components/agenda/SlotPicker';
 import { formatDateTime } from '@/lib/dates';
 
 type Status = 'PENDING' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW';
@@ -17,7 +19,7 @@ interface Appointment {
   startsAt: string;
   status: Status;
   reason: string | null;
-  professional: { firstName: string; lastName: string; slug: string };
+  professional: { id: string; firstName: string; lastName: string; slug: string };
   location: { name: string; address: string } | null;
 }
 
@@ -33,6 +35,8 @@ export default function PatientAppointmentsPage() {
   const [items, setItems] = useState<Appointment[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [rescheduling, setRescheduling] = useState<Appointment | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const load = useCallback(() => {
     api
@@ -73,6 +77,7 @@ export default function PatientAppointmentsPage() {
         </Link>
       </div>
       {error && <Alert tone="error">{error}</Alert>}
+      {notice && <Alert tone="success">{notice}</Alert>}
 
       {items.length === 0 ? (
         <EmptyState title="Todavía no tienes citas" description="Busca un médico verificado y agenda desde su perfil." />
@@ -96,15 +101,79 @@ export default function PatientAppointmentsPage() {
                   {a.reason && <p className="mt-1 text-xs text-ink-500">Motivo: {a.reason}</p>}
                 </div>
                 {upcoming && (
-                  <Button variant="outline" size="sm" loading={cancellingId === a.id} onClick={() => cancel(a.id)}>
-                    Cancelar
-                  </Button>
+                  <div className="flex flex-wrap gap-2">
+                    <Button variant="outline" size="sm" onClick={() => setRescheduling(a)}>
+                      Reprogramar
+                    </Button>
+                    <Button variant="ghost" size="sm" loading={cancellingId === a.id} onClick={() => cancel(a.id)}>
+                      Cancelar
+                    </Button>
+                  </div>
                 )}
               </div>
             );
           })}
         </div>
       )}
+
+      {rescheduling && (
+        <RescheduleDialog
+          appointment={rescheduling}
+          onClose={() => setRescheduling(null)}
+          onDone={() => {
+            setRescheduling(null);
+            setNotice('Cita reprogramada. Le avisamos al médico.');
+            load();
+          }}
+        />
+      )}
     </div>
+  );
+}
+
+/** Elegir otro día y hora libres del mismo médico. */
+function RescheduleDialog({ appointment, onClose, onDone }: { appointment: Appointment; onClose: () => void; onDone: () => void }) {
+  const [slot, setSlot] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const professionalId = appointment.professional.id;
+  const loadSlots = useCallback(
+    (from: string, to: string) => api.get<string[]>(`/appointments/availability?professionalId=${professionalId}&from=${from}&to=${to}`),
+    [professionalId],
+  );
+
+  const save = async () => {
+    if (!slot) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await api.patch(`/appointments/${appointment.id}/reschedule`, { startsAt: slot });
+      onDone();
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'No se pudo reprogramar la cita');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal open onClose={onClose} title="Reprogramar la cita" widthClassName="max-w-xl">
+      <div className="space-y-4">
+        <p className="text-sm text-ink-700">
+          Con Dr(a). {appointment.professional.firstName} {appointment.professional.lastName}. Hoy está para el{' '}
+          {formatDateTime(appointment.startsAt, { dateStyle: 'full', timeStyle: 'short' })}.
+        </p>
+        {error && <Alert tone="error">{error}</Alert>}
+        <SlotPicker loadSlots={loadSlots} selectedSlot={slot} onSelectSlot={setSlot} />
+        <div className="flex gap-2">
+          <Button loading={saving} disabled={!slot} onClick={save}>
+            Cambiar a este horario
+          </Button>
+          <Button variant="ghost" onClick={onClose}>
+            Volver
+          </Button>
+        </div>
+      </div>
+    </Modal>
   );
 }

@@ -2,7 +2,7 @@
 // entregar su código → el médico lo registra → el paciente revoca y el médico
 // pierde el acceso.
 import { expect, test } from '@playwright/test';
-import { api, createPatient, createPublishedDoctor, signIn, spreadRateLimits } from './support';
+import { api, caracasDay, createPatient, createPublishedDoctor, pickFirstFreeDay, signIn, spreadRateLimits } from './support';
 
 test('reserva una cita en línea y el médico la recibe en su agenda', async ({ browser }) => {
   const doctor = await createPublishedDoctor({ tier: 'PROFESSIONAL', agenda: true });
@@ -13,8 +13,8 @@ test('reserva una cita en línea y el médico la recibe en su agenda', async ({ 
   const page = await context.newPage();
 
   await page.goto(`/medicos/${doctor.slug}/agendar`);
-  // Mañana: hoy pueden haber pasado ya todas las horas.
-  await page.getByRole('group', { name: 'Fecha' }).getByRole('button').nth(1).click();
+  // Calendario de mes: solo los días con horarios libres se pueden tocar.
+  await pickFirstFreeDay(page);
   const slots = page.getByRole('group', { name: 'Hora' }).getByRole('button');
   await expect(slots.first()).toBeVisible();
   const slotLabel = plain((await slots.first().textContent()) ?? '');
@@ -28,7 +28,7 @@ test('reserva una cita en línea y el médico la recibe en su agenda', async ({ 
   await expect(page.getByRole('heading', { level: 1 })).toContainText('Mis citas');
   await expect(page.locator('main')).toContainText(doctor.lastName);
 
-  const agenda = await api('GET', '/appointments/me/agenda', undefined, doctor.token);
+  const agenda = await api('GET', `/appointments/me/agenda?from=${caracasDay()}&to=${caracasDay(60)}`, undefined, doctor.token);
   expect(agenda.status).toBe(200);
   expect(JSON.stringify(agenda.data)).toContain('Control anual');
 

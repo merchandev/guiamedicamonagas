@@ -31,7 +31,7 @@ async function book(doctorId: string, patientToken: string) {
   expect(created.status, JSON.stringify(created.data)).toBe(201);
 }
 
-test('la campana avisa al médico de una cita nueva y lo lleva a sus citas', async ({ browser }) => {
+test('la campana avisa al médico de una cita nueva y lo lleva a esa cita en su agenda', async ({ browser }) => {
   const doctor = await createPublishedDoctor({ tier: 'PROFESSIONAL', agenda: true });
   const patient = await createPatient();
   await book(doctor.id, patient.token);
@@ -39,7 +39,7 @@ test('la campana avisa al médico de una cita nueva y lo lleva a sus citas', asy
   const before = await unread(doctor.token);
   expect(before).toBeGreaterThan(0);
   const request = (await notices(doctor.token)).find((n) => n.type === 'APPOINTMENT_REQUESTED');
-  expect(request?.link, 'el aviso lleva a las citas del médico').toBe('/dashboard/citas');
+  expect(request?.link, 'el aviso lleva a esa cita en la agenda').toMatch(/^\/dashboard\/agenda\?cita=[0-9a-f-]{36}$/);
 
   const context = await browser.newContext();
   await spreadRateLimits(context);
@@ -52,8 +52,10 @@ test('la campana avisa al médico de una cita nueva y lo lleva a sus citas', asy
   const panel = page.getByRole('region', { name: 'Notificaciones' });
   await expect(panel).toBeVisible();
   await panel.getByRole('button', { name: /Nueva solicitud de cita/ }).click();
-  await expect(page).toHaveURL(/\/dashboard\/citas$/);
+  await expect(page).toHaveURL(/\/dashboard\/agenda\?cita=/);
+  await expect(page.getByRole('dialog', { name: /^Cita con / })).toBeVisible();
   await expect.poll(() => unread(doctor.token)).toBe(before - 1);
+  await page.getByRole('dialog').getByRole('button', { name: 'Cerrar' }).click();
 
   // La página «Notificaciones» del panel: marcar todo como leído apaga el contador.
   await page.getByRole('button', { name: /^Notificaciones/ }).first().click();

@@ -286,6 +286,29 @@ export async function spreadRateLimits(context: BrowserContext) {
   );
 }
 
+/** Día del calendario de Caracas, hoy o desplazado: «2026-10-05». */
+export function caracasDay(offsetDays = 0): string {
+  return new Date(Date.now() + offsetDays * 86_400_000).toLocaleDateString('en-CA', { timeZone: 'America/Caracas' });
+}
+
+/**
+ * En el calendario de mes de una reserva, toca el primer día con horarios
+ * libres; si el mes a la vista ya no tiene (fin de mes), pasa al siguiente.
+ */
+export async function pickFirstFreeDay(page: Page) {
+  const calendar = page.getByRole('group', { name: 'Fecha' });
+  for (let attempt = 0; attempt < 3; attempt++) {
+    await expect(calendar.getByText('Buscando horarios libres…')).toHaveCount(0);
+    const free = calendar.getByRole('button', { name: /con horarios libres/ });
+    if (await free.count()) {
+      await free.first().click();
+      return;
+    }
+    await calendar.getByRole('button', { name: 'Mes siguiente' }).click();
+  }
+  throw new Error('No hay días con horarios libres en los próximos meses');
+}
+
 /** La página no se desborda a lo ancho (scroll horizontal en el teléfono). */
 export async function expectNoHorizontalOverflow(page: Page) {
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);

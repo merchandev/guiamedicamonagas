@@ -19,4 +19,18 @@ export class UpsertScheduleDto {
 
   @IsBoolean()
   autoConfirm!: boolean;
+
+  /** Hasta cuántos días adelante pueden reservar los pacientes. */
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(365)
+  bookingWindowDays?: number;
+
+  /** Antelación mínima de una reserva de paciente, en minutos (hasta 7 días). */
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(10080)
+  minNoticeMinutes?: number;
 }

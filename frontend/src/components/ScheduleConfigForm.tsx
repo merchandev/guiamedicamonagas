@@ -14,9 +14,25 @@ interface ScheduleConfig {
   bufferMinutes: number;
   maxDailyAppointments: number | null;
   autoConfirm: boolean;
+  bookingWindowDays: number;
+  minNoticeMinutes: number;
 }
 
 const SLOT_OPTIONS = [15, 20, 30, 45, 60].map((m) => ({ value: String(m), label: `${m} minutos` }));
+const WINDOW_OPTIONS = [7, 14, 30, 60, 90, 180].map((d) => ({ value: String(d), label: `Hasta ${d} días adelante` }));
+const NOTICE_OPTIONS = [
+  { value: '0', label: 'Sin mínimo' },
+  { value: '30', label: '30 minutos antes' },
+  { value: '60', label: '1 hora antes' },
+  { value: '120', label: '2 horas antes' },
+  { value: '240', label: '4 horas antes' },
+  { value: '720', label: '12 horas antes' },
+  { value: '1440', label: '1 día antes' },
+  { value: '2880', label: '2 días antes' },
+];
+/** Un valor guardado que no está en la lista también se muestra. */
+const withCurrent = (options: { value: string; label: string }[], value: number, label: string) =>
+  options.some((o) => o.value === String(value)) ? options : [...options, { value: String(value), label }];
 
 export function ScheduleConfigForm() {
   const [config, setConfig] = useState<ScheduleConfig | null>(null);
@@ -49,6 +65,8 @@ export function ScheduleConfigForm() {
         // null = sin límite diario (vaciar el campo quita el límite).
         maxDailyAppointments: config.maxDailyAppointments,
         autoConfirm: config.autoConfirm,
+        bookingWindowDays: config.bookingWindowDays,
+        minNoticeMinutes: config.minNoticeMinutes,
       });
       setConfig(updated);
       setSuccess(true);
@@ -115,6 +133,24 @@ export function ScheduleConfigForm() {
         />
         Confirmar citas automáticamente (sin revisarlas una por una)
       </label>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Select
+          label="Los pacientes reservan"
+          value={String(config.bookingWindowDays)}
+          onChange={(v) => setConfig({ ...config, bookingWindowDays: Number(v) })}
+          options={withCurrent(WINDOW_OPTIONS, config.bookingWindowDays, `Hasta ${config.bookingWindowDays} días adelante`)}
+        />
+        <Select
+          label="Antelación mínima de una reserva"
+          value={String(config.minNoticeMinutes)}
+          onChange={(v) => setConfig({ ...config, minNoticeMinutes: Number(v) })}
+          options={withCurrent(NOTICE_OPTIONS, config.minNoticeMinutes, `${config.minNoticeMinutes} minutos antes`)}
+        />
+      </div>
+      <p className="text-xs text-ink-500">
+        Estos límites son para las reservas de los pacientes. Tú puedes cargar o mover citas en cualquier momento desde el
+        calendario.
+      </p>
       <Button type="submit" loading={saving}>
         Guardar
       </Button>
