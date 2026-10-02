@@ -9,6 +9,7 @@ const LINKS = [
   { href: '/paciente/citas', label: 'Mis citas' },
   { href: '/paciente/permisos', label: 'Permisos' },
   { href: '/paciente/privacidad', label: 'Privacidad y mis datos' },
+  { href: '/paciente/notificaciones', label: 'Notificaciones' },
 ];
 
 export function PacienteShell({ children }: { children: React.ReactNode }) {

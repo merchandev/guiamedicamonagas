@@ -58,6 +58,7 @@ export class AppointmentRemindersService {
           type: 'APPOINTMENT_REMINDER',
           title: 'Recordatorio de cita',
           content: `Dr(a). ${doctorName} — ${dateLabel} ${timeLabel}`,
+          link: '/paciente/citas',
           email: {
             to: appt.patient.user.email,
             subject: 'Recordatorio de tu cita — Guía Médica Monagas',

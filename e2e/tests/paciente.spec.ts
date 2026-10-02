@@ -35,7 +35,7 @@ test('reserva una cita en línea y el médico la recibe en su agenda', async ({ 
   // El aviso al médico dice la misma hora que eligió el paciente (hora de
   // Caracas), aunque el servidor corra en UTC como en producción y en CI.
   const notices = await api('GET', '/notifications', undefined, doctor.token);
-  const request = (notices.data as { type: string; content: string }[]).find((n) => n.type === 'APPOINTMENT_REQUESTED');
+  const request = (notices.data as { items: { type: string; content: string }[] }).items.find((n) => n.type === 'APPOINTMENT_REQUESTED');
   expect(request, 'el médico recibe el aviso de la solicitud').toBeTruthy();
   expect(plain(request!.content)).toContain(slotLabel);
   await context.close();

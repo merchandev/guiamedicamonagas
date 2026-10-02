@@ -21,6 +21,7 @@ import { recomputeDirectoryScore } from '../professionals/directory-score';
 import { recomputeProfessionalStatus } from '../professionals/publication-rules';
 import { notifyProfilePublished } from '../professionals/publication-notice';
 import { VENEZUELA_TIME_ZONE } from '../common/caracas-time';
+import { Permission } from '../common/permissions';
 
 @Injectable()
 export class DocumentsService {
@@ -65,6 +66,13 @@ export class DocumentsService {
         data: { verificationStatus: 'IN_REVIEW' },
       });
     }
+
+    await this.notifications.notifyStaff(Permission.VERIFY_PROFESSIONALS, {
+      type: 'DOCUMENT_PENDING',
+      title: 'Documento por revisar',
+      content: `Dr(a). ${profile.firstName} ${profile.lastName} subió ${DOCUMENT_LABELS[type]}.`,
+      link: '/admin/verificaciones',
+    });
 
     return document;
   }
@@ -179,6 +187,7 @@ export class DocumentsService {
       type: approved ? 'DOCUMENT_APPROVED' : 'DOCUMENT_REJECTED',
       title: approved ? 'Documento aprobado' : 'Documento rechazado',
       content: `${DOCUMENT_LABELS[document.type]}${note ? `: ${note}` : ''}`,
+      link: '/dashboard/documentos',
       email: {
         to: document.professional.user.email,
         subject: approved ? 'Documento aprobado — Guía Médica Monagas' : 'Documento rechazado — Guía Médica Monagas',
@@ -228,6 +237,7 @@ export class DocumentsService {
         type: 'PROFILE_VERIFIED',
         title: '¡Tus documentos fueron aprobados!',
         content: 'Completa tu biografía y tu foto de perfil para aparecer en el directorio con el sello «Verificado».',
+        link: '/dashboard/perfil',
       });
     }
     if (result.becameVerified && result.isPublished) {
@@ -236,6 +246,7 @@ export class DocumentsService {
         type: 'PROFILE_VERIFIED',
         title: '¡Tu perfil fue verificado!',
         content: 'Todos tus documentos fueron aprobados: tu perfil es público con el sello «Verificado».',
+        link: '/dashboard',
         email: {
           to: profile.user.email,
           subject: '¡Tu perfil fue verificado! — Guía Médica Monagas',

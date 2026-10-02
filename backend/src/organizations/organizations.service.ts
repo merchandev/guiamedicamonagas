@@ -220,6 +220,7 @@ export class OrganizationsService {
         type: approved ? 'ORGANIZATION_VERIFIED' : 'ORGANIZATION_REJECTED',
         title: approved ? 'Tu organización fue verificada' : 'Tu organización necesita correcciones',
         content: approved ? `${org.name} ya aparece en el directorio.` : `Motivo: ${note}`,
+        link: '/organizacion',
       });
     }
     return updated;
@@ -519,6 +520,7 @@ export class OrganizationsService {
         type: 'ORGANIZATION_INVITATION_ACCEPTED',
         title: 'Invitación aceptada',
         content: `${user.email} se unió al equipo como ${ROLE_LABELS[result.membership.role].toLowerCase()}.`,
+        link: '/organizacion/miembros',
       });
     }
     return { organizationId: result.organizationId, role: result.membership.role };
@@ -549,6 +551,7 @@ export class OrganizationsService {
       type: 'ORGANIZATION_AFFILIATION_INVITE',
       title: 'Invitación de una organización',
       content: `${org.name} quiere mostrarte como médico asociado. Acepta o rechaza desde tu perfil.`,
+      link: '/dashboard/perfil',
     });
     return this.getOwn(userId, organizationId);
   }

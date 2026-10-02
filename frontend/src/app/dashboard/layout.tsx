@@ -14,6 +14,7 @@ const LINKS = [
   { href: '/dashboard/pagos', label: 'Suscripción y pagos' },
   { href: '/dashboard/publicaciones', label: 'Publicaciones' },
   { href: '/dashboard/mensajes', label: 'Mensajes' },
+  { href: '/dashboard/notificaciones', label: 'Notificaciones' },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {

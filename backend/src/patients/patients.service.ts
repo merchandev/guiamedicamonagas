@@ -23,6 +23,7 @@ import { formatShareCode, generateShareCode, normalizeShareCode } from './share-
 import { UpdatePatientProfileDto } from './dto/update-patient-profile.dto';
 import { CreatePatientDataGrantDto, DEFAULT_GRANT_DAYS, MAX_GRANT_DAYS } from './dto/patient-data-grant.dto';
 import { DecodedPatient, PatientDataCodec, PatientHealthData } from './patient-data.codec';
+import { Permission } from '../common/permissions';
 
 interface PatientIdentity {
   firstName: string;
@@ -191,6 +192,13 @@ export class PatientsService {
       data: { idPhotoKey: key, identityStatus: 'PENDING', identityReviewNote: null, identityReviewedAt: null },
     });
     if (profile.idPhotoKey) await this.storage.deleteObject(profile.idPhotoKey).catch(() => undefined);
+    // Sin nombre ni código: quien tiene el permiso lo ve en la cola.
+    await this.notifications.notifyStaff(Permission.VERIFY_PATIENT_IDENTITY, {
+      type: 'PATIENT_IDENTITY_PENDING',
+      title: 'Identidad por revisar',
+      content: 'Un paciente subió la foto de su documento de identidad.',
+      link: '/admin/identidades',
+    });
     return this.present(updated);
   }
 
@@ -356,6 +364,7 @@ export class PatientsService {
       content: approved
         ? 'Tu ficha de paciente quedó verificada.'
         : `Sube una nueva foto de tu cédula desde tu perfil.${note ? ` Nota: ${note}` : ''}`,
+      link: '/paciente',
       email: {
         to: patient.user.email,
         subject: approved ? 'Identidad verificada — Guía Médica Monagas' : 'Revisa tu foto de identificación — Guía Médica Monagas',
@@ -440,6 +449,7 @@ export class PatientsService {
       type: 'PATIENT_DATA_GRANTED',
       title: 'Un paciente te dio acceso a sus datos',
       content: `Paciente ${profile.patientCode}: ${dto.scopes.map((s) => SCOPE_LABELS[s]).join(', ')} por ${days} días.`,
+      link: '/dashboard/pacientes',
     });
 
     return grant;
@@ -685,6 +695,7 @@ export class PatientsService {
       type: 'PATIENT_REGISTERED_BY_CODE',
       title: 'Un médico te registró como paciente',
       content: `Dr(a). ${doctorName} te registró con tu código y puede ver: ${scopeLabels.join(', ')}. Puedes revocarlo en Permisos.`,
+      link: '/paciente/permisos',
       email: {
         to: patient.user.email,
         subject: 'Un médico te registró como paciente — Guía Médica Monagas',
@@ -804,6 +815,7 @@ export class PatientsService {
       content: `Dr(a). ${professional.firstName} ${professional.lastName} solicita ver: ${scopes
         .map((s) => SCOPE_LABELS[s])
         .join(', ')}. Tú decides si autorizas y por cuánto tiempo.`,
+      link: '/paciente/permisos',
       email: {
         to: patient.user.email,
         subject: 'Solicitud de acceso a tus datos — Guía Médica Monagas',

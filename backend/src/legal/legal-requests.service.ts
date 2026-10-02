@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { randomInt } from 'node:crypto';
 import { LegalRequestCategory, LegalRequestStatus, Prisma } from '@prisma/client';
@@ -8,7 +8,7 @@ import { AuditService } from '../audit/audit.service';
 import { MailService } from '../mail/mail.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { legalRequestReceivedTemplate, legalRequestUpdatedTemplate } from '../mail/mail.templates';
-import { ROLE_PERMISSIONS, Permission } from '../common/permissions';
+import { Permission } from '../common/permissions';
 import { CreateLegalRequestDto, ListLegalRequestsDto, LookupLegalRequestDto, UpdateLegalRequestDto } from './legal-request.dto';
 
 export const LEGAL_REQUEST_CATEGORY_LABELS: Record<LegalRequestCategory, string> = {
@@ -44,8 +44,6 @@ function newTicket() {
 
 @Injectable()
 export class LegalRequestsService {
-  private readonly logger = new Logger(LegalRequestsService.name);
-
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
@@ -105,26 +103,14 @@ export class LegalRequestsService {
       relatedUserId: userId,
       html: legalRequestReceivedTemplate(dto.requesterName, created.ticket, LEGAL_REQUEST_CATEGORY_LABELS[dto.category], this.statusUrl(created.ticket)),
     });
-    await this.notifyStaff(created.ticket, dto.category);
+    // Aviso en el panel de quienes atienden las solicitudes; un fallo no pierde la solicitud.
+    await this.notifications.notifyStaff(Permission.MANAGE_LEGAL_REQUESTS, {
+      type: 'LEGAL_REQUEST_CREATED',
+      title: `Nueva solicitud ${created.ticket}`,
+      content: `${LEGAL_REQUEST_CATEGORY_LABELS[dto.category]}. Atiéndela en Administración → Solicitudes legales.`,
+      link: '/admin/solicitudes',
+    });
     return { ticket: created.ticket, status: 'OPEN' as const };
-  }
-
-  /** Aviso en el panel de quienes atienden las solicitudes; un fallo no pierde la solicitud. */
-  private async notifyStaff(ticket: string, category: LegalRequestCategory) {
-    const roles = (Object.keys(ROLE_PERMISSIONS) as (keyof typeof ROLE_PERMISSIONS)[]).filter((role) =>
-      ROLE_PERMISSIONS[role].includes(Permission.MANAGE_LEGAL_REQUESTS),
-    );
-    const staff = await this.prisma.user.findMany({ where: { role: { in: roles }, isActive: true }, select: { id: true } });
-    for (const member of staff) {
-      await this.notifications
-        .notify({
-          userId: member.id,
-          type: 'LEGAL_REQUEST_CREATED',
-          title: `Nueva solicitud ${ticket}`,
-          content: `${LEGAL_REQUEST_CATEGORY_LABELS[category]}. Atiéndela en Administración → Solicitudes legales.`,
-        })
-        .catch((error: Error) => this.logger.warn(`No se pudo avisar de la solicitud ${ticket}: ${error.message}`));
-    }
   }
 
   /** Estado público de una solicitud: exige el número y el correo con que se envió. */

@@ -660,6 +660,7 @@ export class ProfessionalsService implements OnApplicationBootstrap {
           : visible
             ? 'Tu perfil fue reactivado y vuelve a estar visible.'
             : 'Tu perfil fue reactivado. Completa los requisitos de tu panel para volver al directorio.'),
+      link: '/dashboard',
       email: visible
         ? {
             to: profile.user.email,

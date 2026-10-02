@@ -44,6 +44,10 @@ model User {
   privacyVersionAccepted String?
   legalAcceptedAt        DateTime?
 
+  /// Tipos de aviso cuyo correo el usuario apagó (solo los opcionales de
+  /// notifications/notification-types.ts); el aviso en la campana sigue llegando.
+  notificationEmailOptOut String[] @default([])
+
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 
@@ -786,6 +790,8 @@ model Post {
   updatedAt DateTime @updatedAt
 }
 
+/// Aviso interno (la campana del sitio). Nunca lleva datos de salud ni
+/// identidades que quien lo recibe no pueda ver: lo mismo que sus correos.
 model Notification {
   id     String @id @default(uuid())
   userId String
@@ -794,8 +800,14 @@ model Notification {
   type      String
   title     String
   content   String
-  isRead    Boolean  @default(false)
-  createdAt DateTime @default(now())
+  /// Ruta interna del sitio a la que lleva («/dashboard/citas»); nunca una URL externa.
+  link      String?
+  isRead    Boolean   @default(false)
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, isRead, createdAt])
+  @@index([userId, createdAt])
 }
 
 // Registro de envíos de correo y WhatsApp (auditoría + depuración)

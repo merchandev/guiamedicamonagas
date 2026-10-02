@@ -42,6 +42,7 @@ export class ContactService {
       type: 'CONTACT_MESSAGE',
       title: `Nuevo mensaje de ${dto.senderName}`,
       content: dto.content,
+      link: '/dashboard/mensajes',
       email: {
         to: professional.user.email,
         subject: `Nuevo mensaje de un paciente — Guía Médica Monagas`,

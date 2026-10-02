@@ -22,6 +22,11 @@ import { CancelAppointmentDto } from './dto/cancel-appointment.dto';
 import { caracasDateLabel, caracasTimeLabel } from '../common/caracas-time';
 
 const FRONTEND_URL = process.env.FRONTEND_URL ?? 'http://localhost:3000';
+/** Adónde llevan los avisos de citas en la campana. */
+export const PATIENT_APPOINTMENTS_LINK = '/paciente/citas';
+export function doctorAppointmentLink(_appointmentId: string): string {
+  return '/dashboard/citas';
+}
 
 @Injectable()
 export class AppointmentsService {
@@ -206,6 +211,7 @@ export class AppointmentsService {
       type: 'APPOINTMENT_REQUESTED',
       title: 'Nueva solicitud de cita',
       content: `Paciente ${appt.patient.patientCode} — ${dateLabel} ${timeLabel}`,
+      link: doctorAppointmentLink(appt.id),
       email: {
         to: appt.professional.user.email,
         subject: 'Nueva solicitud de cita — Guía Médica Monagas',
@@ -241,6 +247,7 @@ export class AppointmentsService {
         type: isConfirmed ? 'APPOINTMENT_CONFIRMED' : 'APPOINTMENT_REQUESTED',
         title: isConfirmed ? 'Cita confirmada' : 'Solicitud de cita recibida',
         content: `Dr(a). ${doctorName} — ${dateLabel} ${timeLabel}`,
+        link: PATIENT_APPOINTMENTS_LINK,
         email: {
           to: appt.patient.user.email,
           subject: isConfirmed ? 'Cita confirmada — Guía Médica Monagas' : 'Solicitud de cita recibida',
@@ -352,6 +359,7 @@ export class AppointmentsService {
       type: 'APPOINTMENT_CONFIRMED',
       title: 'Cita confirmada',
       content: `Dr(a). ${doctorName} — ${dateLabel} ${timeLabel}`,
+      link: PATIENT_APPOINTMENTS_LINK,
       email: {
         to: appt.patient.user.email,
         subject: 'Cita confirmada — Guía Médica Monagas',
@@ -427,6 +435,7 @@ export class AppointmentsService {
         type: 'APPOINTMENT_CANCELLED',
         title: 'Cita cancelada por el paciente',
         content: `Paciente ${appt.patient.patientCode} — ${dateLabel} ${timeLabel}`,
+        link: doctorAppointmentLink(appt.id),
         email: {
           to: appt.professional.user.email,
           subject: 'Cita cancelada — Guía Médica Monagas',
@@ -444,6 +453,7 @@ export class AppointmentsService {
         type: 'APPOINTMENT_CANCELLED',
         title: 'Cita cancelada por el médico',
         content: `${dateLabel} ${timeLabel}`,
+        link: PATIENT_APPOINTMENTS_LINK,
         email: {
           to: appt.patient.user.email,
           subject: 'Cita cancelada — Guía Médica Monagas',
@@ -500,6 +510,7 @@ export class AppointmentsService {
         type: 'APPOINTMENT_RESCHEDULED',
         title: 'Cita reprogramada',
         content: `${dateLabel} ${timeLabel}`,
+        link: PATIENT_APPOINTMENTS_LINK,
         email: {
           to: appt.patient.user.email,
           subject: 'Cita reprogramada — Guía Médica Monagas',
@@ -513,6 +524,7 @@ export class AppointmentsService {
       type: 'APPOINTMENT_RESCHEDULED',
       title: 'Cita reprogramada',
       content: `Paciente ${appt.patient.patientCode} — ${dateLabel} ${timeLabel}`,
+      link: doctorAppointmentLink(appt.id),
       email: {
         to: appt.professional.user.email,
         subject: 'Cita reprogramada — Guía Médica Monagas',

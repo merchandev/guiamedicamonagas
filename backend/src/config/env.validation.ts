@@ -109,6 +109,13 @@ const baseEnvSchema = z.object({
   // Obligatorio en producción; vacío solo en desarrollo y pruebas.
   CLAMAV_HOST: z.string().optional().default(''),
   CLAMAV_PORT: z.coerce.number().default(3310),
+
+  // Días que se guardan los avisos ya leídos de la campana. Vacío = no se
+  // borran (el plazo lo decide el titular y va en la política de retención).
+  NOTIFICATION_RETENTION_DAYS: z.preprocess(
+    (value) => (value === '' ? undefined : value),
+    z.coerce.number().int().min(30).max(3650).optional(),
+  ),
 });
 
 /**

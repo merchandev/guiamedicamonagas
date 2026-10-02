@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { homePathFor, useAuth } from '@/lib/auth-context';
 import { cn } from '@/lib/cn';
 import { ORGANIZATIONS_LAUNCHED } from '@/lib/features';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
 
 const NAV_LINKS = [
   { href: '/medicos', label: 'Médicos' },
@@ -60,58 +61,62 @@ export function Header() {
           ))}
         </nav>
 
-        <div className="hidden items-center gap-2 xl:flex">
-          {user ? (
-            <>
-              <Link
-                href={dashboardHref}
-                className="rounded-lg px-3 py-2 text-sm font-medium text-ink-700 hover:bg-ink-100"
-              >
-                Mi panel
-              </Link>
-              {showOrgLink && (
-                <Link href="/organizacion" className="rounded-lg px-3 py-2 text-sm font-medium text-ink-700 hover:bg-ink-100">
-                  Mi organización
+        <div className="flex items-center gap-1 xl:gap-2">
+          {/* La campana queda a la vista también en el teléfono, junto al menú. */}
+          <NotificationBell />
+          <div className="hidden items-center gap-2 xl:flex">
+            {user ? (
+              <>
+                <Link
+                  href={dashboardHref}
+                  className="rounded-lg px-3 py-2 text-sm font-medium text-ink-700 hover:bg-ink-100"
+                >
+                  Mi panel
                 </Link>
-              )}
-              <Link
-                href="/cuenta/seguridad"
-                className="rounded-lg px-3 py-2 text-sm font-medium text-ink-700 hover:bg-ink-100"
-              >
-                Seguridad
-              </Link>
-              <button
-                onClick={() => void logout()}
-                className="rounded-lg px-3 py-2 text-sm font-medium text-ink-500 hover:bg-ink-100"
-              >
-                Salir
-              </button>
-            </>
-          ) : (
-            <>
-              <Link href="/iniciar-sesion" className="whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium text-ink-700 hover:bg-ink-100">
-                Iniciar sesión
-              </Link>
-              <Link
-                href="/registro"
-                className="whitespace-nowrap rounded-lg bg-pine-700 px-4 py-2 text-sm font-medium text-white hover:bg-pine-800"
-              >
-                Quiero registrarme
-              </Link>
-            </>
-          )}
-        </div>
+                {showOrgLink && (
+                  <Link href="/organizacion" className="rounded-lg px-3 py-2 text-sm font-medium text-ink-700 hover:bg-ink-100">
+                    Mi organización
+                  </Link>
+                )}
+                <Link
+                  href="/cuenta/seguridad"
+                  className="rounded-lg px-3 py-2 text-sm font-medium text-ink-700 hover:bg-ink-100"
+                >
+                  Seguridad
+                </Link>
+                <button
+                  onClick={() => void logout()}
+                  className="rounded-lg px-3 py-2 text-sm font-medium text-ink-500 hover:bg-ink-100"
+                >
+                  Salir
+                </button>
+              </>
+            ) : (
+              <>
+                <Link href="/iniciar-sesion" className="whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium text-ink-700 hover:bg-ink-100">
+                  Iniciar sesión
+                </Link>
+                <Link
+                  href="/registro"
+                  className="whitespace-nowrap rounded-lg bg-pine-700 px-4 py-2 text-sm font-medium text-white hover:bg-pine-800"
+                >
+                  Quiero registrarme
+                </Link>
+              </>
+            )}
+          </div>
 
-        <button
-          className="rounded-lg p-2 text-ink-700 hover:bg-ink-100 xl:hidden"
-          aria-label="Abrir menú"
-          aria-expanded={open}
-          onClick={() => setOpen((o) => !o)}
-        >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M4 6h16M4 12h16M4 18h16" strokeLinecap="round" />
-          </svg>
-        </button>
+          <button
+            className="rounded-lg p-2 text-ink-700 hover:bg-ink-100 xl:hidden"
+            aria-label="Abrir menú"
+            aria-expanded={open}
+            onClick={() => setOpen((o) => !o)}
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M4 6h16M4 12h16M4 18h16" strokeLinecap="round" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       {open && (

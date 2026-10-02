@@ -269,6 +269,7 @@ export class SubscriptionsService {
           title: 'Tu suscripción venció',
           content:
             'El plan pago venció y el perfil volvió al plan básico gratuito (sigue verificado y visible). Renueva para recuperar los beneficios.',
+          link: owner.dashboardPath,
         });
       }
     }

@@ -14,6 +14,7 @@ export async function notifyProfilePublished(
     type: 'PROFILE_PUBLISHED',
     title: 'Tu perfil ya es público',
     content: `Apareces en el directorio con ${documents.approved} de ${documents.required} documentos aprobados. El sello «Verificado» llega con el 100%.`,
+    link: '/dashboard',
     email: {
       to: profile.email,
       subject: 'Tu perfil ya es público — Guía Médica Monagas',

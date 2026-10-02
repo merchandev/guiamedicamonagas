@@ -26,3 +26,16 @@ export function formatTime(value: DateInput): string {
 export function caracasDateKey(value: DateInput): string {
   return new Date(value).toLocaleDateString('en-CA', { timeZone: CARACAS_TIME_ZONE });
 }
+
+const relative = new Intl.RelativeTimeFormat('es', { numeric: 'auto' });
+
+/** «hace 5 minutos», «ayer»; pasada una semana, la fecha. */
+export function timeAgo(value: DateInput, now: number = Date.now()): string {
+  const seconds = Math.round((new Date(value).getTime() - now) / 1000);
+  const abs = Math.abs(seconds);
+  if (abs < 60) return 'hace un momento';
+  if (abs < 3600) return relative.format(Math.round(seconds / 60), 'minute');
+  if (abs < 86_400) return relative.format(Math.round(seconds / 3600), 'hour');
+  if (abs < 7 * 86_400) return relative.format(Math.round(seconds / 86_400), 'day');
+  return formatDate(value, { dateStyle: 'medium' });
+}

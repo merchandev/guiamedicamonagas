@@ -119,6 +119,7 @@ export class AdminPlanAssignmentsService {
         type: 'PAID_PLAN_ASSIGNED',
         title: 'Tu plan está activo',
         content: `${notice.planName} vigente hasta el ${endsAtLabel}.`,
+        link: '/dashboard/pagos',
         email: {
           to: notice.email,
           subject: 'Tu plan está activo — Guía Médica Monagas',

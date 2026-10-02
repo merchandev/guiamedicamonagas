@@ -14,6 +14,7 @@ import { isUniqueViolation } from '../common/utils/prisma-errors';
 import { ReportPaymentDto } from './dto/report-payment.dto';
 import { UpdatePagoMovilAccountDto } from './dto/update-pago-movil-account.dto';
 import type { AuthenticatedUser } from '../common/types/authenticated-user';
+import { Permission } from '../common/permissions';
 
 const PAGO_MOVIL_ACCOUNT_KEY = 'pago_movil_account';
 
@@ -157,7 +158,7 @@ export class PaymentsService {
     await this.storage.uploadPrivateObject(key, file.buffer, file.mimetype);
 
     try {
-      return await this.prisma.payment.create({
+      const payment = await this.prisma.payment.create({
         data: {
           installmentId: installment.id,
           amountBs: dto.amountBs,
@@ -171,6 +172,13 @@ export class PaymentsService {
           status: 'PENDING',
         },
       });
+      await this.notifications.notifyStaff(Permission.REVIEW_PAYMENTS, {
+        type: 'PAYMENT_REPORTED',
+        title: 'Pago por revisar',
+        content: `Pago Móvil de Bs. ${payment.amountBs.toString()} (${bank.name}, referencia ${dto.referenceNumber}).`,
+        link: '/admin/pagos',
+      });
+      return payment;
     } catch (error) {
       // Dos reportes simultáneos con la misma referencia pasan la comprobación
       // de arriba; el índice único parcial "Payment_reference_active_unique"
@@ -292,6 +300,7 @@ export class PaymentsService {
         type: approved ? 'PAYMENT_APPROVED' : 'PAYMENT_REJECTED',
         title: approved ? 'Pago aprobado' : 'Pago rechazado',
         content: `Bs. ${amount}${note ? ` — ${note}` : ''}`,
+        link: owner.dashboardPath,
         email: {
           to: recipient.email,
           subject: approved ? 'Pago aprobado — Guía Médica Monagas' : 'Pago rechazado — Guía Médica Monagas',

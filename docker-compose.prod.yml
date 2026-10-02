@@ -235,6 +235,8 @@ services:
       ADMIN_MFA_WAIVER_UNTIL: ${ADMIN_MFA_WAIVER_UNTIL:-}
       CLAMAV_HOST: ${CLAMAV_HOST:-}
       CLAMAV_PORT: ${CLAMAV_PORT:-3310}
+      # Días que se guardan los avisos leídos de la campana; vacío = no se borran.
+      NOTIFICATION_RETENTION_DAYS: ${NOTIFICATION_RETENTION_DAYS:-}
     depends_on:
       postgres:
         condition: service_healthy
