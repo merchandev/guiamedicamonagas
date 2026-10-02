@@ -17,6 +17,7 @@ import { Modal } from '@/components/ui/Modal';
 import { Select } from '@/components/ui/Select';
 import { PageSpinner } from '@/components/ui/Spinner';
 import { cn } from '@/lib/cn';
+import { formatDateTime } from '@/lib/dates';
 
 interface LegalRequestItem {
   id: string;
@@ -57,7 +58,7 @@ const STATUS_OPTIONS = (Object.keys(LEGAL_REQUEST_STATUS) as LegalRequestStatus[
 }));
 
 const RESOLUTION_MIN = 10;
-const formatDate = (iso: string) => new Date(iso).toLocaleString('es-VE', { dateStyle: 'medium', timeStyle: 'short' });
+const formatDate = (iso: string) => formatDateTime(iso, { dateStyle: 'medium', timeStyle: 'short' });
 
 export default function AdminLegalRequestsPage() {
   const [status, setStatus] = useState<LegalRequestStatus | ''>('OPEN');

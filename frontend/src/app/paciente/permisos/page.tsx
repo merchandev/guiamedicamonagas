@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Select } from '@/components/ui/Select';
 import { PageSpinner } from '@/components/ui/Spinner';
+import { formatDate } from '@/lib/dates';
 
 type Scope = PatientDataScope;
 
@@ -197,8 +198,8 @@ export default function PatientPermissionsPage() {
                     </div>
                     <p className="mt-1 text-sm text-ink-600">{g.scopes.map((s) => SCOPE_INFO[s].label).join(' · ')}</p>
                     <p className="text-xs text-ink-500">
-                      Desde {new Date(g.grantedAt).toLocaleDateString('es-VE')} hasta{' '}
-                      {new Date(g.revokedAt ?? g.expiresAt).toLocaleDateString('es-VE')}
+                      Desde {formatDate(g.grantedAt)} hasta{' '}
+                      {formatDate(g.revokedAt ?? g.expiresAt)}
                     </p>
                   </div>
                   {state.label === 'Vigente' && (

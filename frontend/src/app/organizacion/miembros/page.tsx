@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { PageSpinner } from '@/components/ui/Spinner';
+import { formatDateTime } from '@/lib/dates';
 
 interface Member {
   id: string;
@@ -206,7 +207,7 @@ export default function OrganizationMembersPage() {
                       {inv.email} <Badge tone="neutral">{ORG_MEMBER_ROLE_LABELS[inv.role]}</Badge>
                     </p>
                     <p className="text-xs text-ink-500">
-                      Vence el {new Date(inv.expiresAt).toLocaleString('es-VE', { timeZone: 'America/Caracas' })}
+                      Vence el {formatDateTime(inv.expiresAt)}
                       {inv.invitedBy ? ` · invitó ${inv.invitedBy.email}` : ''}
                     </p>
                   </div>

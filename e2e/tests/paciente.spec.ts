@@ -17,6 +17,7 @@ test('reserva una cita en línea y el médico la recibe en su agenda', async ({ 
   await page.getByRole('group', { name: 'Fecha' }).getByRole('button').nth(1).click();
   const slots = page.getByRole('group', { name: 'Hora' }).getByRole('button');
   await expect(slots.first()).toBeVisible();
+  const slotLabel = plain((await slots.first().textContent()) ?? '');
   await slots.first().click();
   await expect(slots.first()).toHaveAttribute('aria-pressed', 'true');
   await page.getByLabel('Motivo de consulta (opcional)').fill('Control anual');
@@ -30,8 +31,23 @@ test('reserva una cita en línea y el médico la recibe en su agenda', async ({ 
   const agenda = await api('GET', '/appointments/me/agenda', undefined, doctor.token);
   expect(agenda.status).toBe(200);
   expect(JSON.stringify(agenda.data)).toContain('Control anual');
+
+  // El aviso al médico dice la misma hora que eligió el paciente (hora de
+  // Caracas), aunque el servidor corra en UTC como en producción y en CI.
+  const notices = await api('GET', '/notifications', undefined, doctor.token);
+  const request = (notices.data as { type: string; content: string }[]).find((n) => n.type === 'APPOINTMENT_REQUESTED');
+  expect(request, 'el médico recibe el aviso de la solicitud').toBeTruthy();
+  expect(plain(request!.content)).toContain(slotLabel);
   await context.close();
 });
+
+/**
+ * «10:00 a. m.» lleva espacios especiales y el navegador y Node pueden
+ * escribirlo con matices distintos: se compara sin espacios ni puntos.
+ */
+function plain(text: string) {
+  return text.replace(/[\s.]/g, '').toLowerCase();
+}
 
 test('código del paciente: el médico lo registra, el paciente revoca y el médico pierde el acceso', async ({ browser }) => {
   const doctor = await createPublishedDoctor({ tier: 'PROFESSIONAL' });

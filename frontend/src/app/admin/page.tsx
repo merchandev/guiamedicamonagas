@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 import { PageSpinner } from '@/components/ui/Spinner';
+import { formatDateTime } from '@/lib/dates';
 
 interface AdminStats {
   pendingDocuments: number;
@@ -79,7 +80,7 @@ export default function AdminHome() {
                   {log.action} — {log.resource}
                 </span>
                 <span className="break-all text-xs text-ink-500">
-                  {log.user?.email ?? 'sistema'} · {new Date(log.createdAt).toLocaleString('es-VE')}
+                  {log.user?.email ?? 'sistema'} · {formatDateTime(log.createdAt)}
                 </span>
               </div>
             ))}

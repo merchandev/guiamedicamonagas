@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { PageSpinner } from '@/components/ui/Spinner';
+import { formatDate, formatTime } from '@/lib/dates';
 
 type AppointmentStatus = 'PENDING' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW';
 
@@ -83,7 +84,7 @@ export default function CitasPage() {
   if (!appointments) return <PageSpinner />;
 
   const grouped = appointments.reduce<Record<string, AgendaAppointment[]>>((acc, appt) => {
-    const day = new Date(appt.startsAt).toLocaleDateString('es-VE', { dateStyle: 'full' });
+    const day = formatDate(appt.startsAt, { dateStyle: 'full' });
     (acc[day] ??= []).push(appt);
     return acc;
   }, {});
@@ -105,7 +106,7 @@ export default function CitasPage() {
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div>
                       <p className="text-sm font-semibold text-ink-900">
-                        {new Date(appt.startsAt).toLocaleTimeString('es-VE', { timeStyle: 'short' })} ·{' '}
+                        {formatTime(appt.startsAt)} ·{' '}
                         {appt.patient.patientCode}
                       </p>
                       {appt.location && <p className="text-xs text-ink-500">{appt.location.name}</p>}

@@ -12,6 +12,7 @@ import { PAYMENT_STATUS_LABELS, PLAN_TIER_LABELS, SUBSCRIPTION_STATUS_LABELS } f
 import { ProfessionalProgress, SubscriptionPlan } from '@/lib/types';
 import { BcvRateBadge, useExchangeRate } from '@/components/BcvRateBadge';
 import { PagoMovilReportForm, type PendingInstallment } from '@/components/PagoMovilReportForm';
+import { formatDate } from '@/lib/dates';
 
 type Plan = SubscriptionPlan;
 
@@ -161,7 +162,7 @@ export default function PaymentsPage() {
               </div>
               {subscription.currentPeriodEnd && (
                 <p className="text-sm text-ink-500">
-                  Vence: {new Date(subscription.currentPeriodEnd).toLocaleDateString('es-VE')}
+                  Vence: {formatDate(subscription.currentPeriodEnd)}
                 </p>
               )}
             </div>
@@ -190,7 +191,7 @@ export default function PaymentsPage() {
                   .flatMap((i) => i.payments)
                   .map((p) => (
                     <div key={p.id} className="flex items-center justify-between rounded-lg border border-ink-100 p-3 text-sm">
-                      <span>Bs. {p.amountBs} — {new Date(p.createdAt).toLocaleDateString('es-VE')}</span>
+                      <span>Bs. {p.amountBs} — {formatDate(p.createdAt)}</span>
                       <Badge tone={PAYMENT_STATUS_LABELS[p.status]?.tone ?? 'neutral'}>
                         {PAYMENT_STATUS_LABELS[p.status]?.label ?? p.status}
                       </Badge>

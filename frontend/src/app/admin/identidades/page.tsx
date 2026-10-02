@@ -11,6 +11,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { PageSpinner } from '@/components/ui/Spinner';
 import { PatientVaultGate, isVaultLocked, usePatientVault } from '@/components/PatientVaultGate';
 import { cn } from '@/lib/cn';
+import { formatDate } from '@/lib/dates';
 
 type IdentityStatus = 'PENDING' | 'VERIFIED' | 'REJECTED';
 
@@ -172,8 +173,8 @@ function IdentityQueue() {
                   </p>
                   <p className="text-xs text-ink-500">
                     {item.identityReviewedAt
-                      ? `Revisada el ${new Date(item.identityReviewedAt).toLocaleDateString('es-VE')}`
-                      : `Actualizada el ${new Date(item.updatedAt).toLocaleDateString('es-VE')}`}
+                      ? `Revisada el ${formatDate(item.identityReviewedAt)}`
+                      : `Actualizada el ${formatDate(item.updatedAt)}`}
                   </p>
                   {item.identityReviewNote && <p className="text-sm text-ink-600">Nota: {item.identityReviewNote}</p>}
                 </div>

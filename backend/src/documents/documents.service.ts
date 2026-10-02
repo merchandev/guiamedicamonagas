@@ -20,6 +20,7 @@ import type { SecuredFile } from '../uploads/upload-security.service';
 import { recomputeDirectoryScore } from '../professionals/directory-score';
 import { recomputeProfessionalStatus } from '../professionals/publication-rules';
 import { notifyProfilePublished } from '../professionals/publication-notice';
+import { VENEZUELA_TIME_ZONE } from '../common/caracas-time';
 
 @Injectable()
 export class DocumentsService {
@@ -252,8 +253,8 @@ export class DocumentsService {
     }
   }
 
-  /** Expira cada día a las 6am los documentos aprobados cuya vigencia venció. */
-  @Cron(CronExpression.EVERY_DAY_AT_6AM)
+  /** Expira cada día a las 6am (hora de Caracas) los documentos aprobados cuya vigencia venció. */
+  @Cron(CronExpression.EVERY_DAY_AT_6AM, { timeZone: VENEZUELA_TIME_ZONE })
   async expireOutdatedDocuments() {
     const now = new Date();
     const expired = await this.prisma.professionalDocument.findMany({

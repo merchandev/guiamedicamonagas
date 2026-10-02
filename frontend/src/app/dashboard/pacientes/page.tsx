@@ -12,6 +12,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
 import { PageSpinner } from '@/components/ui/Spinner';
+import { formatDate } from '@/lib/dates';
 
 interface PatientListItem {
   patientId: string;
@@ -250,12 +251,12 @@ function PacientesContent() {
                     </div>
                     <p className="text-sm text-ink-500">
                       {[
-                        p.registeredAt && `Registrado con su código el ${new Date(p.registeredAt).toLocaleDateString('es-VE')}`,
+                        p.registeredAt && `Registrado con su código el ${formatDate(p.registeredAt)}`,
                         p.appointmentCount > 0 &&
                           `${p.appointmentCount} ${p.appointmentCount === 1 ? 'cita' : 'citas'}${
-                            p.lastVisit ? ` · Última: ${new Date(p.lastVisit).toLocaleDateString('es-VE')}` : ''
+                            p.lastVisit ? ` · Última: ${formatDate(p.lastVisit)}` : ''
                           }`,
-                        p.access.expiresAt && `Autorización hasta ${new Date(p.access.expiresAt).toLocaleDateString('es-VE')}`,
+                        p.access.expiresAt && `Autorización hasta ${formatDate(p.access.expiresAt)}`,
                       ]
                         .filter(Boolean)
                         .join(' · ')}

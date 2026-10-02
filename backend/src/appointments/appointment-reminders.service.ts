@@ -3,9 +3,8 @@ import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { appointmentReminderTemplate } from '../mail/mail.templates';
+import { caracasDateLabel, caracasTimeLabel } from '../common/caracas-time';
 
-const DATE_LABEL_FMT: Intl.DateTimeFormatOptions = { dateStyle: 'full' };
-const TIME_LABEL_FMT: Intl.DateTimeFormatOptions = { timeStyle: 'short' };
 const WINDOW_MS = 10 * 60_000; // tolerancia = intervalo del cron
 
 /** Envía recordatorios de cita 24h y 2h antes de la hora agendada. */
@@ -50,8 +49,8 @@ export class AppointmentRemindersService {
     for (const appt of appointments) {
       if (!appt.patient.userId || !appt.patient.user) continue;
       try {
-        const dateLabel = appt.startsAt.toLocaleDateString('es-VE', DATE_LABEL_FMT);
-        const timeLabel = appt.startsAt.toLocaleTimeString('es-VE', TIME_LABEL_FMT);
+        const dateLabel = caracasDateLabel(appt.startsAt);
+        const timeLabel = caracasTimeLabel(appt.startsAt);
         const doctorName = `${appt.professional.firstName} ${appt.professional.lastName}`;
 
         await this.notifications.notify({

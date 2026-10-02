@@ -5,7 +5,9 @@
  * de un "-04:00" fijo, así un cambio de huso (como el de 2016) solo requiere
  * actualizar la base de datos de zonas horarias del sistema.
  */
-export const VENEZUELA_TIME_ZONE = 'America/Caracas';
+import { VENEZUELA_TIME_ZONE } from '../common/caracas-time';
+
+export { VENEZUELA_TIME_ZONE };
 
 const offsetFormatter = new Intl.DateTimeFormat('en-US', { timeZone: VENEZUELA_TIME_ZONE, timeZoneName: 'longOffset' });
 const dateKeyFormatter = new Intl.DateTimeFormat('en-CA', {

@@ -9,6 +9,7 @@ import { ORG_MEMBER_ROLE_LABELS, ORGANIZATION_TYPE_LABELS } from '@/lib/labels';
 import { Alert } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
 import { PageSpinner } from '@/components/ui/Spinner';
+import { formatDateTime } from '@/lib/dates';
 
 interface InvitationPreview {
   organizationName: string;
@@ -79,7 +80,7 @@ function InvitationContent() {
           <p className="text-sm text-ink-500">
             Solo la cuenta con el correo invitado ({invitation.email}) puede aceptarla.
             <br />
-            Vence: {new Date(invitation.expiresAt).toLocaleString('es-VE', { timeZone: 'America/Caracas' })}
+            Vence: {formatDateTime(invitation.expiresAt)}
           </p>
           {user ? (
             <div className="space-y-3">

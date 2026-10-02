@@ -19,9 +19,8 @@ import { CreateAppointmentDto } from './dto/create-appointment.dto';
 import { CreateManualAppointmentDto } from './dto/create-manual-appointment.dto';
 import { RescheduleAppointmentDto } from './dto/reschedule-appointment.dto';
 import { CancelAppointmentDto } from './dto/cancel-appointment.dto';
+import { caracasDateLabel, caracasTimeLabel } from '../common/caracas-time';
 
-const DATE_LABEL_FMT: Intl.DateTimeFormatOptions = { dateStyle: 'full' };
-const TIME_LABEL_FMT: Intl.DateTimeFormatOptions = { timeStyle: 'short' };
 const FRONTEND_URL = process.env.FRONTEND_URL ?? 'http://localhost:3000';
 
 @Injectable()
@@ -83,8 +82,13 @@ export class AppointmentsService {
     const requested = new Date(startsAtIso);
     const dayKey = toVetDateKey(requested);
 
+    // Solo las citas de ese día: el cálculo no mira otras fechas.
     const existing = await this.prisma.appointment.findMany({
-      where: { professionalId, status: { in: ['PENDING', 'CONFIRMED'] } },
+      where: {
+        professionalId,
+        status: { in: ['PENDING', 'CONFIRMED'] },
+        startsAt: { gte: startOfCaracasDay(dayKey), lte: endOfCaracasDay(dayKey) },
+      },
       select: { startsAt: true },
     });
     const availableSlots = computeAvailableSlots(schedule, existing.map((e) => e.startsAt), dayKey, dayKey);
@@ -190,8 +194,8 @@ export class AppointmentsService {
       },
     });
 
-    const dateLabel = appt.startsAt.toLocaleDateString('es-VE', DATE_LABEL_FMT);
-    const timeLabel = appt.startsAt.toLocaleTimeString('es-VE', TIME_LABEL_FMT);
+    const dateLabel = caracasDateLabel(appt.startsAt);
+    const timeLabel = caracasTimeLabel(appt.startsAt);
     const doctorName = `${appt.professional.firstName} ${appt.professional.lastName}`;
     const specialty = appt.professional.specialties[0]?.specialty.name;
     const location = appt.location?.address ?? appt.professional.address ?? undefined;
@@ -339,8 +343,8 @@ export class AppointmentsService {
     });
     if (!appt.patient.userId || !appt.patient.user) return;
 
-    const dateLabel = appt.startsAt.toLocaleDateString('es-VE', DATE_LABEL_FMT);
-    const timeLabel = appt.startsAt.toLocaleTimeString('es-VE', TIME_LABEL_FMT);
+    const dateLabel = caracasDateLabel(appt.startsAt);
+    const timeLabel = caracasTimeLabel(appt.startsAt);
     const doctorName = `${appt.professional.firstName} ${appt.professional.lastName}`;
 
     await this.notifications.notify({
@@ -414,8 +418,8 @@ export class AppointmentsService {
       where: { id: appointmentId },
       include: { patient: { include: { user: { select: { email: true } } } }, professional: { include: { user: { select: { email: true } } } } },
     });
-    const dateLabel = appt.startsAt.toLocaleDateString('es-VE', DATE_LABEL_FMT);
-    const timeLabel = appt.startsAt.toLocaleTimeString('es-VE', TIME_LABEL_FMT);
+    const dateLabel = caracasDateLabel(appt.startsAt);
+    const timeLabel = caracasTimeLabel(appt.startsAt);
 
     if (cancelledBy === 'PATIENT') {
       await this.notifications.notify({
@@ -487,8 +491,8 @@ export class AppointmentsService {
       where: { id: appointmentId },
       include: { patient: { include: { user: { select: { email: true } } } }, professional: { include: { user: { select: { email: true } } } } },
     });
-    const dateLabel = appt.startsAt.toLocaleDateString('es-VE', DATE_LABEL_FMT);
-    const timeLabel = appt.startsAt.toLocaleTimeString('es-VE', TIME_LABEL_FMT);
+    const dateLabel = caracasDateLabel(appt.startsAt);
+    const timeLabel = caracasTimeLabel(appt.startsAt);
 
     if (appt.patient.userId && appt.patient.user) {
       await this.notifications.notify({

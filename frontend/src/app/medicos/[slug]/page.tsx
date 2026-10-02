@@ -13,6 +13,7 @@ import { YouTubePresentation } from '@/components/YouTubePresentation';
 import { MedicalDisclaimer } from '@/components/legal/MedicalDisclaimer';
 import { VERIFICATION_NOTICE } from '@/lib/legal';
 import { DoctorSeoInput, SITE_NAME, doctorSeoDescription, doctorSeoTitle } from '@/lib/seo';
+import { formatDate } from '@/lib/dates';
 
 async function getDoctor(slug: string) {
   return serverGet<ProfessionalDetail>(`/professionals/${slug}`, 30);
@@ -269,7 +270,7 @@ export default async function DoctorProfilePage({ params }: { params: Promise<{ 
               {doctor.posts.map((post) => (
                 <article key={post.id} className="rounded-lg border border-ink-100 p-4">
                   <h4 className="font-semibold text-ink-900">{post.title}</h4>
-                  <p className="mt-1 text-xs text-ink-500">{new Date(post.createdAt).toLocaleDateString('es-VE')}</p>
+                  <p className="mt-1 text-xs text-ink-500">{formatDate(post.createdAt)}</p>
                   <p className="mt-2 whitespace-pre-wrap text-sm text-ink-600">{post.content}</p>
                 </article>
               ))}

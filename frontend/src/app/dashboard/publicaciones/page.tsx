@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { Input, Textarea } from '@/components/ui/Input';
 import { PageSpinner } from '@/components/ui/Spinner';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { formatDate } from '@/lib/dates';
 
 interface Post {
   id: string;
@@ -109,7 +110,7 @@ export default function PostsPage() {
                 <div className="min-w-0">
                   <h3 className="font-semibold text-ink-900">{post.title}</h3>
                   <p className="mt-1 line-clamp-2 text-sm text-ink-600">{post.content}</p>
-                  <p className="mt-1 text-xs text-ink-500">{new Date(post.createdAt).toLocaleDateString('es-VE')}</p>
+                  <p className="mt-1 text-xs text-ink-500">{formatDate(post.createdAt)}</p>
                 </div>
                 <Badge tone={post.published ? 'pine' : 'neutral'} className="flex-shrink-0">
                   {post.published ? 'Publicado' : 'Borrador'}

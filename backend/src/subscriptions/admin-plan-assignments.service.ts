@@ -9,6 +9,7 @@ import { canSubscribeToTier, documentProgress } from '../professionals/publicati
 import { recomputeDirectoryScore } from '../professionals/directory-score';
 import { SubscriptionsService } from './subscriptions.service';
 import { AssignPaidPlanDto } from './dto/assign-paid-plan.dto';
+import { caracasLongDate } from '../common/caracas-time';
 
 @Injectable()
 export class AdminPlanAssignmentsService {
@@ -111,7 +112,7 @@ export class AdminPlanAssignmentsService {
 
   /** Mismo canal que al aprobar un Pago Móvil: aviso en el panel y correo. */
   private async notifyDoctor(notice: { userId: string; email: string; firstName: string; planName: string }, endsAt: Date) {
-    const endsAtLabel = endsAt.toLocaleDateString('es-VE', { dateStyle: 'long', timeZone: 'America/Caracas' });
+    const endsAtLabel = caracasLongDate(endsAt);
     try {
       await this.notifications.notify({
         userId: notice.userId,

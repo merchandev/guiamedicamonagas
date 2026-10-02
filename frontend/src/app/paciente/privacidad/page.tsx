@@ -14,6 +14,7 @@ import { Alert } from '@/components/ui/Alert';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { PageSpinner } from '@/components/ui/Spinner';
+import { formatDate, formatDateTime as caracasDateTime } from '@/lib/dates';
 
 interface AccessLogEntry {
   id: string;
@@ -38,7 +39,7 @@ const ACTION_TEXT: Record<string, (who: string) => string> = {
   PATIENT_IDENTITY_REJECTED: () => 'Un administrador rechazó la foto de tu documento de identidad',
 };
 
-const formatDateTime = (iso: string) => new Date(iso).toLocaleString('es-VE', { dateStyle: 'medium', timeStyle: 'short' });
+const formatDateTime = (iso: string) => caracasDateTime(iso, { dateStyle: 'medium', timeStyle: 'short' });
 
 export default function PatientPrivacyPage() {
   const [log, setLog] = useState<AccessLogEntry[] | null>(null);
@@ -202,7 +203,7 @@ export default function PatientPrivacyPage() {
                     <p className="flex flex-wrap items-center gap-2">
                       <span className="font-mono font-semibold tracking-wider text-ink-950">{request.ticket}</span>
                       <Badge tone={status.tone}>{status.label}</Badge>
-                      <span className="text-xs text-ink-500">{new Date(request.createdAt).toLocaleDateString('es-VE')}</span>
+                      <span className="text-xs text-ink-500">{formatDate(request.createdAt)}</span>
                     </p>
                     <p className="text-ink-700">{LEGAL_REQUEST_CATEGORY_LABELS[request.category]}</p>
                     {request.resolution && (

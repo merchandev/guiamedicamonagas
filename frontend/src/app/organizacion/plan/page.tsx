@@ -11,6 +11,7 @@ import { Alert } from '@/components/ui/Alert';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { PageSpinner } from '@/components/ui/Spinner';
+import { formatDate } from '@/lib/dates';
 
 interface Installment extends PendingInstallment {
   status: string;
@@ -134,7 +135,7 @@ export default function OrganizationPlanPage() {
               </Badge>
             </div>
             {subscription.currentPeriodEnd && (
-              <p className="text-sm text-ink-500">Vence: {new Date(subscription.currentPeriodEnd).toLocaleDateString('es-VE')}</p>
+              <p className="text-sm text-ink-500">Vence: {formatDate(subscription.currentPeriodEnd)}</p>
             )}
           </section>
 
@@ -162,7 +163,7 @@ export default function OrganizationPlanPage() {
                   .map((p) => (
                     <div key={p.id} className="flex items-center justify-between rounded-lg border border-ink-100 p-3 text-sm">
                       <span>
-                        Bs. {p.amountBs} — {new Date(p.createdAt).toLocaleDateString('es-VE')}
+                        Bs. {p.amountBs} — {formatDate(p.createdAt)}
                         {p.reviewNote && <span className="text-ink-500"> · {p.reviewNote}</span>}
                       </span>
                       <Badge tone={PAYMENT_STATUS_LABELS[p.status]?.tone ?? 'neutral'}>

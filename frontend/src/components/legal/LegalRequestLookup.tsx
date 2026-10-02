@@ -8,8 +8,9 @@ import { Alert } from '@/components/ui/Alert';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { formatDate as caracasDate } from '@/lib/dates';
 
-const formatDate = (iso: string) => new Date(iso).toLocaleDateString('es-VE', { dateStyle: 'long' });
+const formatDate = (iso: string) => caracasDate(iso, { dateStyle: 'long' });
 
 /** Estado de una solicitud: exige el número y el correo con que se envió. */
 export function LegalRequestLookup() {

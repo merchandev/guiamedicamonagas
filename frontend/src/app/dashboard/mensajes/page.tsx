@@ -5,6 +5,7 @@ import { api } from '@/lib/api';
 import { Badge } from '@/components/ui/Badge';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { PageSpinner } from '@/components/ui/Spinner';
+import { formatDateTime } from '@/lib/dates';
 
 interface ContactMessage {
   id: string;
@@ -59,7 +60,7 @@ export default function MessagesPage() {
                 <p className="font-semibold text-ink-900">{m.senderName}</p>
                 <div className="flex items-center gap-2">
                   {!m.isRead && <Badge tone="gold">Nuevo</Badge>}
-                  <span className="text-xs text-ink-500">{new Date(m.createdAt).toLocaleString('es-VE')}</span>
+                  <span className="text-xs text-ink-500">{formatDateTime(m.createdAt)}</span>
                 </div>
               </div>
               <p className="text-sm text-ink-500">

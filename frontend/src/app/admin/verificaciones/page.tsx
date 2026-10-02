@@ -11,6 +11,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { PageSpinner } from '@/components/ui/Spinner';
 import { DOCUMENT_STATUS_LABELS, DOCUMENT_TYPE_LABELS } from '@/lib/labels';
 import { DocumentType } from '@/lib/types';
+import { formatDate } from '@/lib/dates';
 
 interface QueueItem {
   id: string;
@@ -90,7 +91,7 @@ export default function VerificationsQueuePage() {
                   </p>
                   <p className="text-sm text-ink-600">{DOCUMENT_TYPE_LABELS[doc.type] ?? doc.type}</p>
                   <p className="text-xs text-ink-500">
-                    {doc.originalFileName} · {new Date(doc.createdAt).toLocaleDateString('es-VE')}
+                    {doc.originalFileName} · {formatDate(doc.createdAt)}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">

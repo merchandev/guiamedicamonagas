@@ -11,6 +11,7 @@ import { Modal } from '@/components/ui/Modal';
 import { PageSpinner } from '@/components/ui/Spinner';
 import { cn } from '@/lib/cn';
 import { brandQrSvg, downloadQrPng, svgDataUrl } from '@/lib/qr';
+import { formatDate } from '@/lib/dates';
 
 interface ShareCode {
   code: string | null;
@@ -143,7 +144,7 @@ export default function PatientShareCodePage() {
                 {data.code}
               </p>
               {data.createdAt && (
-                <p className="mt-1 text-xs text-ink-500">Generado el {new Date(data.createdAt).toLocaleDateString('es-VE')}</p>
+                <p className="mt-1 text-xs text-ink-500">Generado el {formatDate(data.createdAt)}</p>
               )}
             </div>
             <div className="flex flex-wrap gap-2">

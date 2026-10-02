@@ -11,6 +11,7 @@ import { loadSubscriptionOwner } from './subscription-owner';
 import { recomputeDirectoryScore } from '../professionals/directory-score';
 import { canSubscribeToTier, documentProgress } from '../professionals/publication-rules';
 import { resolvePresentationVideo } from '../professionals/presentation-video';
+import { VENEZUELA_TIME_ZONE } from '../common/caracas-time';
 
 const PLAN_SHOWCASE_KEY = 'plan_showcase';
 
@@ -234,8 +235,8 @@ export class SubscriptionsService {
     return end;
   }
 
-  /** Vence suscripciones activas cuyo periodo terminó y regresa al titular al plan gratuito. */
-  @Cron(CronExpression.EVERY_DAY_AT_7AM)
+  /** Cada día a las 7am (hora de Caracas): vence suscripciones activas cuyo periodo terminó y regresa al titular al plan gratuito. */
+  @Cron(CronExpression.EVERY_DAY_AT_7AM, { timeZone: VENEZUELA_TIME_ZONE })
   async expireOverdueSubscriptions() {
     const now = new Date();
     const overdue = await this.prisma.subscription.findMany({

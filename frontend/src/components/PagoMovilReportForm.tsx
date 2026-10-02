@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { BcvRateBadge, formatBs, useExchangeRate } from '@/components/BcvRateBadge';
+import { formatDate } from '@/lib/dates';
 
 export interface PendingInstallment {
   id: string;
@@ -141,7 +142,7 @@ export function PagoMovilReportForm({
               {' '}
               Monto fijado al suscribirte: Bs. {formatBs(Number(installment.amountBs))} (tasa{' '}
               {Number(installment.bcvRate).toLocaleString('es-VE')} del{' '}
-              {new Date(installment.rateCapturedAt).toLocaleDateString('es-VE')}).
+              {formatDate(installment.rateCapturedAt)}).
             </>
           )}
         </p>

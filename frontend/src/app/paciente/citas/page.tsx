@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { PageSpinner } from '@/components/ui/Spinner';
+import { formatDateTime } from '@/lib/dates';
 
 type Status = 'PENDING' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW';
 
@@ -89,11 +90,7 @@ export default function PatientAppointmentsPage() {
                     <Badge tone={STATUS[a.status].tone}>{STATUS[a.status].label}</Badge>
                   </div>
                   <p className="mt-1 text-sm text-ink-600">
-                    {new Date(a.startsAt).toLocaleString('es-VE', {
-                      dateStyle: 'full',
-                      timeStyle: 'short',
-                      timeZone: 'America/Caracas',
-                    })}
+                    {formatDateTime(a.startsAt, { dateStyle: 'full', timeStyle: 'short' })}
                   </p>
                   {a.location && <p className="text-xs text-ink-500">{a.location.name} · {a.location.address}</p>}
                   {a.reason && <p className="mt-1 text-xs text-ink-500">Motivo: {a.reason}</p>}

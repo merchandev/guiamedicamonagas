@@ -15,6 +15,7 @@ import { AccountActionDialog, accountsEndpoint, type AccountAction } from '@/com
 import { VERIFICATION_LABELS } from '@/lib/labels';
 import { YouTubePresentation } from '@/components/YouTubePresentation';
 import { parseYouTubeVideoId, youTubeShortUrl } from '@/lib/youtube';
+import { formatDate } from '@/lib/dates';
 
 interface Account {
   id: string; email: string; isActive: boolean; deletedAt: string | null; moderationReason: string | null;
@@ -32,7 +33,7 @@ const nameOf = (a: Account) => {
   const p = a.professionalProfile ?? a.patientProfile;
   return p ? [p.firstName, p.lastName].filter(Boolean).join(' ') || a.email : a.email;
 };
-const formatDate = (date: Date) => date.toLocaleDateString('es-VE', { dateStyle: 'long' });
+const longDate = (date: Date) => formatDate(date, { dateStyle: 'long' });
 
 /** Misma regla que el servidor (SubscriptionsService.nextPeriodEnd), repetida `periods` veces. */
 function periodEnd(from: Date, cycle: Plan['billingCycle'], periods: number) {
@@ -127,7 +128,7 @@ export function AdminAccountManager({ kind }: { kind: 'professionals' | 'patient
         method, paidAt: new Date(paidAt).toISOString(), periods: Number(periods), reason: reason.trim(),
       });
       setAssignment(null);
-      setSuccess(`Pago registrado: ${result.renewed ? 'plan renovado' : 'plan asignado'} hasta el ${formatDate(new Date(result.currentPeriodEnd))}. Le avisamos al médico; su verificación no cambió.`);
+      setSuccess(`Pago registrado: ${result.renewed ? 'plan renovado' : 'plan asignado'} hasta el ${longDate(new Date(result.currentPeriodEnd))}. Le avisamos al médico; su verificación no cambió.`);
       await load();
     } catch (e) { handleError(e); } finally { setBusy(false); }
   };
@@ -192,7 +193,7 @@ export function AdminAccountManager({ kind }: { kind: 'professionals' | 'patient
             {account.patientProfile && <p className="text-sm">{account.patientProfile.patientCode}</p>}
             {account.moderationReason && <p className="mt-1 break-words text-sm text-ink-600">Último motivo: {account.moderationReason}</p>}
             {profile && <p className="mt-1 text-sm">Plan: {profile.subscriptions[0]?.plan.name ?? profile.planTier}
-              {profile.subscriptions[0]?.currentPeriodEnd && ` · Hasta ${new Date(profile.subscriptions[0].currentPeriodEnd).toLocaleDateString('es-VE')}`}</p>}
+              {profile.subscriptions[0]?.currentPeriodEnd && ` · Hasta ${formatDate(profile.subscriptions[0].currentPeriodEnd)}`}</p>}
             <div className="mt-2 flex flex-wrap gap-2"><Badge tone={account.isActive ? 'pine' : 'red'}>{account.deletedAt ? 'Baja' : account.isActive ? 'Cuenta activa' : 'Cuenta suspendida'}</Badge>
               {verification && <Badge tone={verification.tone}>{verification.label}</Badge>}
               {profile?.presentationVideoId && <Badge tone={profile.planTier === 'AGENCY' ? 'gold' : 'neutral'}>{profile.planTier === 'AGENCY' ? 'Con video' : 'Video oculto (sin plan Marca Médica)'}</Badge>}
@@ -236,7 +237,7 @@ export function AdminAccountManager({ kind }: { kind: 'professionals' | 'patient
       {assignment && <form className="space-y-4" onSubmit={assign}>
         <p className="font-semibold">{nameOf(assignment)}</p>
         {assignment.professionalProfile?.subscriptions[0] && <p className="text-sm">Plan vigente: {assignment.professionalProfile.subscriptions[0].plan.name}
-          {assignment.professionalProfile.subscriptions[0].currentPeriodEnd && ` hasta el ${formatDate(new Date(assignment.professionalProfile.subscriptions[0].currentPeriodEnd))}`}</p>}
+          {assignment.professionalProfile.subscriptions[0].currentPeriodEnd && ` hasta el ${longDate(new Date(assignment.professionalProfile.subscriptions[0].currentPeriodEnd))}`}</p>}
         <p className="text-sm text-ink-600">Para un pago recibido fuera del reporte de la plataforma. Si ya existe un pago reportado, revísalo en Pagos. Renovar el mismo plan suma el tiempo al final del período vigente; cambiar de plan lo reemplaza desde la fecha del pago, sin prorrateo.</p>
         <Select label="Plan pagado" required value={planId} onChange={setPlanId} options={plans.map(p => ({ value: p.id, label: `${p.name} · USD ${p.priceUsd} · ${CYCLE_LABEL[p.billingCycle] ?? p.billingCycle}` }))} />
         <Select label="Períodos pagados" value={periods} onChange={setPeriods} options={Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1), label: String(i + 1) }))} />
@@ -246,7 +247,7 @@ export function AdminAccountManager({ kind }: { kind: 'professionals' | 'patient
         <Input label="Importe recibido (Bs)" type="number" min="0.01" step="0.01" max="9999999999.99" required value={amountBs} onChange={e => setAmountBs(e.target.value)} />
         <Input label="Fecha y hora del pago (hora de tu equipo)" type="datetime-local" required value={paidAt} onChange={e => setPaidAt(e.target.value)} />
         {preview && <p role="status" className="rounded-lg bg-pine-50 px-3 py-2 text-sm text-pine-800">
-          {preview.renewing ? 'Renovación' : 'Nuevo plan'}: {periods} {preview.unit}, vigente hasta el <strong>{formatDate(preview.end)}</strong>.</p>}
+          {preview.renewing ? 'Renovación' : 'Nuevo plan'}: {periods} {preview.unit}, vigente hasta el <strong>{longDate(preview.end)}</strong>.</p>}
         <Textarea label="Motivo y evidencia de la revisión" required minLength={8} maxLength={500} value={reason} onChange={e => setReason(e.target.value)} />
         <label className="flex gap-2 text-sm"><input type="checkbox" required checked={confirmed} onChange={e => setConfirmed(e.target.checked)} />Confirmo que verifiqué el pago recibido y el plan contratado.</label>
         {error && <Alert tone="error">{error}</Alert>}

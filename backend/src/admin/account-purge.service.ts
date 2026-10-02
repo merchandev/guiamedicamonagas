@@ -6,10 +6,9 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { MailService } from '../mail/mail.service';
 import { accountPurgedTemplate, appointmentCancelledTemplate } from '../mail/mail.templates';
 import type { ManagedRole } from './account-management.service';
+import { caracasDateLabel, caracasTimeLabel } from '../common/caracas-time';
 
 const UPCOMING_STATUSES = ['PENDING', 'CONFIRMED'] as const;
-const DATE_LABEL_FMT: Intl.DateTimeFormatOptions = { dateStyle: 'full' };
-const TIME_LABEL_FMT: Intl.DateTimeFormatOptions = { timeStyle: 'short' };
 const OPEN_SUBSCRIPTIONS = ['ACTIVE', 'PENDING', 'PAST_DUE', 'UNPAID'] as const;
 
 interface CancelledAppointmentNotice {
@@ -300,8 +299,8 @@ export class AccountPurgeService {
 
   private async sendNotices(notices: CancelledAppointmentNotice[]) {
     for (const notice of notices) {
-      const dateLabel = notice.startsAt.toLocaleDateString('es-VE', DATE_LABEL_FMT);
-      const timeLabel = notice.startsAt.toLocaleTimeString('es-VE', TIME_LABEL_FMT);
+      const dateLabel = caracasDateLabel(notice.startsAt);
+      const timeLabel = caracasTimeLabel(notice.startsAt);
       await this.notifications
         .notify({
           userId: notice.userId,
