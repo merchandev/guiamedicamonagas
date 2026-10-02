@@ -3,7 +3,7 @@
 > Bitácora central de cambios, implementaciones, decisiones técnicas y tareas de evolución del sistema.
 >
 > **Repositorio:** [`merchandev/guiamedicamonagas`](https://github.com/merchandev/guiamedicamonagas) · **Rama:** `main`<br>
-> **Última actualización de esta bitácora:** `2026-10-02 08:14:49 -04:00` · **Estado:** 🟢 Registro activo
+> **Última actualización de esta bitácora:** `2026-10-02 08:34:59 -04:00` · **Estado:** 🟢 Registro activo
 
 ![Estado](https://img.shields.io/badge/estado-registro%20activo-16a34a?style=flat-square)
 ![Rama](https://img.shields.io/badge/rama-main-2563eb?style=flat-square)
@@ -143,8 +143,9 @@ flowchart LR
     AL[🛰️ 2026-10-01\n00:07:32\nACT-0038 · Alertas, respaldos externos\ny custodia de claves]
     AM[🧪 2026-10-01\n05:22:09\nACT-0039 · Pruebas de punta a punta,\nseguridad y accesibilidad]
     AN[🕰️ 2026-10-02\n08:01:30\nACT-0040 · Citas en hora\nde Caracas]
+    AO[🔔 2026-10-02\n08:20:16\nACT-0041 · Centro de\nnotificaciones]
 
-    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L --> M --> N --> O --> P --> Q --> R --> S --> T --> U --> V --> W --> X --> Y --> Z --> AA --> AB --> AC --> AD --> AE --> AF --> AG --> AH --> AI --> AJ --> AK --> AL --> AM --> AN
+    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L --> M --> N --> O --> P --> Q --> R --> S --> T --> U --> V --> W --> X --> Y --> Z --> AA --> AB --> AC --> AD --> AE --> AF --> AG --> AH --> AI --> AJ --> AK --> AL --> AM --> AN --> AO
 ```
 
 ### Resumen cuantitativo
@@ -152,8 +153,8 @@ flowchart LR
 | Indicador | Resultado |
 |---|---:|
 | Actividades históricas importadas desde Git | `3` |
-| Actividades documentales añadidas con esta bitácora | `37` |
-| Actividades registradas en total | `40` |
+| Actividades documentales añadidas con esta bitácora | `38` |
+| Actividades registradas en total | `41` |
 | Rama de referencia | `main` |
 | Commit base consultado | [`81b1091`](https://github.com/merchandev/guiamedicamonagas/commit/81b1091) |
 | Zona horaria de control | `America/Caracas` (`-04:00`) |
@@ -1834,6 +1835,42 @@ Primer bloque del plan aprobado por el titular (calendario, notificaciones, valo
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
+<a id="act-0041"></a>
+
+### 🔔 ACT-0041 · Bloque 1 del plan de agenda: centro de notificaciones
+
+<details>
+<summary><strong>2026-10-02 08:20:16 -04:00</strong> · <code>ccbe3ea</code> · 🟢 Completado</summary>
+
+**Responsable:** `Claude Opus 5.5` · **Tipo:** `funcionalidad | experiencia | despliegue` · **Commits:** [`ccbe3ea`](https://github.com/merchandev/guiamedicamonagas/commit/ccbe3ea)
+
+La API ya guardaba avisos internos de citas, documentos, pagos, mensajes de contacto y moderación de cuentas, pero **ninguna pantalla los mostraba**: nadie los veía. Es la base de los bloques siguientes (calendario, valoraciones, moderación y pedidos de contacto).
+
+**Qué hay ahora:**
+- **Campana en la cabecera** para cualquier cuenta con sesión. Muestra cuántos avisos faltan por leer (se actualiza cada minuto mientras la pestaña está a la vista), los más recientes, «Marcar todas como leídas» y «Ver todas». En el teléfono el panel ocupa el ancho de la pantalla, debajo de la campana.
+- **Página «Notificaciones»** en el panel del médico, del paciente y de la administración (y en `/cuenta/notificaciones` para las demás cuentas), con «Ver anteriores».
+- **Correos opcionales:** el paciente puede apagar los recordatorios de citas y el médico los correos de mensajes nuevos de su ficha; el aviso sigue llegando a la campana. Los correos de seguridad, cuenta, verificación, pagos y cambios de citas no se apagan.
+- **Cada aviso lleva a su página** (solo rutas internas del sitio): la cita, los documentos, los pagos, los permisos.
+- **Avisos a la administración** para quien tenga el permiso de esa tarea: un documento por revisar, la foto de identidad de un paciente, un pago reportado y, como antes, cada reclamo nuevo.
+- **Datos:** la migración agrega a `Notification` el enlace, la fecha de lectura y dos índices, y a `User` los correos apagados. `NOTIFICATION_RETENTION_DAYS` (vacía: no se borra nada) borrará los avisos leídos antiguos cuando el titular fije el plazo y lo declare en la política de retención.
+
+**Pruebas:** unitarias de los enlaces internos y de los correos opcionales de cada tipo de cuenta. De punta a punta: la campana avisa al médico de una cita nueva y lo lleva a sus citas; «marcar todas como leídas» apaga el contador; el paciente apaga los recordatorios y queda guardado; la administración recibe el aviso de un reclamo; nadie ve ni marca avisos ajenos. Revisión visual en escritorio y en un teléfono de 412 px (el panel se cortaba a la izquierda en el teléfono y se corrigió antes de subir).
+
+**CI de GitHub:** «CI» y «Seguridad» en verde para `ccbe3ea`.
+
+**Despliegue en el VPS:** el primer intento (`deploy-act41.log`) se detuvo antes de tocar producción porque falló la descarga de las tipografías de Google durante `next build`, el fallo intermitente ya anotado en Próximas actividades. El segundo (`deploy-act41b.log`): respaldo previo `gmm-db-20261002T122804Z-pre-deploy.dump.gpg`; **migración aplicada**; prueba de humo **25/25**; «Versión publicada: ccbe3ea1f716 (API y web)». En producción, las cuatro páginas de notificaciones responden, el contador pide sesión (401) y la base tiene las columnas nuevas.
+
+**Archivos destacados:**
+- [`backend/src/notifications/notifications.service.ts`](backend/src/notifications/notifications.service.ts)
+- [`backend/src/notifications/notification-types.ts`](backend/src/notifications/notification-types.ts)
+- [`frontend/src/components/notifications/NotificationBell.tsx`](frontend/src/components/notifications/NotificationBell.tsx)
+- [`frontend/src/components/notifications/NotificationsCenter.tsx`](frontend/src/components/notifications/NotificationsCenter.tsx)
+- [`e2e/tests/notificaciones.spec.ts`](e2e/tests/notificaciones.spec.ts)
+
+</details>
+
+<p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
+
 <a id="registro-por-area"></a>
 
 ## 🧩 Registro por área
@@ -1850,7 +1887,7 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | 📅 Agenda y citas | Horarios, disponibilidad, reservas, máquina de estados, anti-doble-reserva, zona America/Caracas (también en correos, avisos y recordatorios) | [ACT-0007](#act-0007) · [ACT-0015](#act-0015) · [ACT-0040](#act-0040) |
 | 🔒 Pacientes | Código pseudónimo, cifrado de datos de salud, consentimiento por alcance y tiempo, lecturas auditadas, registro propio, foto de identificación verificada por un admin, reserva con la ficha propia, código y QR para compartir, directorio del médico por código, bóveda de administración y noindex, registro visible desde el inicio, supresión de la cuenta conservando solo la evidencia legal, consentimiento expreso de datos de salud y mayoría de edad, descarga de los datos propios e historial de accesos | [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0023](#act-0023) · [ACT-0027](#act-0027) · [ACT-0029](#act-0029) · [ACT-0031](#act-0031) · [ACT-0033](#act-0033) |
 | 🛠️ Administración | Médicos, pagos, SEO, cookies, especialidades, planes, verificaciones, organizaciones, bancos, geografía, identidad de pacientes, cuentas (suspensión, baja, eliminación definitiva), planes pagados, video de presentación de los médicos, bandeja de solicitudes legales, Pago Móvil propio, video de muestra de Marca Médica y actividad reciente desplegable | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0031](#act-0031) · [ACT-0032](#act-0032) · [ACT-0033](#act-0033) · [ACT-0034](#act-0034) · [ACT-0035](#act-0035) · [ACT-0036](#act-0036) |
-| 📊 Observabilidad | Auditoría, analítica con consentimiento y sin IP, estadísticas del médico según su plan, notificaciones, salud, pruebas, CI, escaneo de imágenes y Dependabot, ESLint del frontend en CI, versión publicada verificable, estado de las dependencias (`/health/ready`), alertas por Telegram/correo/ntfy/webhook, interruptor de hombre muerto y monitor externo de GitHub, pruebas de punta a punta del sitio (Playwright) en escritorio y teléfono | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0036](#act-0036) · [ACT-0037](#act-0037) · [ACT-0038](#act-0038) · [ACT-0039](#act-0039) |
+| 📊 Observabilidad | Auditoría, analítica con consentimiento y sin IP, estadísticas del médico según su plan, centro de notificaciones (campana, página en cada panel, correos opcionales y avisos a la administración), salud, pruebas, CI, escaneo de imágenes y Dependabot, ESLint del frontend en CI, versión publicada verificable, estado de las dependencias (`/health/ready`), alertas por Telegram/correo/ntfy/webhook, interruptor de hombre muerto y monitor externo de GitHub, pruebas de punta a punta del sitio (Playwright) en escritorio y teléfono | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0036](#act-0036) · [ACT-0037](#act-0037) · [ACT-0038](#act-0038) · [ACT-0039](#act-0039) · [ACT-0041](#act-0041) |
 | 🎨 Experiencia | Directorios, dashboard, componentes UI, motion, legal, formularios legibles y utilizables con teclado, sección de pacientes en el inicio, tipografía Montserrat + Open Sans, suiches, botones y foco de campos corregidos, centro legal con 21 documentos versionados y avisos breves (descargo médico, verificación, QR), portada con cifras reales y directorio que explica cuando está vacío, accesibilidad revisada con axe (contraste, etiquetas, avisos anunciados, teclado), «Salir» que vuelve a la portada y tarjeta para compartir del sitio | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0013](#act-0013) · [ACT-0014](#act-0014) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0017](#act-0017) · [ACT-0019](#act-0019) · [ACT-0022](#act-0022) · [ACT-0023](#act-0023) · [ACT-0025](#act-0025) · [ACT-0026](#act-0026) · [ACT-0028](#act-0028) · [ACT-0033](#act-0033) · [ACT-0037](#act-0037) · [ACT-0039](#act-0039) |
 | 🚢 Operación | Variables de entorno, Compose, almacenamiento, correo, proxy, imágenes mínimas y antivirus, copia de respaldos fuera del servidor, restauración desde la copia externa, custodia de claves, simulacro de desastre e informe GO / NO-GO ampliado | [ACT-0001](#act-0001) · [ACT-0002](#act-0002) · [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0008](#act-0008) · [ACT-0009](#act-0009) · [ACT-0011](#act-0011) · [ACT-0016](#act-0016) · [ACT-0017](#act-0017) · [ACT-0018](#act-0018) · [ACT-0019](#act-0019) · [ACT-0024](#act-0024) · [ACT-0027](#act-0027) · [ACT-0037](#act-0037) · [ACT-0038](#act-0038) |
 
@@ -1945,6 +1982,7 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | IMP-081 | URL canónicas y tarjeta del sitio para compartir; reserva fuera de buscadores | 🟢 Completado | [`frontend/src/app/opengraph-image.tsx`](frontend/src/app/opengraph-image.tsx), [`frontend/src/app/medicos/layout.tsx`](frontend/src/app/medicos/layout.tsx) |
 | IMP-082 | «Salir» recarga la portada y borra de la memoria lo cargado en la sesión | 🟢 Completado | [`frontend/src/lib/auth-context.tsx`](frontend/src/lib/auth-context.tsx) |
 | IMP-083 | Correos, avisos y recordatorios de citas en hora de Caracas aunque el servidor corra en UTC; tareas diarias a su hora; fechas del sitio con la zona explícita | 🟢 Completado | [`backend/src/common/caracas-time.ts`](backend/src/common/caracas-time.ts), [`frontend/src/lib/dates.ts`](frontend/src/lib/dates.ts) |
+| IMP-084 | Centro de notificaciones: campana con contador, página «Notificaciones» en cada panel, enlace de cada aviso, correos opcionales y avisos a la administración por permiso | 🟢 Completado | [`backend/src/notifications/notifications.service.ts`](backend/src/notifications/notifications.service.ts), [`frontend/src/components/notifications/NotificationBell.tsx`](frontend/src/components/notifications/NotificationBell.tsx) |
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
@@ -2006,7 +2044,8 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | 🟡 Baja | Revisión manual en Firefox y Safari (iPhone) y en teléfonos reales; la suite ya los cubre a pedido con `E2E_TODOS_LOS_NAVEGADORES=1` | 🔵 Planificado | Ver [`e2e/README.md`](e2e/README.md) |
 | 🟠 Media | Aprobar la limpieza de disco del proyecto: 32,6 GB de caché de compilación y 11 imágenes sin uso (`GMM_PRUNE_AFTER_DEPLOY=true` en `deploy.sh`); no toca los otros proyectos ni la imagen de *rollback* | 🔴 Pendiente del titular | Disco por debajo del 50 % y limpieza en cada despliegue. Ver [ACT-0039](#act-0039) |
 | 🔴 Alta | Pendientes del titular para lanzar, en orden: datos del operador, SMTP real (y con él MFA), custodia de claves, copia externa, alertas, médicos reales publicados, revisión legal, Search Console, Pago Móvil y video de muestra, código nuevo de la bóveda | 🔴 Pendiente del titular | `deploy.sh --informe` en verde y la lista de [`docs/ROADMAP.md`](docs/ROADMAP.md) completa |
-| 🔴 Alta | Plan de agenda, notificaciones y valoraciones aprobado por el titular (bloques 1 a 5): centro de notificaciones, calendario con arrastrar y soltar e historial de citas, valoraciones con moderación y sanciones por días, «Quiero que me contacte» y apariciones en búsquedas | 🔵 En curso | Bloque 0 hecho en [ACT-0040](#act-0040). Las valoraciones se encienden en producción solo con sus textos legales revisados por el abogado |
+| 🔴 Alta | Plan de agenda, notificaciones y valoraciones aprobado por el titular (bloques 2 a 5): calendario con arrastrar y soltar e historial de citas, valoraciones con moderación y sanciones por días, «Quiero que me contacte» y apariciones en búsquedas | 🔵 En curso | Bloques 0 y 1 hechos en [ACT-0040](#act-0040) y [ACT-0041](#act-0041). Las valoraciones se encienden en producción solo con sus textos legales revisados por el abogado |
+| 🟡 Baja | Decidir cuántos días se guardan los avisos ya leídos de la campana, declararlo en la política de retención y cargarlo en `NOTIFICATION_RETENTION_DAYS` (hoy no se borran) | 🔴 Pendiente del titular | Ver [ACT-0041](#act-0041) |
 | 🟢 Continua | Registrar cada modificación nueva con fecha, hora, responsable y evidencia | 🟢 Activo | No existen cambios relevantes sin entrada en esta bitácora |
 | 🟢 Continua | Confirmar en el repositorio remoto cada cambio cerrado localmente | 🟢 Activo | `git status` limpio y `origin/main` sincronizado al cierre de cada sesión |
 
@@ -2091,6 +2130,7 @@ Para cada cambio futuro, añadir una entrada en la línea de tiempo y actualizar
 | `2026-10-01 00:10:50 -04:00` | Incorporación de ACT-0037 (lint del frontend en CI, versión verificable, portada sin ceros y caché acotada) y ACT-0038 (alertas, respaldos fuera del servidor, custodia de claves, GO / NO-GO ampliado y monitor externo), con su despliegue; pendientes de operación reformulados como configuración del titular y dos nuevos (cierre 3/3 y lista de lanzamiento) | 🟢 Completado |
 | `2026-10-01 06:05:44 -04:00` | Incorporación de ACT-0039 (pruebas de punta a punta del sitio, seguridad automatizada, CSP, accesibilidad y tarjeta para compartir) con su despliegue; se cierra el pendiente del cierre 3/3 y se abren dos (pentest humano y revisión manual en Firefox y Safari) | 🟢 Completado |
 | `2026-10-02 08:14:49 -04:00` | Incorporación de ACT-0040 (correos, avisos y recordatorios de citas en hora de Caracas: bloque 0 del plan de agenda) con su despliegue; se abre el pendiente del plan (bloques 1 a 5) | 🟢 Completado |
+| `2026-10-02 08:34:59 -04:00` | Incorporación de ACT-0041 (centro de notificaciones: campana, página en cada panel, correos opcionales y avisos a la administración) con su despliegue; un pendiente nuevo (plazo de los avisos leídos) | 🟢 Completado |
 
 ---
 
