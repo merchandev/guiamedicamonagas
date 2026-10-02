@@ -3,7 +3,7 @@
 > Bitácora central de cambios, implementaciones, decisiones técnicas y tareas de evolución del sistema.
 >
 > **Repositorio:** [`merchandev/guiamedicamonagas`](https://github.com/merchandev/guiamedicamonagas) · **Rama:** `main`<br>
-> **Última actualización de esta bitácora:** `2026-10-01 06:05:44 -04:00` · **Estado:** 🟢 Registro activo
+> **Última actualización de esta bitácora:** `2026-10-02 08:14:49 -04:00` · **Estado:** 🟢 Registro activo
 
 ![Estado](https://img.shields.io/badge/estado-registro%20activo-16a34a?style=flat-square)
 ![Rama](https://img.shields.io/badge/rama-main-2563eb?style=flat-square)
@@ -142,8 +142,9 @@ flowchart LR
     AK[🧹 2026-09-30\n21:35:16\nACT-0037 · Lint, versión verificable\ny portada sin ceros]
     AL[🛰️ 2026-10-01\n00:07:32\nACT-0038 · Alertas, respaldos externos\ny custodia de claves]
     AM[🧪 2026-10-01\n05:22:09\nACT-0039 · Pruebas de punta a punta,\nseguridad y accesibilidad]
+    AN[🕰️ 2026-10-02\n08:01:30\nACT-0040 · Citas en hora\nde Caracas]
 
-    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L --> M --> N --> O --> P --> Q --> R --> S --> T --> U --> V --> W --> X --> Y --> Z --> AA --> AB --> AC --> AD --> AE --> AF --> AG --> AH --> AI --> AJ --> AK --> AL --> AM
+    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L --> M --> N --> O --> P --> Q --> R --> S --> T --> U --> V --> W --> X --> Y --> Z --> AA --> AB --> AC --> AD --> AE --> AF --> AG --> AH --> AI --> AJ --> AK --> AL --> AM --> AN
 ```
 
 ### Resumen cuantitativo
@@ -151,8 +152,8 @@ flowchart LR
 | Indicador | Resultado |
 |---|---:|
 | Actividades históricas importadas desde Git | `3` |
-| Actividades documentales añadidas con esta bitácora | `36` |
-| Actividades registradas en total | `39` |
+| Actividades documentales añadidas con esta bitácora | `37` |
+| Actividades registradas en total | `40` |
 | Rama de referencia | `main` |
 | Commit base consultado | [`81b1091`](https://github.com/merchandev/guiamedicamonagas/commit/81b1091) |
 | Zona horaria de control | `America/Caracas` (`-04:00`) |
@@ -1800,6 +1801,39 @@ El análisis señalaba que el backend tenía pruebas serias y el frontend ningun
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
+<a id="act-0040"></a>
+
+### 🕰️ ACT-0040 · Bloque 0 del plan de agenda: correos y avisos de citas en hora de Caracas
+
+<details>
+<summary><strong>2026-10-02 08:01:30 -04:00</strong> · <code>225d267</code> · 🟢 Completado</summary>
+
+**Responsable:** `Claude Opus 5.5` · **Tipo:** `corrección | agenda | despliegue` · **Commits:** [`225d267`](https://github.com/merchandev/guiamedicamonagas/commit/225d267)
+
+Primer bloque del plan aprobado por el titular (calendario, notificaciones, valoraciones y moderación). Al revisar la agenda apareció un error real: los contenedores de producción corren en UTC y los textos de las citas se armaban sin zona horaria. Una cita de las **10:00 a. m. en Caracas salía como «2:00 p. m.»** y una de las 9:00 p. m. caía al día siguiente. Todavía no afectaba a nadie porque no hay médicos publicados.
+
+**Qué cambió:**
+- Un único formateador ([`common/caracas-time.ts`](backend/src/common/caracas-time.ts)) escribe en hora de Caracas los correos, los avisos y los recordatorios de citas, el aviso de citas canceladas al eliminar una cuenta y la fecha de vigencia de un plan asignado.
+- Las tareas diarias de documentos vencidos y de suscripciones vencidas corren a las 6 y 7 a. m. de Caracas; antes corrían a las 2 y 3 a. m.
+- En el sitio, todas las fechas pasan por [`lib/dates.ts`](frontend/src/lib/dates.ts) con la zona de Caracas, también las de páginas que se arman en el servidor (la web también corre en UTC).
+- Al reservar, la comprobación del horario carga solo las citas de ese día, no todas las del médico.
+
+**Pruebas:** una unitaria del formateador y, en la prueba de punta a punta de la reserva, el aviso que recibe el médico debe decir la misma hora que eligió el paciente. CI corre en UTC, como producción. En local, con la API en UTC: la reserva pasa y 117 unitarias del backend en verde.
+
+**CI de GitHub:** «CI» (con la suite de punta a punta) y «Seguridad» en verde para `225d267`.
+
+**Despliegue en el VPS** (log `deploy-act40.log`): respaldo previo `gmm-db-20261002T120721Z-pre-deploy.dump.gpg`; sin migraciones; prueba de humo **25/25**; «Versión publicada: 225d2679435b (API y web)». Dentro del contenedor de la API, que sigue en UTC, una cita de las 14:00 UTC se escribe «10:00 a. m.» y una de la 01:00 UTC del 6 de octubre, «lunes, 5 de octubre de 2026 9:00 p. m.».
+
+**Archivos destacados:**
+- [`backend/src/common/caracas-time.ts`](backend/src/common/caracas-time.ts)
+- [`backend/test/unit/caracas-time.spec.ts`](backend/test/unit/caracas-time.spec.ts)
+- [`frontend/src/lib/dates.ts`](frontend/src/lib/dates.ts)
+- [`e2e/tests/paciente.spec.ts`](e2e/tests/paciente.spec.ts)
+
+</details>
+
+<p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
+
 <a id="registro-por-area"></a>
 
 ## 🧩 Registro por área
@@ -1813,7 +1847,7 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | 👨‍⚕️ Profesionales | Perfiles, ubicaciones, documentos, verificación legal (sin solvencia deontológica), publicación con el 60% aprobado + biografía + foto, barra de progreso del registro, redes sociales, badges, código y QR del médico, SEO automático, tarjeta para compartir, video de presentación de YouTube (plan Agencia), condiciones para profesionales y políticas de verificación y de publicidad médica | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0020](#act-0020) · [ACT-0021](#act-0021) · [ACT-0028](#act-0028) · [ACT-0029](#act-0029) · [ACT-0030](#act-0030) · [ACT-0032](#act-0032) · [ACT-0033](#act-0033) |
 | 🏥 Organizaciones | Farmacias, laboratorios, clínicas, ubicaciones, autogestión, equipo con invitaciones y roles internos, médicos asociados y plan propio, sección «Próximamente» hasta cerrar alianzas | [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0015](#act-0015) · [ACT-0019](#act-0019) · [ACT-0025](#act-0025) |
 | 💳 Monetización | Planes, Pago Móvil, aprobación, tasa BCV, evidencia de tasa por cuota, catálogo de bancos, referencia única atómica, Plus/Premium/Agencia solo con el 100% de documentos, pagos externos registrados por la administración con renovación anticipada, precios de septiembre de 2026 (3,99 / 5,99 / 10,99 / 69,99 USD), planes Perfil Básico, Profesional, Plus, Premium y Marca Médica (servicio de contenido: 2 videos cada mes), Pago Móvil de la plataforma registrado desde Pagos y visible solo dentro del panel, y políticas de pagos y de reembolsos | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0010](#act-0010) · [ACT-0011](#act-0011) · [ACT-0015](#act-0015) · [ACT-0019](#act-0019) · [ACT-0021](#act-0021) · [ACT-0031](#act-0031) · [ACT-0032](#act-0032) · [ACT-0033](#act-0033) · [ACT-0035](#act-0035) · [ACT-0036](#act-0036) |
-| 📅 Agenda y citas | Horarios, disponibilidad, reservas, máquina de estados, anti-doble-reserva, zona America/Caracas | [ACT-0007](#act-0007) · [ACT-0015](#act-0015) |
+| 📅 Agenda y citas | Horarios, disponibilidad, reservas, máquina de estados, anti-doble-reserva, zona America/Caracas (también en correos, avisos y recordatorios) | [ACT-0007](#act-0007) · [ACT-0015](#act-0015) · [ACT-0040](#act-0040) |
 | 🔒 Pacientes | Código pseudónimo, cifrado de datos de salud, consentimiento por alcance y tiempo, lecturas auditadas, registro propio, foto de identificación verificada por un admin, reserva con la ficha propia, código y QR para compartir, directorio del médico por código, bóveda de administración y noindex, registro visible desde el inicio, supresión de la cuenta conservando solo la evidencia legal, consentimiento expreso de datos de salud y mayoría de edad, descarga de los datos propios e historial de accesos | [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0023](#act-0023) · [ACT-0027](#act-0027) · [ACT-0029](#act-0029) · [ACT-0031](#act-0031) · [ACT-0033](#act-0033) |
 | 🛠️ Administración | Médicos, pagos, SEO, cookies, especialidades, planes, verificaciones, organizaciones, bancos, geografía, identidad de pacientes, cuentas (suspensión, baja, eliminación definitiva), planes pagados, video de presentación de los médicos, bandeja de solicitudes legales, Pago Móvil propio, video de muestra de Marca Médica y actividad reciente desplegable | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0031](#act-0031) · [ACT-0032](#act-0032) · [ACT-0033](#act-0033) · [ACT-0034](#act-0034) · [ACT-0035](#act-0035) · [ACT-0036](#act-0036) |
 | 📊 Observabilidad | Auditoría, analítica con consentimiento y sin IP, estadísticas del médico según su plan, notificaciones, salud, pruebas, CI, escaneo de imágenes y Dependabot, ESLint del frontend en CI, versión publicada verificable, estado de las dependencias (`/health/ready`), alertas por Telegram/correo/ntfy/webhook, interruptor de hombre muerto y monitor externo de GitHub, pruebas de punta a punta del sitio (Playwright) en escritorio y teléfono | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0036](#act-0036) · [ACT-0037](#act-0037) · [ACT-0038](#act-0038) · [ACT-0039](#act-0039) |
@@ -1910,6 +1944,7 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | IMP-080 | Accesibilidad: contraste del texto gris, etiquetas asociadas a todos los campos, nombres accesibles, errores anunciados, tabla navegable con teclado y diálogos sobre el aviso de cookies | 🟢 Completado | [`frontend/src/components/ui/Input.tsx`](frontend/src/components/ui/Input.tsx), [`frontend/src/components/ui/Alert.tsx`](frontend/src/components/ui/Alert.tsx) |
 | IMP-081 | URL canónicas y tarjeta del sitio para compartir; reserva fuera de buscadores | 🟢 Completado | [`frontend/src/app/opengraph-image.tsx`](frontend/src/app/opengraph-image.tsx), [`frontend/src/app/medicos/layout.tsx`](frontend/src/app/medicos/layout.tsx) |
 | IMP-082 | «Salir» recarga la portada y borra de la memoria lo cargado en la sesión | 🟢 Completado | [`frontend/src/lib/auth-context.tsx`](frontend/src/lib/auth-context.tsx) |
+| IMP-083 | Correos, avisos y recordatorios de citas en hora de Caracas aunque el servidor corra en UTC; tareas diarias a su hora; fechas del sitio con la zona explícita | 🟢 Completado | [`backend/src/common/caracas-time.ts`](backend/src/common/caracas-time.ts), [`frontend/src/lib/dates.ts`](frontend/src/lib/dates.ts) |
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
@@ -1971,6 +2006,7 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | 🟡 Baja | Revisión manual en Firefox y Safari (iPhone) y en teléfonos reales; la suite ya los cubre a pedido con `E2E_TODOS_LOS_NAVEGADORES=1` | 🔵 Planificado | Ver [`e2e/README.md`](e2e/README.md) |
 | 🟠 Media | Aprobar la limpieza de disco del proyecto: 32,6 GB de caché de compilación y 11 imágenes sin uso (`GMM_PRUNE_AFTER_DEPLOY=true` en `deploy.sh`); no toca los otros proyectos ni la imagen de *rollback* | 🔴 Pendiente del titular | Disco por debajo del 50 % y limpieza en cada despliegue. Ver [ACT-0039](#act-0039) |
 | 🔴 Alta | Pendientes del titular para lanzar, en orden: datos del operador, SMTP real (y con él MFA), custodia de claves, copia externa, alertas, médicos reales publicados, revisión legal, Search Console, Pago Móvil y video de muestra, código nuevo de la bóveda | 🔴 Pendiente del titular | `deploy.sh --informe` en verde y la lista de [`docs/ROADMAP.md`](docs/ROADMAP.md) completa |
+| 🔴 Alta | Plan de agenda, notificaciones y valoraciones aprobado por el titular (bloques 1 a 5): centro de notificaciones, calendario con arrastrar y soltar e historial de citas, valoraciones con moderación y sanciones por días, «Quiero que me contacte» y apariciones en búsquedas | 🔵 En curso | Bloque 0 hecho en [ACT-0040](#act-0040). Las valoraciones se encienden en producción solo con sus textos legales revisados por el abogado |
 | 🟢 Continua | Registrar cada modificación nueva con fecha, hora, responsable y evidencia | 🟢 Activo | No existen cambios relevantes sin entrada en esta bitácora |
 | 🟢 Continua | Confirmar en el repositorio remoto cada cambio cerrado localmente | 🟢 Activo | `git status` limpio y `origin/main` sincronizado al cierre de cada sesión |
 
@@ -2054,6 +2090,7 @@ Para cada cambio futuro, añadir una entrada en la línea de tiempo y actualizar
 | `2026-09-30 19:44:09 -04:00` | Incorporación de ACT-0035 (plan «Plus», actividad reciente desplegable y Pago Móvil de la plataforma registrado desde Pagos) y ACT-0036 (plan Marca Médica como servicio de contenido, video de muestra, etiqueta aparte del sello y estadísticas del médico), desplegadas juntas; cinco pendientes nuevos del titular (registrar el Pago Móvil, video de muestra, confirmar lo publicado de Marca Médica, pagos registrados por la administración y color del sello) | 🟢 Completado |
 | `2026-10-01 00:10:50 -04:00` | Incorporación de ACT-0037 (lint del frontend en CI, versión verificable, portada sin ceros y caché acotada) y ACT-0038 (alertas, respaldos fuera del servidor, custodia de claves, GO / NO-GO ampliado y monitor externo), con su despliegue; pendientes de operación reformulados como configuración del titular y dos nuevos (cierre 3/3 y lista de lanzamiento) | 🟢 Completado |
 | `2026-10-01 06:05:44 -04:00` | Incorporación de ACT-0039 (pruebas de punta a punta del sitio, seguridad automatizada, CSP, accesibilidad y tarjeta para compartir) con su despliegue; se cierra el pendiente del cierre 3/3 y se abren dos (pentest humano y revisión manual en Firefox y Safari) | 🟢 Completado |
+| `2026-10-02 08:14:49 -04:00` | Incorporación de ACT-0040 (correos, avisos y recordatorios de citas en hora de Caracas: bloque 0 del plan de agenda) con su despliegue; se abre el pendiente del plan (bloques 1 a 5) | 🟢 Completado |
 
 ---
 
