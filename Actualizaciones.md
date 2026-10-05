@@ -3,7 +3,7 @@
 > Bitácora central de cambios, implementaciones, decisiones técnicas y tareas de evolución del sistema.
 >
 > **Repositorio:** [`merchandev/guiamedicamonagas`](https://github.com/merchandev/guiamedicamonagas) · **Rama:** `main`<br>
-> **Última actualización de esta bitácora:** `2026-10-02 08:34:59 -04:00` · **Estado:** 🟢 Registro activo
+> **Última actualización de esta bitácora:** `2026-10-05 07:15:08 -04:00` · **Estado:** 🟢 Registro activo
 
 ![Estado](https://img.shields.io/badge/estado-registro%20activo-16a34a?style=flat-square)
 ![Rama](https://img.shields.io/badge/rama-main-2563eb?style=flat-square)
@@ -144,8 +144,9 @@ flowchart LR
     AM[🧪 2026-10-01\n05:22:09\nACT-0039 · Pruebas de punta a punta,\nseguridad y accesibilidad]
     AN[🕰️ 2026-10-02\n08:01:30\nACT-0040 · Citas en hora\nde Caracas]
     AO[🔔 2026-10-02\n08:20:16\nACT-0041 · Centro de\nnotificaciones]
+    AP[📅 2026-10-05\n07:15:08\nACT-0042 · Calendario\ne historial de citas]
 
-    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L --> M --> N --> O --> P --> Q --> R --> S --> T --> U --> V --> W --> X --> Y --> Z --> AA --> AB --> AC --> AD --> AE --> AF --> AG --> AH --> AI --> AJ --> AK --> AL --> AM --> AN --> AO
+    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L --> M --> N --> O --> P --> Q --> R --> S --> T --> U --> V --> W --> X --> Y --> Z --> AA --> AB --> AC --> AD --> AE --> AF --> AG --> AH --> AI --> AJ --> AK --> AL --> AM --> AN --> AO --> AP
 ```
 
 ### Resumen cuantitativo
@@ -153,8 +154,8 @@ flowchart LR
 | Indicador | Resultado |
 |---|---:|
 | Actividades históricas importadas desde Git | `3` |
-| Actividades documentales añadidas con esta bitácora | `38` |
-| Actividades registradas en total | `41` |
+| Actividades documentales añadidas con esta bitácora | `39` |
+| Actividades registradas en total | `42` |
 | Rama de referencia | `main` |
 | Commit base consultado | [`81b1091`](https://github.com/merchandev/guiamedicamonagas/commit/81b1091) |
 | Zona horaria de control | `America/Caracas` (`-04:00`) |
@@ -1871,6 +1872,57 @@ La API ya guardaba avisos internos de citas, documentos, pagos, mensajes de cont
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
+<a id="act-0042"></a>
+
+### 📅 ACT-0042 · Bloque 2 del plan de agenda: calendario con arrastrar y soltar e historial de citas
+
+<details>
+<summary><strong>2026-10-05 07:15:08 -04:00</strong> · <code>d92d9a0</code> · 🟢 Completado</summary>
+
+**Responsable:** `Claude Opus 5.5` · **Tipo:** `funcionalidad | experiencia | datos | despliegue` · **Commits:** [`d92d9a0`](https://github.com/merchandev/guiamedicamonagas/commit/d92d9a0)
+
+Antes, la agenda del médico eran tres formularios y sus citas una lista sin filtros; para reprogramar había que escribir fecha y hora a mano, reprogramar borraba la fecha original y la lista mostraba solo el código GMM del paciente. El paciente elegía entre 14 botones de días, no podía reprogramar desde su panel y el servidor no limitaba qué tan lejos ni con cuánta antelación se reservaba.
+
+**El médico (`/dashboard/agenda`, pestañas Calendario · Horario · Historial):**
+- **Calendario** de día, semana, mes y lista, con «Ir al mes» para buscar por mes y año. Marca en claro las horas de atención y en gris lo bloqueado, con su motivo. Siempre en hora de Caracas, aunque el equipo esté en otra zona. Usa FullCalendar 6, solo sus paquetes de licencia MIT, y se carga únicamente en la agenda.
+- **Arrastrar una cita** a otro horario la reprograma tras una confirmación («¿Mover la cita…? Se avisará al paciente»); si el horario no está libre, vuelve a su lugar y se explica por qué. Fuera del horario de atención pide marcar «moverla de todas formas».
+- **Seleccionar un espacio libre** ofrece «Nueva cita manual» o «Bloquear este horario»; tocar un bloqueo permite quitarlo.
+- **Sin arrastrar:** el botón «Mover» del detalle de cada cita abre un calendario de mes con los horarios libres (o una hora fuera de horario), y todo funciona con teclado y en la vista Lista (WCAG 2.2, criterio 2.5.7).
+- **Detalle de la cita:** paciente, contacto, motivo (solo ahí, nunca en la cuadrícula), sede, canal, estado, acciones y la línea de tiempo de la cita.
+- **Horario semanal en cuadrícula:** pintar, mover y estirar los tramos de atención (pasos de 15 minutos), además de la lista y el formulario de siempre. Dos ajustes nuevos: hasta cuántos días adelante se puede reservar (60 por defecto) y con cuánta antelación mínima (2 horas por defecto).
+- **Historial** con filtros por mes, estado, canal y código del paciente, paginado y con los totales por paciente (realizadas, canceladas, inasistencias). `/dashboard/citas` ahora lleva al historial.
+- **Datos del paciente con la misma regla de `/dashboard/pacientes`:** el nombre si autorizó su identidad o si el médico cargó la ficha; el teléfono si autorizó el contacto; si no, su código GMM. Cada vez que se muestran nombres o teléfonos queda en la auditoría. No hay exportación a Excel ni CSV.
+
+**El paciente:** calendario de mes con los días que tienen horarios libres en `/medicos/[slug]/agendar`, y botón «Reprogramar» en `/paciente/citas` con el mismo calendario. De cada reprogramación se avisa solo a la otra parte.
+
+**Servidor y datos:**
+- Tabla nueva `AppointmentEvent` (creada, confirmada, reprogramada de una fecha a otra, cancelada, realizada, no asistió; quién lo hizo y nota), escrita en la misma transacción de cada cambio. Las citas existentes recibieron su evento «creada» (y «cancelada» si correspondía).
+- Rutas del calendario (rango de hasta 62 días), del historial, del detalle de una cita y de los horarios libres para el médico.
+- Los límites de reserva (días hacia adelante y antelación mínima) se aplican en el servidor, no solo en la pantalla.
+- Bloqueos de parte de un día, horas fuera de horario solo para el médico y reemplazo de todo el horario semanal de una vez.
+- **Sin solapes:** una restricción de exclusión de PostgreSQL (`btree_gist`) impide dos citas activas solapadas del mismo médico, también con escrituras simultáneas. Antes solo se impedían dos citas que empezaran a la misma hora.
+
+**De paso:** el menú del panel del médico ya no ensancha la página en el teléfono (desborde horizontal anterior a este cambio).
+
+**Pruebas:** unitarias del plan de días, los bloqueos parciales, las citas a horas sueltas y la antelación. De punta a punta (`e2e/tests/agenda.spec.ts`, 8 pruebas): arrastrar una cita y verla en el historial; «Mover» sin arrastrar; fuera de horario solo del médico y nunca encima de otra cita; antelación mínima y días hacia adelante; tramos bloqueados; horario semanal con el formulario; el paciente reprograma desde «Mis citas»; historial con nombre solo con permiso, filtros y totales; accesibilidad del calendario con axe. En local, la suite completa: 63 pasadas y 5 omitidas (las que necesitan Mailpit o almacenamiento, que corren en CI). Revisión visual en escritorio y en el teléfono; antes de subir se corrigieron el domingo que faltaba en el horario semanal, mayúsculas de más en las fechas, la barra del calendario que no se ajustaba en pantallas pequeñas y el texto cortado de las citas.
+
+**CI de GitHub:** «CI», «Seguridad» y «Disponibilidad» en verde para `d92d9a0`.
+
+**Despliegue en el VPS** (`deploy-act42.log`): antes se comprobó en producción, solo con lecturas, que no había citas activas solapadas (la restricción no se habría podido crear) y que la base puede activar `btree_gist`. Respaldo previo `gmm-db-20261005T110829Z-pre-deploy.dump.gpg`; **migración aplicada**; prueba de humo **25/25**; «Versión publicada: d92d9a0053e3 (API y web)». En producción la base tiene la extensión, la restricción, la tabla `AppointmentEvent` y los dos ajustes nuevos; las páginas de la agenda, el horario, el historial y las citas del paciente responden, y las rutas nuevas de la API piden sesión (401).
+
+**Archivos destacados:**
+- [`backend/src/appointments/appointments.service.ts`](backend/src/appointments/appointments.service.ts)
+- [`backend/src/appointments/availability.util.ts`](backend/src/appointments/availability.util.ts)
+- [`backend/prisma/migrations/20261002140000_agenda_calendar_history/migration.sql`](backend/prisma/migrations/20261002140000_agenda_calendar_history/migration.sql)
+- [`frontend/src/components/agenda/AgendaCalendar.tsx`](frontend/src/components/agenda/AgendaCalendar.tsx)
+- [`frontend/src/components/agenda/WeeklySchedule.tsx`](frontend/src/components/agenda/WeeklySchedule.tsx)
+- [`frontend/src/components/agenda/AppointmentHistory.tsx`](frontend/src/components/agenda/AppointmentHistory.tsx)
+- [`e2e/tests/agenda.spec.ts`](e2e/tests/agenda.spec.ts)
+
+</details>
+
+<p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
+
 <a id="registro-por-area"></a>
 
 ## 🧩 Registro por área
@@ -1884,7 +1936,7 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | 👨‍⚕️ Profesionales | Perfiles, ubicaciones, documentos, verificación legal (sin solvencia deontológica), publicación con el 60% aprobado + biografía + foto, barra de progreso del registro, redes sociales, badges, código y QR del médico, SEO automático, tarjeta para compartir, video de presentación de YouTube (plan Agencia), condiciones para profesionales y políticas de verificación y de publicidad médica | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0020](#act-0020) · [ACT-0021](#act-0021) · [ACT-0028](#act-0028) · [ACT-0029](#act-0029) · [ACT-0030](#act-0030) · [ACT-0032](#act-0032) · [ACT-0033](#act-0033) |
 | 🏥 Organizaciones | Farmacias, laboratorios, clínicas, ubicaciones, autogestión, equipo con invitaciones y roles internos, médicos asociados y plan propio, sección «Próximamente» hasta cerrar alianzas | [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0015](#act-0015) · [ACT-0019](#act-0019) · [ACT-0025](#act-0025) |
 | 💳 Monetización | Planes, Pago Móvil, aprobación, tasa BCV, evidencia de tasa por cuota, catálogo de bancos, referencia única atómica, Plus/Premium/Agencia solo con el 100% de documentos, pagos externos registrados por la administración con renovación anticipada, precios de septiembre de 2026 (3,99 / 5,99 / 10,99 / 69,99 USD), planes Perfil Básico, Profesional, Plus, Premium y Marca Médica (servicio de contenido: 2 videos cada mes), Pago Móvil de la plataforma registrado desde Pagos y visible solo dentro del panel, y políticas de pagos y de reembolsos | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0010](#act-0010) · [ACT-0011](#act-0011) · [ACT-0015](#act-0015) · [ACT-0019](#act-0019) · [ACT-0021](#act-0021) · [ACT-0031](#act-0031) · [ACT-0032](#act-0032) · [ACT-0033](#act-0033) · [ACT-0035](#act-0035) · [ACT-0036](#act-0036) |
-| 📅 Agenda y citas | Horarios, disponibilidad, reservas, máquina de estados, anti-doble-reserva, zona America/Caracas (también en correos, avisos y recordatorios) | [ACT-0007](#act-0007) · [ACT-0015](#act-0015) · [ACT-0040](#act-0040) |
+| 📅 Agenda y citas | Horarios, disponibilidad, reservas, máquina de estados, anti-doble-reserva y sin solapes, zona America/Caracas (también en correos, avisos y recordatorios), calendario del médico con arrastrar y soltar, horario semanal en cuadrícula, historial de cada cita, reserva y reprogramación con calendario de mes, límites de reserva | [ACT-0007](#act-0007) · [ACT-0015](#act-0015) · [ACT-0040](#act-0040) · [ACT-0042](#act-0042) |
 | 🔒 Pacientes | Código pseudónimo, cifrado de datos de salud, consentimiento por alcance y tiempo, lecturas auditadas, registro propio, foto de identificación verificada por un admin, reserva con la ficha propia, código y QR para compartir, directorio del médico por código, bóveda de administración y noindex, registro visible desde el inicio, supresión de la cuenta conservando solo la evidencia legal, consentimiento expreso de datos de salud y mayoría de edad, descarga de los datos propios e historial de accesos | [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0023](#act-0023) · [ACT-0027](#act-0027) · [ACT-0029](#act-0029) · [ACT-0031](#act-0031) · [ACT-0033](#act-0033) |
 | 🛠️ Administración | Médicos, pagos, SEO, cookies, especialidades, planes, verificaciones, organizaciones, bancos, geografía, identidad de pacientes, cuentas (suspensión, baja, eliminación definitiva), planes pagados, video de presentación de los médicos, bandeja de solicitudes legales, Pago Móvil propio, video de muestra de Marca Médica y actividad reciente desplegable | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0031](#act-0031) · [ACT-0032](#act-0032) · [ACT-0033](#act-0033) · [ACT-0034](#act-0034) · [ACT-0035](#act-0035) · [ACT-0036](#act-0036) |
 | 📊 Observabilidad | Auditoría, analítica con consentimiento y sin IP, estadísticas del médico según su plan, centro de notificaciones (campana, página en cada panel, correos opcionales y avisos a la administración), salud, pruebas, CI, escaneo de imágenes y Dependabot, ESLint del frontend en CI, versión publicada verificable, estado de las dependencias (`/health/ready`), alertas por Telegram/correo/ntfy/webhook, interruptor de hombre muerto y monitor externo de GitHub, pruebas de punta a punta del sitio (Playwright) en escritorio y teléfono | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0036](#act-0036) · [ACT-0037](#act-0037) · [ACT-0038](#act-0038) · [ACT-0039](#act-0039) · [ACT-0041](#act-0041) |
@@ -1983,6 +2035,7 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | IMP-082 | «Salir» recarga la portada y borra de la memoria lo cargado en la sesión | 🟢 Completado | [`frontend/src/lib/auth-context.tsx`](frontend/src/lib/auth-context.tsx) |
 | IMP-083 | Correos, avisos y recordatorios de citas en hora de Caracas aunque el servidor corra en UTC; tareas diarias a su hora; fechas del sitio con la zona explícita | 🟢 Completado | [`backend/src/common/caracas-time.ts`](backend/src/common/caracas-time.ts), [`frontend/src/lib/dates.ts`](frontend/src/lib/dates.ts) |
 | IMP-084 | Centro de notificaciones: campana con contador, página «Notificaciones» en cada panel, enlace de cada aviso, correos opcionales y avisos a la administración por permiso | 🟢 Completado | [`backend/src/notifications/notifications.service.ts`](backend/src/notifications/notifications.service.ts), [`frontend/src/components/notifications/NotificationBell.tsx`](frontend/src/components/notifications/NotificationBell.tsx) |
+| IMP-085 | Calendario del médico (día, semana, mes y lista) con arrastrar y soltar y alternativa «Mover», horario semanal en cuadrícula, historial de citas con su línea de tiempo, reserva y reprogramación con calendario de mes, límites de reserva en el servidor y restricción contra citas solapadas | 🟢 Completado | [`backend/src/appointments/appointments.service.ts`](backend/src/appointments/appointments.service.ts), [`frontend/src/components/agenda/AgendaCalendar.tsx`](frontend/src/components/agenda/AgendaCalendar.tsx) |
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
@@ -2044,7 +2097,7 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | 🟡 Baja | Revisión manual en Firefox y Safari (iPhone) y en teléfonos reales; la suite ya los cubre a pedido con `E2E_TODOS_LOS_NAVEGADORES=1` | 🔵 Planificado | Ver [`e2e/README.md`](e2e/README.md) |
 | 🟠 Media | Aprobar la limpieza de disco del proyecto: 32,6 GB de caché de compilación y 11 imágenes sin uso (`GMM_PRUNE_AFTER_DEPLOY=true` en `deploy.sh`); no toca los otros proyectos ni la imagen de *rollback* | 🔴 Pendiente del titular | Disco por debajo del 50 % y limpieza en cada despliegue. Ver [ACT-0039](#act-0039) |
 | 🔴 Alta | Pendientes del titular para lanzar, en orden: datos del operador, SMTP real (y con él MFA), custodia de claves, copia externa, alertas, médicos reales publicados, revisión legal, Search Console, Pago Móvil y video de muestra, código nuevo de la bóveda | 🔴 Pendiente del titular | `deploy.sh --informe` en verde y la lista de [`docs/ROADMAP.md`](docs/ROADMAP.md) completa |
-| 🔴 Alta | Plan de agenda, notificaciones y valoraciones aprobado por el titular (bloques 2 a 5): calendario con arrastrar y soltar e historial de citas, valoraciones con moderación y sanciones por días, «Quiero que me contacte» y apariciones en búsquedas | 🔵 En curso | Bloques 0 y 1 hechos en [ACT-0040](#act-0040) y [ACT-0041](#act-0041). Las valoraciones se encienden en producción solo con sus textos legales revisados por el abogado |
+| 🔴 Alta | Plan de agenda, notificaciones y valoraciones aprobado por el titular (bloques 3 a 5): valoraciones con moderación y sanciones por días, «Quiero que me contacte» y apariciones en búsquedas | 🔵 En curso | Bloques 0, 1 y 2 hechos en [ACT-0040](#act-0040), [ACT-0041](#act-0041) y [ACT-0042](#act-0042). Las valoraciones se encienden en producción solo con sus textos legales revisados por el abogado |
 | 🟡 Baja | Decidir cuántos días se guardan los avisos ya leídos de la campana, declararlo en la política de retención y cargarlo en `NOTIFICATION_RETENTION_DAYS` (hoy no se borran) | 🔴 Pendiente del titular | Ver [ACT-0041](#act-0041) |
 | 🟢 Continua | Registrar cada modificación nueva con fecha, hora, responsable y evidencia | 🟢 Activo | No existen cambios relevantes sin entrada en esta bitácora |
 | 🟢 Continua | Confirmar en el repositorio remoto cada cambio cerrado localmente | 🟢 Activo | `git status` limpio y `origin/main` sincronizado al cierre de cada sesión |
@@ -2131,6 +2184,7 @@ Para cada cambio futuro, añadir una entrada en la línea de tiempo y actualizar
 | `2026-10-01 06:05:44 -04:00` | Incorporación de ACT-0039 (pruebas de punta a punta del sitio, seguridad automatizada, CSP, accesibilidad y tarjeta para compartir) con su despliegue; se cierra el pendiente del cierre 3/3 y se abren dos (pentest humano y revisión manual en Firefox y Safari) | 🟢 Completado |
 | `2026-10-02 08:14:49 -04:00` | Incorporación de ACT-0040 (correos, avisos y recordatorios de citas en hora de Caracas: bloque 0 del plan de agenda) con su despliegue; se abre el pendiente del plan (bloques 1 a 5) | 🟢 Completado |
 | `2026-10-02 08:34:59 -04:00` | Incorporación de ACT-0041 (centro de notificaciones: campana, página en cada panel, correos opcionales y avisos a la administración) con su despliegue; un pendiente nuevo (plazo de los avisos leídos) | 🟢 Completado |
+| `2026-10-05 07:15:08 -04:00` | Incorporación de ACT-0042 (calendario con arrastrar y soltar, horario semanal en cuadrícula, historial de citas, reserva por mes, límites de reserva y restricción contra solapes) con su despliegue | 🟢 Completado |
 
 ---
 
