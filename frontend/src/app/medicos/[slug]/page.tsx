@@ -14,9 +14,16 @@ import { MedicalDisclaimer } from '@/components/legal/MedicalDisclaimer';
 import { VERIFICATION_NOTICE } from '@/lib/legal';
 import { DoctorSeoInput, SITE_NAME, doctorSeoDescription, doctorSeoTitle } from '@/lib/seo';
 import { formatDate } from '@/lib/dates';
+import { formatAverage, opinionsLabel, type PublicReviewPage } from '@/lib/reviews';
+import { Stars } from '@/components/reviews/Stars';
+import { DoctorReviews } from '@/components/reviews/DoctorReviews';
 
 async function getDoctor(slug: string) {
   return serverGet<ProfessionalDetail>(`/professionals/${slug}`, 30);
+}
+
+async function getReviews(slug: string) {
+  return serverGet<PublicReviewPage>(`/reviews/professional/${slug}`, 30);
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
@@ -57,7 +64,7 @@ function seoInput(doctor: ProfessionalDetail): DoctorSeoInput {
 
 export default async function DoctorProfilePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const doctor = await getDoctor(slug);
+  const [doctor, reviews] = await Promise.all([getDoctor(slug), getReviews(slug)]);
   if (!doctor) notFound();
 
   const fullName = `Dr(a). ${doctor.firstName} ${doctor.lastName}`;
@@ -113,6 +120,15 @@ export default async function DoctorProfilePage({ params }: { params: Promise<{ 
             <p className="mt-1 text-pine-700">
               {doctor.specialties.map((s) => s.specialty.name).join(', ') || 'Medicina General'}
             </p>
+            {doctor.rating?.average != null && (
+              <a href="#opiniones" className="mt-1 inline-flex items-center gap-2 text-sm text-ink-700 hover:underline">
+                <Stars value={doctor.rating.average} size="sm" />
+                <span>
+                  <strong className="font-semibold text-ink-900">{formatAverage(doctor.rating.average)}</strong> ·{' '}
+                  {opinionsLabel(doctor.rating.count)}
+                </span>
+              </a>
+            )}
             {doctor.publicCode && (
               <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
                 <span className="text-ink-500">
@@ -276,6 +292,15 @@ export default async function DoctorProfilePage({ params }: { params: Promise<{ 
               ))}
             </div>
           </div>
+        )}
+
+        {reviews?.enabled && (
+          <DoctorReviews
+            slug={doctor.slug}
+            summary={reviews.summary}
+            initialItems={reviews.items}
+            totalPages={reviews.totalPages}
+          />
         )}
 
         <MedicalDisclaimer emergency className="mt-10" />

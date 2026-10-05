@@ -94,6 +94,8 @@ const PUBLIC_ROUTES = [
   'GET /professionals/by-code/:code',
   'GET /professionals/landing-pages',
   'GET /professionals/sitemap',
+  'GET /reviews/config',
+  'GET /reviews/professional/:slug',
   'GET /seo/global',
   'GET /seo/pages/meta',
   'GET /specialties',

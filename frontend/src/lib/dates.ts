@@ -27,6 +27,14 @@ export function formatTime(value: DateInput): string {
   return new Date(value).toLocaleTimeString('es-VE', { timeStyle: 'short', timeZone: CARACAS_TIME_ZONE });
 }
 
+/** «2026-09» → «septiembre de 2026» (el mes de una consulta, sin el día). */
+export function formatMonthKey(monthKey: string): string {
+  const [year, month] = monthKey.split('-').map(Number);
+  return new Intl.DateTimeFormat('es-VE', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(
+    new Date(Date.UTC(year, month - 1, 15)),
+  );
+}
+
 /** Día del calendario de Caracas: «2026-10-05». */
 export function caracasDateKey(value: DateInput): string {
   return new Date(value).toLocaleDateString('en-CA', { timeZone: CARACAS_TIME_ZONE });

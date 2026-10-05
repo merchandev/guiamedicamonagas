@@ -23,6 +23,7 @@ import { formatShareCode, generateShareCode, normalizeShareCode } from './share-
 import { UpdatePatientProfileDto } from './dto/update-patient-profile.dto';
 import { CreatePatientDataGrantDto, DEFAULT_GRANT_DAYS, MAX_GRANT_DAYS } from './dto/patient-data-grant.dto';
 import { DecodedPatient, PatientDataCodec, PatientHealthData } from './patient-data.codec';
+import { patientCompleteness } from './patient-completeness';
 import { Permission } from '../common/permissions';
 
 interface PatientIdentity {
@@ -125,10 +126,12 @@ export class PatientsService {
 
   private async present(profile: PatientProfile) {
     const decoded = this.codec.decode(profile);
-    const [photoUrl, idPhotoUrl] = await Promise.all([
+    const [photoUrl, idPhotoUrl, user] = await Promise.all([
       profile.photoKey ? this.storage.getSignedDownloadUrl(profile.photoKey, 3600, false).catch(() => null) : null,
       profile.idPhotoKey ? this.storage.getSignedDownloadUrl(profile.idPhotoKey, 3600, false).catch(() => null) : null,
+      profile.userId ? this.prisma.user.findUnique({ where: { id: profile.userId }, select: { isEmailVerified: true } }) : null,
     ]);
+    const completeness = patientCompleteness(profile, !!user?.isEmailVerified);
     // Lo del código para compartir va solo por /patients/me/share-code.
     const {
       photoKey: _p,
@@ -139,7 +142,7 @@ export class PatientsService {
       shareScopes: _ss,
       ...rest
     } = decoded;
-    return { ...rest, hasIdPhoto: !!idPhotoKey, photoUrl, idPhotoUrl };
+    return { ...rest, hasIdPhoto: !!idPhotoKey, photoUrl, idPhotoUrl, completeness };
   }
 
   async getOwnProfile(userId: string) {

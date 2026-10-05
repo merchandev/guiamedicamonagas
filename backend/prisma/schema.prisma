@@ -69,6 +69,10 @@ model User {
   legalAcceptances    LegalAcceptance[]
   legalRequests       LegalRequest[]         @relation("LegalRequestRequester")
   resolvedLegalRequests LegalRequest[]       @relation("LegalRequestResolver")
+  moderatedReviews    Review[]               @relation("ReviewModerator")
+  moderatedReviewReplies ReviewReply[]       @relation("ReviewReplyModerator")
+  reviewReports       ReviewReport[]         @relation("ReviewReporter")
+  resolvedReviewReports ReviewReport[]       @relation("ReviewReportResolver")
 
   @@index([role])
 }
@@ -207,6 +211,11 @@ model ProfessionalProfile {
   /// Orden del directorio = completitud + impulso acotado por plan (máx. +15).
   /// Un plan pago no puede superar a un perfil gratuito mucho más completo.
   directoryScore      Int               @default(0)
+  /// Promedio y cantidad de valoraciones publicadas, recalculados en la misma
+  /// transacción de cada cambio (ver reviews/review-rating.ts). No cambian el
+  /// orden del directorio.
+  ratingAverage       Float?
+  ratingCount         Int               @default(0)
 
   phone        String?
   whatsapp     String?
@@ -240,6 +249,7 @@ model ProfessionalProfile {
   walkInPatients PatientProfile[]
   registeredPatients ProfessionalPatient[]
   organizations OrganizationProfessional[]
+  reviews       Review[]
 
   @@index([verificationStatus, isPublished])
   @@index([municipality])
@@ -1117,6 +1127,7 @@ model PatientProfile {
   clinicalNotes  ClinicalNote[]
   dataGrants     PatientDataGrant[]
   registeredBy   ProfessionalPatient[]
+  reviews        Review[]
 
   @@index([patientCode])
   @@index([identityStatus])
@@ -1413,4 +1424,129 @@ model PushSubscription {
   createdAt DateTime @default(now())
 
   @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// VALORACIONES DE PACIENTES
+// ---------------------------------------------------------------------------
+
+enum ReviewStatus {
+  PENDING   // en moderación: todo texto (comentario o respuesta) pasa por aquí
+  PUBLISHED
+  REJECTED  // no se publicó; el autor recibe el motivo y puede corregirla
+  WITHDRAWN // retirada del sitio por la administración; se guarda como evidencia
+}
+
+enum ReviewBasis {
+  APPOINTMENT // una cita realizada en la plataforma con ese médico
+  REGISTERED  // el médico registró al paciente con su código
+}
+
+enum ReviewAuthorDisplay {
+  ANONYMOUS // «Paciente verificado»
+  INITIAL   // nombre e inicial del apellido («María G.»)
+}
+
+enum ReviewReportReason {
+  NOT_MY_PATIENT
+  HEALTH_DATA
+  OFFENSIVE
+  FALSE
+  OTHER
+}
+
+enum ReviewReportStatus {
+  OPEN
+  UPHELD    // la administración le dio la razón (retiró o corrigió la valoración)
+  DISMISSED
+}
+
+/**
+ * Valoración de un paciente sobre un médico: 1 a 5 estrellas (CHECK en la
+ * migración) y un comentario opcional. Una por paciente y médico; editarla la
+ * devuelve a moderación. Solo pacientes con el registro completo, la identidad
+ * verificada y una consulta verificada con ese médico (ver reviews.service.ts).
+ * El público nunca ve la cédula, el código, la foto ni la fecha exacta.
+ */
+model Review {
+  id             String              @id @default(uuid())
+  professionalId String
+  professional   ProfessionalProfile @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  patientId      String
+  patient        PatientProfile      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  basis             ReviewBasis
+  /// Mes de la consulta que la respalda («2026-09», hora de Caracas): es lo
+  /// único que se publica de la fecha.
+  consultationMonth String
+  rating            Int
+  comment           String?
+  authorDisplay     ReviewAuthorDisplay @default(ANONYMOUS)
+  status            ReviewStatus        @default(PENDING)
+  /// Lo que el filtro automático encontró en el comentario (teléfono, correo,
+  /// enlace, cédula, insulto, términos de salud): orienta a quien modera.
+  flags             String[]            @default([])
+  /// Versión de las reglas que el autor aceptó al enviarla.
+  rulesVersion      String
+  publishedAt       DateTime?
+
+  moderatedAt    DateTime?
+  moderatedById  String?
+  moderatedBy    User?     @relation("ReviewModerator", fields: [moderatedById], references: [id], onDelete: SetNull)
+  /// Motivo del rechazo o del retiro: lo recibe el autor.
+  moderationNote String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  reply   ReviewReply?
+  reports ReviewReport[]
+
+  @@unique([professionalId, patientId])
+  @@index([professionalId, status, publishedAt])
+  @@index([status, updatedAt])
+  @@index([patientId, createdAt])
+}
+
+/// Respuesta pública del médico a una valoración: una sola, con moderación previa.
+model ReviewReply {
+  id       String       @id @default(uuid())
+  reviewId String       @unique
+  review   Review       @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  content  String
+  status   ReviewStatus @default(PENDING)
+  flags    String[]     @default([])
+  publishedAt DateTime?
+
+  moderatedAt    DateTime?
+  moderatedById  String?
+  moderatedBy    User?     @relation("ReviewReplyModerator", fields: [moderatedById], references: [id], onDelete: SetNull)
+  moderationNote String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, updatedAt])
+}
+
+/// Denuncia de una valoración (por ahora, del médico valorado): va a la cola de la administración.
+model ReviewReport {
+  id         String             @id @default(uuid())
+  reviewId   String
+  review     Review             @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  reporterId String
+  reporter   User               @relation("ReviewReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  reason     ReviewReportReason
+  details    String?
+  status     ReviewReportStatus @default(OPEN)
+
+  resolvedAt     DateTime?
+  resolvedById   String?
+  resolvedBy     User?     @relation("ReviewReportResolver", fields: [resolvedById], references: [id], onDelete: SetNull)
+  resolutionNote String?
+
+  createdAt DateTime @default(now())
+
+  @@unique([reviewId, reporterId])
+  @@index([status, createdAt])
 }

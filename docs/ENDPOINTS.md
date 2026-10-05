@@ -29,6 +29,8 @@ Cada access token lleva la versión de sesión del usuario (`tv`); si no coincid
 
 ## Citas
 * `GET /appointments/availability` (público) · `POST /appointments` (acepta `shareScopes`/`shareDays`) · `GET /appointments/me`.
+* Paciente: `PATCH /appointments/:id/reschedule` y `PATCH /appointments/:id/cancel` (también el médico; solo se avisa a la otra parte).
+* Médico: `GET /appointments/me/calendar?from=&to=` (hasta 62 días: citas, horas de atención y bloqueos), `GET /appointments/me/history` (filtros y paginado; nombre y teléfono solo con autorización, auditado), `GET /appointments/me/:id` (detalle con su línea de tiempo), `GET /appointments/me/slots` (horarios libres para «Mover»), `POST /appointments/me/manual` (`outsideSchedule` para atender fuera de horario).
 * Médico: `GET /appointments/me/agenda`, `GET /appointments/me/patients`, `POST /appointments/me/patients/:id/data` (solo con autorización vigente, auditado), `POST /appointments/me/patients/:id/access-request`.
 
 ## Profesionales
@@ -64,3 +66,13 @@ Cada access token lleva la versión de sesión del usuario (`tv`); si no coincid
 ## Analítica
 * `POST /analytics/track` — el frontend solo lo llama con consentimiento de análisis; no se guarda IP ni user-agent.
 * `GET /analytics/me` (médico) — «Estadísticas» del panel según el plan: Perfil Básico `NONE`; Profesional `BASIC` (visitas, WhatsApp y teléfono, últimos 30 días y total); Plus `FULL` (además clics en redes, mensajes y citas pedidas por estado); Premium y Marca Médica `ADVANCED` (además comparación con los 30 días anteriores y los últimos 6 meses).
+
+## Notificaciones
+* `GET /notifications?cursor=&limit=` · `GET /notifications/unread-count` · `PATCH /notifications/:id/read` · `PATCH /notifications/read-all` — avisos de la propia cuenta (nunca de otra).
+* `GET|PUT /notifications/preferences` — correos opcionales de su tipo de cuenta (`{ emailOptOut: [...] }`).
+
+## Valoraciones (`REVIEWS_ENABLED`; apagadas en producción)
+* `GET /reviews/config` (público): `{ enabled, minForAverage }`. Con las valoraciones apagadas el resto responde 404 y la ficha no muestra promedio.
+* `GET /reviews/professional/:slug?page=` (público): resumen (promedio y distribución desde 3) y opiniones publicadas con «Paciente verificado» o nombre e inicial, el mes de la consulta y la respuesta publicada.
+* Paciente: `GET /reviews/me` (requisitos y médicos con consulta verificada), `POST /reviews` (`{ professionalId, rating, comment?, authorDisplay, acceptRules: true }`; 403 sin requisitos, 409 si ya opinó, 429 desde la cuarta del día), `PATCH /reviews/:id`, `DELETE /reviews/:id`.
+* Médico: `GET /reviews/me/professional?page=`, `PUT|DELETE /reviews/:id/reply` (una respuesta, con moderación), `POST /reviews/:id/report` (`{ reason, details? }`, una por valoración).

@@ -38,3 +38,9 @@ export function requiredLegalDocuments(role: Role): LegalDocument[] {
  * en el historial que ve el paciente.
  */
 export const PATIENT_CONSENT_VERSION = '2.0';
+
+/**
+ * Reglas que acepta el paciente al enviar una valoración (frontend/src/lib/legal.ts,
+ * REVIEW_RULES): queda guardada en cada valoración.
+ */
+export const REVIEW_RULES_VERSION = '1.0';

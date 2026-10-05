@@ -31,6 +31,7 @@ import { ContactModule } from './contact/contact.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { AdminModule } from './admin/admin.module';
 import { LegalModule } from './legal/legal.module';
+import { ReviewsModule } from './reviews/reviews.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
@@ -68,6 +69,7 @@ import { HealthModule } from './health/health.module';
     AnalyticsModule,
     AdminModule,
     LegalModule,
+    ReviewsModule,
     HealthModule,
   ],
   providers: [

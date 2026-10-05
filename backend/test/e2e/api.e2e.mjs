@@ -438,6 +438,15 @@ check('un paciente no ve la bandeja administrativa → 403', (await call('GET', 
 // 18. Migración de datos heredados completa
 check('_PatientPlaintextLegacy no existe', (await db.query(`select to_regclass('public."_PatientPlaintextLegacy"') t`)).rows[0].t === null);
 
+// 19. Valoraciones: apagadas salvo REVIEWS_ENABLED=true (en producción, hasta su revisión legal)
+if (process.env.REVIEWS_ENABLED !== 'true') {
+  r = await call('GET', '/reviews/config');
+  check('valoraciones apagadas por defecto', r.status === 200 && r.data?.enabled === false);
+  r = await call('POST', '/reviews', { professionalId: doc.id, rating: 5, authorDisplay: 'ANONYMOUS', acceptRules: true }, patientSession);
+  check('apagadas no se puede opinar → 404', r.status === 404, String(r.status));
+  check('apagadas el médico no ve su panel de valoraciones → 404', (await call('GET', '/reviews/me/professional', null, doctorToken)).status === 404);
+}
+
 console.log(failures === 0 ? '\nTODO OK' : `\n${failures} FALLO(S)`);
 await db.end();
 process.exit(failures ? 1 : 0);

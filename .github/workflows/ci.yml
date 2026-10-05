@@ -178,6 +178,7 @@ jobs:
       MAIL_FROM: Guía Médica Monagas CI <ci@example.com>
       SEED_SUPERADMIN_PASSWORD: CiSuperadmin12345
       ADMIN_MFA_ENABLED: 'true'
+      REVIEWS_ENABLED: 'true'
       NEXT_PUBLIC_API_URL: http://127.0.0.1:4000/api/v1
       NEXT_PUBLIC_SITE_URL: http://127.0.0.1:3000
       E2E_API_URL: http://127.0.0.1:4000/api/v1

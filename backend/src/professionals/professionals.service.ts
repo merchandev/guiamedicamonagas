@@ -1,6 +1,8 @@
 import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException, OnApplicationBootstrap } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Prisma, RegistrationType } from '@prisma/client';
 import sharp from 'sharp';
+import type { EnvConfig } from '../config/env.validation';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -27,6 +29,7 @@ import {
 } from './publication-rules';
 import { notifyProfilePublished } from './publication-notice';
 import { assignPublicCode, directorySearchWhere, normalizePublicCode, searchNameFor } from './professional-search.util';
+import { publicRating } from '../reviews/review-rating';
 
 // Emisor de cada número que el médico carga en su perfil (ver ProfessionalRegistration).
 const REGISTRATION_SOURCES: {
@@ -61,6 +64,8 @@ const PUBLIC_LIST_SELECT = {
   isSpecialist: true,
   planTier: true,
   verificationStatus: true,
+  ratingAverage: true,
+  ratingCount: true,
   specialties: { select: { specialty: { select: { id: true, name: true, slug: true } } } },
 } satisfies Prisma.ProfessionalProfileSelect;
 
@@ -98,7 +103,18 @@ export class ProfessionalsService implements OnApplicationBootstrap {
     private readonly storage: StorageService,
     private readonly notifications: NotificationsService,
     private readonly geo: GeoService,
+    private readonly config: ConfigService<EnvConfig, true>,
   ) {}
+
+  /**
+   * Promedio público de las valoraciones: nada mientras estén apagadas
+   * (REVIEWS_ENABLED) y sin promedio hasta 3 publicadas. No cambia el orden.
+   */
+  private withRating<T extends { ratingAverage: number | null; ratingCount: number }>(profile: T) {
+    const { ratingAverage, ratingCount, ...rest } = profile;
+    const enabled = this.config.get('REVIEWS_ENABLED', { infer: true }) === true;
+    return { ...rest, rating: enabled ? publicRating(ratingAverage, ratingCount) : null };
+  }
 
   /**
    * Mantiene al día el puntaje del directorio (p.ej. tras desplegar un cambio
@@ -175,7 +191,7 @@ export class ProfessionalsService implements OnApplicationBootstrap {
       this.prisma.professionalProfile.count({ where }),
     ]);
 
-    const shaped = items.map((item) => gateByTier(item));
+    const shaped = items.map((item) => this.withRating(gateByTier(item)));
     const signedItems = await Promise.all(shaped.map((item) => this.signPhoto(item)));
 
     // Franja "Destacado" (patrocinada y rotativa): hasta 3 perfiles que
@@ -201,7 +217,7 @@ export class ProfessionalsService implements OnApplicationBootstrap {
           })),
         );
       }
-      featured = await Promise.all(rows.map((row) => this.signPhoto(gateByTier(row))));
+      featured = await Promise.all(rows.map((row) => this.signPhoto(this.withRating(gateByTier(row)))));
     }
 
     return { items: signedItems, featured, total, page, limit, totalPages: Math.ceil(total / limit) };
@@ -255,7 +271,7 @@ export class ProfessionalsService implements OnApplicationBootstrap {
 
     const { schedule: _schedule, presentationVideoId, ...profileWithoutSchedule } = profile;
     const shaped = {
-      ...gateByTier(profileWithoutSchedule),
+      ...this.withRating(gateByTier(profileWithoutSchedule)),
       locations: canPlus ? profile.locations : [],
       posts: canPlus ? profile.posts : [],
       socialLinks,

@@ -59,6 +59,13 @@ interface PatientProfileResponse {
   hasIdPhoto: boolean;
   identityStatus: 'PENDING' | 'VERIFIED' | 'REJECTED';
   identityReviewNote: string | null;
+  completeness: Completeness;
+}
+
+/** «Registro al 100 %»: identidad y contacto (nunca datos de salud), calculado por la API. */
+interface Completeness {
+  percent: number;
+  items: { key: string; label: string; done: boolean }[];
 }
 
 const IDENTITY_BADGE: Record<PatientProfileResponse['identityStatus'], { label: string; tone: 'neutral' | 'amber' | 'pine' | 'red' }> = {
@@ -88,6 +95,7 @@ export default function PatientProfilePage() {
   const [identityReviewNote, setIdentityReviewNote] = useState<string | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [uploadingIdPhoto, setUploadingIdPhoto] = useState(false);
+  const [completeness, setCompleteness] = useState<Completeness | null>(null);
 
   const { register, handleSubmit, reset, control, watch, setValue } = useForm<PatientProfileForm>({
     defaultValues: { isHealthy: false, medications: [], treatingDoctors: [] },
@@ -123,6 +131,7 @@ export default function PatientProfilePage() {
     setIdPhotoUrl(profile.idPhotoUrl);
     setIdentityStatus(profile.identityStatus);
     setIdentityReviewNote(profile.identityReviewNote);
+    setCompleteness(profile.completeness);
   };
 
   useEffect(() => {
@@ -186,6 +195,7 @@ export default function PatientProfilePage() {
       setIdPhotoUrl(updated.idPhotoUrl);
       setIdentityStatus(updated.identityStatus);
       setIdentityReviewNote(updated.identityReviewNote);
+      setCompleteness(updated.completeness);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : fallbackMessage);
     } finally {
@@ -221,6 +231,8 @@ export default function PatientProfilePage() {
           .
         </span>
       </Alert>
+
+      {completeness && <RegistrationProgress completeness={completeness} />}
 
       <form onSubmit={handleSubmit(onSubmit)} className="card space-y-8 p-6">
         {error && <Alert tone="error">{error}</Alert>}
@@ -430,5 +442,30 @@ export default function PatientProfilePage() {
         </Button>
       </form>
     </div>
+  );
+}
+
+function RegistrationProgress({ completeness }: { completeness: Completeness }) {
+  const missing = completeness.items.filter((item) => !item.done).map((item) => item.label.toLocaleLowerCase('es-VE'));
+  return (
+    <section className="card p-5" aria-labelledby="registro-titulo">
+      <h2 id="registro-titulo" className="text-sm font-semibold text-ink-900">
+        Tu registro: {completeness.percent} %
+      </h2>
+      <div
+        className="mt-2 h-2 overflow-hidden rounded-full bg-ink-100"
+        role="progressbar"
+        aria-labelledby="registro-titulo"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={completeness.percent}
+      >
+        <div className="h-full rounded-full bg-pine-600" style={{ width: `${completeness.percent}%` }} />
+      </div>
+      <p className="mt-2 text-sm text-ink-600">
+        {missing.length ? `Falta: ${missing.join(', ')}.` : 'Tu registro está completo.'} Solo cuentan tu identidad y tu
+        contacto, nunca tus datos de salud.
+      </p>
+    </section>
   );
 }

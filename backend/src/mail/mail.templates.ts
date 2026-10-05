@@ -451,3 +451,14 @@ export function legalRequestUpdatedTemplate(rawName: string, ticket: string, raw
     `Recibiste este correo porque enviaste una solicitud a ${BRAND_NAME}.`,
   );
 }
+
+/** Al médico, cuando se publica una valoración suya: sin el texto ni el autor, que se ven en el panel. */
+export function reviewPublishedTemplate(rawDoctorName: string, panelUrl: string) {
+  const doctor = escapeHtml(rawDoctorName);
+  return layout(
+    'Tienes una opinión nueva',
+    `<h1 style="font-size:20px;margin:0 0 12px;">Hola, Dr(a). ${doctor}</h1>
+     <p style="font-size:14px;line-height:1.6;color:#3a3a3a;">Se publicó en tu ficha una opinión de un paciente con consulta verificada. Puedes leerla y responderla una vez desde tu panel; tu respuesta también es pública, así que no incluyas datos clínicos del paciente.</p>
+     ${button(panelUrl, 'Ver mis valoraciones')}`,
+  );
+}

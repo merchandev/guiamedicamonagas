@@ -29,6 +29,8 @@ export interface ProfessionalListItem {
   isFeatured: boolean;
   canReceiveMessages: boolean;
   specialties: { specialty: Specialty }[];
+  /** Valoraciones publicadas: null si están apagadas; promedio null hasta 3. */
+  rating: { average: number | null; count: number } | null;
 }
 
 export interface ProfessionalExtraLocation {

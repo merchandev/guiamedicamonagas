@@ -22,6 +22,8 @@ export enum Permission {
   VIEW_ADMIN_STATS = 'VIEW_ADMIN_STATS',
   /** Canal de reclamos, denuncias y solicitudes legales (datos personales del solicitante). */
   MANAGE_LEGAL_REQUESTS = 'MANAGE_LEGAL_REQUESTS',
+  /** Moderar valoraciones, respuestas y denuncias, y sancionar a sus autores. */
+  MODERATE_REVIEWS = 'MODERATE_REVIEWS',
 }
 
 export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
@@ -38,6 +40,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     Permission.MANAGE_CATALOG,
     Permission.VIEW_ADMIN_STATS,
     Permission.MANAGE_LEGAL_REQUESTS,
+    Permission.MODERATE_REVIEWS,
   ],
   SUPERADMIN: Object.values(Permission),
 };

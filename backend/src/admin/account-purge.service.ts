@@ -7,6 +7,7 @@ import { MailService } from '../mail/mail.service';
 import { accountPurgedTemplate, appointmentCancelledTemplate } from '../mail/mail.templates';
 import type { ManagedRole } from './account-management.service';
 import { caracasDateLabel, caracasTimeLabel } from '../common/caracas-time';
+import { recomputeRating } from '../reviews/review-rating';
 
 const UPCOMING_STATUSES = ['PENDING', 'CONFIRMED'] as const;
 const OPEN_SUBSCRIPTIONS = ['ACTIVE', 'PENDING', 'PAST_DUE', 'UNPAID'] as const;
@@ -208,6 +209,7 @@ export class AccountPurgeService {
     await tx.post.deleteMany(byProfessional);
     await tx.contactMessage.deleteMany(byProfessional);
     await tx.organizationProfessional.deleteMany(byProfessional);
+    await tx.review.deleteMany(byProfessional); // arrastra respuestas y denuncias
     await tx.analyticsEvent.deleteMany({ where: { resourceId: professionalId } });
     await tx.subscription.updateMany({
       where: { professionalId, status: { in: [...OPEN_SUBSCRIPTIONS] } },
@@ -237,6 +239,8 @@ export class AccountPurgeService {
         planTier: 'FREE',
         profileCompleteness: 0,
         directoryScore: 0,
+        ratingAverage: null,
+        ratingCount: 0,
         phone: null,
         whatsapp: null,
         municipality: null,
@@ -260,6 +264,13 @@ export class AccountPurgeService {
     });
     if (!profile) return;
     fileKeys.push(...[profile.photoKey, profile.idPhotoKey].filter((k): k is string => !!k));
+
+    // Sus valoraciones se borran con la cuenta y el promedio de cada médico se recalcula.
+    const reviewed = await tx.review.findMany({ where: { patientId: profile.id }, select: { professionalId: true } });
+    if (reviewed.length) {
+      await tx.review.deleteMany({ where: { patientId: profile.id } });
+      for (const professionalId of new Set(reviewed.map((r) => r.professionalId))) await recomputeRating(tx, professionalId);
+    }
 
     const { appointments, clinicalNotes, dataGrants } = profile._count;
     if (appointments + clinicalNotes + dataGrants === 0) {

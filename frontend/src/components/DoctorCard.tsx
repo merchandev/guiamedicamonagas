@@ -5,6 +5,8 @@ import { motion } from 'framer-motion';
 import { ProfessionalListItem } from '@/lib/types';
 import { MarcaMedicaLabel, VerificationBadge } from '@/components/VerificationBadge';
 import { cn } from '@/lib/cn';
+import { formatAverage, opinionsLabel } from '@/lib/reviews';
+import { Stars } from '@/components/reviews/Stars';
 
 export function DoctorCard({ doctor }: { doctor: ProfessionalListItem }) {
   const initials = `${doctor.firstName[0] ?? ''}${doctor.lastName[0] ?? ''}`.toUpperCase();
@@ -50,6 +52,14 @@ export function DoctorCard({ doctor }: { doctor: ProfessionalListItem }) {
             {doctor.specialties.map((s) => s.specialty.name).join(', ') || 'Medicina General'}
           </p>
           {doctor.municipality && <p className="mt-0.5 text-xs text-ink-500">{doctor.municipality}, Monagas</p>}
+          {doctor.rating?.average != null && (
+            <p className="mt-1 flex items-center gap-1.5 text-xs text-ink-600">
+              <Stars value={doctor.rating.average} size="sm" />
+              <span>
+                {formatAverage(doctor.rating.average)} · {opinionsLabel(doctor.rating.count)}
+              </span>
+            </p>
+          )}
           <div className="mt-2 flex flex-wrap gap-1.5 text-[11px] text-ink-500">
             {doctor.mppsNumber && <span className="rounded bg-ink-50 px-1.5 py-0.5">MPPS {doctor.mppsNumber}</span>}
             {doctor.colmedMonagasNumber && (

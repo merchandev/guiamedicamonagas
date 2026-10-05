@@ -11,6 +11,7 @@ import { PageSpinner } from '@/components/ui/Spinner';
 import { Modal } from '@/components/ui/Modal';
 import { SlotPicker } from '@/components/agenda/SlotPicker';
 import { formatDateTime } from '@/lib/dates';
+import { useReviewsEnabled } from '@/lib/use-reviews';
 
 type Status = 'PENDING' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW';
 
@@ -37,6 +38,7 @@ export default function PatientAppointmentsPage() {
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [rescheduling, setRescheduling] = useState<Appointment | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const reviewsEnabled = useReviewsEnabled();
 
   const load = useCallback(() => {
     api
@@ -100,6 +102,14 @@ export default function PatientAppointmentsPage() {
                   {a.location && <p className="text-xs text-ink-500">{a.location.name} · {a.location.address}</p>}
                   {a.reason && <p className="mt-1 text-xs text-ink-500">Motivo: {a.reason}</p>}
                 </div>
+                {reviewsEnabled && a.status === 'COMPLETED' && (
+                  <Link
+                    href={`/paciente/valoraciones?medico=${encodeURIComponent(a.professional.slug)}`}
+                    className="text-sm font-medium text-pine-700 hover:underline"
+                  >
+                    Valorar la atención
+                  </Link>
+                )}
                 {upcoming && (
                   <div className="flex flex-wrap gap-2">
                     <Button variant="outline" size="sm" onClick={() => setRescheduling(a)}>

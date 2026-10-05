@@ -116,6 +116,10 @@ const baseEnvSchema = z.object({
     (value) => (value === '' ? undefined : value),
     z.coerce.number().int().min(30).max(3650).optional(),
   ),
+
+  // Valoraciones de pacientes: apagadas hasta que la moderación, los textos
+  // legales y la revisión del abogado estén listos (ver Actualizaciones.md).
+  REVIEWS_ENABLED: envBoolean(false),
 });
 
 /**

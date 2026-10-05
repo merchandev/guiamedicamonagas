@@ -364,6 +364,27 @@ export const PATIENT_AREA_NOTICE =
 export const SHARE_CODE_NOTICE =
   'Compartir este QR o código permite que un médico inicie el acceso a tu información privada. Verifica al profesional, el alcance y la duración antes de entregarlo. Puedes revocar una autorización vigente desde tu cuenta.';
 
+/**
+ * Reglas que acepta el paciente al enviar una valoración. Si cambian, se sube
+ * REVIEW_RULES_VERSION aquí y en backend/src/common/legal-versions.ts.
+ */
+export const REVIEW_RULES_VERSION = '1.0';
+export const REVIEW_RULES: string[] = [
+  'Es tu opinión sobre la atención que recibiste: el trato, la puntualidad, la claridad de las explicaciones y el lugar de consulta.',
+  'No incluyas datos de salud tuyos ni de otras personas (diagnósticos, tratamientos o medicamentos), ni teléfonos, correos, enlaces o números de cédula.',
+  'Sin insultos ni acusaciones que no puedas sostener.',
+  'Si solo eliges las estrellas, tu valoración se publica al enviarla. Si escribes un comentario, el equipo de Guía Médica Monagas lo revisa antes de publicarlo y puede rechazarlo si incumple estas reglas.',
+  'Se publica como «Paciente verificado», salvo que elijas mostrar tu nombre y la inicial de tu apellido. Nunca se muestran tu cédula, tu código, tu foto ni la fecha exacta de tu consulta: solo el mes y el año.',
+];
+
+/** Junto a las valoraciones de una ficha. */
+export const REVIEWS_PUBLIC_NOTICE =
+  'Son opiniones de pacientes con la identidad verificada y una consulta verificada con este médico. No son una recomendación de Guía Médica Monagas.';
+
+/** Al responder una valoración. */
+export const REVIEW_REPLY_NOTICE =
+  'Tu respuesta es pública y el equipo la revisa antes de publicarla. Por el secreto médico, no reveles nada clínico del paciente ni datos que permitan identificarlo.';
+
 /** Perfil público del profesional. */
 export const VERIFICATION_NOTICE =
   'La verificación indica que Guía Médica Monagas realizó las comprobaciones documentales definidas en su Política de verificación. No constituye una recomendación clínica, certificación estatal adicional, garantía de calidad asistencial ni garantía de resultados.';
