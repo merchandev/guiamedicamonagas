@@ -3,7 +3,7 @@
 > Bitácora central de cambios, implementaciones, decisiones técnicas y tareas de evolución del sistema.
 >
 > **Repositorio:** [`merchandev/guiamedicamonagas`](https://github.com/merchandev/guiamedicamonagas) · **Rama:** `main`<br>
-> **Última actualización de esta bitácora:** `2026-10-05 07:15:08 -04:00` · **Estado:** 🟢 Registro activo
+> **Última actualización de esta bitácora:** `2026-10-05 08:08:03 -04:00` · **Estado:** 🟢 Registro activo
 
 ![Estado](https://img.shields.io/badge/estado-registro%20activo-16a34a?style=flat-square)
 ![Rama](https://img.shields.io/badge/rama-main-2563eb?style=flat-square)
@@ -145,8 +145,9 @@ flowchart LR
     AN[🕰️ 2026-10-02\n08:01:30\nACT-0040 · Citas en hora\nde Caracas]
     AO[🔔 2026-10-02\n08:20:16\nACT-0041 · Centro de\nnotificaciones]
     AP[📅 2026-10-05\n07:15:08\nACT-0042 · Calendario\ne historial de citas]
+    AQ[⭐ 2026-10-05\n08:08:03\nACT-0043 · Valoraciones\nde pacientes]
 
-    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L --> M --> N --> O --> P --> Q --> R --> S --> T --> U --> V --> W --> X --> Y --> Z --> AA --> AB --> AC --> AD --> AE --> AF --> AG --> AH --> AI --> AJ --> AK --> AL --> AM --> AN --> AO --> AP
+    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L --> M --> N --> O --> P --> Q --> R --> S --> T --> U --> V --> W --> X --> Y --> Z --> AA --> AB --> AC --> AD --> AE --> AF --> AG --> AH --> AI --> AJ --> AK --> AL --> AM --> AN --> AO --> AP --> AQ
 ```
 
 ### Resumen cuantitativo
@@ -154,8 +155,8 @@ flowchart LR
 | Indicador | Resultado |
 |---|---:|
 | Actividades históricas importadas desde Git | `3` |
-| Actividades documentales añadidas con esta bitácora | `39` |
-| Actividades registradas en total | `42` |
+| Actividades documentales añadidas con esta bitácora | `40` |
+| Actividades registradas en total | `43` |
 | Rama de referencia | `main` |
 | Commit base consultado | [`81b1091`](https://github.com/merchandev/guiamedicamonagas/commit/81b1091) |
 | Zona horaria de control | `America/Caracas` (`-04:00`) |
@@ -1923,6 +1924,58 @@ Antes, la agenda del médico eran tres formularios y sus citas una lista sin fil
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
+<a id="act-0043"></a>
+
+### ⭐ ACT-0043 · Bloque 3 del plan de agenda: valoraciones de pacientes (apagadas en producción)
+
+<details>
+<summary><strong>2026-10-05 08:08:03 -04:00</strong> · <code>a292fde</code> · 🟢 Completado</summary>
+
+**Responsable:** `Claude Opus 5.5` · **Tipo:** `funcionalidad | datos | privacidad | despliegue` · **Commits:** [`a292fde`](https://github.com/merchandev/guiamedicamonagas/commit/a292fde) · [`a1ba0e6`](https://github.com/merchandev/guiamedicamonagas/commit/a1ba0e6)
+
+Valoraciones de 1 a 5 estrellas con comentario opcional, con las decisiones que aprobó el titular: registro al 100 % sin datos de salud, cédula aprobada, consulta verificada, moderación previa de los comentarios, autor anónimo por defecto, promedio desde 3 opiniones y sin cambiar el orden del directorio. **En producción quedan apagadas** (`REVIEWS_ENABLED=false`): se encienden cuando estén la moderación (bloque 4), los textos legales nuevos y la revisión del abogado. En CI se prueban encendidas.
+
+**Quién puede valorar (lo comprueba la API, no la pantalla):**
+- Cuenta de paciente con el correo verificado y la mayoría de edad declarada al registrarse.
+- **Registro al 100 %:** nombre y apellido, cédula, teléfono, municipio, foto de perfil, foto de la cédula y correo verificado. Nunca datos de salud. El perfil del paciente muestra su avance («Tu registro: 86 %. Falta: foto de tu cédula»).
+- **Cédula aprobada** en la cola de identidades que ya existe.
+- **Consulta verificada** con ese médico: una cita realizada **y ya pasada** en la plataforma, o que el médico lo haya registrado con su código. Marcar como realizada una cita futura no habilita a opinar.
+- Una valoración por paciente y médico (editarla la devuelve a moderación si tiene comentario) y un máximo de 3 nuevas por día.
+
+**Cómo se publica:**
+- Sin comentario, al enviarla. Con comentario, **queda en revisión** hasta que la administración la apruebe (las pantallas de moderación llegan en el bloque 4). Un filtro automático marca para quien modere teléfonos, correos, enlaces, cédulas, insultos o acusaciones y términos de salud; no publica ni rechaza nada por sí solo.
+- Antes de enviar, el paciente acepta unas reglas versionadas (`REVIEW_RULES_VERSION` 1.0, guardada en cada valoración).
+- En la ficha del médico, sección «Opiniones de pacientes»: estrellas, comentario, «Paciente verificado» (o «María G.» si el autor lo elige), «Consulta verificada» con el **mes y año** de la consulta y la respuesta del médico. Nunca la cédula, el código, la foto ni la fecha exacta. Promedio y distribución desde 3 opiniones publicadas, junto al nombre en la ficha y en el directorio, y el aviso «No son una recomendación de Guía Médica Monagas». No van en los datos estructurados para Google.
+- El promedio y la cantidad se guardan en el perfil del médico y se recalculan en la misma transacción de cada cambio, bloqueando la fila del médico para que dos publicaciones simultáneas no se pisen.
+
+**Paneles:**
+- **Paciente** (`/paciente/valoraciones`): requisitos con lo que falta, sus médicos con consulta verificada, valorar, editar y borrar; enlace «Valorar la atención» en las citas realizadas y «Escribe tu opinión» en la ficha del médico.
+- **Médico** (`/dashboard/valoraciones`): lo mismo que ve el público, nunca quién es un autor anónimo. Responde una vez en público (con moderación y el aviso del secreto médico) y denuncia (no es mi paciente, datos de salud, ofensiva, falsa u otro). No puede borrar ni ocultar opiniones. Recibe un aviso, y un correo que puede apagar, cuando se publica una opinión.
+- **Administración:** permiso nuevo `MODERATE_REVIEWS` (administración y superadministración) y avisos en la campana de valoraciones, respuestas y denuncias por revisar.
+- El enlace «Valoraciones» de los menús solo aparece con las valoraciones encendidas.
+
+**Datos:** migración `20261005120000_patient_reviews` (solo agrega): `Review`, `ReviewReply`, `ReviewReport`, `ratingAverage` y `ratingCount` en el perfil, con restricciones en la base (1 a 5 estrellas, mes «AAAA-MM», textos de hasta 1000 caracteres). Eliminar definitivamente una cuenta borra sus valoraciones y recalcula el promedio de cada médico.
+
+**Pruebas:** unitarias del filtro, del autor, del promedio, del mes en hora de Caracas, del registro al 100 % y del permiso nuevo. De punta a punta (`e2e/tests/valoraciones.spec.ts`, 5 pruebas): requisitos (registro incompleto, cédula en revisión, sin consulta, cita futura, reglas sin aceptar, cuenta de médico, sin sesión); publicación inmediata, promedio desde la tercera, nada que identifique al autor y accesibilidad de la sección; comentario en revisión con el teléfono marcado, editar y borrar; respuesta y denuncia del médico, autor con nombre e inicial; máximo diario. La prueba de la API del CI comprueba que sin `REVIEWS_ENABLED` todo responde 404. En local, la suite completa: 67 pasadas, 5 omitidas (las que necesitan Mailpit o almacenamiento, que corren en CI) y 1 que falla solo en la base local, donde se acumularon 83 cardiólogos de corridas anteriores y la ficha de la especialidad ya no lista al de la prueba (en CI la base es nueva); los médicos de las pruebas de valoraciones son de dermatología para no sumarse a esa lista. Con una segunda API con `REVIEWS_ENABLED=false` se comprobó que la ficha y el directorio no muestran promedio y que la lista pública responde que están apagadas. Revisión visual en escritorio y en un teléfono de 412 px (las etiquetas de la distribución se partían en dos líneas y se corrigió antes de subir).
+
+**CI de GitHub:** «CI» en verde para `a292fde`. «Seguridad» falló solo por un aviso publicado ese mismo día para `braces` (GHSA-vfj7-8cjw-p6xm), una dependencia de Tailwind CSS 3 que solo se usa al compilar los estilos: no existe una versión corregida y la única salida que ofrece npm es pasar a Tailwind 4. Se comprobó que el servidor web de producción (salida *standalone*) no incluye Tailwind ni braces y se registró una excepción fechada hasta el 2026-12-31 en `security/audit-exceptions.json` y en `docs/security/vulnerabilidades.md` (`a1ba0e6`), como pide la política. Con eso, «CI» y «Seguridad» en verde para `a1ba0e6`.
+
+**Despliegue en el VPS** (`deploy-act43.log`): respaldo previo `gmm-db-20261005T120220Z-pre-deploy.dump.gpg`; **migración aplicada**; prueba de humo **25/25**; «Versión publicada: a1ba0e6e77f5 (API y web)». En producción existen las tres tablas, las dos columnas del promedio y las cuatro restricciones; `/reviews/config` responde `enabled: false`, crear una valoración sin sesión responde 401 y las páginas nuevas cargan (sin el enlace en los menús). El registro muestra, igual que en los despliegues anteriores, que no se pudo volver a descargar la imagen de MinIO (quay.io responde 401); el contenedor sigue con su imagen local (ver Próximas actividades).
+
+**Archivos destacados:**
+- [`backend/src/reviews/reviews.service.ts`](backend/src/reviews/reviews.service.ts)
+- [`backend/src/reviews/review-filter.ts`](backend/src/reviews/review-filter.ts)
+- [`backend/src/patients/patient-completeness.ts`](backend/src/patients/patient-completeness.ts)
+- [`backend/prisma/migrations/20261005120000_patient_reviews/migration.sql`](backend/prisma/migrations/20261005120000_patient_reviews/migration.sql)
+- [`frontend/src/app/paciente/valoraciones/page.tsx`](frontend/src/app/paciente/valoraciones/page.tsx)
+- [`frontend/src/app/dashboard/valoraciones/page.tsx`](frontend/src/app/dashboard/valoraciones/page.tsx)
+- [`frontend/src/components/reviews/DoctorReviews.tsx`](frontend/src/components/reviews/DoctorReviews.tsx)
+- [`e2e/tests/valoraciones.spec.ts`](e2e/tests/valoraciones.spec.ts)
+
+</details>
+
+<p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
+
 <a id="registro-por-area"></a>
 
 ## 🧩 Registro por área
@@ -1937,7 +1990,8 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | 🏥 Organizaciones | Farmacias, laboratorios, clínicas, ubicaciones, autogestión, equipo con invitaciones y roles internos, médicos asociados y plan propio, sección «Próximamente» hasta cerrar alianzas | [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0015](#act-0015) · [ACT-0019](#act-0019) · [ACT-0025](#act-0025) |
 | 💳 Monetización | Planes, Pago Móvil, aprobación, tasa BCV, evidencia de tasa por cuota, catálogo de bancos, referencia única atómica, Plus/Premium/Agencia solo con el 100% de documentos, pagos externos registrados por la administración con renovación anticipada, precios de septiembre de 2026 (3,99 / 5,99 / 10,99 / 69,99 USD), planes Perfil Básico, Profesional, Plus, Premium y Marca Médica (servicio de contenido: 2 videos cada mes), Pago Móvil de la plataforma registrado desde Pagos y visible solo dentro del panel, y políticas de pagos y de reembolsos | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0010](#act-0010) · [ACT-0011](#act-0011) · [ACT-0015](#act-0015) · [ACT-0019](#act-0019) · [ACT-0021](#act-0021) · [ACT-0031](#act-0031) · [ACT-0032](#act-0032) · [ACT-0033](#act-0033) · [ACT-0035](#act-0035) · [ACT-0036](#act-0036) |
 | 📅 Agenda y citas | Horarios, disponibilidad, reservas, máquina de estados, anti-doble-reserva y sin solapes, zona America/Caracas (también en correos, avisos y recordatorios), calendario del médico con arrastrar y soltar, horario semanal en cuadrícula, historial de cada cita, reserva y reprogramación con calendario de mes, límites de reserva | [ACT-0007](#act-0007) · [ACT-0015](#act-0015) · [ACT-0040](#act-0040) · [ACT-0042](#act-0042) |
-| 🔒 Pacientes | Código pseudónimo, cifrado de datos de salud, consentimiento por alcance y tiempo, lecturas auditadas, registro propio, foto de identificación verificada por un admin, reserva con la ficha propia, código y QR para compartir, directorio del médico por código, bóveda de administración y noindex, registro visible desde el inicio, supresión de la cuenta conservando solo la evidencia legal, consentimiento expreso de datos de salud y mayoría de edad, descarga de los datos propios e historial de accesos | [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0023](#act-0023) · [ACT-0027](#act-0027) · [ACT-0029](#act-0029) · [ACT-0031](#act-0031) · [ACT-0033](#act-0033) |
+| 🔒 Pacientes | Código pseudónimo, cifrado de datos de salud, consentimiento por alcance y tiempo, lecturas auditadas, registro propio, foto de identificación verificada por un admin, reserva con la ficha propia, código y QR para compartir, directorio del médico por código, bóveda de administración y noindex, registro visible desde el inicio, supresión de la cuenta conservando solo la evidencia legal, consentimiento expreso de datos de salud y mayoría de edad, descarga de los datos propios e historial de accesos, avance del registro (identidad y contacto, sin datos de salud) | [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0023](#act-0023) · [ACT-0027](#act-0027) · [ACT-0029](#act-0029) · [ACT-0031](#act-0031) · [ACT-0033](#act-0033) · [ACT-0043](#act-0043) |
+| ⭐ Valoraciones | Estrellas y comentario de pacientes con registro completo, cédula aprobada y consulta verificada; moderación previa de comentarios con filtro automático; autor anónimo por defecto; promedio desde 3; respuesta y denuncia del médico; apagadas en producción hasta la revisión legal (`REVIEWS_ENABLED`) | [ACT-0043](#act-0043) |
 | 🛠️ Administración | Médicos, pagos, SEO, cookies, especialidades, planes, verificaciones, organizaciones, bancos, geografía, identidad de pacientes, cuentas (suspensión, baja, eliminación definitiva), planes pagados, video de presentación de los médicos, bandeja de solicitudes legales, Pago Móvil propio, video de muestra de Marca Médica y actividad reciente desplegable | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0031](#act-0031) · [ACT-0032](#act-0032) · [ACT-0033](#act-0033) · [ACT-0034](#act-0034) · [ACT-0035](#act-0035) · [ACT-0036](#act-0036) |
 | 📊 Observabilidad | Auditoría, analítica con consentimiento y sin IP, estadísticas del médico según su plan, centro de notificaciones (campana, página en cada panel, correos opcionales y avisos a la administración), salud, pruebas, CI, escaneo de imágenes y Dependabot, ESLint del frontend en CI, versión publicada verificable, estado de las dependencias (`/health/ready`), alertas por Telegram/correo/ntfy/webhook, interruptor de hombre muerto y monitor externo de GitHub, pruebas de punta a punta del sitio (Playwright) en escritorio y teléfono | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0036](#act-0036) · [ACT-0037](#act-0037) · [ACT-0038](#act-0038) · [ACT-0039](#act-0039) · [ACT-0041](#act-0041) |
 | 🎨 Experiencia | Directorios, dashboard, componentes UI, motion, legal, formularios legibles y utilizables con teclado, sección de pacientes en el inicio, tipografía Montserrat + Open Sans, suiches, botones y foco de campos corregidos, centro legal con 21 documentos versionados y avisos breves (descargo médico, verificación, QR), portada con cifras reales y directorio que explica cuando está vacío, accesibilidad revisada con axe (contraste, etiquetas, avisos anunciados, teclado), «Salir» que vuelve a la portada y tarjeta para compartir del sitio | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0013](#act-0013) · [ACT-0014](#act-0014) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0017](#act-0017) · [ACT-0019](#act-0019) · [ACT-0022](#act-0022) · [ACT-0023](#act-0023) · [ACT-0025](#act-0025) · [ACT-0026](#act-0026) · [ACT-0028](#act-0028) · [ACT-0033](#act-0033) · [ACT-0037](#act-0037) · [ACT-0039](#act-0039) |
@@ -2036,6 +2090,7 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | IMP-083 | Correos, avisos y recordatorios de citas en hora de Caracas aunque el servidor corra en UTC; tareas diarias a su hora; fechas del sitio con la zona explícita | 🟢 Completado | [`backend/src/common/caracas-time.ts`](backend/src/common/caracas-time.ts), [`frontend/src/lib/dates.ts`](frontend/src/lib/dates.ts) |
 | IMP-084 | Centro de notificaciones: campana con contador, página «Notificaciones» en cada panel, enlace de cada aviso, correos opcionales y avisos a la administración por permiso | 🟢 Completado | [`backend/src/notifications/notifications.service.ts`](backend/src/notifications/notifications.service.ts), [`frontend/src/components/notifications/NotificationBell.tsx`](frontend/src/components/notifications/NotificationBell.tsx) |
 | IMP-085 | Calendario del médico (día, semana, mes y lista) con arrastrar y soltar y alternativa «Mover», horario semanal en cuadrícula, historial de citas con su línea de tiempo, reserva y reprogramación con calendario de mes, límites de reserva en el servidor y restricción contra citas solapadas | 🟢 Completado | [`backend/src/appointments/appointments.service.ts`](backend/src/appointments/appointments.service.ts), [`frontend/src/components/agenda/AgendaCalendar.tsx`](frontend/src/components/agenda/AgendaCalendar.tsx) |
+| IMP-086 | Valoraciones de pacientes: requisitos verificados por la API (registro al 100 %, cédula aprobada, consulta verificada), publicación sin comentario y moderación previa con filtro, promedio desde 3, paneles del paciente y del médico, permiso `MODERATE_REVIEWS`, apagadas con `REVIEWS_ENABLED` | 🟢 Completado | [`backend/src/reviews/reviews.service.ts`](backend/src/reviews/reviews.service.ts), [`frontend/src/app/paciente/valoraciones/page.tsx`](frontend/src/app/paciente/valoraciones/page.tsx) |
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
@@ -2097,8 +2152,10 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | 🟡 Baja | Revisión manual en Firefox y Safari (iPhone) y en teléfonos reales; la suite ya los cubre a pedido con `E2E_TODOS_LOS_NAVEGADORES=1` | 🔵 Planificado | Ver [`e2e/README.md`](e2e/README.md) |
 | 🟠 Media | Aprobar la limpieza de disco del proyecto: 32,6 GB de caché de compilación y 11 imágenes sin uso (`GMM_PRUNE_AFTER_DEPLOY=true` en `deploy.sh`); no toca los otros proyectos ni la imagen de *rollback* | 🔴 Pendiente del titular | Disco por debajo del 50 % y limpieza en cada despliegue. Ver [ACT-0039](#act-0039) |
 | 🔴 Alta | Pendientes del titular para lanzar, en orden: datos del operador, SMTP real (y con él MFA), custodia de claves, copia externa, alertas, médicos reales publicados, revisión legal, Search Console, Pago Móvil y video de muestra, código nuevo de la bóveda | 🔴 Pendiente del titular | `deploy.sh --informe` en verde y la lista de [`docs/ROADMAP.md`](docs/ROADMAP.md) completa |
-| 🔴 Alta | Plan de agenda, notificaciones y valoraciones aprobado por el titular (bloques 3 a 5): valoraciones con moderación y sanciones por días, «Quiero que me contacte» y apariciones en búsquedas | 🔵 En curso | Bloques 0, 1 y 2 hechos en [ACT-0040](#act-0040), [ACT-0041](#act-0041) y [ACT-0042](#act-0042). Las valoraciones se encienden en producción solo con sus textos legales revisados por el abogado |
+| 🔴 Alta | Plan de agenda, notificaciones y valoraciones aprobado por el titular (bloques 4 y 5): moderación y sanciones por días, textos legales de las valoraciones, «Quiero que me contacte» y apariciones en búsquedas | 🔵 En curso | Bloques 0 a 3 hechos en [ACT-0040](#act-0040), [ACT-0041](#act-0041), [ACT-0042](#act-0042) y [ACT-0043](#act-0043). Las valoraciones se encienden en producción solo con sus textos legales revisados por el abogado |
 | 🟡 Baja | Decidir cuántos días se guardan los avisos ya leídos de la campana, declararlo en la política de retención y cargarlo en `NOTIFICATION_RETENTION_DAYS` (hoy no se borran) | 🔴 Pendiente del titular | Ver [ACT-0041](#act-0041) |
+| 🟠 Media | MinIO: quay.io ya no entrega la imagen fijada en `docker-compose.prod.yml` (responde 401 desde el despliegue de ACT-0041). El contenedor funciona con su imagen local, pero si se pierde (un borrado de imágenes, un VPS nuevo) no se puede volver a descargar: elegir otra imagen o un registro propio y probar la migración de los datos | 🔴 Pendiente | Visto en `deploy-act41b.log`, `deploy-act42.log` y `deploy-act43.log` |
+| 🟡 Baja | Excepción fechada de `braces` (GHSA-vfj7-8cjw-p6xm, Tailwind 3, solo al compilar) hasta el 2026-12-31: retirarla cuando salga una versión corregida o al migrar a Tailwind 4 | 🔵 Planificado | Ver [ACT-0043](#act-0043) y `security/audit-exceptions.json` |
 | 🟢 Continua | Registrar cada modificación nueva con fecha, hora, responsable y evidencia | 🟢 Activo | No existen cambios relevantes sin entrada en esta bitácora |
 | 🟢 Continua | Confirmar en el repositorio remoto cada cambio cerrado localmente | 🟢 Activo | `git status` limpio y `origin/main` sincronizado al cierre de cada sesión |
 
@@ -2185,6 +2242,7 @@ Para cada cambio futuro, añadir una entrada en la línea de tiempo y actualizar
 | `2026-10-02 08:14:49 -04:00` | Incorporación de ACT-0040 (correos, avisos y recordatorios de citas en hora de Caracas: bloque 0 del plan de agenda) con su despliegue; se abre el pendiente del plan (bloques 1 a 5) | 🟢 Completado |
 | `2026-10-02 08:34:59 -04:00` | Incorporación de ACT-0041 (centro de notificaciones: campana, página en cada panel, correos opcionales y avisos a la administración) con su despliegue; un pendiente nuevo (plazo de los avisos leídos) | 🟢 Completado |
 | `2026-10-05 07:15:08 -04:00` | Incorporación de ACT-0042 (calendario con arrastrar y soltar, horario semanal en cuadrícula, historial de citas, reserva por mes, límites de reserva y restricción contra solapes) con su despliegue | 🟢 Completado |
+| `2026-10-05 08:08:03 -04:00` | Incorporación de ACT-0043 (valoraciones de pacientes con requisitos, moderación previa y paneles; apagadas en producción) con su despliegue y la excepción fechada de `braces`; dos pendientes nuevos (imagen de MinIO y excepción de `braces`) | 🟢 Completado |
 
 ---
 
