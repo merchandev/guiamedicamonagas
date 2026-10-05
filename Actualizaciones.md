@@ -3,7 +3,7 @@
 > Bitácora central de cambios, implementaciones, decisiones técnicas y tareas de evolución del sistema.
 >
 > **Repositorio:** [`merchandev/guiamedicamonagas`](https://github.com/merchandev/guiamedicamonagas) · **Rama:** `main`<br>
-> **Última actualización de esta bitácora:** `2026-10-05 08:08:03 -04:00` · **Estado:** 🟢 Registro activo
+> **Última actualización de esta bitácora:** `2026-10-05 08:33:33 -04:00` · **Estado:** 🟢 Registro activo
 
 ![Estado](https://img.shields.io/badge/estado-registro%20activo-16a34a?style=flat-square)
 ![Rama](https://img.shields.io/badge/rama-main-2563eb?style=flat-square)
@@ -146,8 +146,9 @@ flowchart LR
     AO[🔔 2026-10-02\n08:20:16\nACT-0041 · Centro de\nnotificaciones]
     AP[📅 2026-10-05\n07:15:08\nACT-0042 · Calendario\ne historial de citas]
     AQ[⭐ 2026-10-05\n08:08:03\nACT-0043 · Valoraciones\nde pacientes]
+    AR[🛡️ 2026-10-05\n08:33:33\nACT-0044 · Moderación\ny sanciones por días]
 
-    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L --> M --> N --> O --> P --> Q --> R --> S --> T --> U --> V --> W --> X --> Y --> Z --> AA --> AB --> AC --> AD --> AE --> AF --> AG --> AH --> AI --> AJ --> AK --> AL --> AM --> AN --> AO --> AP --> AQ
+    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L --> M --> N --> O --> P --> Q --> R --> S --> T --> U --> V --> W --> X --> Y --> Z --> AA --> AB --> AC --> AD --> AE --> AF --> AG --> AH --> AI --> AJ --> AK --> AL --> AM --> AN --> AO --> AP --> AQ --> AR
 ```
 
 ### Resumen cuantitativo
@@ -155,8 +156,8 @@ flowchart LR
 | Indicador | Resultado |
 |---|---:|
 | Actividades históricas importadas desde Git | `3` |
-| Actividades documentales añadidas con esta bitácora | `40` |
-| Actividades registradas en total | `43` |
+| Actividades documentales añadidas con esta bitácora | `41` |
+| Actividades registradas en total | `44` |
 | Rama de referencia | `main` |
 | Commit base consultado | [`81b1091`](https://github.com/merchandev/guiamedicamonagas/commit/81b1091) |
 | Zona horaria de control | `America/Caracas` (`-04:00`) |
@@ -1976,6 +1977,56 @@ Valoraciones de 1 a 5 estrellas con comentario opcional, con las decisiones que 
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
+<a id="act-0044"></a>
+
+### 🛡️ ACT-0044 · Bloque 4 del plan de agenda: moderación de valoraciones y sanciones por días
+
+<details>
+<summary><strong>2026-10-05 08:33:33 -04:00</strong> · <code>cbc4425</code> · 🟢 Completado</summary>
+
+**Responsable:** `Claude Opus 5.5` · **Tipo:** `funcionalidad | seguridad | legal | despliegue` · **Commits:** [`cbc4425`](https://github.com/merchandev/guiamedicamonagas/commit/cbc4425)
+
+La administración ya puede moderar las valoraciones (que siguen **apagadas en producción**) y sancionar por los días que elija, como pidió el titular. Con esto quedan listas las pantallas; para encenderlas faltan la revisión del abogado y los textos legales, que quedaron en un borrador.
+
+**Moderación (`/admin/valoraciones`, permiso `MODERATE_REVIEWS`):**
+- Pestañas Pendientes, Respuestas, Denunciadas, Publicadas, Retiradas y Rechazadas, con contadores, búsqueda por médico y filtro por estrellas. La cola muestra el texto y lo que marcó el filtro automático, nunca quién lo escribió.
+- **Aprobar**; **rechazar** con un motivo que recibe el autor (puede corregirla); **retirar** una publicada (sale del sitio y del promedio y se guarda sin publicar como evidencia; el autor ya no la puede editar ni borrar); **restaurar**; **eliminar para siempre** escribiendo «ELIMINAR» (en la auditoría queda el motivo, no el texto); **retirar todas las valoraciones de un autor**.
+- **Respuestas del médico:** aprobar, rechazar o retirar con motivo (el médico lo recibe por aviso y correo) y restaurar.
+- **Denuncias:** dar la razón o desestimar con una respuesta que recibe el médico. Al retirar una opinión denunciada, la denuncia queda procedente y el médico lo sabe.
+- **Quién escribió la opinión** es un registro de paciente: se ve solo con la **bóveda de pacientes abierta** (el mismo código de seguridad de «Cuentas de pacientes» e «Identidad de pacientes»), con su código, nombre y a qué otros médicos valoró, y cada consulta queda en la auditoría (`REVIEW_AUTHOR_VIEWED`). Sin la bóveda, el caso muestra el estado de la cuenta, cuántas valoraciones tiene y sus sanciones.
+- Cada decisión se audita y avisa al afectado en la campana y, si es un rechazo, un retiro o un borrado, por correo con el motivo y el enlace a reclamos.
+
+**Sanciones por días** (a pacientes y médicos; nunca a la administración):
+- **Sin opiniones ni respuestas:** de 1 a 365 días (atajos de 1, 3, 7, 15, 30 y 90) o indefinida. El resto de la cuenta sigue igual.
+- **Cuenta suspendida:** de 1 a 365 días; exige además el permiso de administrar cuentas. Cierra sus sesiones al instante y al iniciar sesión ve «Tu cuenta está suspendida hasta el 15 de octubre de 2026. Motivo: …» con el enlace para reclamar. **No revoca sus autorizaciones a médicos ni cancela sus citas** (la suspensión indefinida sigue siendo la de «Cuentas», que sí lo hace).
+- Se pueden levantar antes o cambiar su duración. Vencen solas: la API deja de aplicarlas al pasar la fecha y una tarea cada 10 minutos libera la cuenta y avisa al titular. El titular recibe el motivo, la fecha de fin y cómo reclamar.
+
+**También:**
+- Reclamos: categoría nueva «Valoración abusiva o falsa» y enlace «Denunciar esta opinión» en cada opinión de la ficha, que abre el formulario con la opinión ya indicada.
+- `REVIEW_EVIDENCE_RETENTION_DAYS` (vacía: no se borra nada) borrará las valoraciones y respuestas rechazadas o retiradas cuando el titular fije el plazo con su abogado.
+- **Borrador de textos legales** para el abogado en [`docs/legal/borrador-valoraciones.md`](docs/legal/borrador-valoraciones.md): secciones nuevas de Términos, Privacidad, Condiciones para profesionales, Publicidad médica y Retención, con lo que el sistema hace y los plazos marcados «[A DEFINIR]». No se publicó ni se subió ninguna versión: se hará en una sola subida, junto con los datos del titular.
+
+**Datos:** migración `20261006120000_review_moderation_sanctions` (solo agrega): `UserSanction`, `User.suspendedUntil` y el valor `REVIEW_ABUSE` de las categorías de reclamos, con una restricción que impide una suspensión de cuenta sin fecha de fin.
+
+**Pruebas:** unitarias de la duración, las fechas en hora de Caracas y la sanción vigente. De punta a punta (`e2e/tests/moderacion.spec.ts`, 6 pruebas): cada decisión y su aviso, evidencia guardada al retirar y auditoría sin el texto al eliminar; respuestas y denuncias; sanciones (reglas de la duración, permiso, sin opiniones, cuenta suspendida con sesiones cerradas, autorizaciones intactas, mensaje y enlace en el inicio de sesión, vencimiento); identidad del autor solo con la bóveda (en local también con el código abierto y la auditoría); pantalla de moderación con axe; reclamos con el enlace precargado. En local, la suite completa: 73 pasadas, 5 omitidas (Mailpit y almacenamiento, que corren en CI) y la misma falla de la ficha de cardiología que solo ocurre en la base local (ver [ACT-0043](#act-0043)). Revisión visual de la moderación en escritorio y en un teléfono de 412 px.
+
+**CI de GitHub:** «CI» y «Seguridad» en verde para `cbc4425`.
+
+**Despliegue en el VPS** (`deploy-act44.log`): respaldo previo `gmm-db-20261005T122838Z-pre-deploy.dump.gpg`; **migración aplicada**; prueba de humo **25/25**; «Versión publicada: cbc44257efbc (API y web)». En producción existen `UserSanction`, `User.suspendedUntil`, la categoría `REVIEW_ABUSE` y la restricción de las sanciones; las rutas de moderación, de sanciones y de identidad del autor piden sesión (401) y las valoraciones siguen apagadas (`enabled: false`).
+
+**Archivos destacados:**
+- [`backend/src/reviews/review-moderation.service.ts`](backend/src/reviews/review-moderation.service.ts)
+- [`backend/src/reviews/sanctions.service.ts`](backend/src/reviews/sanctions.service.ts)
+- [`backend/src/reviews/sanction-rules.ts`](backend/src/reviews/sanction-rules.ts)
+- [`backend/src/auth/auth.service.ts`](backend/src/auth/auth.service.ts)
+- [`frontend/src/app/admin/valoraciones/page.tsx`](frontend/src/app/admin/valoraciones/page.tsx)
+- [`docs/legal/borrador-valoraciones.md`](docs/legal/borrador-valoraciones.md)
+- [`e2e/tests/moderacion.spec.ts`](e2e/tests/moderacion.spec.ts)
+
+</details>
+
+<p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
+
 <a id="registro-por-area"></a>
 
 ## 🧩 Registro por área
@@ -1991,7 +2042,7 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | 💳 Monetización | Planes, Pago Móvil, aprobación, tasa BCV, evidencia de tasa por cuota, catálogo de bancos, referencia única atómica, Plus/Premium/Agencia solo con el 100% de documentos, pagos externos registrados por la administración con renovación anticipada, precios de septiembre de 2026 (3,99 / 5,99 / 10,99 / 69,99 USD), planes Perfil Básico, Profesional, Plus, Premium y Marca Médica (servicio de contenido: 2 videos cada mes), Pago Móvil de la plataforma registrado desde Pagos y visible solo dentro del panel, y políticas de pagos y de reembolsos | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0010](#act-0010) · [ACT-0011](#act-0011) · [ACT-0015](#act-0015) · [ACT-0019](#act-0019) · [ACT-0021](#act-0021) · [ACT-0031](#act-0031) · [ACT-0032](#act-0032) · [ACT-0033](#act-0033) · [ACT-0035](#act-0035) · [ACT-0036](#act-0036) |
 | 📅 Agenda y citas | Horarios, disponibilidad, reservas, máquina de estados, anti-doble-reserva y sin solapes, zona America/Caracas (también en correos, avisos y recordatorios), calendario del médico con arrastrar y soltar, horario semanal en cuadrícula, historial de cada cita, reserva y reprogramación con calendario de mes, límites de reserva | [ACT-0007](#act-0007) · [ACT-0015](#act-0015) · [ACT-0040](#act-0040) · [ACT-0042](#act-0042) |
 | 🔒 Pacientes | Código pseudónimo, cifrado de datos de salud, consentimiento por alcance y tiempo, lecturas auditadas, registro propio, foto de identificación verificada por un admin, reserva con la ficha propia, código y QR para compartir, directorio del médico por código, bóveda de administración y noindex, registro visible desde el inicio, supresión de la cuenta conservando solo la evidencia legal, consentimiento expreso de datos de salud y mayoría de edad, descarga de los datos propios e historial de accesos, avance del registro (identidad y contacto, sin datos de salud) | [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0023](#act-0023) · [ACT-0027](#act-0027) · [ACT-0029](#act-0029) · [ACT-0031](#act-0031) · [ACT-0033](#act-0033) · [ACT-0043](#act-0043) |
-| ⭐ Valoraciones | Estrellas y comentario de pacientes con registro completo, cédula aprobada y consulta verificada; moderación previa de comentarios con filtro automático; autor anónimo por defecto; promedio desde 3; respuesta y denuncia del médico; apagadas en producción hasta la revisión legal (`REVIEWS_ENABLED`) | [ACT-0043](#act-0043) |
+| ⭐ Valoraciones | Estrellas y comentario de pacientes con registro completo, cédula aprobada y consulta verificada; moderación previa de comentarios con filtro automático; autor anónimo por defecto; promedio desde 3; respuesta y denuncia del médico; moderación de la administración (aprobar, rechazar, retirar como evidencia, restaurar, eliminar), identidad del autor solo con la bóveda, sanciones por días que vencen solas; borrador legal para el abogado; apagadas en producción hasta la revisión legal (`REVIEWS_ENABLED`) | [ACT-0043](#act-0043) · [ACT-0044](#act-0044) |
 | 🛠️ Administración | Médicos, pagos, SEO, cookies, especialidades, planes, verificaciones, organizaciones, bancos, geografía, identidad de pacientes, cuentas (suspensión, baja, eliminación definitiva), planes pagados, video de presentación de los médicos, bandeja de solicitudes legales, Pago Móvil propio, video de muestra de Marca Médica y actividad reciente desplegable | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0031](#act-0031) · [ACT-0032](#act-0032) · [ACT-0033](#act-0033) · [ACT-0034](#act-0034) · [ACT-0035](#act-0035) · [ACT-0036](#act-0036) |
 | 📊 Observabilidad | Auditoría, analítica con consentimiento y sin IP, estadísticas del médico según su plan, centro de notificaciones (campana, página en cada panel, correos opcionales y avisos a la administración), salud, pruebas, CI, escaneo de imágenes y Dependabot, ESLint del frontend en CI, versión publicada verificable, estado de las dependencias (`/health/ready`), alertas por Telegram/correo/ntfy/webhook, interruptor de hombre muerto y monitor externo de GitHub, pruebas de punta a punta del sitio (Playwright) en escritorio y teléfono | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0036](#act-0036) · [ACT-0037](#act-0037) · [ACT-0038](#act-0038) · [ACT-0039](#act-0039) · [ACT-0041](#act-0041) |
 | 🎨 Experiencia | Directorios, dashboard, componentes UI, motion, legal, formularios legibles y utilizables con teclado, sección de pacientes en el inicio, tipografía Montserrat + Open Sans, suiches, botones y foco de campos corregidos, centro legal con 21 documentos versionados y avisos breves (descargo médico, verificación, QR), portada con cifras reales y directorio que explica cuando está vacío, accesibilidad revisada con axe (contraste, etiquetas, avisos anunciados, teclado), «Salir» que vuelve a la portada y tarjeta para compartir del sitio | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0013](#act-0013) · [ACT-0014](#act-0014) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0017](#act-0017) · [ACT-0019](#act-0019) · [ACT-0022](#act-0022) · [ACT-0023](#act-0023) · [ACT-0025](#act-0025) · [ACT-0026](#act-0026) · [ACT-0028](#act-0028) · [ACT-0033](#act-0033) · [ACT-0037](#act-0037) · [ACT-0039](#act-0039) |
@@ -2091,6 +2142,7 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | IMP-084 | Centro de notificaciones: campana con contador, página «Notificaciones» en cada panel, enlace de cada aviso, correos opcionales y avisos a la administración por permiso | 🟢 Completado | [`backend/src/notifications/notifications.service.ts`](backend/src/notifications/notifications.service.ts), [`frontend/src/components/notifications/NotificationBell.tsx`](frontend/src/components/notifications/NotificationBell.tsx) |
 | IMP-085 | Calendario del médico (día, semana, mes y lista) con arrastrar y soltar y alternativa «Mover», horario semanal en cuadrícula, historial de citas con su línea de tiempo, reserva y reprogramación con calendario de mes, límites de reserva en el servidor y restricción contra citas solapadas | 🟢 Completado | [`backend/src/appointments/appointments.service.ts`](backend/src/appointments/appointments.service.ts), [`frontend/src/components/agenda/AgendaCalendar.tsx`](frontend/src/components/agenda/AgendaCalendar.tsx) |
 | IMP-086 | Valoraciones de pacientes: requisitos verificados por la API (registro al 100 %, cédula aprobada, consulta verificada), publicación sin comentario y moderación previa con filtro, promedio desde 3, paneles del paciente y del médico, permiso `MODERATE_REVIEWS`, apagadas con `REVIEWS_ENABLED` | 🟢 Completado | [`backend/src/reviews/reviews.service.ts`](backend/src/reviews/reviews.service.ts), [`frontend/src/app/paciente/valoraciones/page.tsx`](frontend/src/app/paciente/valoraciones/page.tsx) |
+| IMP-087 | Moderación de valoraciones (`/admin/valoraciones`): cola sin identidad, decisiones con motivo y aviso, evidencia al retirar, borrado con «ELIMINAR», respuestas y denuncias, identidad del autor con la bóveda; sanciones por días (opiniones o cuenta) que vencen solas sin tocar citas ni autorizaciones; categoría de reclamos «Valoración abusiva o falsa»; borrador legal | 🟢 Completado | [`backend/src/reviews/review-moderation.service.ts`](backend/src/reviews/review-moderation.service.ts), [`backend/src/reviews/sanctions.service.ts`](backend/src/reviews/sanctions.service.ts), [`docs/legal/borrador-valoraciones.md`](docs/legal/borrador-valoraciones.md) |
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
@@ -2152,10 +2204,11 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | 🟡 Baja | Revisión manual en Firefox y Safari (iPhone) y en teléfonos reales; la suite ya los cubre a pedido con `E2E_TODOS_LOS_NAVEGADORES=1` | 🔵 Planificado | Ver [`e2e/README.md`](e2e/README.md) |
 | 🟠 Media | Aprobar la limpieza de disco del proyecto: 32,6 GB de caché de compilación y 11 imágenes sin uso (`GMM_PRUNE_AFTER_DEPLOY=true` en `deploy.sh`); no toca los otros proyectos ni la imagen de *rollback* | 🔴 Pendiente del titular | Disco por debajo del 50 % y limpieza en cada despliegue. Ver [ACT-0039](#act-0039) |
 | 🔴 Alta | Pendientes del titular para lanzar, en orden: datos del operador, SMTP real (y con él MFA), custodia de claves, copia externa, alertas, médicos reales publicados, revisión legal, Search Console, Pago Móvil y video de muestra, código nuevo de la bóveda | 🔴 Pendiente del titular | `deploy.sh --informe` en verde y la lista de [`docs/ROADMAP.md`](docs/ROADMAP.md) completa |
-| 🔴 Alta | Plan de agenda, notificaciones y valoraciones aprobado por el titular (bloques 4 y 5): moderación y sanciones por días, textos legales de las valoraciones, «Quiero que me contacte» y apariciones en búsquedas | 🔵 En curso | Bloques 0 a 3 hechos en [ACT-0040](#act-0040), [ACT-0041](#act-0041), [ACT-0042](#act-0042) y [ACT-0043](#act-0043). Las valoraciones se encienden en producción solo con sus textos legales revisados por el abogado |
+| 🔴 Alta | Plan de agenda, notificaciones y valoraciones aprobado por el titular (bloque 5): «Quiero que me contacte» y apariciones en búsquedas | 🔵 En curso | Bloques 0 a 4 hechos en [ACT-0040](#act-0040) a [ACT-0044](#act-0044). Las valoraciones se encienden en producción solo con sus textos legales revisados por el abogado |
 | 🟡 Baja | Decidir cuántos días se guardan los avisos ya leídos de la campana, declararlo en la política de retención y cargarlo en `NOTIFICATION_RETENTION_DAYS` (hoy no se borran) | 🔴 Pendiente del titular | Ver [ACT-0041](#act-0041) |
 | 🟠 Media | MinIO: quay.io ya no entrega la imagen fijada en `docker-compose.prod.yml` (responde 401 desde el despliegue de ACT-0041). El contenedor funciona con su imagen local, pero si se pierde (un borrado de imágenes, un VPS nuevo) no se puede volver a descargar: elegir otra imagen o un registro propio y probar la migración de los datos | 🔴 Pendiente | Visto en `deploy-act41b.log`, `deploy-act42.log` y `deploy-act43.log` |
 | 🟡 Baja | Excepción fechada de `braces` (GHSA-vfj7-8cjw-p6xm, Tailwind 3, solo al compilar) hasta el 2026-12-31: retirarla cuando salga una versión corregida o al migrar a Tailwind 4 | 🔵 Planificado | Ver [ACT-0043](#act-0043) y `security/audit-exceptions.json` |
+| 🔴 Alta | Encender las valoraciones: llevar [`docs/legal/borrador-valoraciones.md`](docs/legal/borrador-valoraciones.md) al abogado, fijar el plazo de evidencia (`REVIEW_EVIDENCE_RETENTION_DAYS`), publicar los textos junto con los datos del titular (`DATA_CONTROLLER`) en una sola subida de versión y poner `REVIEWS_ENABLED=true` en `.env.prod` | 🔴 Pendiente del titular | Ver [ACT-0043](#act-0043) y [ACT-0044](#act-0044) |
 | 🟢 Continua | Registrar cada modificación nueva con fecha, hora, responsable y evidencia | 🟢 Activo | No existen cambios relevantes sin entrada en esta bitácora |
 | 🟢 Continua | Confirmar en el repositorio remoto cada cambio cerrado localmente | 🟢 Activo | `git status` limpio y `origin/main` sincronizado al cierre de cada sesión |
 
@@ -2243,6 +2296,7 @@ Para cada cambio futuro, añadir una entrada en la línea de tiempo y actualizar
 | `2026-10-02 08:34:59 -04:00` | Incorporación de ACT-0041 (centro de notificaciones: campana, página en cada panel, correos opcionales y avisos a la administración) con su despliegue; un pendiente nuevo (plazo de los avisos leídos) | 🟢 Completado |
 | `2026-10-05 07:15:08 -04:00` | Incorporación de ACT-0042 (calendario con arrastrar y soltar, horario semanal en cuadrícula, historial de citas, reserva por mes, límites de reserva y restricción contra solapes) con su despliegue | 🟢 Completado |
 | `2026-10-05 08:08:03 -04:00` | Incorporación de ACT-0043 (valoraciones de pacientes con requisitos, moderación previa y paneles; apagadas en producción) con su despliegue y la excepción fechada de `braces`; dos pendientes nuevos (imagen de MinIO y excepción de `braces`) | 🟢 Completado |
+| `2026-10-05 08:33:33 -04:00` | Incorporación de ACT-0044 (moderación de valoraciones, sanciones por días, categoría de reclamos y borrador legal; valoraciones aún apagadas) con su despliegue; un pendiente nuevo del titular (encender las valoraciones) | 🟢 Completado |
 
 ---
 
