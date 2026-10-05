@@ -13,6 +13,7 @@ import { patientCompleteness, PatientCompleteness } from '../patients/patient-co
 import { reviewPublishedTemplate } from '../mail/mail.templates';
 import { cleanText, reviewFlags } from './review-filter';
 import { MIN_REVIEWS_FOR_AVERAGE, publicRating, recomputeRating } from './review-rating';
+import { activeSanctionWhere, sanctionUntilText } from './sanction-rules';
 import { CreateReviewDto, ReportReviewDto, UpdateReviewDto } from './dto/reviews.dto';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -123,6 +124,10 @@ export class ReviewsService {
       blockers.push('No pudimos verificar tu cédula: sube una foto nueva desde tu perfil');
     }
     if (!adult) blockers.push('Debes declarar que eres mayor de edad');
+    const sanctionUntil = await this.reviewSanctionUntil(userId);
+    if (sanctionUntil !== undefined) {
+      blockers.push(`No puedes escribir ni editar opiniones ${sanctionUntilText(sanctionUntil)} por una sanción de la administración`);
+    }
 
     return {
       profile,
@@ -135,6 +140,20 @@ export class ReviewsService {
         blockers,
       },
     };
+  }
+
+  /**
+   * Fin de la sanción de opiniones vigente (null si es indefinida) o
+   * undefined si no tiene ninguna. Con varias, manda la que dura más.
+   */
+  private async reviewSanctionUntil(userId: string): Promise<Date | null | undefined> {
+    const sanctions = await this.prisma.userSanction.findMany({
+      where: activeSanctionWhere(userId, 'REVIEWS'),
+      select: { endsAt: true },
+    });
+    if (!sanctions.length) return undefined;
+    if (sanctions.some((sanction) => sanction.endsAt === null)) return null;
+    return new Date(Math.max(...sanctions.map((sanction) => sanction.endsAt!.getTime())));
   }
 
   /** Médicos publicados con los que el paciente tiene una consulta verificada, y de qué mes. */
@@ -527,6 +546,10 @@ export class ReviewsService {
     const review = await this.doctorReviewOrThrow(userId, reviewId);
     if (review.reply?.status === 'WITHDRAWN') {
       throw new ForbiddenException('La administración retiró tu respuesta: no se puede editar');
+    }
+    const sanctionUntil = await this.reviewSanctionUntil(userId);
+    if (sanctionUntil !== undefined) {
+      throw new ForbiddenException(`No puedes responder opiniones ${sanctionUntilText(sanctionUntil)} por una sanción de la administración`);
     }
     const content = cleanText(rawContent);
     if (!content) throw new BadRequestException('Escribe tu respuesta');

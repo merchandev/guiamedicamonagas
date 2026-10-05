@@ -35,6 +35,8 @@ function LoginContent() {
   const next = safeInternalPath(searchParams.get('next'));
   const passwordReset = searchParams.get('contrasena') === 'restablecida';
   const [error, setError] = useState<string | null>(null);
+  // Suspensión temporal por una sanción: el mensaje trae la fecha y el motivo; se suma el enlace para reclamar.
+  const [suspended, setSuspended] = useState(false);
   const [challengeToken, setChallengeToken] = useState<string | null>(null);
   const [code, setCode] = useState('');
   const [verifying, setVerifying] = useState(false);
@@ -46,6 +48,7 @@ function LoginContent() {
 
   const onSubmit = async (values: FormValues) => {
     setError(null);
+    setSuspended(false);
     try {
       const outcome = await login(values.email, values.password);
       if (outcome.kind === 'MFA_REQUIRED') {
@@ -55,6 +58,7 @@ function LoginContent() {
       router.push(next ?? homePathFor(outcome.user.role));
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'No se pudo iniciar sesión');
+      setSuspended(e instanceof ApiError && (e.data as { code?: string } | null)?.code === 'ACCOUNT_SUSPENDED_UNTIL');
     }
   };
 
@@ -112,7 +116,16 @@ function LoginContent() {
           {passwordReset && !error && (
             <Alert tone="success">Listo: tu contraseña se cambió. Entra con la nueva.</Alert>
           )}
-          {error && <Alert tone="error">{error}</Alert>}
+          {error && (
+            <Alert tone="error">
+              {error}
+              {suspended && (
+                <Link href="/reclamos?tipo=REVIEW_ABUSE" className="mt-1 block font-medium underline">
+                  Reclamar
+                </Link>
+              )}
+            </Alert>
+          )}
           <Input label="Correo electrónico" type="email" required {...register('email')} error={errors.email?.message} />
           <Input label="Contraseña" type="password" required {...register('password')} error={errors.password?.message} />
           <Button type="submit" loading={isSubmitting} className="w-full">

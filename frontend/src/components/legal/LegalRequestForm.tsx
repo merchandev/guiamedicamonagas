@@ -15,7 +15,7 @@ const DESCRIPTION_MIN = 20;
 
 /**
  * Formulario del canal de reclamos. Sin sesión pide un correo para responder;
- * con sesión la solicitud queda a nombre de la cuenta. ?tipo= preselecciona
+ * con sesión la solicitud queda a nombre de la cuenta. ?url= precarga el enlace. ?tipo= preselecciona
  * la categoría (enlaces desde las políticas y el panel del paciente).
  */
 export function LegalRequestForm() {
@@ -26,7 +26,8 @@ export function LegalRequestForm() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
-  const [subjectUrl, setSubjectUrl] = useState('');
+  // ?url= llega desde «Denunciar» en una opinión: la ficha y la opinión de la que se trata.
+  const [subjectUrl, setSubjectUrl] = useState(() => (searchParams.get('url') ?? '').slice(0, 300));
   const [description, setDescription] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);

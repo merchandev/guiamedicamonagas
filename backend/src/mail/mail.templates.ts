@@ -462,3 +462,83 @@ export function reviewPublishedTemplate(rawDoctorName: string, panelUrl: string)
      ${button(panelUrl, 'Ver mis valoraciones')}`,
   );
 }
+
+export type ReviewModerationKind = 'REJECTED' | 'WITHDRAWN' | 'DELETED';
+
+/** Al autor, cuando su valoración no se publica, se retira o se elimina: siempre con el motivo y cómo reclamar. */
+export function reviewModeratedTemplate(rawName: string, kind: ReviewModerationKind, rawReason: string, panelUrl: string, claimsUrl: string) {
+  const name = escapeHtml(rawName);
+  const reason = escapeHtml(rawReason);
+  const copy: Record<ReviewModerationKind, { title: string; body: string }> = {
+    REJECTED: {
+      title: 'Tu opinión no se publicó',
+      body: 'El equipo revisó tu opinión y no la publicó porque no cumple las reglas de las valoraciones. Puedes corregirla y enviarla de nuevo desde tu panel.',
+    },
+    WITHDRAWN: {
+      title: 'Retiramos tu opinión',
+      body: 'El equipo retiró tu opinión de la ficha del médico porque no cumple las reglas de las valoraciones. Ya no se muestra ni cuenta para el promedio.',
+    },
+    DELETED: {
+      title: 'Eliminamos tu opinión',
+      body: 'El equipo eliminó tu opinión porque no cumple las reglas de las valoraciones.',
+    },
+  };
+  const { title, body } = copy[kind];
+  return layout(
+    title,
+    `<h1 style="font-size:20px;margin:0 0 12px;">Hola, ${name}</h1>
+     <p style="font-size:14px;line-height:1.6;color:#3a3a3a;">${body}</p>
+     <p style="font-size:13px;background:#f7f7f5;border-radius:8px;padding:12px 14px;color:#4a4a4a;">Motivo: ${reason}</p>
+     <p style="font-size:13px;line-height:1.6;color:#4a4a4a;">Si no estás de acuerdo, puedes reclamar en <a href="${claimsUrl}" style="color:${BRAND_COLOR};">Reclamos y solicitudes</a>.</p>
+     ${kind === 'REJECTED' ? button(panelUrl, 'Ver mis valoraciones') : ''}`,
+  );
+}
+
+/** Al médico, cuando su respuesta a una valoración no se publica o se retira. */
+export function reviewReplyModeratedTemplate(rawDoctorName: string, withdrawn: boolean, rawReason: string, panelUrl: string) {
+  const doctor = escapeHtml(rawDoctorName);
+  return layout(
+    withdrawn ? 'Retiramos tu respuesta' : 'Tu respuesta no se publicó',
+    `<h1 style="font-size:20px;margin:0 0 12px;">Hola, Dr(a). ${doctor}</h1>
+     <p style="font-size:14px;line-height:1.6;color:#3a3a3a;">${
+       withdrawn
+         ? 'El equipo retiró de tu ficha tu respuesta a una opinión porque no cumple las reglas de las valoraciones.'
+         : 'El equipo revisó tu respuesta a una opinión y no la publicó porque no cumple las reglas de las valoraciones. Puedes corregirla desde tu panel.'
+     }</p>
+     <p style="font-size:13px;background:#f7f7f5;border-radius:8px;padding:12px 14px;color:#4a4a4a;">Motivo: ${escapeHtml(rawReason)}</p>
+     ${button(panelUrl, 'Ver mis valoraciones')}`,
+  );
+}
+
+export type SanctionNoticeKind = 'APPLIED' | 'CHANGED' | 'LIFTED';
+
+/**
+ * Sanción por valoraciones o respuestas: el motivo, hasta cuándo y cómo
+ * reclamar (lo exigen los términos). `endLabel` ya viene en hora de Caracas.
+ */
+export function sanctionTemplate(
+  rawName: string,
+  kind: SanctionNoticeKind,
+  account: boolean,
+  rawReason: string,
+  endLabel: string | null,
+  claimsUrl: string,
+) {
+  const name = escapeHtml(rawName);
+  const what = account
+    ? 'no podrás iniciar sesión. Tus citas y las autorizaciones que diste a tus médicos se mantienen'
+    : 'no podrás escribir ni editar opiniones ni respuestas. El resto de tu cuenta sigue igual';
+  const until = endLabel ? `hasta el ${escapeHtml(endLabel)}` : 'por tiempo indefinido';
+  const title = kind === 'LIFTED' ? 'Se levantó tu sanción' : account ? 'Tu cuenta está suspendida' : 'No puedes publicar opiniones por un tiempo';
+  const body =
+    kind === 'LIFTED'
+      ? `El equipo de ${BRAND_NAME} levantó la sanción que tenías por valoraciones. Ya puedes usar tu cuenta con normalidad.`
+      : `${kind === 'CHANGED' ? 'El equipo cambió la duración de tu sanción' : `El equipo de ${BRAND_NAME} te sancionó por lo que escribiste en valoraciones o respuestas`}: ${until} ${what}.`;
+  return layout(
+    title,
+    `<h1 style="font-size:20px;margin:0 0 12px;">Hola, ${name}</h1>
+     <p style="font-size:14px;line-height:1.6;color:#3a3a3a;">${body}</p>
+     <p style="font-size:13px;background:#f7f7f5;border-radius:8px;padding:12px 14px;color:#4a4a4a;">Motivo: ${escapeHtml(rawReason)}</p>
+     <p style="font-size:13px;line-height:1.6;color:#4a4a4a;">Si no estás de acuerdo, puedes reclamar en <a href="${claimsUrl}" style="color:${BRAND_COLOR};">Reclamos y solicitudes</a>.</p>`,
+  );
+}

@@ -29,6 +29,10 @@ model User {
   purgedAt            DateTime?
   failedLoginAttempts Int       @default(0)
   lockedUntil         DateTime?
+  /// Suspensión temporal por una sanción (UserSanction ACCOUNT): no puede iniciar
+  /// sesión hasta esta fecha. A diferencia de isActive=false, no revoca sus
+  /// autorizaciones ni cancela sus citas, y vence sola.
+  suspendedUntil      DateTime?
   lastLoginAt         DateTime?
   lastLoginIp         String?
 
@@ -73,6 +77,9 @@ model User {
   moderatedReviewReplies ReviewReply[]       @relation("ReviewReplyModerator")
   reviewReports       ReviewReport[]         @relation("ReviewReporter")
   resolvedReviewReports ReviewReport[]       @relation("ReviewReportResolver")
+  sanctions           UserSanction[]         @relation("UserSanctions")
+  sanctionsCreated    UserSanction[]         @relation("SanctionsCreated")
+  sanctionsLifted     UserSanction[]         @relation("SanctionsLifted")
 
   @@index([role])
 }
@@ -898,6 +905,7 @@ enum LegalRequestCategory {
   BILLING               // cobros, pagos y reembolsos
   INTELLECTUAL_PROPERTY
   AUTHORITY_REQUEST     // requerimiento de una autoridad
+  REVIEW_ABUSE          // valoración abusiva o falsa
   OTHER
 }
 
@@ -1549,4 +1557,43 @@ model ReviewReport {
 
   @@unique([reviewId, reporterId])
   @@index([status, createdAt])
+}
+
+enum SanctionType {
+  REVIEWS // no puede escribir ni editar valoraciones ni respuestas; el resto de la cuenta sigue igual
+  ACCOUNT // no puede iniciar sesión hasta la fecha (User.suspendedUntil)
+}
+
+/**
+ * Sanción por lo que alguien escribió en valoraciones o respuestas: por los
+ * días que elija la administración (1 a 365) o, solo la de opiniones, por
+ * tiempo indefinido. Se puede levantar antes o cambiar su fin. Vence sola: la
+ * API la deja de aplicar al pasar endsAt y una tarea avisa al titular.
+ */
+model UserSanction {
+  id       String       @id @default(uuid())
+  userId   String
+  user     User         @relation("UserSanctions", fields: [userId], references: [id], onDelete: Cascade)
+  type     SanctionType
+  reason   String
+  startsAt DateTime     @default(now())
+  /// null = indefinida (solo REVIEWS).
+  endsAt   DateTime?
+  /// Valoración que la motivó (sin clave foránea: la sanción sobrevive si se borra).
+  reviewId String?
+
+  createdById String?
+  createdBy   User?     @relation("SanctionsCreated", fields: [createdById], references: [id], onDelete: SetNull)
+  liftedAt    DateTime?
+  liftedById  String?
+  liftedBy    User?     @relation("SanctionsLifted", fields: [liftedById], references: [id], onDelete: SetNull)
+  liftReason  String?
+  /// Cuándo se le avisó que terminó (la tarea de cada 10 minutos).
+  endNoticeSentAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, type])
+  @@index([endsAt])
 }

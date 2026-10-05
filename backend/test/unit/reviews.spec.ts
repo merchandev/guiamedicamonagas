@@ -5,6 +5,7 @@ import { authorLabel } from '../../src/reviews/reviews.service';
 import { patientCompleteness } from '../../src/patients/patient-completeness';
 import { caracasMonthKey } from '../../src/common/caracas-time';
 import { ROLE_PERMISSIONS, Permission } from '../../src/common/permissions';
+import { activeSanctionWhere, SANCTION_PRESET_DAYS, sanctionEndsAt, sanctionUntilText } from '../../src/reviews/sanction-rules';
 
 describe('filtro automático de valoraciones', () => {
   it('marca teléfonos, correos, enlaces y cédulas', () => {
@@ -88,5 +89,34 @@ describe('permiso de moderación', () => {
     for (const role of ['USER', 'PROFESSIONAL', 'ORGANIZATION'] as const) {
       expect(ROLE_PERMISSIONS[role]).not.toContain(Permission.MODERATE_REVIEWS);
     }
+  });
+});
+
+describe('sanciones por días', () => {
+  it('dura de 1 a 365 días desde ahora, o es indefinida', () => {
+    const from = new Date('2026-10-05T14:00:00Z');
+    expect(sanctionEndsAt(7, from)?.toISOString()).toBe('2026-10-12T14:00:00.000Z');
+    expect(sanctionEndsAt(null, from)).toBeNull();
+    expect(() => sanctionEndsAt(0, from)).toThrow(RangeError);
+    expect(() => sanctionEndsAt(366, from)).toThrow(RangeError);
+    expect(() => sanctionEndsAt(2.5, from)).toThrow(RangeError);
+    expect(SANCTION_PRESET_DAYS).toEqual([1, 3, 7, 15, 30, 90]);
+  });
+
+  it('el aviso dice hasta cuándo en hora de Caracas', () => {
+    // 15 de octubre a las 11:00 p. m. en Caracas = 16 de octubre 03:00 UTC.
+    expect(sanctionUntilText(new Date('2026-10-16T03:00:00Z'))).toBe('hasta el 15 de octubre de 2026');
+    expect(sanctionUntilText(null)).toBe('por tiempo indefinido');
+  });
+
+  it('una sanción vigente no está levantada, ya empezó y no terminó', () => {
+    const now = new Date('2026-10-05T12:00:00Z');
+    expect(activeSanctionWhere('u1', 'ACCOUNT', now)).toEqual({
+      userId: 'u1',
+      type: 'ACCOUNT',
+      liftedAt: null,
+      startsAt: { lte: now },
+      OR: [{ endsAt: null }, { endsAt: { gt: now } }],
+    });
   });
 });

@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/Button';
 import { ReviewSummary } from './ReviewSummary';
 import { ReviewCard } from './ReviewCard';
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
+
 /** «Opiniones de pacientes» en la ficha pública: la primera página llega del servidor, el resto con «Ver más». */
 export function DoctorReviews({
   slug,
@@ -53,7 +55,11 @@ export function DoctorReviews({
       {items.length > 0 && (
         <div className="mt-5 space-y-3">
           {items.map((review) => (
-            <ReviewCard key={review.id} review={review} />
+            <ReviewCard
+              key={review.id}
+              review={review}
+              reportHref={`/reclamos?tipo=REVIEW_ABUSE&url=${encodeURIComponent(`${SITE_URL}/medicos/${slug}#opinion-${review.id}`)}`}
+            />
           ))}
         </div>
       )}

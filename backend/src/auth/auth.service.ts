@@ -26,6 +26,7 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { generatePublicCode, searchNameFor } from '../professionals/professional-search.util';
+import { caracasLongDate } from '../common/caracas-time';
 
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOCKOUT_MINUTES = 15;
@@ -303,6 +304,22 @@ export class AuthService {
       });
     }
 
+    // Suspensión temporal por una sanción (valoraciones o respuestas): vence
+    // sola y no toca sus autorizaciones ni sus citas. Se informa hasta cuándo,
+    // el motivo y cómo reclamar.
+    if (user.suspendedUntil && user.suspendedUntil > new Date()) {
+      const sanction = await this.prisma.userSanction.findFirst({
+        where: { userId: user.id, type: 'ACCOUNT', liftedAt: null, endsAt: { gt: new Date() } },
+        orderBy: { endsAt: 'desc' },
+        select: { reason: true },
+      });
+      throw new ForbiddenException({
+        code: 'ACCOUNT_SUSPENDED_UNTIL',
+        suspendedUntil: user.suspendedUntil,
+        message: `Tu cuenta está suspendida hasta el ${caracasLongDate(user.suspendedUntil)}.${sanction ? ` Motivo: ${sanction.reason}` : ''} Si no estás de acuerdo, puedes reclamar en Reclamos y solicitudes.`,
+      });
+    }
+
     // Migración silenciosa bcrypt → Argon2id: el usuario no nota nada
     await this.prisma.user.update({
       where: { id: user.id },
@@ -435,7 +452,13 @@ export class AuthService {
       throw new UnauthorizedException('Sesión inválida, inicia sesión de nuevo');
     }
 
-    if (!existing || existing.revokedAt || existing.expiresAt < new Date() || !existing.user.isActive) {
+    if (
+      !existing ||
+      existing.revokedAt ||
+      existing.expiresAt < new Date() ||
+      !existing.user.isActive ||
+      (existing.user.suspendedUntil && existing.user.suspendedUntil > new Date())
+    ) {
       throw new UnauthorizedException('Sesión inválida, inicia sesión de nuevo');
     }
 

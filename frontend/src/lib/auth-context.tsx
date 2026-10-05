@@ -18,7 +18,8 @@ export type Permission =
   | 'MANAGE_CATALOG'
   | 'MANAGE_PLANS'
   | 'MANAGE_SITE'
-  | 'VIEW_ADMIN_STATS';
+  | 'VIEW_ADMIN_STATS'
+  | 'MODERATE_REVIEWS';
 
 export interface OrganizationMembership {
   role: 'OWNER' | 'ADMIN' | 'EDITOR';

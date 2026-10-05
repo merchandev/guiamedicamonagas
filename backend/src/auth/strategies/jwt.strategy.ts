@@ -36,9 +36,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   async validate(payload: JwtPayload): Promise<AuthenticatedUser> {
     const user = await this.prisma.user.findUnique({
       where: { id: payload.sub },
-      select: { id: true, email: true, role: true, isActive: true, tokenVersion: true },
+      select: { id: true, email: true, role: true, isActive: true, tokenVersion: true, suspendedUntil: true },
     });
-    if (!user || !user.isActive || (payload.tv ?? 0) !== user.tokenVersion) {
+    // Una suspensión temporal (sanción) también corta la sesión mientras dura.
+    const suspended = !!user?.suspendedUntil && user.suspendedUntil > new Date();
+    if (!user || !user.isActive || suspended || (payload.tv ?? 0) !== user.tokenVersion) {
       throw new UnauthorizedException('Sesión inválida, inicia sesión de nuevo');
     }
     return { id: user.id, email: user.email, role: user.role };

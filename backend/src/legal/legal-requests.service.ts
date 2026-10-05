@@ -23,6 +23,7 @@ export const LEGAL_REQUEST_CATEGORY_LABELS: Record<LegalRequestCategory, string>
   BILLING: 'Pagos, cobros o reembolsos',
   INTELLECTUAL_PROPERTY: 'Propiedad intelectual',
   AUTHORITY_REQUEST: 'Requerimiento de una autoridad',
+  REVIEW_ABUSE: 'Valoración abusiva o falsa',
   OTHER: 'Otra solicitud',
 };
 

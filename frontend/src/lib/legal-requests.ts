@@ -13,6 +13,7 @@ export type LegalRequestCategory =
   | 'BILLING'
   | 'INTELLECTUAL_PROPERTY'
   | 'AUTHORITY_REQUEST'
+  | 'REVIEW_ABUSE'
   | 'OTHER';
 
 export type LegalRequestStatus = 'OPEN' | 'IN_REVIEW' | 'RESOLVED' | 'REJECTED';
@@ -72,6 +73,11 @@ export const LEGAL_REQUEST_CATEGORIES: { value: LegalRequestCategory; label: str
     value: 'AUTHORITY_REQUEST',
     label: 'Requerimiento de una autoridad',
     hint: 'Identifica el órgano, el funcionario y el fundamento del requerimiento.',
+  },
+  {
+    value: 'REVIEW_ABUSE',
+    label: 'Valoración abusiva o falsa',
+    hint: 'Indica la ficha del médico y qué opinión es, y por qué crees que es falsa, ofensiva o revela datos de alguien. También sirve para reclamar por una opinión tuya que retiramos o por una sanción.',
   },
   { value: 'OTHER', label: 'Otra solicitud', hint: 'Cuéntanos en qué podemos ayudarte.' },
 ];

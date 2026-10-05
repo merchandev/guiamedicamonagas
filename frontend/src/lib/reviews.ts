@@ -55,3 +55,41 @@ export function formatAverage(value: number): string {
 export function opinionsLabel(count: number): string {
   return count === 1 ? '1 opinión' : `${count} opiniones`;
 }
+
+/** Lo que el filtro automático encontró en un texto (para quien modera). */
+export const REVIEW_FLAG_LABELS: Record<string, string> = {
+  PHONE: 'teléfono',
+  EMAIL: 'correo',
+  LINK: 'enlace',
+  ID_NUMBER: 'cédula',
+  INSULT: 'insulto o acusación',
+  HEALTH: 'datos de salud',
+};
+
+export const REPORT_REASON_LABEL: Record<ReviewReportReason, string> = Object.fromEntries(
+  REPORT_REASONS.map((reason) => [reason.value, reason.label]),
+) as Record<ReviewReportReason, string>;
+
+export const REPORT_STATUS_LABEL: Record<'OPEN' | 'UPHELD' | 'DISMISSED', string> = {
+  OPEN: 'Abierta',
+  UPHELD: 'Procedente',
+  DISMISSED: 'Desestimada',
+};
+
+export type SanctionType = 'REVIEWS' | 'ACCOUNT';
+
+export interface Sanction {
+  id: string;
+  type: SanctionType;
+  typeLabel: string;
+  reason: string;
+  startsAt: string;
+  endsAt: string | null;
+  reviewId: string | null;
+  liftedAt: string | null;
+  liftReason: string | null;
+  active: boolean;
+}
+
+/** Atajos de días para sancionar (también se puede escribir otra cantidad de 1 a 365). */
+export const SANCTION_PRESET_DAYS = [1, 3, 7, 15, 30, 90];

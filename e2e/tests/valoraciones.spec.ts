@@ -3,19 +3,20 @@
 // tres, autor anónimo por defecto, respuesta y denuncia del médico.
 // La API de CI corre con REVIEWS_ENABLED=true; en producción siguen apagadas.
 // Médicos de dermatología: no se suman a los cardiólogos que listan otras pruebas.
-import { randomBytes } from 'node:crypto';
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 import {
   adminToken,
   api,
+  completedVisit,
   createPatient,
   createPublishedDoctor,
   type Doctor,
-  type Patient,
+  registeredByCode,
   signIn,
   spreadRateLimits,
   sql,
+  verifiedPatient,
 } from './support';
 
 interface Notice {
@@ -25,48 +26,6 @@ interface Notice {
 
 async function notices(token: string): Promise<Notice[]> {
   return (await api('GET', '/notifications?limit=50', undefined, token)).data.items as Notice[];
-}
-
-/**
- * Paciente con el registro al 100 % y la cédula aprobada: teléfono y municipio
- * por la API; fotos, correo verificado y aprobación directo en la base (en la
- * vida real los aprueba la administración).
- */
-async function verifiedPatient(): Promise<Patient & { profileId: string }> {
-  const patient = await createPatient();
-  const phone = `0414-${String(randomBytes(4).readUInt32BE(0) % 10_000_000).padStart(7, '0')}`;
-  const saved = await api('PATCH', '/patients/me', { phone, municipality: 'Maturín' }, patient.token);
-  expect(saved.status, JSON.stringify(saved.data)).toBe(200);
-  const [row] = await sql<{ id: string }>(
-    `update "PatientProfile" p set "photoKey" = 'patient-photos/e2e.png', "idPhotoKey" = 'patient-id-documents/e2e.png',
-       "identityStatus" = 'VERIFIED' from "User" u where u.id = p."userId" and u.email = $1 returning p.id`,
-    [patient.email],
-  );
-  await sql(`update "User" set "isEmailVerified" = true where email = $1`, [patient.email]);
-  return { ...patient, profileId: row.id };
-}
-
-/** Cita reservada por la API, realizada y ya pasada: una consulta verificada. */
-async function completedVisit(doctor: Doctor, patient: Patient) {
-  const tomorrow = new Date(Date.now() + 86_400_000).toLocaleDateString('en-CA', { timeZone: 'America/Caracas' });
-  const slots = await api('GET', `/appointments/availability?professionalId=${doctor.id}&from=${tomorrow}&to=${tomorrow}`);
-  expect((slots.data as string[]).length, 'hay horarios libres mañana').toBeGreaterThan(0);
-  const created = await api('POST', '/appointments', { professionalId: doctor.id, startsAt: slots.data[0] }, patient.token);
-  expect(created.status, JSON.stringify(created.data)).toBe(201);
-  const completed = await api('PATCH', `/appointments/me/${created.data.id}/complete`, undefined, doctor.token);
-  expect(completed.status, JSON.stringify(completed.data)).toBe(200);
-  // Una cita futura marcada como realizada no cuenta: se lleva al pasado.
-  await sql(
-    `update "Appointment" set "startsAt" = "startsAt" - interval '3 days', "endsAt" = "endsAt" - interval '3 days' where id = $1`,
-    [created.data.id],
-  );
-}
-
-/** El médico registra al paciente con su código: también es una consulta verificada. */
-async function registeredByCode(doctor: Doctor, patient: Patient) {
-  const code = (await api('POST', '/patients/me/share-code', undefined, patient.token)).data.code as string;
-  const registered = await api('POST', '/appointments/me/patients/register', { code }, doctor.token);
-  expect(registered.status, JSON.stringify(registered.data)).toBe(201);
 }
 
 function review(professionalId: string, rating: number, extra: Record<string, unknown> = {}) {

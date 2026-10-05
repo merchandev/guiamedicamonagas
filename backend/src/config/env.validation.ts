@@ -120,6 +120,12 @@ const baseEnvSchema = z.object({
   // Valoraciones de pacientes: apagadas hasta que la moderación, los textos
   // legales y la revisión del abogado estén listos (ver Actualizaciones.md).
   REVIEWS_ENABLED: envBoolean(false),
+  // Días que se guardan como evidencia las valoraciones y respuestas rechazadas
+  // o retiradas. Vacío = no se borran (el plazo lo fija el titular con su abogado).
+  REVIEW_EVIDENCE_RETENTION_DAYS: z.preprocess(
+    (value) => (value === '' ? undefined : value),
+    z.coerce.number().int().min(30).max(3650).optional(),
+  ),
 });
 
 /**

@@ -239,6 +239,8 @@ services:
       NOTIFICATION_RETENTION_DAYS: ${NOTIFICATION_RETENTION_DAYS:-}
       # Valoraciones de pacientes: apagadas hasta tener moderación, textos legales y revisión del abogado.
       REVIEWS_ENABLED: ${REVIEWS_ENABLED:-false}
+      # Días de evidencia de valoraciones rechazadas o retiradas; vacío = no se borran.
+      REVIEW_EVIDENCE_RETENTION_DAYS: ${REVIEW_EVIDENCE_RETENTION_DAYS:-}
     depends_on:
       postgres:
         condition: service_healthy
