@@ -21,6 +21,12 @@ interface Stats {
   events?: { total: Counts; last30: Counts; previous30?: Counts };
   appointments?: { last30: AppointmentCounts; previous30?: AppointmentCounts };
   messages?: { last30: number; previous30?: number };
+  searches?: {
+    last30: number;
+    previous30?: number;
+    bySpecialty: { slug: string; name: string; count: number }[];
+    byMunicipality: { name: string; count: number }[];
+  };
   monthly?: { month: string; events: Counts; appointments: number }[];
 }
 
@@ -133,6 +139,55 @@ export default function DoctorStatsPage() {
           {stats.messages && <Tile label="Mensajes recibidos" value={stats.messages.last30} before={stats.messages.previous30} />}
         </div>
       </section>
+
+      {stats.searches && (
+        <section className="card p-6" aria-labelledby="st-busquedas">
+          <h2 id="st-busquedas" className="text-lg font-semibold text-ink-900">
+            Apariciones en búsquedas
+          </h2>
+          <p className="mt-1 text-sm text-ink-700">
+            Tu ficha apareció <strong>{stats.searches.last30}</strong> {stats.searches.last30 === 1 ? 'vez' : 'veces'} en los
+            resultados del directorio y de las páginas de especialidad, y se abrió{' '}
+            <strong>{events.last30.PROFILE_VIEW ?? 0}</strong> {(events.last30.PROFILE_VIEW ?? 0) === 1 ? 'vez' : 'veces'}.
+          </p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <Tile label="Apariciones" value={stats.searches.last30} before={stats.searches.previous30} />
+          </div>
+          {(stats.searches.bySpecialty.length > 0 || stats.searches.byMunicipality.length > 0) && (
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              {stats.searches.bySpecialty.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold text-ink-800">Por especialidad buscada</h3>
+                  <ul className="mt-1 space-y-0.5 text-sm text-ink-700">
+                    {stats.searches.bySpecialty.map((row) => (
+                      <li key={row.slug}>
+                        {row.name}: {row.count}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {stats.searches.byMunicipality.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold text-ink-800">Por municipio buscado</h3>
+                  <ul className="mt-1 space-y-0.5 text-sm text-ink-700">
+                    {stats.searches.byMunicipality.map((row) => (
+                      <li key={row.name}>
+                        {row.name}: {row.count}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+          <p className="mt-3 text-xs text-ink-500">
+            Son conteos totales de quienes aceptaron la analítica del sitio, así que son menores que los reales. Nunca sabemos ni
+            te mostramos quién buscó ni qué escribió. Si un paciente quiere que lo contactes, te lo pide desde tu ficha y lo verás
+            en Mensajes.
+          </p>
+        </section>
+      )}
 
       {stats.appointments && (
         <section className="card p-6" aria-labelledby="st-citas">

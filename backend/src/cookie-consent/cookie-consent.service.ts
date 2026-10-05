@@ -8,7 +8,8 @@ const DEFAULT_CONFIG: UpdateCookieConfigDto = {
   message:
     'Usamos solo lo necesario para que el sitio funcione y sea seguro. Con tu permiso, también contamos visitas y clics de forma anónima para mejorar el directorio. No usamos publicidad ni rastreo de terceros.',
   necessaryDescription: 'Imprescindibles para iniciar sesión y proteger tu cuenta. Siempre activas.',
-  analyticsDescription: 'Conteos anónimos de visitas a perfiles y clics en WhatsApp o teléfono, sin tu IP ni tu navegador.',
+  analyticsDescription:
+    'Conteos anónimos de visitas a perfiles, clics en WhatsApp o teléfono y apariciones de cada perfil en los resultados del directorio, sin tu IP ni tu navegador ni lo que escribes en el buscador.',
   marketingDescription: 'No usamos cookies de publicidad ni de marketing.',
 };
 

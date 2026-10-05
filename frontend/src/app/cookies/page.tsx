@@ -59,8 +59,13 @@ const SECTIONS: LegalSection[] = [
       <>
         <P>
           La analítica del sitio es propia: no usamos servicios de analítica de terceros ni cookies de seguimiento. Si la
-          aceptas, se registran conteos de uso —por ejemplo, cuántas veces se visitó un perfil o se pulsó un botón de
-          contacto— <strong>sin tu dirección IP ni tu navegador</strong>.
+          aceptas, se registran conteos de uso —por ejemplo, cuántas veces se visitó un perfil, se pulsó un botón de
+          contacto o apareció un perfil en los resultados del directorio— <strong>sin tu dirección IP ni tu navegador</strong>.
+        </P>
+        <P>
+          De los resultados del directorio solo se cuenta qué perfiles se mostraron y, si filtraste, la especialidad y el
+          municipio elegidos de las listas del sitio. Nunca se guarda lo que escribes en el buscador ni quién buscó. Cada
+          médico ve esas apariciones como totales en sus estadísticas.
         </P>
         <P>Si la rechazas, esos conteos no se registran. El sitio funciona igual.</P>
       </>

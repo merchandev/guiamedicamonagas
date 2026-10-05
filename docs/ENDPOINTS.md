@@ -65,7 +65,8 @@ Cada access token lleva la versión de sesión del usuario (`tv`); si no coincid
 
 ## Analítica
 * `POST /analytics/track` — el frontend solo lo llama con consentimiento de análisis; no se guarda IP ni user-agent.
-* `GET /analytics/me` (médico) — «Estadísticas» del panel según el plan: Perfil Básico `NONE`; Profesional `BASIC` (visitas, WhatsApp y teléfono, últimos 30 días y total); Plus `FULL` (además clics en redes, mensajes y citas pedidas por estado); Premium y Marca Médica `ADVANCED` (además comparación con los 30 días anteriores y los últimos 6 meses).
+* `POST /analytics/search-appearances` (público, con consentimiento de análisis): `{ professionalIds, specialty?, municipality? }` — suma una aparición por médico publicado, por día de Caracas y filtro (solo valores de las listas del sitio; nunca el texto buscado).
+* `GET /analytics/me` (médico) — también `searches` desde el plan Profesional (apariciones de los últimos 30 días, por especialidad y municipio). «Estadísticas» del panel según el plan: Perfil Básico `NONE`; Profesional `BASIC` (visitas, WhatsApp y teléfono, últimos 30 días y total); Plus `FULL` (además clics en redes, mensajes y citas pedidas por estado); Premium y Marca Médica `ADVANCED` (además comparación con los 30 días anteriores y los últimos 6 meses).
 
 ## Notificaciones
 * `GET /notifications?cursor=&limit=` · `GET /notifications/unread-count` · `PATCH /notifications/:id/read` · `PATCH /notifications/read-all` — avisos de la propia cuenta (nunca de otra).
@@ -79,3 +80,8 @@ Cada access token lleva la versión de sesión del usuario (`tv`); si no coincid
 * Admin (`MODERATE_REVIEWS`): `GET /reviews/admin?tab=PENDING|REPLIES|REPORTED|PUBLISHED|WITHDRAWN|REJECTED&search=&rating=&page=` (sin la identidad del autor), `GET /reviews/admin/:id` (caso, denuncias y sanciones), `PATCH /reviews/admin/:id/approve|reject|withdraw|restore` (`{ reason }` para rechazar y retirar), `POST /reviews/admin/:id/delete` (`{ reason, confirm: "ELIMINAR" }`), `PATCH /reviews/admin/:id/reply` (`{ action: APPROVE|REJECT|WITHDRAW|RESTORE, reason? }`), `PATCH /reviews/admin/reports/:reportId` (`{ status: UPHELD|DISMISSED, note }`), `POST /reviews/admin/authors/:patientId/withdraw-all` (`{ reason }`).
 * Admin (`MODERATE_REVIEWS` y bóveda de pacientes abierta): `GET /patients/admin/reviews/:id/author` — nombre, código y otras valoraciones del autor (auditado como `REVIEW_AUTHOR_VIEWED`).
 * Sanciones (`MODERATE_REVIEWS`; las de la cuenta exigen además `MANAGE_ACCOUNTS`): `GET /reviews/admin/sanctions?userId=`, `POST /reviews/admin/sanctions` (`{ userId, type: REVIEWS|ACCOUNT, days: 1-365 | indefinite: true (solo REVIEWS), reason, reviewId? }`), `PATCH /reviews/admin/sanctions/:id` (nueva duración desde hoy), `PATCH /reviews/admin/sanctions/:id/lift` (`{ reason }`). Con una suspensión de cuenta vigente, `POST /auth/login` responde 403 `ACCOUNT_SUSPENDED_UNTIL` con la fecha y el motivo, y los tokens existentes responden 401.
+
+## Mensajes y pedidos de contacto
+* `POST /contact` (público) — formulario de la ficha sin cuenta. `GET /contact/me` y `PATCH /contact/:id/read` (médico) — su bandeja, con los pedidos.
+* Paciente: `GET /contact/requests/prefill` (su nombre, teléfono y correo para precargar), `POST /contact/requests` (`{ professionalSlug, shareName, phone?, shareEmail, channel: PHONE|WHATSAPP|EMAIL, preferredTime?, message, acceptConsent: true }`; correo verificado, médico con plan que recibe mensajes, uno abierto por médico, cinco por día), `GET /contact/requests/me`, `PATCH /contact/requests/:id/withdraw` (borra los datos compartidos).
+* Médico: `PATCH /contact/requests/:id/status` (`{ status: CONTACTED|CLOSED }`). Los pedidos vencen a los 30 días y sus datos se borran (tarea cada hora).

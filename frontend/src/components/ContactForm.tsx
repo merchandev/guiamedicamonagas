@@ -8,6 +8,8 @@ import { api, ApiError } from '@/lib/api';
 import { Input, Textarea } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
+import { useAuth } from '@/lib/auth-context';
+import { RequestContactForm } from '@/components/RequestContactForm';
 
 const schema = z.object({
   senderName: z.string().min(2, 'Ingresa tu nombre'),
@@ -23,7 +25,14 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>;
 
-export function ContactForm({ professionalSlug }: { professionalSlug: string }) {
+export function ContactForm({ professionalSlug, professionalName }: { professionalSlug: string; professionalName: string }) {
+  const { user } = useAuth();
+  // Paciente con sesión: elige qué datos de su cuenta compartir (pedido con consentimiento y vencimiento).
+  if (user?.role === 'USER') return <RequestContactForm professionalSlug={professionalSlug} professionalName={professionalName} />;
+  return <AnonymousContactForm professionalSlug={professionalSlug} />;
+}
+
+function AnonymousContactForm({ professionalSlug }: { professionalSlug: string }) {
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const {

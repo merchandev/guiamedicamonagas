@@ -31,3 +31,8 @@ export function caracasLongDate(date: Date): string {
 export function caracasMonthKey(date: Date): string {
   return dateKeyFormat.format(date).slice(0, 7);
 }
+
+/** «2026-10-05»: el día en Caracas. */
+export function caracasDayKey(date: Date): string {
+  return dateKeyFormat.format(date);
+}

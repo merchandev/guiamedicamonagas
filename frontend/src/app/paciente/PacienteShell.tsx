@@ -9,6 +9,7 @@ const LINKS: { href: string; label: string; reviews?: boolean }[] = [
   { href: '/paciente/codigo', label: 'Mi código' },
   { href: '/paciente/citas', label: 'Mis citas' },
   { href: '/paciente/valoraciones', label: 'Valoraciones', reviews: true },
+  { href: '/paciente/contactos', label: 'Pedidos de contacto' },
   { href: '/paciente/permisos', label: 'Permisos' },
   { href: '/paciente/privacidad', label: 'Privacidad y mis datos' },
   { href: '/paciente/notificaciones', label: 'Notificaciones' },

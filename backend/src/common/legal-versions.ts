@@ -44,3 +44,9 @@ export const PATIENT_CONSENT_VERSION = '2.0';
  * REVIEW_RULES): queda guardada en cada valoración.
  */
 export const REVIEW_RULES_VERSION = '1.0';
+
+/**
+ * Texto que acepta el paciente al enviar «Quiero que me contacte»
+ * (frontend/src/lib/legal.ts, CONTACT_REQUEST_CONSENT): queda en cada pedido.
+ */
+export const CONTACT_REQUEST_CONSENT_VERSION = '1.0';

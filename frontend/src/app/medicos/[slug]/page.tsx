@@ -267,9 +267,9 @@ export default async function DoctorProfilePage({ params }: { params: Promise<{ 
           </div>
 
           <div>
-            <h3 className="mb-3 font-semibold text-ink-900">Enviar un mensaje</h3>
+            <h3 className="mb-3 font-semibold text-ink-900">Enviar un mensaje o pedir que te contacte</h3>
             {doctor.canReceiveMessages ? (
-              <ContactForm professionalSlug={doctor.slug} />
+              <ContactForm professionalSlug={doctor.slug} professionalName={`${doctor.firstName} ${doctor.lastName}`} />
             ) : (
               <p className="rounded-lg border border-ink-100 bg-ink-50/60 p-4 text-sm text-ink-500">
                 Este profesional aún no habilitó mensajes desde la plataforma. Contáctalo por los medios listados a

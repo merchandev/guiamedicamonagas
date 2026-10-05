@@ -542,3 +542,15 @@ export function sanctionTemplate(
      <p style="font-size:13px;line-height:1.6;color:#4a4a4a;">Si no estás de acuerdo, puedes reclamar en <a href="${claimsUrl}" style="color:${BRAND_COLOR};">Reclamos y solicitudes</a>.</p>`,
   );
 }
+
+/** Al médico, por un pedido «Quiero que me contacte»: sin los datos del paciente, que solo se ven en el pedido. */
+export function contactRequestTemplate(rawDoctorName: string, days: number, panelUrl: string) {
+  const doctor = escapeHtml(rawDoctorName);
+  return layout(
+    'Nuevo pedido de contacto',
+    `<h1 style="font-size:20px;margin:0 0 12px;">Hola, Dr(a). ${doctor}</h1>
+     <p style="font-size:14px;line-height:1.6;color:#3a3a3a;">Un paciente con sesión en ${BRAND_NAME} pidió que lo contactes. En tu panel verás solo los datos que eligió compartir, su forma de contacto preferida y su mensaje, durante ${days} días o hasta que retire el pedido.</p>
+     <p style="font-size:13px;line-height:1.6;color:#4a4a4a;">Usa esos datos solo para responder este pedido: no para publicidad ni para otros fines.</p>
+     ${button(panelUrl, 'Ver el pedido')}`,
+  );
+}

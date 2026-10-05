@@ -103,6 +103,7 @@ const PUBLIC_ROUTES = [
   'GET /subscriptions/exchange-rate',
   'GET /subscriptions/plans',
   'GET /subscriptions/showcase',
+  'POST /analytics/search-appearances',
   'POST /analytics/track',
   'POST /auth/forgot-password',
   'POST /auth/login',

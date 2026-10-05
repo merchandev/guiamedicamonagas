@@ -4,6 +4,7 @@ import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
+import { trackSearchAppearances } from '@/lib/analytics';
 import { PaginatedResult, ProfessionalListItem, Specialty } from '@/lib/types';
 import { municipalityOptions, useMunicipalities } from '@/lib/catalogs';
 import { DoctorCard } from '@/components/DoctorCard';
@@ -61,7 +62,16 @@ function MedicosPageContent() {
   useEffect(() => {
     let active = true;
     api.get<DirectoryResult>(`/professionals?${query}`).then(
-      (data) => active && setResponse({ query, data }),
+      (data) => {
+        if (!active) return;
+        setResponse({ query, data });
+        // «Apariciones en búsquedas» de cada médico mostrado (con consentimiento; nunca el texto buscado).
+        const filters = new URLSearchParams(query);
+        trackSearchAppearances([...data.items, ...(data.featured ?? [])].map((doctor) => doctor.id), {
+          specialty: filters.get('specialty') ?? undefined,
+          municipality: filters.get('municipality') ?? undefined,
+        });
+      },
       () => active && setResponse({ query, data: null }),
     );
     return () => {

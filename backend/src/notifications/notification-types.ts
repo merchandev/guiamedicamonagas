@@ -8,6 +8,7 @@ import type { Role } from '@prisma/client';
 export const OPTIONAL_EMAIL_TYPES: Record<string, { label: string; roles: readonly Role[] }> = {
   APPOINTMENT_REMINDER: { label: 'Recordatorios de tus citas (un día y dos horas antes)', roles: ['USER'] },
   CONTACT_MESSAGE: { label: 'Mensajes nuevos desde el formulario de tu ficha', roles: ['PROFESSIONAL'] },
+  CONTACT_REQUEST: { label: 'Pedidos de contacto de pacientes («Quiero que me contacte»)', roles: ['PROFESSIONAL'] },
   REVIEW_PUBLISHED: { label: 'Opiniones nuevas de tus pacientes', roles: ['PROFESSIONAL'] },
 };
 

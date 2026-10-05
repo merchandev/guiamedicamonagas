@@ -156,7 +156,7 @@ export default function CookieConsent() {
               <p className="text-sm font-semibold text-ink-900">Análisis</p>
               <p className="text-xs text-ink-500">
                 {config?.analyticsDescription ??
-                  'Conteos anónimos de visitas a perfiles y clics en los botones de contacto, sin tu dirección IP ni tu navegador.'}
+                  'Conteos anónimos de visitas a perfiles, clics en los botones de contacto y apariciones de cada perfil en los resultados del directorio, sin tu dirección IP ni tu navegador ni lo que escribes en el buscador.'}
               </p>
             </div>
             <input

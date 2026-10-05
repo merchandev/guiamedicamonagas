@@ -129,6 +129,11 @@ export class AccountPurgeService {
 
       if (professional) await this.scrubProfessional(tx, professional.id, now, fileKeys);
       await this.scrubPatientProfile(tx, id, now, fileKeys);
+      // Sus pedidos de contacto: el médico deja de ver lo que compartió.
+      await tx.contactMessage.updateMany({
+        where: { patientUserId: id, requestStatus: { in: ['OPEN', 'CONTACTED', 'CLOSED'] } },
+        data: { senderName: 'Datos borrados', senderEmail: '', senderPhone: null, content: '', preferredTime: null, requestStatus: 'WITHDRAWN', statusChangedAt: now },
+      });
       // La evidencia de qué textos aceptó se conserva, sin IP ni navegador
       // (la tabla solo admite esta anonimización; ver su migración).
       await tx.legalAcceptance.updateMany({ where: { userId: id }, data: { ipAddress: null, userAgent: null } });

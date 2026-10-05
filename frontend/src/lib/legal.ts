@@ -195,7 +195,7 @@ export const LEGAL_DOCS: LegalDoc[] = [
     href: '/cookies',
     title: 'Política de cookies',
     short: 'Política de cookies',
-    version: '1.1',
+    version: '1.2',
     group: 'privacidad',
     summary: 'Las cookies y el almacenamiento local que usa el sitio, y cómo cambiar tu elección.',
   },
@@ -376,6 +376,15 @@ export const REVIEW_RULES: string[] = [
   'Si solo eliges las estrellas, tu valoración se publica al enviarla. Si escribes un comentario, el equipo de Guía Médica Monagas lo revisa antes de publicarlo y puede rechazarlo si incumple estas reglas.',
   'Se publica como «Paciente verificado», salvo que elijas mostrar tu nombre y la inicial de tu apellido. Nunca se muestran tu cédula, tu código, tu foto ni la fecha exacta de tu consulta: solo el mes y el año.',
 ];
+
+/**
+ * Texto que acepta el paciente al enviar «Quiero que me contacte». Si cambia,
+ * se sube CONTACT_REQUEST_CONSENT_VERSION aquí y en backend/src/common/legal-versions.ts.
+ */
+export const CONTACT_REQUEST_CONSENT_VERSION = '1.0';
+export function contactRequestConsent(professionalName: string, days: number): string {
+  return `Autorizo a Dr(a). ${professionalName} a ver los datos que elegí compartir, solo para responder este pedido. El pedido y esos datos se borran a los ${days} días y puedo retirarlo antes desde «Pedidos de contacto».`;
+}
 
 /** Junto a las valoraciones de una ficha. */
 export const REVIEWS_PUBLIC_NOTICE =

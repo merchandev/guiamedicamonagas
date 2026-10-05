@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { serverGet } from '@/lib/server-fetch';
 import type { PaginatedResult, ProfessionalListItem, Specialty } from '@/lib/types';
 import { DoctorCard } from '@/components/DoctorCard';
+import { SearchAppearanceTracker } from '@/components/SearchAppearanceTracker';
 
 export interface LandingPage {
   specialtySlug: string;
@@ -74,6 +75,11 @@ export async function SpecialtyLanding({ specialtySlug, municipalitySlug }: { sp
         {specialty.description ? ` ${specialty.description}` : ''}
       </p>
 
+      <SearchAppearanceTracker
+        professionalIds={result.items.map((doctor) => doctor.id)}
+        specialty={specialty.slug}
+        municipality={municipality?.name}
+      />
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {result.items.map((doctor) => (
           <DoctorCard key={doctor.id} doctor={doctor} />

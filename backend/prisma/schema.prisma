@@ -80,6 +80,7 @@ model User {
   sanctions           UserSanction[]         @relation("UserSanctions")
   sanctionsCreated    UserSanction[]         @relation("SanctionsCreated")
   sanctionsLifted     UserSanction[]         @relation("SanctionsLifted")
+  contactRequests     ContactMessage[]       @relation("ContactRequests")
 
   @@index([role])
 }
@@ -257,6 +258,7 @@ model ProfessionalProfile {
   registeredPatients ProfessionalPatient[]
   organizations OrganizationProfessional[]
   reviews       Review[]
+  searchAppearances SearchAppearance[]
 
   @@index([verificationStatus, isPublished])
   @@index([municipality])
@@ -739,6 +741,36 @@ model ContactMessage {
   isRead      Boolean  @default(false)
   ipAddress   String?
   createdAt   DateTime @default(now())
+
+  // ─── «Quiero que me contacte» (paciente con sesión) ─────────────────────
+  // Null en los mensajes del formulario sin cuenta. Los datos que el
+  // paciente eligió compartir van en las columnas sender*; al retirarlo o al
+  // vencer (30 días) se borran y solo queda el registro del pedido.
+  patientUserId    String?
+  patientUser      User?                 @relation("ContactRequests", fields: [patientUserId], references: [id], onDelete: SetNull)
+  requestStatus    ContactRequestStatus?
+  /// PHONE, WHATSAPP o EMAIL: cómo prefiere que lo contacten.
+  preferredChannel String?
+  /// Horario en que prefiere que lo llamen («en las mañanas»).
+  preferredTime    String?
+  /// La cédula del paciente estaba aprobada al enviarlo.
+  identityVerified Boolean               @default(false)
+  /// Versión del texto que aceptó al enviarlo (CONTACT_REQUEST_CONSENT_VERSION).
+  consentVersion   String?
+  expiresAt        DateTime?
+  statusChangedAt  DateTime?
+
+  @@index([professionalId, createdAt])
+  @@index([patientUserId, createdAt])
+  @@index([requestStatus, expiresAt])
+}
+
+enum ContactRequestStatus {
+  OPEN      // el médico aún no lo atendió
+  CONTACTED // el médico lo marcó como contactado
+  CLOSED    // el médico lo cerró
+  WITHDRAWN // el paciente lo retiró: se borraron los datos compartidos
+  EXPIRED   // venció a los 30 días: se borraron los datos compartidos
 }
 
 enum EventType {
@@ -1596,4 +1628,22 @@ model UserSanction {
 
   @@index([userId, type])
   @@index([endsAt])
+}
+
+/**
+ * Cuántas veces apareció un médico en los resultados del directorio, por día
+ * (hora de Caracas) y por la especialidad y el municipio filtrados (vacío =
+ * sin filtro). Solo conteos de visitantes que aceptaron la analítica: nunca
+ * quién buscó, ni el texto que escribió, ni su IP.
+ */
+model SearchAppearance {
+  id             String              @id @default(uuid())
+  professionalId String
+  professional   ProfessionalProfile @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  day            DateTime            @db.Date
+  specialtySlug  String              @default("")
+  municipality   String              @default("")
+  count          Int                 @default(0)
+
+  @@unique([professionalId, day, specialtySlug, municipality])
 }
