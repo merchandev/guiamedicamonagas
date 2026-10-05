@@ -22,6 +22,17 @@
       "mitigation": "Sin conexiones MySQL en ningún entorno; se revisa en cada actualización de Prisma.",
       "expires": "2026-12-31",
       "owner": "merchandev"
+    },
+    {
+      "id": "GHSA-vfj7-8cjw-p6xm",
+      "app": "frontend",
+      "package": "braces (vía tailwindcss 3 → chokidar y micromatch)",
+      "reason": "Aviso publicado el 2026-10-05 sin versión corregida de braces (3.0.3 es la última); npm solo lo resuelve pasando a Tailwind 4, un cambio mayor de todos los estilos.",
+      "component": "Tailwind CSS al compilar los estilos en next build (expande los patrones de archivos de tailwind.config)",
+      "exposure": "No alcanzable con datos externos: braces solo expande los patrones del propio repositorio durante la compilación; el servidor web en producción (salida standalone) no incluye tailwindcss, chokidar, micromatch ni braces.",
+      "mitigation": "Se compila en CI y en el builder con configuración versionada en Git; se retira al salir una versión corregida de braces o al migrar a Tailwind 4.",
+      "expires": "2026-12-31",
+      "owner": "merchandev"
     }
   ]
 }

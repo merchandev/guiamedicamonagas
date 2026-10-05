@@ -29,6 +29,7 @@ Estado: vigente desde el 2026-09-24 (ACT-0019) · Responsable: `merchandev`
 |---|---|---|---|
 | GHSA-ggr8-5vv4-36mx | `deepmerge-ts` (CLI de Prisma) | No alcanzable: solo fusiona la configuración propia del repo durante `prisma migrate deploy`. | 2026-12-31 |
 | GHSA-3f6p-5ww8-9rcr | `mysql2` (CLI de Prisma) | No alcanzable: el proyecto usa PostgreSQL; el conector MySQL nunca se ejecuta. | 2026-12-31 |
+| GHSA-vfj7-8cjw-p6xm | `braces` (Tailwind CSS 3, frontend) | No alcanzable: solo expande los patrones de archivos del repositorio al compilar; el servidor web de producción no incluye Tailwind ni braces. Sin versión corregida de braces; la otra salida es migrar a Tailwind 4. | 2026-12-31 |
 
 La única corrección que ofrece npm para ambas es bajar la CLI de Prisma a 6.19.3 (incompatible con el cliente 7.10).
 Se revisan en cada actualización de Prisma.
