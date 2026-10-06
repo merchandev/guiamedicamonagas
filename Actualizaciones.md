@@ -3,7 +3,7 @@
 > Bitácora central de cambios, implementaciones, decisiones técnicas y tareas de evolución del sistema.
 >
 > **Repositorio:** [`merchandev/guiamedicamonagas`](https://github.com/merchandev/guiamedicamonagas) · **Rama:** `main`<br>
-> **Última actualización de esta bitácora:** `2026-10-06 14:51:05 -04:00` · **Estado:** 🟢 Registro activo
+> **Última actualización de esta bitácora:** `2026-10-06 16:04:50 -04:00` · **Estado:** 🟢 Registro activo
 
 ![Estado](https://img.shields.io/badge/estado-registro%20activo-16a34a?style=flat-square)
 ![Rama](https://img.shields.io/badge/rama-main-2563eb?style=flat-square)
@@ -152,8 +152,9 @@ flowchart LR
     AU[🧮 2026-10-06\n10:36:42\nACT-0047 · Resumen de\nadministración]
     AV[🔽 2026-10-06\n11:03:20\nACT-0048 · Lista del\nbuscador del inicio]
     AW[🔄 2026-10-06\n14:51:05\nACT-0049 · Tiempo real\nweb y app]
+    AX[📴 2026-10-06\n16:04:50\nACT-0050 · Sin conexión\napp móvil]
 
-    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L --> M --> N --> O --> P --> Q --> R --> S --> T --> U --> V --> W --> X --> Y --> Z --> AA --> AB --> AC --> AD --> AE --> AF --> AG --> AH --> AI --> AJ --> AK --> AL --> AM --> AN --> AO --> AP --> AQ --> AR --> AS --> AT --> AU --> AV --> AW
+    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L --> M --> N --> O --> P --> Q --> R --> S --> T --> U --> V --> W --> X --> Y --> Z --> AA --> AB --> AC --> AD --> AE --> AF --> AG --> AH --> AI --> AJ --> AK --> AL --> AM --> AN --> AO --> AP --> AQ --> AR --> AS --> AT --> AU --> AV --> AW --> AX
 ```
 
 ### Resumen cuantitativo
@@ -161,8 +162,8 @@ flowchart LR
 | Indicador | Resultado |
 |---|---:|
 | Actividades históricas importadas desde Git | `3` |
-| Actividades documentales añadidas con esta bitácora | `46` |
-| Actividades registradas en total | `49` |
+| Actividades documentales añadidas con esta bitácora | `47` |
+| Actividades registradas en total | `50` |
 | Rama de referencia | `main` |
 | Commit base consultado | [`81b1091`](https://github.com/merchandev/guiamedicamonagas/commit/81b1091) |
 | Zona horaria de control | `America/Caracas` (`-04:00`) |
@@ -2359,6 +2360,74 @@ Al final, actualizar los dos repositorios y producción.
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
+<a id="act-0050"></a>
+
+### 📴 ACT-0050 · La app móvil funciona sin conexión y se sincroniza sola al volver la señal
+
+<details>
+<summary><strong>2026-10-06 16:04:50 -04:00</strong> · <code>08aba86</code> · 🟢 Completado</summary>
+
+**Responsable:** `Claude Opus 5.5` · **Tipo:** `funcionalidad | app móvil | seguridad` · **Commits:** [`08aba86`](https://github.com/merchandev/GUIAMEDICA_APP/commit/08aba86d69c2946661144c3154a3fd24ee4315ba) en GUIAMEDICA_APP
+
+El titular pidió que la app siga funcionando sin conexión a internet y que, al detectar internet, se vuelva a sincronizar. El cambio está en el repositorio de la app; la plataforma no cambió: la app usa las mismas rutas de la API.
+
+**Sin señal, la app** (detalle en el README de [GUIAMEDICA_APP](https://github.com/merchandev/GUIAMEDICA_APP#sin-conexión)):
+- **Muestra** lo último que vio cada pantalla: citas y agenda, avisos, cuenta, ficha y permisos del paciente, pedidos de contacto, páginas del directorio y fichas de médicos abiertas.
+  - Arriba dice «Sin conexión» y de cuándo son los datos.
+  - Una búsqueda nueva se hace entre los médicos guardados en el teléfono.
+- **Deja hacer** estas acciones, que quedan «En espera de conexión», en orden, y se pueden quitar con «No enviar»:
+  - cancelar una cita;
+  - confirmar, marcar atendida o no asistida (los médicos pueden encadenarlas);
+  - marcar avisos como leídos;
+  - editar teléfono y municipio;
+  - revocar permisos y retirar pedidos de contacto.
+- **Pide conexión** para lo que tiene que resolverse en el momento: pedir citas (el horario se confirma con la agenda del médico), pedir contacto, iniciar sesión, registrarse, recuperar o cambiar la contraseña y la solicitud de eliminación. Esos botones se desactivan y lo explican.
+
+**Cómo se vuelve a sincronizar:**
+- **Detección:** la app sabe que volvió la red por los avisos del sistema, por cualquier respuesta de la API y por el canal en tiempo real. Sin señal, vuelve a probar con esperas crecientes, de 3 segundos a 1 minuto.
+- **Al volver:** renueva la sesión, reabre el canal con ella, envía los cambios en orden y todas las pantallas vuelven a pedir sus datos.
+- **Rechazos:** si la plataforma no acepta un cambio (una cita que ya no se puede cancelar, un teléfono inválido…), se muestra con su motivo. Lo que se escribió en la ficha se conserva para corregirlo.
+- **Cambios que ya estaban hechos:** si un envío anterior llegó pero se perdió la respuesta, la app revisa el estado de la cita antes de dar un error y lo cuenta como enviado. Así no hay errores falsos ni duplicados.
+- **Sesión:** sin señal no se cierra. Si al volver la plataforma dice que terminó, se borran del teléfono los datos de la cuenta. Los cambios en espera se envían si vuelve a entrar la misma cuenta.
+
+**Datos en el teléfono:**
+- La copia y la cola se guardan cifradas con una clave del almacén seguro de Android, en la carpeta privada de la app, que no entra en copias de seguridad.
+- Al cerrar sesión se borra lo de la cuenta y se cambia la clave: lo anterior ya no se puede descifrar.
+- La app no descarga historias clínicas. Su versión web no guarda nada en el navegador.
+- Permisos de Android nuevos: `ACCESS_NETWORK_STATE` y `ACCESS_WIFI_STATE`, para saber si hay red. Ninguno pide autorización a la persona.
+
+**Arreglos de paso en la app:**
+- Antes, si la renovación de la sesión fallaba por falta de señal, la app cerraba la sesión. Ahora espera a tener conexión.
+- La cuenta podía no aparecer al abrir la app si el canal en vivo recargaba la pantalla al mismo tiempo.
+- El canal quedaba abierto sin sesión cuando la cuenta se recuperaba de la copia. Ahora se reabre con la sesión.
+
+**Pruebas:**
+- `npm test` de la app: 22 en verde, 20 de ellas nuevas. Cubren la cola (orden, duplicados, reintentos, rechazos y cambios ya hechos), la copia local y la detección de la conexión.
+- **Emulador Android**, con una compilación de depuración contra la API local, cuentas de ensayo y la red cortada y devuelta:
+  - sin red se vieron los datos guardados;
+  - tras cerrar y abrir la app sin red siguieron la cuenta, los datos y los cambios en espera;
+  - los archivos de la copia no tenían texto legible;
+  - al volver la red, la app lo detectó en 3 a 4 segundos y envió los cambios en orden;
+  - una cancelación hecha mientras tanto desde la web contó como enviada, sin error;
+  - un teléfono inválido se mostró rechazado y, corregido, se guardó;
+  - sin red, una médica confirmó una cita y la marcó atendida, y quedó así en la plataforma;
+  - al cerrar sesión cambió la clave y no quedó ningún dato de la cuenta.
+- **APK de pruebas** (release, contra producción, sin iniciar sesión): arranca, queda «En vivo con la plataforma», detecta el corte, reabre sin red con su copia y se reconecta. El APK queda en `artifacts/` de la app, que no se sube a Git.
+
+**Producción:** la API y la web no cambiaron. En el VPS solo se actualizó la documentación (fast-forward).
+
+**Pendiente:**
+- Repetir la prueba en un teléfono físico (en «Próximas actividades»).
+- Antes de publicar la app, describir en su política de privacidad y en la ficha de Google Play que guarda en el teléfono una copia cifrada para usarse sin conexión, que se borra al cerrar sesión. Debe revisarlo el abogado.
+
+**Archivos destacados (en GUIAMEDICA_APP):**
+- `src/offline/`: `outbox.ts` (cola), `store.ts` (copia), `vault.ts` (cifrado), `net.ts` (conexión) e `index.ts`
+- `src/SyncBanner.tsx`, `App.tsx` y `test/offline.test.ts`
+
+</details>
+
+<p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
+
 <a id="registro-por-area"></a>
 
 ## 🧩 Registro por área
@@ -2367,7 +2436,7 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 
 | Área | Implementaciones registradas | Actividades relacionadas |
 |---|---|---|
-| 🧱 Fundación técnica | NestJS, Next.js, Prisma, Docker, Caddy, Tailwind, sincronización en tiempo real (bandeja de eventos con disparadores y canal Socket.IO) | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0049](#act-0049) |
+| 🧱 Fundación técnica | NestJS, Next.js, Prisma, Docker, Caddy, Tailwind, sincronización en tiempo real (bandeja de eventos con disparadores y canal Socket.IO), app móvil sin conexión (copia cifrada en el teléfono y cola de cambios que se envía al volver la señal) | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0049](#act-0049) · [ACT-0050](#act-0050) |
 | 🔐 Auth y seguridad | JWT, refresh cookie, roles, correo, recuperación, throttling, Argon2id, permisos granulares, reuso de tokens, `tokenVersion`, cerrar todas las sesiones, MFA obligatorio en producción, subidas seguras, antivirus obligatorio y rotación de claves, bóveda de registros de pacientes con código de seguridad, aceptaciones legales con evidencia de solo inserción, política de uso aceptable y reporte de vulnerabilidades, CSP y pruebas de seguridad automáticas (política de rutas, IDOR/BOLA, tokens, fuerza bruta, XSS, ZAP) | [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0012](#act-0012) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0019](#act-0019) · [ACT-0024](#act-0024) · [ACT-0027](#act-0027) · [ACT-0033](#act-0033) · [ACT-0039](#act-0039) |
 | 👨‍⚕️ Profesionales | Perfiles, ubicaciones, documentos, verificación legal (sin solvencia deontológica), publicación con el 60% aprobado + biografía + foto, barra de progreso del registro, redes sociales, badges, código y QR del médico, SEO automático, tarjeta para compartir, video de presentación de YouTube (plan Agencia), condiciones para profesionales y políticas de verificación y de publicidad médica | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0020](#act-0020) · [ACT-0021](#act-0021) · [ACT-0028](#act-0028) · [ACT-0029](#act-0029) · [ACT-0030](#act-0030) · [ACT-0032](#act-0032) · [ACT-0033](#act-0033) |
 | 🏥 Organizaciones | Farmacias, laboratorios, clínicas, ubicaciones, autogestión, equipo con invitaciones y roles internos, médicos asociados y plan propio, sección «Próximamente» hasta cerrar alianzas | [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0015](#act-0015) · [ACT-0019](#act-0019) · [ACT-0025](#act-0025) |
@@ -2482,6 +2551,7 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | IMP-091 | Inicio: la lista desplegable del buscador se ve completa encima de las secciones de abajo (la primera sección ya no recorta su contenido), con prueba en escritorio y teléfono | 🟢 Completado | [`frontend/src/app/page.tsx`](frontend/src/app/page.tsx), [`e2e/tests/publico.spec.ts`](e2e/tests/publico.spec.ts) |
 | IMP-092 | Sincronización en tiempo real: disparadores de PostgreSQL llenan la bandeja `RealtimeEvent` en la misma transacción de cada cambio; canal Socket.IO `/api/v1/realtime` con salas asignadas por el servidor y corte al cerrar sesiones; unas 40 pantallas de la web y la app móvil se actualizan solas | 🟢 Completado | [`backend/src/realtime`](backend/src/realtime), [`frontend/src/lib/realtime.ts`](frontend/src/lib/realtime.ts), [`backend/test/e2e/realtime.e2e.mjs`](backend/test/e2e/realtime.e2e.mjs) |
 | IMP-093 | App móvil revisada contra la API, con formato legible, conectada al canal en tiempo real y en su propio repositorio | 🟢 Completado | [GUIAMEDICA_APP](https://github.com/merchandev/GUIAMEDICA_APP) |
+| IMP-094 | App móvil sin conexión: copia cifrada de cada pantalla en el teléfono, cola de cambios en orden con «No enviar», detección de la red y envío automático al volver la señal, con revisión de los cambios que ya estaban hechos | 🟢 Completado | [GUIAMEDICA_APP `src/offline`](https://github.com/merchandev/GUIAMEDICA_APP/tree/main/src/offline) |
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
@@ -2550,8 +2620,8 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | 🔴 Alta | Encender las valoraciones: llevar [`docs/legal/borrador-valoraciones.md`](docs/legal/borrador-valoraciones.md) al abogado, fijar el plazo de evidencia (`REVIEW_EVIDENCE_RETENTION_DAYS`), publicar los textos junto con los datos del titular (`DATA_CONTROLLER`) en una sola subida de versión y poner `REVIEWS_ENABLED=true` en `.env.prod` | 🔴 Pendiente del titular | Ver [ACT-0043](#act-0043) y [ACT-0044](#act-0044) |
 | 🟠 Media | Llevar [`docs/legal/borrador-contacto-y-busquedas.md`](docs/legal/borrador-contacto-y-busquedas.md) al abogado junto con el de valoraciones y decidir si las apariciones en búsquedas se borran después de un tiempo | 🔴 Pendiente del titular | Ver [ACT-0045](#act-0045) |
 | 🔴 Alta | Encender los récipes digitales: llevar [`docs/legal/borrador-recipes.md`](docs/legal/borrador-recipes.md) al abogado (valor de la firma digitalizada frente a una certificada, duplicado, vencimiento, medicamentos de control especial, retención), publicar sus textos en la misma subida de versión que los demás borradores y poner `PRESCRIPTIONS_ENABLED=true` en `.env.prod` | 🔴 Pendiente del titular | Ver [ACT-0046](#act-0046) |
-| 🟠 Media | App móvil: transporte de sesión propio (renovación en el cuerpo y guardada en SecureStore), avisos push con FCM (proyecto Firebase del titular), App Links verificados y pruebas con cuentas de ensayo en un teléfono real | 🔵 Planificado | Ver [ACT-0049](#act-0049) y [GUIAMEDICA_APP](https://github.com/merchandev/GUIAMEDICA_APP) |
-| 🔴 Alta | Publicar la app en Google Play: persona jurídica con número D-U-N-S, cuenta de organización en Play Console, nombre e identificador definitivos de la app | 🔴 Pendiente del titular | Ver [`docs/PLAN-APP-MOVIL.md`](docs/PLAN-APP-MOVIL.md) |
+| 🟠 Media | App móvil: transporte de sesión propio (renovación en el cuerpo y guardada en SecureStore), avisos push con FCM (proyecto Firebase del titular), App Links verificados y pruebas con cuentas de ensayo en un teléfono real, también sin conexión | 🔵 Planificado | Ver [ACT-0049](#act-0049), [ACT-0050](#act-0050) y [GUIAMEDICA_APP](https://github.com/merchandev/GUIAMEDICA_APP) |
+| 🔴 Alta | Publicar la app en Google Play: persona jurídica con número D-U-N-S, cuenta de organización en Play Console, nombre e identificador definitivos de la app; y que su política de privacidad y la ficha de la tienda digan que guarda en el teléfono una copia cifrada para usarse sin conexión, que se borra al cerrar sesión (revisión del abogado) | 🔴 Pendiente del titular | Ver [`docs/PLAN-APP-MOVIL.md`](docs/PLAN-APP-MOVIL.md) y [ACT-0050](#act-0050) |
 | 🟢 Continua | Registrar cada modificación nueva con fecha, hora, responsable y evidencia | 🟢 Activo | No existen cambios relevantes sin entrada en esta bitácora |
 | 🟢 Continua | Confirmar en el repositorio remoto cada cambio cerrado localmente | 🟢 Activo | `git status` limpio y `origin/main` sincronizado al cierre de cada sesión |
 
@@ -2646,6 +2716,7 @@ Para cada cambio futuro, añadir una entrada en la línea de tiempo y actualizar
 | `2026-10-06 10:36:42 -04:00` | Incorporación de ACT-0047 (el resumen de administración contaba como médicos las cuentas eliminadas; tarjeta nueva con el total de pacientes; la eliminación de un médico borra también sus apariciones en búsquedas) con su despliegue | 🟢 Completado |
 | `2026-10-06 11:03:20 -04:00` | Incorporación de ACT-0048 (la lista del buscador del inicio quedaba cortada detrás de las secciones; nota sobre los errores de consola de una extensión del navegador) con su despliegue | 🟢 Completado |
 | `2026-10-06 14:51:05 -04:00` | Incorporación de ACT-0049 (sincronización en tiempo real de la web y la app; revisión de la app y su repositorio propio GUIAMEDICA_APP; sharp 0.35.5) con su despliegue; dos pendientes nuevos (app móvil y publicación en Google Play) | 🟢 Completado |
+| `2026-10-06 16:04:50 -04:00` | Incorporación de ACT-0050 (la app móvil funciona sin conexión y se sincroniza sola al volver la señal; probada en el emulador cortando la red); pendientes de la app y de Google Play actualizados | 🟢 Completado |
 
 ---
 

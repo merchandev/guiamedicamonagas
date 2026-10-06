@@ -30,3 +30,5 @@ Este documento describe la arquitectura base implementada en la Fase 1.
 ## App móvil
 
 La app Android (y luego iOS) es un proyecto aparte, [merchandev/GUIAMEDICA_APP](https://github.com/merchandev/GUIAMEDICA_APP) (Expo y React Native). No tiene base de datos propia: usa esta misma API, las mismas cuentas y permisos, y el mismo canal en tiempo real. Un cambio del contrato de la API se hace primero aquí y se documenta en [ENDPOINTS.md](ENDPOINTS.md).
+
+Sin conexión (ACT-0050), la app sigue funcionando con una copia cifrada en el teléfono de lo último que mostró cada pantalla. Los cambios que se pueden aplicar más tarde (cancelar o cerrar citas, marcar avisos, datos de contacto, revocar permisos, retirar pedidos) quedan en una cola. Al volver la señal los envía en orden por las mismas rutas de la API, y si la API rechaza uno, la app muestra el motivo. Reservar, pedir contacto e iniciar sesión siempre necesitan conexión. Detalle en el README de la app.
