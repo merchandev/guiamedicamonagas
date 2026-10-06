@@ -3,7 +3,7 @@
 > Bitácora central de cambios, implementaciones, decisiones técnicas y tareas de evolución del sistema.
 >
 > **Repositorio:** [`merchandev/guiamedicamonagas`](https://github.com/merchandev/guiamedicamonagas) · **Rama:** `main`<br>
-> **Última actualización de esta bitácora:** `2026-10-05 20:33:18 -04:00` · **Estado:** 🟢 Registro activo
+> **Última actualización de esta bitácora:** `2026-10-05 21:44:58 -04:00` · **Estado:** 🟢 Registro activo
 
 ![Estado](https://img.shields.io/badge/estado-registro%20activo-16a34a?style=flat-square)
 ![Rama](https://img.shields.io/badge/rama-main-2563eb?style=flat-square)
@@ -148,8 +148,9 @@ flowchart LR
     AQ[⭐ 2026-10-05\n08:08:03\nACT-0043 · Valoraciones\nde pacientes]
     AR[🛡️ 2026-10-05\n08:33:33\nACT-0044 · Moderación\ny sanciones por días]
     AS[📨 2026-10-05\n20:33:18\nACT-0045 · Pedidos de contacto\ny apariciones en búsquedas]
+    AT[💊 2026-10-05\n21:44:58\nACT-0046 · Récipes\ndigitales]
 
-    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L --> M --> N --> O --> P --> Q --> R --> S --> T --> U --> V --> W --> X --> Y --> Z --> AA --> AB --> AC --> AD --> AE --> AF --> AG --> AH --> AI --> AJ --> AK --> AL --> AM --> AN --> AO --> AP --> AQ --> AR --> AS
+    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L --> M --> N --> O --> P --> Q --> R --> S --> T --> U --> V --> W --> X --> Y --> Z --> AA --> AB --> AC --> AD --> AE --> AF --> AG --> AH --> AI --> AJ --> AK --> AL --> AM --> AN --> AO --> AP --> AQ --> AR --> AS --> AT
 ```
 
 ### Resumen cuantitativo
@@ -157,8 +158,8 @@ flowchart LR
 | Indicador | Resultado |
 |---|---:|
 | Actividades históricas importadas desde Git | `3` |
-| Actividades documentales añadidas con esta bitácora | `42` |
-| Actividades registradas en total | `45` |
+| Actividades documentales añadidas con esta bitácora | `43` |
+| Actividades registradas en total | `46` |
 | Rama de referencia | `main` |
 | Commit base consultado | [`81b1091`](https://github.com/merchandev/guiamedicamonagas/commit/81b1091) |
 | Zona horaria de control | `America/Caracas` (`-04:00`) |
@@ -2074,6 +2075,100 @@ La administración ya puede moderar las valoraciones (que siguen **apagadas en p
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
+<a id="act-0046"></a>
+
+### 💊 ACT-0046 · Récipes digitales: talonario con firma y sello, PDF, código de verificación y envío al paciente
+
+<details>
+<summary><strong>2026-10-05 21:44:58 -04:00</strong> · <code>ad0d21c</code> · 🟢 Completado</summary>
+
+**Responsable:** `Claude Opus 5.5` · **Tipo:** `funcionalidad | legal | privacidad | despliegue` · **Commits:** [`ad0d21c`](https://github.com/merchandev/guiamedicamonagas/commit/ad0d21c)
+
+El titular pidió una sección para que los médicos hagan récipes digitales legales según la normativa venezolana. Debían cargar su sello, su firma y su logo, y compartir el récipe con el paciente dentro de la plataforma y con un código, por WhatsApp, por correo y en PDF. Quedó hecho y **apagado en producción** (`PRESCRIPTIONS_ENABLED=false`), como las valoraciones: maneja datos de salud nuevos y sus textos legales deben pasar por el abogado antes de encenderlo.
+
+**Base legal aplicada** (consultada en los textos oficiales):
+- Ley de Medicamentos de 2000, arts. 35, 36, 37 y 40: quién prescribe, identificación clara y legible, tipos de receta y la palabra «insustituible».
+- Resolución 031 de 2013 del MPPS (reforma de la 028, normas de prescripción y dispensación), arts. 4 a 7:
+  - prescripción por principio activo (DCI);
+  - récipe en dos partes, con el cuerpo por duplicado;
+  - los datos obligatorios del art. 6;
+  - la prohibición de logos o lemas publicitarios.
+- Ley sobre Mensajes de Datos y Firmas Electrónicas, arts. 16 a 18: la firma y el sello digitalizados no son una firma electrónica certificada. Así se dice en el borrador legal y en el pie del récipe.
+
+**Talonario** (`/dashboard/recipes/talonario`):
+- Datos del establecimiento: nombre, dirección, RIF, teléfono, lugar de emisión y vigencia propuesta.
+- Firma, sello y logo opcional en almacenamiento privado. A la firma y al sello se les quita el fondo claro de la foto, y se rechaza una imagen sin trazos.
+- Una muestra en PDF para revisar el diseño.
+- Las condiciones del récipe digital (versión 1.0), que se aceptan una vez y quedan auditadas.
+- Los datos del médico (nombre, cédula, N° MPPS y N° del Colegio) salen de su perfil verificado.
+
+**Quién emite:** solo un médico con el **100 % de sus documentos aprobados**, con N° MPPS y cédula, condiciones aceptadas, establecimiento completo, firma y sello. La lista y el formulario le dicen qué le falta, con el enlace para completarlo.
+
+**Emisión** (`/dashboard/recipes/nuevo`):
+- Paciente: nombre, cédula y año de nacimiento. Si es un menor sin cédula, va la de su representante.
+- Hasta 8 medicamentos, cada uno con principio activo (DCI), concentración, forma farmacéutica, vía, dosis y duración. Opcionales: cantidad, marcas equivalentes, «insustituible» e indicación para el paciente.
+- Indicaciones generales, advertencias al farmacéutico y vigencia (1 a 365 días; vence a las 11:59 p. m., hora de Caracas).
+- Recuerda que los estupefacientes y psicotrópicos van en el récipe especial.
+- Recibe un número correlativo y un código de verificación de 12 caracteres.
+- **No se edita:** la base de datos lo impide. Si tiene un error, se anula con un motivo y se emite otro («Usar como base para uno nuevo»).
+
+**PDF:**
+- Hoja carta horizontal partida en dos medias cartas: el récipe para la farmacia a la izquierda y las indicaciones al paciente a la derecha, para cortar por la línea.
+- Dos páginas, **original y copia**.
+- Membrete con logo, firma y sello sobre la línea de firma.
+- QR, código y huella del contenido al pie, sin publicidad de la plataforma.
+- Si no cabe en media hoja, no se emite. Un récipe anulado o vencido sale con la marca de agua.
+
+**Compartir:**
+- Al paciente de su directorio, dentro de la plataforma (aviso en la campana y correo, sin nombrar medicamentos).
+- Descarga del PDF, o «Compartir PDF» con el menú del teléfono.
+- Enlace por WhatsApp (al número que escriba el médico o al contacto que elija).
+- Correo con el PDF adjunto: máximo 5 envíos por récipe y avisa si falla.
+- Copiar enlace y código.
+
+**Paciente:**
+- En «Mis récipes» (`/paciente/recipes`) ve, descarga y comparte sus récipes.
+- Puede agregar uno con su código **solo si la cédula impresa es la de su cuenta** (también la de representante).
+
+**Verificación pública** (`/recipe`): quien tenga el código o escanee el QR (el paciente o la farmacia) ve el récipe tal como se emitió, si está vigente, vencido o anulado y si su huella coincide, y descarga el PDF.
+- El código va después de «#» en el enlace: no llega al servidor ni a la vista previa de WhatsApp.
+- Sin buscadores. Nunca muestra el motivo de una anulación.
+
+**Privacidad y seguridad:**
+- Cifrado: el contenido completo del récipe, su código y el motivo de una anulación. También entran en la rotación de claves.
+- Toda emisión, anulación, entrega, envío y alta con código queda en la auditoría.
+- Si se elimina la cuenta del médico, se borran sus récipes e imágenes. Si se elimina la del paciente, los récipes se quitan de su cuenta.
+- Los correos opcionales de funciones apagadas, como «Récipes nuevos» u «Opiniones nuevas», ya no se ofrecen en «Notificaciones».
+
+**Borrador legal** para el abogado en [`docs/legal/borrador-recipes.md`](docs/legal/borrador-recipes.md). Trae la base normativa, lo que hace el sistema y los textos propuestos para Privacidad, Condiciones para profesionales, Términos, Descargo y Retención.
+- Preguntas abiertas: el valor de la firma digitalizada frente a una firma certificada (SUSCERTE), el duplicado, el plazo de vencimiento, los medicamentos de control especial, los odontólogos y la línea de verificación al pie.
+- Retención: **[A DEFINIR]**.
+
+**Datos:** migración `20261008120000_prescriptions` (solo agrega): `PrescriptionPad`, `Prescription` y el enum `PrescriptionStatus`. Incluye restricciones de vigencia, correlativo, anulación y entrega, y un disparador que impide modificar un récipe emitido.
+
+**Pruebas:**
+- Unitarias: huella, estados, vencimiento en hora de Caracas, PDF de dos páginas con imágenes, que el récipe quepa en media hoja, fondo transparente de la firma y rotación de claves.
+- De punta a punta (`e2e/tests/recipes.spec.ts`): el recorrido del médico, del paciente y de la farmacia con accesibilidad; las reglas de la API; y los PDF, la firma y el correo.
+- En local (sin Docker, con un S3 de prueba): las 3 pruebas de récipes y las de notificaciones en verde; la suite completa con 80 pasadas, 4 omitidas (correo, que corre en CI) y la misma falla de la ficha de cardiología que solo ocurre en la base local (ver [ACT-0043](#act-0043)). 148 pruebas unitarias en verde; tipos, ESLint y build de producción del frontend sin errores; revisión visual del talonario, del formulario y del detalle en escritorio y en un teléfono de 412 px, y del PDF.
+
+**CI de GitHub:** «CI» (con la suite completa de punta a punta) y «Seguridad» en verde para `ea89b0c`. El primer intento de Seguridad (`ad0d21c`) falló por un aviso nuevo de `source-map-js` (GHSA-68fv-2mgg-jv7q, alto, sin relación con este cambio): se corrigió subiendo esa dependencia del frontend a 1.2.2 en el lockfile (`ea89b0c`), sin excepción.
+
+**Despliegue en el VPS** (`deploy-act46.log`): respaldo previo `gmm-db-20261006T013817Z-pre-deploy.dump.gpg`; **migración aplicada**; prueba de humo **25/25**; «Versión publicada: ea89b0cd1f52 (API y web)». En producción existen `Prescription` y `PrescriptionPad` con sus seis restricciones y el disparador que impide modificar un récipe. Los récipes están apagados (`enabled: false`): el talonario pide sesión (401) y la verificación responde 404. `/recipe` responde con `X-Robots-Tag: noindex`. Un PDF de prueba se generó dentro del contenedor de la API, con las fuentes y el QR de la imagen de producción.
+
+**Archivos destacados:**
+- [`backend/src/prescriptions/prescriptions.service.ts`](backend/src/prescriptions/prescriptions.service.ts)
+- [`backend/src/prescriptions/prescription-pdf.ts`](backend/src/prescriptions/prescription-pdf.ts)
+- [`backend/src/prescriptions/pad-images.ts`](backend/src/prescriptions/pad-images.ts)
+- [`frontend/src/app/dashboard/recipes`](frontend/src/app/dashboard/recipes)
+- [`frontend/src/app/paciente/recipes`](frontend/src/app/paciente/recipes)
+- [`frontend/src/app/recipe/page.tsx`](frontend/src/app/recipe/page.tsx)
+- [`docs/legal/borrador-recipes.md`](docs/legal/borrador-recipes.md)
+- [`e2e/tests/recipes.spec.ts`](e2e/tests/recipes.spec.ts)
+
+</details>
+
+<p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
+
 <a id="registro-por-area"></a>
 
 ## 🧩 Registro por área
@@ -2090,6 +2185,7 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | 📅 Agenda y citas | Horarios, disponibilidad, reservas, máquina de estados, anti-doble-reserva y sin solapes, zona America/Caracas (también en correos, avisos y recordatorios), calendario del médico con arrastrar y soltar, horario semanal en cuadrícula, historial de cada cita, reserva y reprogramación con calendario de mes, límites de reserva | [ACT-0007](#act-0007) · [ACT-0015](#act-0015) · [ACT-0040](#act-0040) · [ACT-0042](#act-0042) |
 | 🔒 Pacientes | Código pseudónimo, cifrado de datos de salud, consentimiento por alcance y tiempo, lecturas auditadas, registro propio, foto de identificación verificada por un admin, reserva con la ficha propia, código y QR para compartir, directorio del médico por código, bóveda de administración y noindex, registro visible desde el inicio, supresión de la cuenta conservando solo la evidencia legal, consentimiento expreso de datos de salud y mayoría de edad, descarga de los datos propios e historial de accesos, avance del registro (identidad y contacto, sin datos de salud); «Quiero que me contacte»: el paciente elige qué compartir con un médico, lo retira cuando quiera y sus datos se borran a los 30 días | [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0023](#act-0023) · [ACT-0027](#act-0027) · [ACT-0029](#act-0029) · [ACT-0031](#act-0031) · [ACT-0033](#act-0033) · [ACT-0043](#act-0043) · [ACT-0045](#act-0045) |
 | ⭐ Valoraciones | Estrellas y comentario de pacientes con registro completo, cédula aprobada y consulta verificada; moderación previa de comentarios con filtro automático; autor anónimo por defecto; promedio desde 3; respuesta y denuncia del médico; moderación de la administración (aprobar, rechazar, retirar como evidencia, restaurar, eliminar), identidad del autor solo con la bóveda, sanciones por días que vencen solas; borrador legal para el abogado; apagadas en producción hasta la revisión legal (`REVIEWS_ENABLED`) | [ACT-0043](#act-0043) · [ACT-0044](#act-0044) |
+| 💊 Récipes | Talonario del médico verificado (establecimiento, firma y sello con el fondo vuelto transparente, logo), récipes según la Resolución 031/2013 del MPPS (dos partes, original y copia, datos del art. 6) que no se editan, PDF con QR y huella, verificación pública con el código sin que viaje en la URL, entrega en «Mis récipes» o con el código si la cédula coincide, WhatsApp y correo con el PDF, anulación; contenido cifrado; apagados en producción hasta la revisión legal (`PRESCRIPTIONS_ENABLED`) | [ACT-0046](#act-0046) |
 | 🛠️ Administración | Médicos, pagos, SEO, cookies, especialidades, planes, verificaciones, organizaciones, bancos, geografía, identidad de pacientes, cuentas (suspensión, baja, eliminación definitiva), planes pagados, video de presentación de los médicos, bandeja de solicitudes legales, Pago Móvil propio, video de muestra de Marca Médica y actividad reciente desplegable | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0031](#act-0031) · [ACT-0032](#act-0032) · [ACT-0033](#act-0033) · [ACT-0034](#act-0034) · [ACT-0035](#act-0035) · [ACT-0036](#act-0036) |
 | 📊 Observabilidad | Auditoría, analítica con consentimiento y sin IP, estadísticas del médico según su plan, centro de notificaciones (campana, página en cada panel, correos opcionales y avisos a la administración), salud, pruebas, CI, escaneo de imágenes y Dependabot, ESLint del frontend en CI, versión publicada verificable, estado de las dependencias (`/health/ready`), alertas por Telegram/correo/ntfy/webhook, interruptor de hombre muerto y monitor externo de GitHub, pruebas de punta a punta del sitio (Playwright) en escritorio y teléfono, apariciones en búsquedas como totales anónimos (solo con la analítica aceptada y sin el texto buscado) | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0036](#act-0036) · [ACT-0037](#act-0037) · [ACT-0038](#act-0038) · [ACT-0039](#act-0039) · [ACT-0041](#act-0041) · [ACT-0045](#act-0045) |
 | 🎨 Experiencia | Directorios, dashboard, componentes UI, motion, legal, formularios legibles y utilizables con teclado, sección de pacientes en el inicio, tipografía Montserrat + Open Sans, suiches, botones y foco de campos corregidos, centro legal con 21 documentos versionados y avisos breves (descargo médico, verificación, QR), portada con cifras reales y directorio que explica cuando está vacío, accesibilidad revisada con axe (contraste, etiquetas, avisos anunciados, teclado), «Salir» que vuelve a la portada y tarjeta para compartir del sitio | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0013](#act-0013) · [ACT-0014](#act-0014) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0017](#act-0017) · [ACT-0019](#act-0019) · [ACT-0022](#act-0022) · [ACT-0023](#act-0023) · [ACT-0025](#act-0025) · [ACT-0026](#act-0026) · [ACT-0028](#act-0028) · [ACT-0033](#act-0033) · [ACT-0037](#act-0037) · [ACT-0039](#act-0039) |
@@ -2191,6 +2287,7 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | IMP-086 | Valoraciones de pacientes: requisitos verificados por la API (registro al 100 %, cédula aprobada, consulta verificada), publicación sin comentario y moderación previa con filtro, promedio desde 3, paneles del paciente y del médico, permiso `MODERATE_REVIEWS`, apagadas con `REVIEWS_ENABLED` | 🟢 Completado | [`backend/src/reviews/reviews.service.ts`](backend/src/reviews/reviews.service.ts), [`frontend/src/app/paciente/valoraciones/page.tsx`](frontend/src/app/paciente/valoraciones/page.tsx) |
 | IMP-087 | Moderación de valoraciones (`/admin/valoraciones`): cola sin identidad, decisiones con motivo y aviso, evidencia al retirar, borrado con «ELIMINAR», respuestas y denuncias, identidad del autor con la bóveda; sanciones por días (opiniones o cuenta) que vencen solas sin tocar citas ni autorizaciones; categoría de reclamos «Valoración abusiva o falsa»; borrador legal | 🟢 Completado | [`backend/src/reviews/review-moderation.service.ts`](backend/src/reviews/review-moderation.service.ts), [`backend/src/reviews/sanctions.service.ts`](backend/src/reviews/sanctions.service.ts), [`docs/legal/borrador-valoraciones.md`](docs/legal/borrador-valoraciones.md) |
 | IMP-088 | «Quiero que me contacte» (el paciente elige qué compartir, el médico lo ve solo dentro del pedido, retiro y vencimiento a 30 días con borrado de los datos) y apariciones en búsquedas anónimas con la analítica aceptada, en las estadísticas del médico; borrador legal | 🟢 Completado | [`backend/src/contact/contact-requests.service.ts`](backend/src/contact/contact-requests.service.ts), [`backend/src/analytics/analytics.service.ts`](backend/src/analytics/analytics.service.ts), [`docs/legal/borrador-contacto-y-busquedas.md`](docs/legal/borrador-contacto-y-busquedas.md) |
+| IMP-089 | Récipes digitales: talonario (establecimiento, firma, sello y logo), emisión solo por médicos verificados con los datos de la Resolución 031/2013 del MPPS, PDF de original y copia con QR, código de verificación y página pública `/recipe`, «Mis récipes» del paciente, envío por WhatsApp y correo, anulación; borrador legal | 🟢 Completado | [`backend/src/prescriptions`](backend/src/prescriptions), [`frontend/src/app/dashboard/recipes`](frontend/src/app/dashboard/recipes), [`docs/legal/borrador-recipes.md`](docs/legal/borrador-recipes.md) |
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
@@ -2258,6 +2355,7 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | 🟡 Baja | Excepción fechada de `braces` (GHSA-vfj7-8cjw-p6xm, Tailwind 3, solo al compilar) hasta el 2026-12-31: retirarla cuando salga una versión corregida o al migrar a Tailwind 4 | 🔵 Planificado | Ver [ACT-0043](#act-0043) y `security/audit-exceptions.json` |
 | 🔴 Alta | Encender las valoraciones: llevar [`docs/legal/borrador-valoraciones.md`](docs/legal/borrador-valoraciones.md) al abogado, fijar el plazo de evidencia (`REVIEW_EVIDENCE_RETENTION_DAYS`), publicar los textos junto con los datos del titular (`DATA_CONTROLLER`) en una sola subida de versión y poner `REVIEWS_ENABLED=true` en `.env.prod` | 🔴 Pendiente del titular | Ver [ACT-0043](#act-0043) y [ACT-0044](#act-0044) |
 | 🟠 Media | Llevar [`docs/legal/borrador-contacto-y-busquedas.md`](docs/legal/borrador-contacto-y-busquedas.md) al abogado junto con el de valoraciones y decidir si las apariciones en búsquedas se borran después de un tiempo | 🔴 Pendiente del titular | Ver [ACT-0045](#act-0045) |
+| 🔴 Alta | Encender los récipes digitales: llevar [`docs/legal/borrador-recipes.md`](docs/legal/borrador-recipes.md) al abogado (valor de la firma digitalizada frente a una certificada, duplicado, vencimiento, medicamentos de control especial, retención), publicar sus textos en la misma subida de versión que los demás borradores y poner `PRESCRIPTIONS_ENABLED=true` en `.env.prod` | 🔴 Pendiente del titular | Ver [ACT-0046](#act-0046) |
 | 🟢 Continua | Registrar cada modificación nueva con fecha, hora, responsable y evidencia | 🟢 Activo | No existen cambios relevantes sin entrada en esta bitácora |
 | 🟢 Continua | Confirmar en el repositorio remoto cada cambio cerrado localmente | 🟢 Activo | `git status` limpio y `origin/main` sincronizado al cierre de cada sesión |
 
@@ -2347,6 +2445,7 @@ Para cada cambio futuro, añadir una entrada en la línea de tiempo y actualizar
 | `2026-10-05 08:08:03 -04:00` | Incorporación de ACT-0043 (valoraciones de pacientes con requisitos, moderación previa y paneles; apagadas en producción) con su despliegue y la excepción fechada de `braces`; dos pendientes nuevos (imagen de MinIO y excepción de `braces`) | 🟢 Completado |
 | `2026-10-05 08:33:33 -04:00` | Incorporación de ACT-0044 (moderación de valoraciones, sanciones por días, categoría de reclamos y borrador legal; valoraciones aún apagadas) con su despliegue; un pendiente nuevo del titular (encender las valoraciones) | 🟢 Completado |
 | `2026-10-05 20:33:18 -04:00` | Incorporación de ACT-0045 («Quiero que me contacte» y apariciones en búsquedas; cierre del plan de agenda, notificaciones y valoraciones) con su despliegue; un pendiente nuevo del titular (borrador legal de contacto y búsquedas) | 🟢 Completado |
+| `2026-10-05 21:44:58 -04:00` | Incorporación de ACT-0046 (récipes digitales con talonario, PDF, código de verificación y envío al paciente; apagados en producción hasta la revisión legal) con su despliegue; un pendiente nuevo del titular (encender los récipes) | 🟢 Completado |
 
 ---
 
