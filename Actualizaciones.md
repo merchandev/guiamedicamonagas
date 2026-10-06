@@ -3,7 +3,7 @@
 > Bitácora central de cambios, implementaciones, decisiones técnicas y tareas de evolución del sistema.
 >
 > **Repositorio:** [`merchandev/guiamedicamonagas`](https://github.com/merchandev/guiamedicamonagas) · **Rama:** `main`<br>
-> **Última actualización de esta bitácora:** `2026-10-06 04:08:47 -04:00` · **Estado:** 🟢 Registro activo
+> **Última actualización de esta bitácora:** `2026-10-06 10:36:42 -04:00` · **Estado:** 🟢 Registro activo
 
 ![Estado](https://img.shields.io/badge/estado-registro%20activo-16a34a?style=flat-square)
 ![Rama](https://img.shields.io/badge/rama-main-2563eb?style=flat-square)
@@ -149,8 +149,9 @@ flowchart LR
     AR[🛡️ 2026-10-05\n08:33:33\nACT-0044 · Moderación\ny sanciones por días]
     AS[📨 2026-10-05\n20:33:18\nACT-0045 · Pedidos de contacto\ny apariciones en búsquedas]
     AT[💊 2026-10-05\n21:44:58\nACT-0046 · Récipes\ndigitales]
+    AU[🧮 2026-10-06\n10:36:42\nACT-0047 · Resumen de\nadministración]
 
-    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L --> M --> N --> O --> P --> Q --> R --> S --> T --> U --> V --> W --> X --> Y --> Z --> AA --> AB --> AC --> AD --> AE --> AF --> AG --> AH --> AI --> AJ --> AK --> AL --> AM --> AN --> AO --> AP --> AQ --> AR --> AS --> AT
+    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L --> M --> N --> O --> P --> Q --> R --> S --> T --> U --> V --> W --> X --> Y --> Z --> AA --> AB --> AC --> AD --> AE --> AF --> AG --> AH --> AI --> AJ --> AK --> AL --> AM --> AN --> AO --> AP --> AQ --> AR --> AS --> AT --> AU
 ```
 
 ### Resumen cuantitativo
@@ -158,8 +159,8 @@ flowchart LR
 | Indicador | Resultado |
 |---|---:|
 | Actividades históricas importadas desde Git | `3` |
-| Actividades documentales añadidas con esta bitácora | `43` |
-| Actividades registradas en total | `46` |
+| Actividades documentales añadidas con esta bitácora | `44` |
+| Actividades registradas en total | `47` |
 | Rama de referencia | `main` |
 | Commit base consultado | [`81b1091`](https://github.com/merchandev/guiamedicamonagas/commit/81b1091) |
 | Zona horaria de control | `America/Caracas` (`-04:00`) |
@@ -2171,6 +2172,52 @@ El titular pidió una sección para que los médicos hagan récipes digitales le
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
+<a id="act-0047"></a>
+
+### 🧮 ACT-0047 · Resumen de administración: sin cuentas eliminadas y con el total de pacientes
+
+<details>
+<summary><strong>2026-10-06 10:36:42 -04:00</strong> · <code>c7ab5c9</code> · 🟢 Completado</summary>
+
+**Responsable:** `Claude Opus 5.5` · **Tipo:** `corrección | administración | privacidad | despliegue` · **Commits:** [`c7ab5c9`](https://github.com/merchandev/guiamedicamonagas/commit/c7ab5c9) (contador de médicos) · [`58e6720`](https://github.com/merchandev/guiamedicamonagas/commit/58e6720) (tarjeta de pacientes)
+
+El titular eliminó todas las cuentas de médicos y de pacientes, pero el «Resumen» de administración seguía mostrando **«Total de médicos: 2»**. Después pidió agregar al resumen la cantidad de pacientes.
+
+**Causa:** la eliminación definitiva de un médico no borra su fila. La deja como registro anónimo («Cuenta eliminada»: sin correo, nombre, documentos ni datos de contacto), porque de ella cuelgan sus pagos y suscripciones, que hay que conservar (ver [ACT-0033](#act-0033)). La lista de «Médicos» ya ocultaba esos registros, pero el contador del resumen contaba todas las filas.
+
+**Qué había en producción** (consulta de solo lectura, sin datos personales):
+- solo la cuenta de superadministrador y ningún paciente;
+- los 2 «médicos» eran los registros anónimos de las 2 cuentas eliminadas el 2026-10-01, sin pagos ni suscripciones, sin publicar y fuera de los buscadores;
+- el directorio público ya mostraba 0 médicos.
+
+**Qué cambió:**
+- El resumen cuenta solo médicos con cuenta vigente, igual que la lista de «Médicos»: el total, los verificados y los que están en revisión.
+- Tarjeta nueva **«Pacientes»** con el total de cuentas de paciente, las mismas que lista la página «Pacientes» (también las suspendidas o dadas de baja, no las eliminadas definitivamente). Lleva a esa página. Es solo un número: no muestra datos de nadie.
+- Al eliminar definitivamente a un médico también se borran sus apariciones en búsquedas ([ACT-0045](#act-0045)), que hasta ahora quedaban. En producción no había ninguna que limpiar.
+
+**Revisión del resto:** el directorio, la ficha pública, la búsqueda de médicos para organizaciones, el mapa del sitio, las páginas por especialidad y municipio, la gestión de cuentas y la lista de «Médicos» ya dejaban fuera las cuentas eliminadas o sin publicar. Las páginas públicas renuevan sus datos cada 60 segundos.
+
+**Pruebas:** en la suite administrativa de punta a punta ([`admin-accounts.e2e.mjs`](backend/test/e2e/admin-accounts.e2e.mjs)):
+- después de eliminar tres médicos, el total del resumen coincide con los médicos de cuenta vigente;
+- las apariciones en búsquedas del médico eliminado desaparecen;
+- el total de pacientes coincide con las cuentas de paciente y no incluye la eliminada.
+
+En local: la suite administrativa completa en verde (106 comprobaciones); tipos del backend y del frontend y ESLint del frontend sin errores; 148 pruebas unitarias del backend en verde con el primer commit; captura del resumen con la tarjeta «Pacientes» junto a «Total de médicos». En la base local de pruebas hay 238 perfiles de médico y solo 228 con cuenta vigente: el contador anterior no habría pasado la comprobación nueva.
+
+**CI de GitHub:** «CI» (con la suite completa de punta a punta) y «Seguridad» en verde para `c7ab5c9` y para `58e6720`.
+
+**Despliegue en el VPS** (log `deploy-act47.log`): respaldo previo `gmm-db-20261006T142955Z-pre-deploy.dump.gpg`; sin migraciones; prueba de humo **25/25**; «Versión publicada: 58e6720b7894 (API y web)». Con los datos de producción, el resumen pasa de 2 médicos a **0** (las 2 filas anónimas ya no cuentan) y la tarjeta nueva muestra **0 pacientes**. `/admin/stats` sigue pidiendo sesión (401) y el directorio público muestra 0 médicos.
+
+**Archivos destacados:**
+- [`backend/src/admin/admin.service.ts`](backend/src/admin/admin.service.ts)
+- [`backend/src/admin/account-purge.service.ts`](backend/src/admin/account-purge.service.ts)
+- [`frontend/src/app/admin/page.tsx`](frontend/src/app/admin/page.tsx)
+- [`backend/test/e2e/admin-accounts.e2e.mjs`](backend/test/e2e/admin-accounts.e2e.mjs)
+
+</details>
+
+<p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
+
 <a id="registro-por-area"></a>
 
 ## 🧩 Registro por área
@@ -2188,7 +2235,7 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | 🔒 Pacientes | Código pseudónimo, cifrado de datos de salud, consentimiento por alcance y tiempo, lecturas auditadas, registro propio, foto de identificación verificada por un admin, reserva con la ficha propia, código y QR para compartir, directorio del médico por código, bóveda de administración y noindex, registro visible desde el inicio, supresión de la cuenta conservando solo la evidencia legal, consentimiento expreso de datos de salud y mayoría de edad, descarga de los datos propios e historial de accesos, avance del registro (identidad y contacto, sin datos de salud); «Quiero que me contacte»: el paciente elige qué compartir con un médico, lo retira cuando quiera y sus datos se borran a los 30 días | [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0023](#act-0023) · [ACT-0027](#act-0027) · [ACT-0029](#act-0029) · [ACT-0031](#act-0031) · [ACT-0033](#act-0033) · [ACT-0043](#act-0043) · [ACT-0045](#act-0045) |
 | ⭐ Valoraciones | Estrellas y comentario de pacientes con registro completo, cédula aprobada y consulta verificada; moderación previa de comentarios con filtro automático; autor anónimo por defecto; promedio desde 3; respuesta y denuncia del médico; moderación de la administración (aprobar, rechazar, retirar como evidencia, restaurar, eliminar), identidad del autor solo con la bóveda, sanciones por días que vencen solas; borrador legal para el abogado; apagadas en producción hasta la revisión legal (`REVIEWS_ENABLED`) | [ACT-0043](#act-0043) · [ACT-0044](#act-0044) |
 | 💊 Récipes | Talonario del médico verificado (establecimiento, firma y sello con el fondo vuelto transparente, logo), récipes según la Resolución 031/2013 del MPPS (dos partes, original y copia, datos del art. 6) que no se editan, PDF con QR y huella, verificación pública con el código sin que viaje en la URL, entrega en «Mis récipes» o con el código si la cédula coincide, WhatsApp y correo con el PDF, anulación; contenido cifrado; apagados en producción hasta la revisión legal (`PRESCRIPTIONS_ENABLED`) | [ACT-0046](#act-0046) |
-| 🛠️ Administración | Médicos, pagos, SEO, cookies, especialidades, planes, verificaciones, organizaciones, bancos, geografía, identidad de pacientes, cuentas (suspensión, baja, eliminación definitiva), planes pagados, video de presentación de los médicos, bandeja de solicitudes legales, Pago Móvil propio, video de muestra de Marca Médica y actividad reciente desplegable | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0031](#act-0031) · [ACT-0032](#act-0032) · [ACT-0033](#act-0033) · [ACT-0034](#act-0034) · [ACT-0035](#act-0035) · [ACT-0036](#act-0036) |
+| 🛠️ Administración | Médicos, pagos, SEO, cookies, especialidades, planes, verificaciones, organizaciones, bancos, geografía, identidad de pacientes, cuentas (suspensión, baja, eliminación definitiva), planes pagados, video de presentación de los médicos, bandeja de solicitudes legales, Pago Móvil propio, video de muestra de Marca Médica y actividad reciente desplegable | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0031](#act-0031) · [ACT-0032](#act-0032) · [ACT-0033](#act-0033) · [ACT-0034](#act-0034) · [ACT-0035](#act-0035) · [ACT-0036](#act-0036) · [ACT-0047](#act-0047) |
 | 📊 Observabilidad | Auditoría, analítica con consentimiento y sin IP, estadísticas del médico según su plan, centro de notificaciones (campana, página en cada panel, correos opcionales y avisos a la administración), salud, pruebas, CI, escaneo de imágenes y Dependabot, ESLint del frontend en CI, versión publicada verificable, estado de las dependencias (`/health/ready`), alertas por Telegram/correo/ntfy/webhook, interruptor de hombre muerto y monitor externo de GitHub, pruebas de punta a punta del sitio (Playwright) en escritorio y teléfono, apariciones en búsquedas como totales anónimos (solo con la analítica aceptada y sin el texto buscado) | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0036](#act-0036) · [ACT-0037](#act-0037) · [ACT-0038](#act-0038) · [ACT-0039](#act-0039) · [ACT-0041](#act-0041) · [ACT-0045](#act-0045) |
 | 🎨 Experiencia | Directorios, dashboard, componentes UI, motion, legal, formularios legibles y utilizables con teclado, sección de pacientes en el inicio, tipografía Montserrat + Open Sans, suiches, botones y foco de campos corregidos, centro legal con 21 documentos versionados y avisos breves (descargo médico, verificación, QR), portada con cifras reales y directorio que explica cuando está vacío, accesibilidad revisada con axe (contraste, etiquetas, avisos anunciados, teclado), «Salir» que vuelve a la portada y tarjeta para compartir del sitio | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0013](#act-0013) · [ACT-0014](#act-0014) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0017](#act-0017) · [ACT-0019](#act-0019) · [ACT-0022](#act-0022) · [ACT-0023](#act-0023) · [ACT-0025](#act-0025) · [ACT-0026](#act-0026) · [ACT-0028](#act-0028) · [ACT-0033](#act-0033) · [ACT-0037](#act-0037) · [ACT-0039](#act-0039) |
 | 🚢 Operación | Variables de entorno, Compose, almacenamiento, correo, proxy, imágenes mínimas y antivirus, copia de respaldos fuera del servidor, restauración desde la copia externa, custodia de claves, simulacro de desastre e informe GO / NO-GO ampliado | [ACT-0001](#act-0001) · [ACT-0002](#act-0002) · [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0008](#act-0008) · [ACT-0009](#act-0009) · [ACT-0011](#act-0011) · [ACT-0016](#act-0016) · [ACT-0017](#act-0017) · [ACT-0018](#act-0018) · [ACT-0019](#act-0019) · [ACT-0024](#act-0024) · [ACT-0027](#act-0027) · [ACT-0037](#act-0037) · [ACT-0038](#act-0038) |
@@ -2290,6 +2337,7 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | IMP-087 | Moderación de valoraciones (`/admin/valoraciones`): cola sin identidad, decisiones con motivo y aviso, evidencia al retirar, borrado con «ELIMINAR», respuestas y denuncias, identidad del autor con la bóveda; sanciones por días (opiniones o cuenta) que vencen solas sin tocar citas ni autorizaciones; categoría de reclamos «Valoración abusiva o falsa»; borrador legal | 🟢 Completado | [`backend/src/reviews/review-moderation.service.ts`](backend/src/reviews/review-moderation.service.ts), [`backend/src/reviews/sanctions.service.ts`](backend/src/reviews/sanctions.service.ts), [`docs/legal/borrador-valoraciones.md`](docs/legal/borrador-valoraciones.md) |
 | IMP-088 | «Quiero que me contacte» (el paciente elige qué compartir, el médico lo ve solo dentro del pedido, retiro y vencimiento a 30 días con borrado de los datos) y apariciones en búsquedas anónimas con la analítica aceptada, en las estadísticas del médico; borrador legal | 🟢 Completado | [`backend/src/contact/contact-requests.service.ts`](backend/src/contact/contact-requests.service.ts), [`backend/src/analytics/analytics.service.ts`](backend/src/analytics/analytics.service.ts), [`docs/legal/borrador-contacto-y-busquedas.md`](docs/legal/borrador-contacto-y-busquedas.md) |
 | IMP-089 | Récipes digitales: talonario (establecimiento, firma, sello y logo), emisión solo por médicos verificados con los datos de la Resolución 031/2013 del MPPS, PDF de original y copia con QR, código de verificación y página pública `/recipe`, «Mis récipes» del paciente, envío por WhatsApp y correo, anulación; borrador legal | 🟢 Completado | [`backend/src/prescriptions`](backend/src/prescriptions), [`frontend/src/app/dashboard/recipes`](frontend/src/app/dashboard/recipes), [`docs/legal/borrador-recipes.md`](docs/legal/borrador-recipes.md) |
+| IMP-090 | Resumen de administración: cuenta solo médicos con cuenta vigente (no los registros anónimos de cuentas eliminadas) y muestra el total de pacientes; la eliminación definitiva de un médico borra también sus apariciones en búsquedas | 🟢 Completado | [`backend/src/admin/admin.service.ts`](backend/src/admin/admin.service.ts), [`frontend/src/app/admin/page.tsx`](frontend/src/app/admin/page.tsx), [`backend/src/admin/account-purge.service.ts`](backend/src/admin/account-purge.service.ts) |
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
@@ -2449,6 +2497,7 @@ Para cada cambio futuro, añadir una entrada en la línea de tiempo y actualizar
 | `2026-10-05 20:33:18 -04:00` | Incorporación de ACT-0045 («Quiero que me contacte» y apariciones en búsquedas; cierre del plan de agenda, notificaciones y valoraciones) con su despliegue; un pendiente nuevo del titular (borrador legal de contacto y búsquedas) | 🟢 Completado |
 | `2026-10-05 21:44:58 -04:00` | Incorporación de ACT-0046 (récipes digitales con talonario, PDF, código de verificación y envío al paciente; apagados en producción hasta la revisión legal) con su despliegue; un pendiente nuevo del titular (encender los récipes) | 🟢 Completado |
 | `2026-10-06 04:08:47 -04:00` | Redespliegue de producción a `c42d605` a pedido del titular (sin cambios de código; prueba de humo 25/25), anotado en ACT-0046 | 🟢 Completado |
+| `2026-10-06 10:36:42 -04:00` | Incorporación de ACT-0047 (el resumen de administración contaba como médicos las cuentas eliminadas; tarjeta nueva con el total de pacientes; la eliminación de un médico borra también sus apariciones en búsquedas) con su despliegue | 🟢 Completado |
 
 ---
 
