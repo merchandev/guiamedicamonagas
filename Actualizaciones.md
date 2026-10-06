@@ -3,7 +3,7 @@
 > Bitácora central de cambios, implementaciones, decisiones técnicas y tareas de evolución del sistema.
 >
 > **Repositorio:** [`merchandev/guiamedicamonagas`](https://github.com/merchandev/guiamedicamonagas) · **Rama:** `main`<br>
-> **Última actualización de esta bitácora:** `2026-10-06 10:36:42 -04:00` · **Estado:** 🟢 Registro activo
+> **Última actualización de esta bitácora:** `2026-10-06 11:03:20 -04:00` · **Estado:** 🟢 Registro activo
 
 ![Estado](https://img.shields.io/badge/estado-registro%20activo-16a34a?style=flat-square)
 ![Rama](https://img.shields.io/badge/rama-main-2563eb?style=flat-square)
@@ -150,8 +150,9 @@ flowchart LR
     AS[📨 2026-10-05\n20:33:18\nACT-0045 · Pedidos de contacto\ny apariciones en búsquedas]
     AT[💊 2026-10-05\n21:44:58\nACT-0046 · Récipes\ndigitales]
     AU[🧮 2026-10-06\n10:36:42\nACT-0047 · Resumen de\nadministración]
+    AV[🔽 2026-10-06\n11:03:20\nACT-0048 · Lista del\nbuscador del inicio]
 
-    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L --> M --> N --> O --> P --> Q --> R --> S --> T --> U --> V --> W --> X --> Y --> Z --> AA --> AB --> AC --> AD --> AE --> AF --> AG --> AH --> AI --> AJ --> AK --> AL --> AM --> AN --> AO --> AP --> AQ --> AR --> AS --> AT --> AU
+    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L --> M --> N --> O --> P --> Q --> R --> S --> T --> U --> V --> W --> X --> Y --> Z --> AA --> AB --> AC --> AD --> AE --> AF --> AG --> AH --> AI --> AJ --> AK --> AL --> AM --> AN --> AO --> AP --> AQ --> AR --> AS --> AT --> AU --> AV
 ```
 
 ### Resumen cuantitativo
@@ -159,8 +160,8 @@ flowchart LR
 | Indicador | Resultado |
 |---|---:|
 | Actividades históricas importadas desde Git | `3` |
-| Actividades documentales añadidas con esta bitácora | `44` |
-| Actividades registradas en total | `47` |
+| Actividades documentales añadidas con esta bitácora | `45` |
+| Actividades registradas en total | `48` |
 | Rama de referencia | `main` |
 | Commit base consultado | [`81b1091`](https://github.com/merchandev/guiamedicamonagas/commit/81b1091) |
 | Zona horaria de control | `America/Caracas` (`-04:00`) |
@@ -2218,6 +2219,40 @@ En local: la suite administrativa completa en verde (106 comprobaciones); tipos 
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
+<a id="act-0048"></a>
+
+### 🔽 ACT-0048 · Inicio: la lista del buscador ya no queda detrás de las secciones
+
+<details>
+<summary><strong>2026-10-06 11:03:20 -04:00</strong> · <code>fc0aa3a</code> · 🟢 Completado</summary>
+
+**Responsable:** `Claude Opus 5.5` · **Tipo:** `corrección | ux | despliegue` · **Commits:** [`fc0aa3a`](https://github.com/merchandev/guiamedicamonagas/commit/fc0aa3a) (arreglo) · [`8f11599`](https://github.com/merchandev/guiamedicamonagas/commit/8f11599) (prueba)
+
+El titular avisó que en el inicio las opciones del buscador (especialidad y municipio) quedaban escondidas detrás de las secciones de la página.
+
+**Causa:** la primera sección del inicio tenía `overflow-hidden` para recortar los halos difuminados de la ilustración. El buscador está al pie de esa sección, así que la lista, que se abre hacia abajo, quedaba cortada donde termina la sección y parecía estar detrás de la franja verde.
+
+**Qué cambió:** esa sección ya no recorta su contenido.
+- El contenedor de la página ya evitaba el desborde hacia los lados (`overflow-x-clip`).
+- El buscador va en una capa por encima de las secciones de abajo, así que la lista se ve completa encima de ellas.
+- Ningún otro desplegable del sitio está dentro de un contenedor que lo recorte.
+
+**Errores de consola que mostró el titular:** las fuentes Figtree y Roboto Mono de Google bloqueadas desde `about:srcdoc` no vienen del sitio, que no usa esas fuentes ni ese tipo de ventana interna. En un navegador sin extensiones la consola queda limpia: los produce una extensión del navegador y la política de seguridad del sitio los bloquea. No se cambió nada por eso.
+
+**Pruebas:** prueba nueva en [`publico.spec.ts`](e2e/tests/publico.spec.ts), en escritorio y en teléfono. Abre la lista de especialidades del inicio y comprueba que lo que se ve cerca de su pie es la propia lista. Contra producción falló antes del despliegue y pasó después. En local pasaron las 32 pruebas de páginas públicas en escritorio y teléfono (sin desbordes, sin errores de consola y sin fallas graves de accesibilidad); tipos y ESLint del frontend sin errores.
+
+**CI de GitHub:** «CI» (con la suite completa de punta a punta) y «Seguridad» en verde para `8f11599`.
+
+**Despliegue en el VPS** (log `deploy-act48.log`): respaldo previo `gmm-db-20261006T145858Z-pre-deploy.dump.gpg`; sin migraciones; prueba de humo **25/25**; «Versión publicada: 8f115996e939 (API y web)». La prueba nueva, corrida contra producción, pasa en escritorio y teléfono; antes del despliegue fallaba en ambos.
+
+**Archivos destacados:**
+- [`frontend/src/app/page.tsx`](frontend/src/app/page.tsx)
+- [`e2e/tests/publico.spec.ts`](e2e/tests/publico.spec.ts)
+
+</details>
+
+<p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
+
 <a id="registro-por-area"></a>
 
 ## 🧩 Registro por área
@@ -2237,7 +2272,7 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | 💊 Récipes | Talonario del médico verificado (establecimiento, firma y sello con el fondo vuelto transparente, logo), récipes según la Resolución 031/2013 del MPPS (dos partes, original y copia, datos del art. 6) que no se editan, PDF con QR y huella, verificación pública con el código sin que viaje en la URL, entrega en «Mis récipes» o con el código si la cédula coincide, WhatsApp y correo con el PDF, anulación; contenido cifrado; apagados en producción hasta la revisión legal (`PRESCRIPTIONS_ENABLED`) | [ACT-0046](#act-0046) |
 | 🛠️ Administración | Médicos, pagos, SEO, cookies, especialidades, planes, verificaciones, organizaciones, bancos, geografía, identidad de pacientes, cuentas (suspensión, baja, eliminación definitiva), planes pagados, video de presentación de los médicos, bandeja de solicitudes legales, Pago Móvil propio, video de muestra de Marca Médica y actividad reciente desplegable | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0031](#act-0031) · [ACT-0032](#act-0032) · [ACT-0033](#act-0033) · [ACT-0034](#act-0034) · [ACT-0035](#act-0035) · [ACT-0036](#act-0036) · [ACT-0047](#act-0047) |
 | 📊 Observabilidad | Auditoría, analítica con consentimiento y sin IP, estadísticas del médico según su plan, centro de notificaciones (campana, página en cada panel, correos opcionales y avisos a la administración), salud, pruebas, CI, escaneo de imágenes y Dependabot, ESLint del frontend en CI, versión publicada verificable, estado de las dependencias (`/health/ready`), alertas por Telegram/correo/ntfy/webhook, interruptor de hombre muerto y monitor externo de GitHub, pruebas de punta a punta del sitio (Playwright) en escritorio y teléfono, apariciones en búsquedas como totales anónimos (solo con la analítica aceptada y sin el texto buscado) | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0036](#act-0036) · [ACT-0037](#act-0037) · [ACT-0038](#act-0038) · [ACT-0039](#act-0039) · [ACT-0041](#act-0041) · [ACT-0045](#act-0045) |
-| 🎨 Experiencia | Directorios, dashboard, componentes UI, motion, legal, formularios legibles y utilizables con teclado, sección de pacientes en el inicio, tipografía Montserrat + Open Sans, suiches, botones y foco de campos corregidos, centro legal con 21 documentos versionados y avisos breves (descargo médico, verificación, QR), portada con cifras reales y directorio que explica cuando está vacío, accesibilidad revisada con axe (contraste, etiquetas, avisos anunciados, teclado), «Salir» que vuelve a la portada y tarjeta para compartir del sitio | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0013](#act-0013) · [ACT-0014](#act-0014) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0017](#act-0017) · [ACT-0019](#act-0019) · [ACT-0022](#act-0022) · [ACT-0023](#act-0023) · [ACT-0025](#act-0025) · [ACT-0026](#act-0026) · [ACT-0028](#act-0028) · [ACT-0033](#act-0033) · [ACT-0037](#act-0037) · [ACT-0039](#act-0039) |
+| 🎨 Experiencia | Directorios, dashboard, componentes UI, motion, legal, formularios legibles y utilizables con teclado, sección de pacientes en el inicio, tipografía Montserrat + Open Sans, suiches, botones y foco de campos corregidos, centro legal con 21 documentos versionados y avisos breves (descargo médico, verificación, QR), portada con cifras reales y directorio que explica cuando está vacío, accesibilidad revisada con axe (contraste, etiquetas, avisos anunciados, teclado), «Salir» que vuelve a la portada y tarjeta para compartir del sitio | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0013](#act-0013) · [ACT-0014](#act-0014) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0017](#act-0017) · [ACT-0019](#act-0019) · [ACT-0022](#act-0022) · [ACT-0023](#act-0023) · [ACT-0025](#act-0025) · [ACT-0026](#act-0026) · [ACT-0028](#act-0028) · [ACT-0033](#act-0033) · [ACT-0037](#act-0037) · [ACT-0039](#act-0039) · [ACT-0048](#act-0048) |
 | 🚢 Operación | Variables de entorno, Compose, almacenamiento, correo, proxy, imágenes mínimas y antivirus, copia de respaldos fuera del servidor, restauración desde la copia externa, custodia de claves, simulacro de desastre e informe GO / NO-GO ampliado | [ACT-0001](#act-0001) · [ACT-0002](#act-0002) · [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0008](#act-0008) · [ACT-0009](#act-0009) · [ACT-0011](#act-0011) · [ACT-0016](#act-0016) · [ACT-0017](#act-0017) · [ACT-0018](#act-0018) · [ACT-0019](#act-0019) · [ACT-0024](#act-0024) · [ACT-0027](#act-0027) · [ACT-0037](#act-0037) · [ACT-0038](#act-0038) |
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
@@ -2338,6 +2373,7 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | IMP-088 | «Quiero que me contacte» (el paciente elige qué compartir, el médico lo ve solo dentro del pedido, retiro y vencimiento a 30 días con borrado de los datos) y apariciones en búsquedas anónimas con la analítica aceptada, en las estadísticas del médico; borrador legal | 🟢 Completado | [`backend/src/contact/contact-requests.service.ts`](backend/src/contact/contact-requests.service.ts), [`backend/src/analytics/analytics.service.ts`](backend/src/analytics/analytics.service.ts), [`docs/legal/borrador-contacto-y-busquedas.md`](docs/legal/borrador-contacto-y-busquedas.md) |
 | IMP-089 | Récipes digitales: talonario (establecimiento, firma, sello y logo), emisión solo por médicos verificados con los datos de la Resolución 031/2013 del MPPS, PDF de original y copia con QR, código de verificación y página pública `/recipe`, «Mis récipes» del paciente, envío por WhatsApp y correo, anulación; borrador legal | 🟢 Completado | [`backend/src/prescriptions`](backend/src/prescriptions), [`frontend/src/app/dashboard/recipes`](frontend/src/app/dashboard/recipes), [`docs/legal/borrador-recipes.md`](docs/legal/borrador-recipes.md) |
 | IMP-090 | Resumen de administración: cuenta solo médicos con cuenta vigente (no los registros anónimos de cuentas eliminadas) y muestra el total de pacientes; la eliminación definitiva de un médico borra también sus apariciones en búsquedas | 🟢 Completado | [`backend/src/admin/admin.service.ts`](backend/src/admin/admin.service.ts), [`frontend/src/app/admin/page.tsx`](frontend/src/app/admin/page.tsx), [`backend/src/admin/account-purge.service.ts`](backend/src/admin/account-purge.service.ts) |
+| IMP-091 | Inicio: la lista desplegable del buscador se ve completa encima de las secciones de abajo (la primera sección ya no recorta su contenido), con prueba en escritorio y teléfono | 🟢 Completado | [`frontend/src/app/page.tsx`](frontend/src/app/page.tsx), [`e2e/tests/publico.spec.ts`](e2e/tests/publico.spec.ts) |
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
@@ -2498,6 +2534,7 @@ Para cada cambio futuro, añadir una entrada en la línea de tiempo y actualizar
 | `2026-10-05 21:44:58 -04:00` | Incorporación de ACT-0046 (récipes digitales con talonario, PDF, código de verificación y envío al paciente; apagados en producción hasta la revisión legal) con su despliegue; un pendiente nuevo del titular (encender los récipes) | 🟢 Completado |
 | `2026-10-06 04:08:47 -04:00` | Redespliegue de producción a `c42d605` a pedido del titular (sin cambios de código; prueba de humo 25/25), anotado en ACT-0046 | 🟢 Completado |
 | `2026-10-06 10:36:42 -04:00` | Incorporación de ACT-0047 (el resumen de administración contaba como médicos las cuentas eliminadas; tarjeta nueva con el total de pacientes; la eliminación de un médico borra también sus apariciones en búsquedas) con su despliegue | 🟢 Completado |
+| `2026-10-06 11:03:20 -04:00` | Incorporación de ACT-0048 (la lista del buscador del inicio quedaba cortada detrás de las secciones; nota sobre los errores de consola de una extensión del navegador) con su despliegue | 🟢 Completado |
 
 ---
 
