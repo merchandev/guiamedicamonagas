@@ -44,6 +44,27 @@ test('portada: el HTML del servidor trae las cifras reales (nunca «0+» ni «0 
   expect(html).not.toMatch(/>0(<!-- -->)? ?(<!-- -->)?profesional/);
 });
 
+test('portada: la lista del buscador se ve completa, encima de las secciones de abajo', async ({ page }) => {
+  await page.goto('/');
+  const combo = page.getByRole('combobox', { name: 'Especialidad' });
+  await expect(combo).toBeVisible();
+  // Cerca del borde superior (sin el desplazamiento suave del sitio), lejos del aviso de cookies.
+  await combo.evaluate((el) =>
+    window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 140, behavior: 'instant' }),
+  );
+  await combo.click();
+  const list = page.getByRole('listbox');
+  await expect(list).toBeVisible();
+  await expect(list).toHaveCSS('opacity', '1');
+  const box = (await list.boundingBox())!;
+  // Lo que se ve cerca del pie de la lista debe ser la propia lista, no la sección siguiente.
+  const onTop = await page.evaluate(
+    ({ x, y }) => !!document.elementFromPoint(x, y)?.closest('[role="listbox"]'),
+    { x: box.x + box.width / 2, y: box.y + box.height - 10 },
+  );
+  expect(onTop, 'el pie de la lista queda tapado por otra sección').toBe(true);
+});
+
 test('/planes: Marca Médica con 2 videos profesionales cada mes y su llamado', async ({ page }) => {
   await page.goto('/planes');
   await expect(page.locator('#marca-medica')).toContainText('Marca Médica');
