@@ -12,6 +12,7 @@ interface AdminStats {
   totalProfessionals: number;
   verifiedProfessionals: number;
   inReviewProfessionals: number;
+  totalPatients: number;
   totalOrganizations: number;
   unreadMessages: number;
   recentAuditLogs: { id: string; action: string; resource: string; createdAt: string; user?: { email: string } | null }[];
@@ -33,6 +34,7 @@ export default function AdminHome() {
     { label: 'Médicos verificados', value: stats.verifiedProfessionals, href: '/admin/medicos', tone: 'text-pine-700' },
     { label: 'Médicos en revisión', value: stats.inReviewProfessionals, href: '/admin/verificaciones', tone: 'text-ink-700' },
     { label: 'Total de médicos', value: stats.totalProfessionals, href: '/admin/medicos', tone: 'text-ink-700' },
+    { label: 'Pacientes', value: stats.totalPatients, href: '/admin/pacientes', tone: 'text-ink-700' },
     { label: 'Organizaciones', value: stats.totalOrganizations, href: '/admin/organizaciones', tone: 'text-ink-700' },
   ];
 

@@ -15,6 +15,7 @@ export class AdminService {
       totalProfessionals,
       verifiedProfessionals,
       inReviewProfessionals,
+      totalPatients,
       totalOrganizations,
       unreadMessages,
       recentAuditLogs,
@@ -24,6 +25,8 @@ export class AdminService {
       this.prisma.professionalProfile.count({ where: professionals }),
       this.prisma.professionalProfile.count({ where: { ...professionals, verificationStatus: 'VERIFIED' } }),
       this.prisma.professionalProfile.count({ where: { ...professionals, verificationStatus: 'IN_REVIEW' } }),
+      // Las mismas cuentas que lista «Pacientes»: solo el total, sin datos de nadie.
+      this.prisma.user.count({ where: { role: 'USER', purgedAt: null } }),
       this.prisma.organization.count(),
       this.prisma.contactMessage.count({ where: { isRead: false } }),
       this.prisma.auditLog.findMany({
@@ -39,6 +42,7 @@ export class AdminService {
       totalProfessionals,
       verifiedProfessionals,
       inReviewProfessionals,
+      totalPatients,
       totalOrganizations,
       unreadMessages,
       // Los pacientes no se identifican aquí: sus datos solo se ven con la bóveda abierta.

@@ -345,5 +345,9 @@ try {
   check('su ficha queda solo con el código (tenía una autorización a un médico)',shell && shell.userId===null && shell.firstName===null
     && shell.cedulaLookup===null && shell.phoneLookup===null && shell.shareCodeLookup===null && shell.patientCode===`TEST-${run}`);
   check('eliminaciones auditadas',await count('SELECT count(*)::int n FROM "AuditLog" WHERE "userId"=$1 AND action=\'ACCOUNT_PURGE\'',[ids.superadmin])===4);
+  r=await call('GET','/admin/stats',null,superToken);
+  check('el resumen cuenta las cuentas de paciente, sin la eliminada',r.status===200
+    && r.data.totalPatients===await count('SELECT count(*)::int n FROM "User" WHERE role=\'USER\' AND "purgedAt" IS NULL')
+    && await count('SELECT count(*)::int n FROM "User" WHERE id=$1',[ids.patient])===0);
   console.log(`PASS: ${checks} comprobaciones administrativas`);
 } finally { await db.end(); }
