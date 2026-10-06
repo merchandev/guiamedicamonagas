@@ -141,7 +141,9 @@ export default async function HomePage() {
 
   return (
     <div className="overflow-x-clip">
-      <section className="relative overflow-hidden border-b border-ink-100 bg-gradient-to-b from-pine-50/60 to-canvas">
+      {/* Sin overflow-hidden: recortaría la lista desplegable del buscador al pie de la sección.
+          El contenedor de la página (overflow-x-clip) ya evita el desborde lateral de la ilustración. */}
+      <section className="relative border-b border-ink-100 bg-gradient-to-b from-pine-50/60 to-canvas">
         <div className="container-page grid gap-14 py-16 md:grid-cols-2 md:items-center md:py-24">
           <Reveal>
             <Badge tone="pine" className="mb-4">Directorio verificado del estado Monagas</Badge>
