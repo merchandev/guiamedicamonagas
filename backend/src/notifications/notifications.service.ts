@@ -22,7 +22,7 @@ interface NotifyOptions {
     subject: string;
     html: string;
     template: string;
-    attachments?: { filename: string; content: string; contentType: string }[];
+    attachments?: { filename: string; content: string | Buffer; contentType: string }[];
   };
   whatsapp?: { to: string; template: string; body: string };
 }
@@ -152,11 +152,19 @@ export class NotificationsService {
   }
 
   /** Correos opcionales que corresponden a su tipo de cuenta y si los recibe. */
+  /** Los correos opcionales de su tipo de cuenta, sin los de funciones apagadas (valoraciones, récipes). */
+  private offeredEmailTypes(role: Role): string[] {
+    return optionalEmailTypesFor(role).filter((type) => {
+      const feature = OPTIONAL_EMAIL_TYPES[type].feature;
+      return !feature || this.config.get(feature, { infer: true }) === true;
+    });
+  }
+
   async preferences(userId: string, role: Role) {
     const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { notificationEmailOptOut: true } });
     const optedOut = new Set(user?.notificationEmailOptOut ?? []);
     return {
-      email: optionalEmailTypesFor(role).map((type) => ({
+      email: this.offeredEmailTypes(role).map((type) => ({
         type,
         label: OPTIONAL_EMAIL_TYPES[type].label,
         enabled: !optedOut.has(type),
@@ -165,7 +173,7 @@ export class NotificationsService {
   }
 
   async updatePreferences(userId: string, role: Role, emailOptOut: string[]) {
-    const allowed = new Set(optionalEmailTypesFor(role));
+    const allowed = new Set(this.offeredEmailTypes(role));
     await this.prisma.user.update({
       where: { id: userId },
       data: { notificationEmailOptOut: [...new Set(emailOptOut)].filter((type) => allowed.has(type)) },

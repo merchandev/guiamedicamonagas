@@ -50,3 +50,9 @@ export const REVIEW_RULES_VERSION = '1.0';
  * (frontend/src/lib/legal.ts, CONTACT_REQUEST_CONSENT): queda en cada pedido.
  */
 export const CONTACT_REQUEST_CONSENT_VERSION = '1.0';
+
+/**
+ * Condiciones del récipe digital que acepta el médico en su talonario
+ * (frontend/src/lib/legal.ts, PRESCRIPTION_RULES): sin ellas no emite.
+ */
+export const PRESCRIPTION_RULES_VERSION = '1.0';

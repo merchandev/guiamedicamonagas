@@ -36,3 +36,12 @@ export function caracasMonthKey(date: Date): string {
 export function caracasDayKey(date: Date): string {
   return dateKeyFormat.format(date);
 }
+
+/**
+ * Último instante (23:59:59.999, hora de Caracas) del día que cae `days` días
+ * después de `date`. Venezuela no cambia de hora: siempre UTC−4.
+ */
+export function caracasEndOfDay(date: Date, days = 0): Date {
+  const [year, month, day] = caracasDayKey(date).split('-').map(Number);
+  return new Date(Date.UTC(year, month - 1, day + days, 23 + 4, 59, 59, 999));
+}

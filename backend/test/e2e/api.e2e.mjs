@@ -447,6 +447,16 @@ if (process.env.REVIEWS_ENABLED !== 'true') {
   check('apagadas el médico no ve su panel de valoraciones → 404', (await call('GET', '/reviews/me/professional', null, doctorToken)).status === 404);
 }
 
+// 20. Récipes digitales: apagados salvo PRESCRIPTIONS_ENABLED=true (en producción, hasta su revisión legal)
+if (process.env.PRESCRIPTIONS_ENABLED !== 'true') {
+  r = await call('GET', '/prescriptions/config');
+  check('récipes apagados por defecto', r.status === 200 && r.data?.enabled === false);
+  check('apagados el médico no ve su talonario → 404', (await call('GET', '/prescriptions/pad', null, doctorToken)).status === 404);
+  r = await call('POST', '/prescriptions/verify', { code: 'ABCD-EFGH-JKMN' });
+  check('apagados no se verifica ningún código → 404', r.status === 404, String(r.status));
+  check('apagados el paciente no ve «Mis récipes» → 404', (await call('GET', '/prescriptions/me', null, patientSession)).status === 404);
+}
+
 console.log(failures === 0 ? '\nTODO OK' : `\n${failures} FALLO(S)`);
 await db.end();
 process.exit(failures ? 1 : 0);

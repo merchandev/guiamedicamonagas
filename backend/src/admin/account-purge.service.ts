@@ -197,6 +197,12 @@ export class AccountPurgeService {
     });
     fileKeys.push(...walkIns.flatMap((w) => [w.photoKey, w.idPhotoKey]).filter((k): k is string => !!k));
 
+    // Récipes y talonario: se borran con sus imágenes (logo, firma y sello).
+    const padImages = await tx.prescriptionPad.findMany({ where: { professionalId }, select: { logoKey: true, signatureKey: true, sealKey: true } });
+    const issuedImages = await tx.prescription.findMany({ where: { professionalId }, select: { logoKey: true, signatureKey: true, sealKey: true } });
+    const imageKeys = [...padImages, ...issuedImages].flatMap((i) => [i.logoKey, i.signatureKey, i.sealKey]).filter((k): k is string => !!k);
+    fileKeys.push(...new Set(imageKeys));
+
     const byProfessional = { where: { professionalId } };
     await tx.appointment.deleteMany(byProfessional); // arrastra sus notas clínicas
     await tx.clinicalNote.deleteMany(byProfessional);
@@ -215,6 +221,8 @@ export class AccountPurgeService {
     await tx.contactMessage.deleteMany(byProfessional);
     await tx.organizationProfessional.deleteMany(byProfessional);
     await tx.review.deleteMany(byProfessional); // arrastra respuestas y denuncias
+    await tx.prescription.deleteMany(byProfessional);
+    await tx.prescriptionPad.deleteMany(byProfessional);
     await tx.analyticsEvent.deleteMany({ where: { resourceId: professionalId } });
     await tx.subscription.updateMany({
       where: { professionalId, status: { in: [...OPEN_SUBSCRIPTIONS] } },
@@ -276,6 +284,9 @@ export class AccountPurgeService {
       await tx.review.deleteMany({ where: { patientId: profile.id } });
       for (const professionalId of new Set(reviewed.map((r) => r.professionalId))) await recomputeRating(tx, professionalId);
     }
+
+    // Los récipes que recibió quedan solo en el registro del médico que los emitió.
+    await tx.prescription.updateMany({ where: { patientId: profile.id }, data: { patientId: null } });
 
     const { appointments, clinicalNotes, dataGrants } = profile._count;
     if (appointments + clinicalNotes + dataGrants === 0) {

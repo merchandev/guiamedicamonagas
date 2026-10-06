@@ -90,6 +90,44 @@ export async function apiFetch<T = unknown>(path: string, options: RequestOption
   return data as T;
 }
 
+/** Descarga un archivo (PDF) con la misma sesión y renovación de token que apiFetch. */
+export async function apiBlob(path: string, options: RequestOptions = {}): Promise<Blob> {
+  const { body, skipAuthRetry, headers, ...rest } = options;
+  const hasJsonBody = body !== undefined;
+  const res = await fetch(`${API_URL}${path}`, {
+    ...rest,
+    credentials: 'include',
+    headers: {
+      ...(hasJsonBody ? { 'Content-Type': 'application/json' } : {}),
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      ...headers,
+    },
+    body: hasJsonBody ? JSON.stringify(body) : undefined,
+  });
+
+  if (res.status === 401 && !skipAuthRetry && accessToken) {
+    const newToken = await refreshAccessToken();
+    if (newToken) return apiBlob(path, { ...options, skipAuthRetry: true });
+  }
+  if (!res.ok) {
+    const data = await res.json().catch(() => null);
+    throw new ApiError(res.status, extractMessage(data, 'No se pudo descargar el archivo'), data);
+  }
+  return res.blob();
+}
+
+/** Guarda en el dispositivo un archivo generado en el navegador. */
+export function saveBlob(blob: Blob, fileName: string) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 export const api = {
   get: <T = unknown>(path: string) => apiFetch<T>(path),
   post: <T = unknown>(path: string, body?: unknown) => apiFetch<T>(path, { method: 'POST', body }),

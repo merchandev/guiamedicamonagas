@@ -1,6 +1,7 @@
 import { FieldEncryptionService } from './field-encryption.service';
 import { PATIENT_DATA_CONTEXTS } from '../patients/patient-data.codec';
 import { CLINICAL_NOTE_CONTEXT } from '../clinical/clinical-note.codec';
+import { PRESCRIPTION_CONTEXTS } from '../prescriptions/prescription.codec';
 
 /**
  * Todos los campos cifrados con FieldEncryptionService y su contexto AAD. Un
@@ -14,6 +15,9 @@ export const ENCRYPTED_FIELDS = [
   { model: 'patientProfile', field: 'shareCodeEnc', context: PATIENT_DATA_CONTEXTS.shareCode },
   { model: 'appointment', field: 'reason', context: PATIENT_DATA_CONTEXTS.appointmentReason },
   { model: 'clinicalNote', field: 'clinicalDataEnc', context: CLINICAL_NOTE_CONTEXT },
+  { model: 'prescription', field: 'contentEnc', context: PRESCRIPTION_CONTEXTS.content },
+  { model: 'prescription', field: 'codeEnc', context: PRESCRIPTION_CONTEXTS.code },
+  { model: 'prescription', field: 'annulReason', context: PRESCRIPTION_CONTEXTS.annulReason },
 ] as const;
 
 export const ENCRYPTED_VALUE_PREFIX = 'gmm1.';

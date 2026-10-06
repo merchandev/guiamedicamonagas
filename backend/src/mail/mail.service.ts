@@ -10,7 +10,7 @@ interface SendMailOptions {
   html: string;
   template: string;
   relatedUserId?: string;
-  attachments?: { filename: string; content: string; contentType: string }[];
+  attachments?: { filename: string; content: string | Buffer; contentType: string }[];
 }
 
 @Injectable()
@@ -42,8 +42,8 @@ export class MailService {
     await this.transporter.verify();
   }
 
-  /** Envío best-effort: nunca lanza, siempre queda auditado en MessageLog. */
-  async send(options: SendMailOptions): Promise<void> {
+  /** Envío best-effort: nunca lanza, siempre queda auditado en MessageLog. Devuelve si se envió. */
+  async send(options: SendMailOptions): Promise<boolean> {
     try {
       await this.transporter.sendMail({
         from: this.from,
@@ -53,9 +53,11 @@ export class MailService {
         attachments: options.attachments,
       });
       await this.log(options, 'SENT');
+      return true;
     } catch (error) {
       this.logger.error(`Fallo al enviar correo a ${options.to}: ${(error as Error).message}`);
       await this.log(options, 'FAILED', (error as Error).message);
+      return false;
     }
   }
 

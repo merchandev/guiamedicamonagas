@@ -122,6 +122,9 @@ const baseEnvSchema = z.object({
   REVIEWS_ENABLED: envBoolean(false),
   // Días que se guardan como evidencia las valoraciones y respuestas rechazadas
   // o retiradas. Vacío = no se borran (el plazo lo fija el titular con su abogado).
+  // Récipes digitales: apagados hasta que el abogado revise sus textos y se
+  // publiquen en la próxima versión (ver docs/legal/borrador-recipes.md).
+  PRESCRIPTIONS_ENABLED: envBoolean(false),
   REVIEW_EVIDENCE_RETENTION_DAYS: z.preprocess(
     (value) => (value === '' ? undefined : value),
     z.coerce.number().int().min(30).max(3650).optional(),

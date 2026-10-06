@@ -259,6 +259,8 @@ model ProfessionalProfile {
   organizations OrganizationProfessional[]
   reviews       Review[]
   searchAppearances SearchAppearance[]
+  prescriptionPad PrescriptionPad?
+  prescriptions   Prescription[]
 
   @@index([verificationStatus, isPublished])
   @@index([municipality])
@@ -1168,6 +1170,7 @@ model PatientProfile {
   dataGrants     PatientDataGrant[]
   registeredBy   ProfessionalPatient[]
   reviews        Review[]
+  prescriptions  Prescription[]
 
   @@index([patientCode])
   @@index([identityStatus])
@@ -1646,4 +1649,96 @@ model SearchAppearance {
   count          Int                 @default(0)
 
   @@unique([professionalId, day, specialtySlug, municipality])
+}
+
+// ---------------------------------------------------------------------------
+// RÉCIPES DIGITALES
+// ---------------------------------------------------------------------------
+
+/**
+ * Talonario del médico para sus récipes digitales: logo, firma y sello
+ * (imágenes privadas en el almacenamiento) y los datos del establecimiento de
+ * salud que la Resolución 031/2013 del MPPS (art. 6) exige impresos: nombre,
+ * dirección y RIF. Nombre, cédula y N° MPPS del médico salen de su perfil
+ * verificado, nunca de aquí.
+ */
+model PrescriptionPad {
+  id             String              @id @default(uuid())
+  professionalId String              @unique
+  professional   ProfessionalProfile @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+
+  logoKey      String?
+  signatureKey String?
+  sealKey      String?
+
+  establishmentName    String?
+  establishmentAddress String?
+  establishmentRif     String?
+  establishmentPhone   String?
+  /// Lugar de emisión que se imprime («Maturín, estado Monagas»).
+  city                 String?
+  /// Vigencia que se propone al emitir; el médico la cambia en cada récipe.
+  defaultValidityDays  Int     @default(30)
+  /// Correlativo del médico: número del último récipe emitido.
+  lastNumber           Int     @default(0)
+
+  /// Condiciones de uso del récipe digital que aceptó el médico (PRESCRIPTION_RULES_VERSION).
+  rulesVersion    String?
+  rulesAcceptedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum PrescriptionStatus {
+  ISSUED
+  ANNULLED
+}
+
+/**
+ * Récipe emitido. No se edita: para corregirlo, el médico lo anula y emite
+ * otro. Todo su contenido (médico, establecimiento, paciente, medicamentos e
+ * indicaciones) va cifrado en `contentEnc`; el código de verificación, solo
+ * como HMAC (para buscarlo) y cifrado (para mostrarlo).
+ */
+model Prescription {
+  id             String              @id @default(uuid())
+  professionalId String
+  professional   ProfessionalProfile @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  number         Int
+
+  codeLookup String @unique
+  codeEnc    String
+
+  /// Paciente con cuenta que lo tiene en «Mis récipes»: se lo entregó el médico
+  /// desde su directorio o lo agregó él con el código.
+  patientId   String?
+  patient     PatientProfile? @relation(fields: [patientId], references: [id], onDelete: SetNull)
+  deliveredAt DateTime?
+  /// HMAC de la cédula impresa (la del paciente o la de su representante): solo
+  /// esa persona puede agregarlo a su cuenta con el código.
+  patientCedulaLookup String?
+
+  contentEnc  String
+  /// SHA-256 del contenido y de sus datos de emisión; se imprime abreviado como huella.
+  contentHash String
+
+  /// Imágenes con las que se emitió: no cambian si el médico las reemplaza después.
+  logoKey      String?
+  signatureKey String?
+  sealKey      String?
+
+  issuedAt    DateTime           @default(now())
+  expiresAt   DateTime
+  status      PrescriptionStatus @default(ISSUED)
+  annulledAt  DateTime?
+  /// Cifrado: puede nombrar un medicamento o una dosis.
+  annulReason String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([professionalId, number])
+  @@index([professionalId, issuedAt])
+  @@index([patientId, issuedAt])
 }

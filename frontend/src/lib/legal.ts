@@ -386,6 +386,32 @@ export function contactRequestConsent(professionalName: string, days: number): s
   return `Autorizo a Dr(a). ${professionalName} a ver los datos que elegí compartir, solo para responder este pedido. El pedido y esos datos se borran a los ${days} días y puedo retirarlo antes desde «Pedidos de contacto».`;
 }
 
+/**
+ * Condiciones del récipe digital que acepta el médico en su talonario. Si
+ * cambian, se sube PRESCRIPTION_RULES_VERSION aquí y en backend/src/common/legal-versions.ts.
+ */
+export const PRESCRIPTION_RULES_VERSION = '1.0';
+export const PRESCRIPTION_RULES: string[] = [
+  'Soy responsable del contenido de cada récipe que emito: el paciente, los medicamentos, las dosis y las indicaciones.',
+  'No emito aquí estupefacientes, psicotrópicos ni otros medicamentos que exijan un récipe especial u oficial: esos van en el formato que pide la autoridad sanitaria.',
+  'La firma y el sello que subo son míos, y el logo es de mi consultorio o del centro donde atiendo, nunca de laboratorios, medicamentos ni marcas comerciales.',
+  'Mi cuenta es personal: no dejo que otra persona emita récipes con mi firma y mi sello.',
+  'Si un récipe tiene un error, lo anulo y emito otro: un récipe emitido no se edita.',
+  'Guía Médica Monagas guarda una copia de cada récipe para que el paciente la vea y lo descargue, y para que la farmacia compruebe con su código que es auténtico y está vigente.',
+];
+
+/** Recordatorio en el formulario de emisión. */
+export const PRESCRIPTION_CONTROLLED_NOTICE =
+  'No emitas aquí estupefacientes ni psicotrópicos: requieren el récipe especial u oficial que exige la autoridad sanitaria.';
+
+/** En «Mis récipes» del paciente. */
+export const PRESCRIPTION_PATIENT_NOTICE =
+  'Tus médicos emiten estos récipes y responden por su contenido. Guía Médica Monagas no prescribe ni vende medicamentos: guarda el récipe para que lo veas, lo descargues y la farmacia compruebe con su código que es auténtico.';
+
+/** En la página pública de verificación. */
+export const PRESCRIPTION_VERIFY_NOTICE =
+  'Muestra el récipe tal como lo emitió el médico, para que el paciente y la farmacia comprueben que es auténtico y está vigente. Guía Médica Monagas no prescribe ni dispensa medicamentos.';
+
 /** Junto a las valoraciones de una ficha. */
 export const REVIEWS_PUBLIC_NOTICE =
   'Son opiniones de pacientes con la identidad verificada y una consulta verificada con este médico. No son una recomendación de Guía Médica Monagas.';

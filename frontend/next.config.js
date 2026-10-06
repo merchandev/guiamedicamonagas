@@ -60,7 +60,7 @@ const nextConfig = {
     // en robots.txt: un buscador que no puede rastrear una página tampoco ve su
     // noindex y podría indexar la URL sola.
     const noIndex = { key: 'X-Robots-Tag', value: 'noindex, nofollow, noarchive, nosnippet' };
-    const privatePaths = ['/paciente', '/paciente/:path*', '/p/:path*', '/dashboard/:path*', '/admin/:path*', '/cuenta/:path*'];
+    const privatePaths = ['/paciente', '/paciente/:path*', '/p/:path*', '/recipe', '/dashboard/:path*', '/admin/:path*', '/cuenta/:path*'];
     return [
       ...privatePaths.map((source) => ({ source, headers: [noIndex] })),
       {

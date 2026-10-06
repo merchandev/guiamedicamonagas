@@ -88,6 +88,7 @@ const PUBLIC_ROUTES = [
   'GET /organizations/:slug',
   'GET /organizations/invitations/preview',
   'GET /payments/banks',
+  'GET /prescriptions/config',
   'GET /professionals',
   'GET /professionals/:slug',
   'GET /professionals/:slug/share-photo',
@@ -116,6 +117,8 @@ const PUBLIC_ROUTES = [
   'POST /cookie-consent',
   'POST /legal-requests',
   'POST /legal-requests/lookup',
+  'POST /prescriptions/verify',
+  'POST /prescriptions/verify/pdf',
 ];
 
 describe('política de acceso de las rutas', async () => {

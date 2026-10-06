@@ -5,11 +5,15 @@ import type { Role } from '@prisma/client';
  * aviso en la campana llega siempre. Los de seguridad, cuenta, verificación,
  * pagos y cambios de citas no están en esta lista: su correo no se apaga.
  */
-export const OPTIONAL_EMAIL_TYPES: Record<string, { label: string; roles: readonly Role[] }> = {
+export const OPTIONAL_EMAIL_TYPES: Record<
+  string,
+  { label: string; roles: readonly Role[]; /** Solo se ofrece con esa función encendida. */ feature?: 'REVIEWS_ENABLED' | 'PRESCRIPTIONS_ENABLED' }
+> = {
   APPOINTMENT_REMINDER: { label: 'Recordatorios de tus citas (un día y dos horas antes)', roles: ['USER'] },
   CONTACT_MESSAGE: { label: 'Mensajes nuevos desde el formulario de tu ficha', roles: ['PROFESSIONAL'] },
   CONTACT_REQUEST: { label: 'Pedidos de contacto de pacientes («Quiero que me contacte»)', roles: ['PROFESSIONAL'] },
-  REVIEW_PUBLISHED: { label: 'Opiniones nuevas de tus pacientes', roles: ['PROFESSIONAL'] },
+  REVIEW_PUBLISHED: { label: 'Opiniones nuevas de tus pacientes', roles: ['PROFESSIONAL'], feature: 'REVIEWS_ENABLED' },
+  PRESCRIPTION_RECEIVED: { label: 'Récipes nuevos de tus médicos', roles: ['USER'], feature: 'PRESCRIPTIONS_ENABLED' },
 };
 
 export function optionalEmailTypesFor(role: Role): string[] {

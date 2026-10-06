@@ -11,7 +11,7 @@ describe('avisos de la campana', () => {
   });
 
   it('cada tipo de cuenta solo puede apagar sus correos opcionales', () => {
-    expect(optionalEmailTypesFor('USER')).toEqual(['APPOINTMENT_REMINDER']);
+    expect(optionalEmailTypesFor('USER')).toEqual(['APPOINTMENT_REMINDER', 'PRESCRIPTION_RECEIVED']);
     expect(optionalEmailTypesFor('PROFESSIONAL')).toEqual(['CONTACT_MESSAGE', 'CONTACT_REQUEST', 'REVIEW_PUBLISHED']);
     expect(optionalEmailTypesFor('ADMIN')).toEqual([]);
   });

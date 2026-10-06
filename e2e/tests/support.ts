@@ -18,6 +18,11 @@ export const TINY_PNG = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
   'base64',
 );
+/** Trazo oscuro sobre fondo blanco (80×40), como la foto de una firma o un sello: la API le quita el fondo. */
+export const INK_PNG = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAFAAAAAoCAMAAABevo0zAAABaFBMVEX///8qM4eqrc9YX6H+/v4dJoD29voaI352e7Kjp8scJX/CxN37+/xscqzR0+XW1+gbJH/m5/EiK4NIT5iIjLz9/f4vN4rp6fJFTJZ2fLLExt5KUpm7vdk7Q5H8/P2lqcz5+fumqs0fKIH6+vyMkb4gKYLq6/PS1ObV1ud0ebGLkL7Jy+FTWp5JUJgsNIiXm8Tf4O3U1uczO4zl5vD19vm+wdu0t9XP0eSUmMNhZ6Y2Po5uc63Fx96vstLi4+/39/ry8/heZaR1erG/wttla6hBSJQ0PI2rrs/HyuBSWJ3g4u6Pk8CDiLktNYlTWZ6ws9JCSpUxOYv09flCSZQeJoBMU5pobqqbn8e4u9fe3+yFirq9wNrIyuBPVpzy8vdgZqVjaaceJ4E5QI+usdGIjbz4+PuzttT7/P2Kj71NVJtmbKklLYRpb6vj5O9LUpqeoshrcaxDS5VcYqMhKoKansanqs1aYKJHTpfz+jSbAAAACXBIWXMAAAsTAAALEwEAmpwYAAABQElEQVRIx2NgGAWjYPgA7jI2ahrHo8LFzktF88wL2YGglFrGsUWxgsxjL1aninGiTEbsEFCkRg3zTCWgxqmWsFDBdWbCUOPYyzUoN07cIglmnJAKDx6Fds5MnECQpm2AJ2kZ5+uwwoxjT/DCHWPuLozsCKAnnSMizx2pjKJGgU+RQxZJkXQMTuMcRJBNQwAuMVe/LA4QsGYO9kWVy4vAHRn+YuwkAlZHKdyhoiBJqnGy3oJ4osKEGaYuO5MX6Dkny1A3JTxu09XCn1BSPaEJQNNDDi4ol2ujmMIbGyiAYlaIVXyGTByBNMVSAFEchtUTPOL8UragpMTJFM2vRlSO0AcblyhPrQLDEBxaqjLUMi89AGSeQDLVCshwsId9qGZeEDh/SChTrwjnA6ZBLnUGagJuYUkqV4Ms9qNNgVEwjAAAWb4no4Q4jd0AAAAASUVORK5CYII=',
+  'base64',
+);
 export const ADMIN_EMAIL = process.env.SEED_SUPERADMIN_EMAIL ?? 'admin@guiamedicamonagas.com';
 
 const byte = () => randomBytes(1)[0] % 250 + 1;
@@ -133,6 +138,7 @@ export interface Patient {
   token: string;
   firstName: string;
   lastName: string;
+  cedula: string;
 }
 
 export async function createPatient(): Promise<Patient> {
@@ -152,7 +158,7 @@ export async function createPatient(): Promise<Patient> {
     declareAdult: true,
   });
   expect(r.status, JSON.stringify(r.data)).toBe(201);
-  return { email, token: r.data.accessToken, firstName, lastName };
+  return { email, token: r.data.accessToken, firstName, lastName, cedula };
 }
 
 /**
@@ -304,6 +310,55 @@ export async function createPublishedDoctor(
     [profile.id],
   );
   return { email, token, id: profile.id, slug: row.slug, publicCode: row.publicCode, firstName, lastName };
+}
+
+/** Sube una imagen del talonario de récipes (firma, sello o logo) como lo hace el navegador. */
+export async function uploadPadImage(token: string, kind: 'signature' | 'seal' | 'logo', image = INK_PNG) {
+  const form = new FormData();
+  form.append('file', new Blob([image], { type: 'image/png' }), `${kind}.png`);
+  return fetch(`${API}/prescriptions/pad/${kind}`, {
+    method: 'POST',
+    headers: { authorization: `Bearer ${token}`, 'x-forwarded-for': fakeIp() },
+    body: form,
+  });
+}
+
+/**
+ * Médico verificado listo para emitir récipes: N° MPPS y cédula en su perfil
+ * (por la base, como si ya estuvieran revisados), establecimiento, condiciones
+ * aceptadas y firma y sello (subidos si hay almacenamiento; si no, la clave
+ * directo en la base: sin almacenamiento no se generan PDF).
+ */
+export async function createPrescriber(opts: { tier?: 'PROFESSIONAL' | 'PROFESSIONAL_PLUS' | 'PREMIUM' } = {}): Promise<Doctor & { cedula: string; mpps: string }> {
+  const doctor = await createPublishedDoctor({ specialtySlug: 'dermatologia', tier: opts.tier ?? 'PROFESSIONAL' });
+  const mpps = String(10_000 + (randomBytes(2).readUInt16BE(0) % 89_999));
+  const cedula = `V${8_000_000 + (randomBytes(4).readUInt32BE(0) % 9_000_000)}`;
+  await sql(`update "ProfessionalProfile" set "mppsNumber" = $2, cedula = $3 where id = $1`, [doctor.id, mpps, cedula]);
+  const pad = await api(
+    'PATCH',
+    '/prescriptions/pad',
+    {
+      establishmentName: 'Consultorio E2E',
+      establishmentAddress: 'Av. Bolívar, Centro Médico Monagas, Maturín',
+      establishmentRif: 'J-12345678-9',
+      city: 'Maturín, estado Monagas',
+      acceptRules: true,
+    },
+    doctor.token,
+  );
+  expect(pad.status, JSON.stringify(pad.data)).toBe(200);
+  if (HAS_STORAGE) {
+    for (const kind of ['signature', 'seal'] as const) {
+      const upload = await uploadPadImage(doctor.token, kind);
+      expect(upload.status, await upload.text()).toBe(201);
+    }
+  } else {
+    await sql(
+      `update "PrescriptionPad" set "signatureKey" = 'prescription-pads/e2e-firma.png', "sealKey" = 'prescription-pads/e2e-sello.png' where "professionalId" = $1`,
+      [doctor.id],
+    );
+  }
+  return { ...doctor, cedula, mpps };
 }
 
 // --- Navegador ------------------------------------------------------------------

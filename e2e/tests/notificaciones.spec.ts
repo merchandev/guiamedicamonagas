@@ -85,7 +85,9 @@ test('el paciente apaga los recordatorios por correo y la preferencia queda guar
   await page.reload();
   await expect(page.getByRole('switch', { name: /Recordatorios de tus citas/ })).toHaveAttribute('aria-checked', 'false');
   const prefs = await api('GET', '/notifications/preferences', undefined, patient.token);
-  expect(prefs.data.email).toEqual([expect.objectContaining({ type: 'APPOINTMENT_REMINDER', enabled: false })]);
+  // Con los récipes encendidos (CI) también se ofrece el correo de récipes nuevos.
+  expect(prefs.data.email).toContainEqual(expect.objectContaining({ type: 'APPOINTMENT_REMINDER', enabled: false }));
+  expect((prefs.data.email as { type: string }[]).every((e) => ['APPOINTMENT_REMINDER', 'PRESCRIPTION_RECEIVED'].includes(e.type))).toBe(true);
 
   // Solo se aceptan los correos opcionales de su tipo de cuenta.
   const foreign = await api('PUT', '/notifications/preferences', { emailOptOut: ['APPOINTMENT_CONFIRMED'] }, patient.token);

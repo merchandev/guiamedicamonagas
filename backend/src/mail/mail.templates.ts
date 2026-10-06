@@ -554,3 +554,40 @@ export function contactRequestTemplate(rawDoctorName: string, days: number, pane
      ${button(panelUrl, 'Ver el pedido')}`,
   );
 }
+
+/** Al paciente con cuenta: su médico le entregó un récipe. Sin medicamentos ni datos clínicos. */
+export function prescriptionReceivedTemplate(rawPatientName: string, rawDoctorName: string, expiresLabel: string, panelUrl: string) {
+  return layout(
+    'Tienes un récipe nuevo',
+    `<h1 style="font-size:20px;margin:0 0 12px;">Hola, ${escapeHtml(rawPatientName)}</h1>
+     <p style="font-size:14px;line-height:1.6;color:#3a3a3a;">Dr(a). ${escapeHtml(rawDoctorName)} te envió un récipe. Vence el ${escapeHtml(expiresLabel)}.</p>
+     <p style="font-size:13px;line-height:1.6;color:#4a4a4a;">En «Mis récipes» puedes verlo, descargarlo en PDF para imprimirlo y compartirlo con tu farmacia.</p>
+     ${button(panelUrl, 'Ver mi récipe')}`,
+  );
+}
+
+/** El médico anuló un récipe que estaba en «Mis récipes» del paciente. */
+export function prescriptionAnnulledTemplate(rawPatientName: string, rawDoctorName: string, numberLabel: string, panelUrl: string) {
+  return layout(
+    'Récipe anulado',
+    `<h1 style="font-size:20px;margin:0 0 12px;">Hola, ${escapeHtml(rawPatientName)}</h1>
+     <p style="font-size:14px;line-height:1.6;color:#3a3a3a;">Dr(a). ${escapeHtml(rawDoctorName)} anuló el récipe N° ${escapeHtml(numberLabel)}. Ya no sirve para comprar medicamentos: si tienes dudas, consulta a tu médico.</p>
+     ${button(panelUrl, 'Ver el detalle')}`,
+  );
+}
+
+/**
+ * Copia del récipe que el médico envía al correo que indique (el del paciente o
+ * el de quien lo representa). Lleva el PDF adjunto y el código para verificarlo.
+ */
+export function prescriptionSharedTemplate(rawDoctorName: string, numberLabel: string, expiresLabel: string, code: string, verifyUrl: string) {
+  return layout(
+    `Récipe N° ${numberLabel}`,
+    `<h1 style="font-size:20px;margin:0 0 12px;">Su récipe médico</h1>
+     <p style="font-size:14px;line-height:1.6;color:#3a3a3a;">Dr(a). ${escapeHtml(rawDoctorName)} le envía el récipe N° ${escapeHtml(numberLabel)}, que vence el ${escapeHtml(expiresLabel)}. Va adjunto en PDF: imprima las dos páginas (original y copia) y llévelas a la farmacia.</p>
+     <p style="font-size:14px;line-height:1.6;color:#3a3a3a;">Código de verificación: <strong style="font-family:monospace;letter-spacing:1px;">${escapeHtml(code)}</strong></p>
+     ${button(verifyUrl, 'Ver y verificar el récipe')}
+     <p style="font-size:12px;line-height:1.6;color:#6a6a6a;margin-top:18px;">Este correo contiene datos de salud. Si no es para usted, elimínelo y avise a quien se lo envió.</p>`,
+    `Enviado por Dr(a). ${escapeHtml(rawDoctorName)} desde ${BRAND_NAME}.`,
+  );
+}
