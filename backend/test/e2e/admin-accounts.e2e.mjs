@@ -305,11 +305,14 @@ try {
   check('sin escribir ELIMINAR → 400',(await call('POST',`/admin/accounts/professionals/${ids.modDoctor}/purge`,{...purgeBody,confirm:'eliminar'},superToken)).status===400);
   check('pacientes: eliminar exige la bóveda',(await call('POST',`/patients/admin/accounts/${ids.outsider}/purge`,purgeBody,superToken)).status===403);
   check('una cuenta activa no se elimina: primero se suspende o se da de baja',(await call('POST',`/patients/admin/accounts/${ids.outsider}/purge`,purgeBody,superToken,superVault)).status===409);
+  // Sus apariciones en búsquedas (estadística del médico) también se borran.
+  await db.query('INSERT INTO "SearchAppearance" (id,"professionalId",day,count) VALUES ($1,$2,current_date,3)',[randomUUID(),ids.modProfile]);
   r=await call('POST',`/admin/accounts/professionals/${ids.modDoctor}/purge`,purgeBody,superToken);
   const purged=(await db.query('SELECT u.email,u."purgedAt",u."isActive",p."firstName",p."publicCode",p.bio,p."photoUrl",p."presentationVideoId",p."isPublished" FROM "User" u JOIN "ProfessionalProfile" p ON p."userId"=u.id WHERE u.id=$1',[ids.modDoctor])).rows[0];
   check('médico eliminado: sin correo, nombre, código, biografía, foto ni video',r.status===200 && purged.email.startsWith('eliminado-') && purged.purgedAt && !purged.isActive
     && purged.firstName==='Cuenta' && purged.publicCode===null && purged.bio===null && purged.photoUrl===null && purged.presentationVideoId===null && !purged.isPublished);
-  check('se borran sus documentos',await count('SELECT count(*)::int n FROM "ProfessionalDocument" WHERE "professionalId"=$1',[ids.modProfile])===0);
+  check('se borran sus documentos y sus apariciones en búsquedas',await count('SELECT count(*)::int n FROM "ProfessionalDocument" WHERE "professionalId"=$1',[ids.modProfile])===0
+    && await count('SELECT count(*)::int n FROM "SearchAppearance" WHERE "professionalId"=$1',[ids.modProfile])===0);
   check('el correo queda anonimizado en el registro de envíos',await count('SELECT count(*)::int n FROM "MessageLog" WHERE recipient=$1',[modEmail])===0
     && await count('SELECT count(*)::int n FROM "MessageLog" WHERE "relatedUserId"=$1 AND template=\'account_purged\'',[ids.modDoctor])===1);
   check('ya no inicia sesión',(await login(modEmail, modPassword)).status===401);
@@ -331,6 +334,9 @@ try {
     && await count('SELECT count(*)::int n FROM "Payment" WHERE "referenceNumber"=$1',[body.referenceNumber])===1
     && await count('SELECT count(*)::int n FROM "Subscription" WHERE id=$1 AND status=\'CANCELED\'',[subscription.id])===1
     && !!(await db.query('SELECT "revokedAt" FROM "PatientDataGrant" WHERE id=$1',[grantsId])).rows[0]?.revokedAt);
+  r=await call('GET','/admin/stats',null,superToken);
+  check('el resumen no cuenta como médicos los registros anónimos de cuentas eliminadas',r.status===200
+    && r.data.totalProfessionals===await count('SELECT count(*)::int n FROM "ProfessionalProfile" p JOIN "User" u ON u.id=p."userId" WHERE u."purgedAt" IS NULL'));
   r=await call('PATCH',`/patients/admin/accounts/${ids.patient}`,mod('DELETE'),adminToken,vaultCookie);
   check('dar de baja al paciente',r.status===200);
   r=await call('POST',`/patients/admin/accounts/${ids.patient}/purge`,purgeBody,superToken,superVault);

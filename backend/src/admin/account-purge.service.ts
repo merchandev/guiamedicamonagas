@@ -224,6 +224,7 @@ export class AccountPurgeService {
     await tx.prescription.deleteMany(byProfessional);
     await tx.prescriptionPad.deleteMany(byProfessional);
     await tx.analyticsEvent.deleteMany({ where: { resourceId: professionalId } });
+    await tx.searchAppearance.deleteMany(byProfessional);
     await tx.subscription.updateMany({
       where: { professionalId, status: { in: [...OPEN_SUBSCRIPTIONS] } },
       data: { status: 'CANCELED', cancelAtPeriodEnd: false },

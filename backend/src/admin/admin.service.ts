@@ -6,6 +6,9 @@ export class AdminService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getStats() {
+    // Una cuenta eliminada definitivamente deja un registro anónimo («Cuenta
+    // eliminada») del que cuelgan sus pagos: ya no es un médico y no se cuenta.
+    const professionals = { user: { purgedAt: null } };
     const [
       pendingDocuments,
       pendingPayments,
@@ -18,9 +21,9 @@ export class AdminService {
     ] = await this.prisma.$transaction([
       this.prisma.professionalDocument.count({ where: { status: 'PENDING' } }),
       this.prisma.payment.count({ where: { status: 'PENDING' } }),
-      this.prisma.professionalProfile.count(),
-      this.prisma.professionalProfile.count({ where: { verificationStatus: 'VERIFIED' } }),
-      this.prisma.professionalProfile.count({ where: { verificationStatus: 'IN_REVIEW' } }),
+      this.prisma.professionalProfile.count({ where: professionals }),
+      this.prisma.professionalProfile.count({ where: { ...professionals, verificationStatus: 'VERIFIED' } }),
+      this.prisma.professionalProfile.count({ where: { ...professionals, verificationStatus: 'IN_REVIEW' } }),
       this.prisma.organization.count(),
       this.prisma.contactMessage.count({ where: { isRead: false } }),
       this.prisma.auditLog.findMany({
