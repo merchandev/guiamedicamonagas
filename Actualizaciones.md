@@ -3,7 +3,7 @@
 > Bitácora central de cambios, implementaciones, decisiones técnicas y tareas de evolución del sistema.
 >
 > **Repositorio:** [`merchandev/guiamedicamonagas`](https://github.com/merchandev/guiamedicamonagas) · **Rama:** `main`<br>
-> **Última actualización de esta bitácora:** `2026-10-05 21:44:58 -04:00` · **Estado:** 🟢 Registro activo
+> **Última actualización de esta bitácora:** `2026-10-06 04:08:47 -04:00` · **Estado:** 🟢 Registro activo
 
 ![Estado](https://img.shields.io/badge/estado-registro%20activo-16a34a?style=flat-square)
 ![Rama](https://img.shields.io/badge/rama-main-2563eb?style=flat-square)
@@ -2155,6 +2155,8 @@ El titular pidió una sección para que los médicos hagan récipes digitales le
 
 **Despliegue en el VPS** (`deploy-act46.log`): respaldo previo `gmm-db-20261006T013817Z-pre-deploy.dump.gpg`; **migración aplicada**; prueba de humo **25/25**; «Versión publicada: ea89b0cd1f52 (API y web)». En producción existen `Prescription` y `PrescriptionPad` con sus seis restricciones y el disparador que impide modificar un récipe. Los récipes están apagados (`enabled: false`): el talonario pide sesión (401) y la verificación responde 404. `/recipe` responde con `X-Robots-Tag: noindex`. Un PDF de prueba se generó dentro del contenedor de la API, con las fuentes y el QR de la imagen de producción.
 
+**Redespliegue** (`deploy-act46-c42d605.log`, a pedido del titular): producción pasa a la última versión del repositorio, sin cambios de código ni migraciones pendientes. Respaldo previo `gmm-db-20261006T080659Z-pre-deploy.dump.gpg`; prueba de humo **25/25**; «Versión publicada: c42d605d599f (API y web)». Los récipes siguen apagados (`enabled: false`) y el PDF de prueba se genera en el contenedor.
+
 **Archivos destacados:**
 - [`backend/src/prescriptions/prescriptions.service.ts`](backend/src/prescriptions/prescriptions.service.ts)
 - [`backend/src/prescriptions/prescription-pdf.ts`](backend/src/prescriptions/prescription-pdf.ts)
@@ -2446,6 +2448,7 @@ Para cada cambio futuro, añadir una entrada en la línea de tiempo y actualizar
 | `2026-10-05 08:33:33 -04:00` | Incorporación de ACT-0044 (moderación de valoraciones, sanciones por días, categoría de reclamos y borrador legal; valoraciones aún apagadas) con su despliegue; un pendiente nuevo del titular (encender las valoraciones) | 🟢 Completado |
 | `2026-10-05 20:33:18 -04:00` | Incorporación de ACT-0045 («Quiero que me contacte» y apariciones en búsquedas; cierre del plan de agenda, notificaciones y valoraciones) con su despliegue; un pendiente nuevo del titular (borrador legal de contacto y búsquedas) | 🟢 Completado |
 | `2026-10-05 21:44:58 -04:00` | Incorporación de ACT-0046 (récipes digitales con talonario, PDF, código de verificación y envío al paciente; apagados en producción hasta la revisión legal) con su despliegue; un pendiente nuevo del titular (encender los récipes) | 🟢 Completado |
+| `2026-10-06 04:08:47 -04:00` | Redespliegue de producción a `c42d605` a pedido del titular (sin cambios de código; prueba de humo 25/25), anotado en ACT-0046 | 🟢 Completado |
 
 ---
 
