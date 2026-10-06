@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { api, apiBlob, ApiError } from '@/lib/api';
+import { useRealtimeRefresh } from '@/lib/realtime';
 import { formatDate, formatDateTime } from '@/lib/dates';
 import type { DirectoryPatient, DoctorPrescription } from '@/lib/prescriptions';
 import { PrescriptionPaper } from '@/components/prescriptions/PrescriptionPaper';
@@ -32,6 +33,7 @@ export default function DoctorPrescriptionPage() {
       setError(e instanceof ApiError ? e.message : 'No se pudo cargar el récipe'),
     );
   }, [id]);
+      useRealtimeRefresh(['prescriptions'], () => api.get<DoctorPrescription>(`/prescriptions/${id}`).then(setPrescription, () => undefined));
 
   const loadPatients = useCallback(() => {
     api.get<DirectoryPatient[]>('/prescriptions/patients').then(setPatients, () => setPatients([]));

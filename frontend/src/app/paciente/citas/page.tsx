@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api, ApiError } from '@/lib/api';
+import { useRealtimeRefresh } from '@/lib/realtime';
 import { Alert } from '@/components/ui/Alert';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -51,6 +52,7 @@ export default function PatientAppointmentsPage() {
   }, []);
 
   useEffect(load, [load]);
+  useRealtimeRefresh(['appointments', 'reviews'], load);
 
   const cancel = async (id: string) => {
     if (!window.confirm('¿Cancelar esta cita?')) return;
@@ -174,7 +176,7 @@ function RescheduleDialog({ appointment, onClose, onDone }: { appointment: Appoi
           {formatDateTime(appointment.startsAt, { dateStyle: 'full', timeStyle: 'short' })}.
         </p>
         {error && <Alert tone="error">{error}</Alert>}
-        <SlotPicker loadSlots={loadSlots} selectedSlot={slot} onSelectSlot={setSlot} />
+        <SlotPicker loadSlots={loadSlots} selectedSlot={slot} onSelectSlot={setSlot} professionalId={professionalId} />
         <div className="flex gap-2">
           <Button loading={saving} disabled={!slot} onClick={save}>
             Cambiar a este horario

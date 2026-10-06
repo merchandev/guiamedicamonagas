@@ -125,7 +125,13 @@ export default function AgendarCitaPage({ params }: { params: Promise<{ slug: st
             <div>
               <p className="field-label">Elige el día y la hora</p>
               <p className="mb-3 text-xs text-ink-500">Los días resaltados tienen horarios libres. Las horas son de Caracas.</p>
-              <SlotPicker loadSlots={loadSlots} selectedSlot={selectedSlot} onSelectSlot={setSelectedSlot} monthsAhead={6} />
+              <SlotPicker
+                loadSlots={loadSlots}
+                selectedSlot={selectedSlot}
+                onSelectSlot={setSelectedSlot}
+                monthsAhead={6}
+                professionalId={doctorId}
+              />
             </div>
 
             <Textarea

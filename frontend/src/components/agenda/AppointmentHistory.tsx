@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { api, ApiError } from '@/lib/api';
+import { useRealtimeRefresh } from '@/lib/realtime';
 import {
   type AgendaAppointment,
   type AppointmentStatus,
@@ -88,6 +89,8 @@ export function AppointmentHistory({ patientId }: { patientId: string | null }) 
       active = false;
     };
   }, [fetchPage, version]);
+
+  useRealtimeRefresh(['appointments'], () => setVersion((v) => v + 1));
 
   const apply = (e: React.FormEvent) => {
     e.preventDefault();

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api, ApiError } from '@/lib/api';
+import { useRealtimeRefresh } from '@/lib/realtime';
 import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/Button';
 import { Input, Textarea } from '@/components/ui/Input';
@@ -98,6 +99,7 @@ export function AdminAccountManager({ kind }: { kind: 'professionals' | 'patient
     );
   }, [handleError]);
   useEffect(() => { if (listUrl) void fetchList(listUrl); }, [listUrl, fetchList]);
+  useRealtimeRefresh(['account', 'profile', 'patientProfile'], () => listUrl && fetchList(listUrl));
   // Recarga después de una acción o con «Actualizar».
   const load = useCallback(async () => {
     if (!listUrl) return;

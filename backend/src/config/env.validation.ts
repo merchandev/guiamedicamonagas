@@ -129,6 +129,9 @@ const baseEnvSchema = z.object({
     (value) => (value === '' ? undefined : value),
     z.coerce.number().int().min(30).max(3650).optional(),
   ),
+  // Sincronización en tiempo real (canal /api/v1/realtime). Apagada, la web y la
+  // app vuelven a consultar cada cierto tiempo, como antes.
+  REALTIME_ENABLED: envBoolean(true),
 });
 
 /**

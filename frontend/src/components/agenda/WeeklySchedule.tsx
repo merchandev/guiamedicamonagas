@@ -7,6 +7,7 @@ import interactionPlugin from '@fullcalendar/interaction';
 import esLocale from '@fullcalendar/core/locales/es';
 import type { DateSelectArg, EventChangeArg, EventClickArg, EventInput } from '@fullcalendar/core';
 import { api, ApiError } from '@/lib/api';
+import { useRealtimeRefresh } from '@/lib/realtime';
 import { Alert } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
 import { Input, Select } from '@/components/ui/Input';
@@ -55,6 +56,12 @@ export function WeeklySchedule() {
       },
     );
   }, []);
+
+  // Si el horario cambia en otro dispositivo, se actualiza (salvo mientras se guarda un cambio aquí).
+  useRealtimeRefresh(['schedule'], () => {
+    if (saving) return;
+    api.get<Block[]>('/agenda/me/blocks').then((list) => setBlocks(list.map(strip).sort(byDayAndTime)), () => undefined);
+  });
 
   const save = (next: Block[]) => {
     const previous = blocks;

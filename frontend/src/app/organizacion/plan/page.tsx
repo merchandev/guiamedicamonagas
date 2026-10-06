@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { api, ApiError } from '@/lib/api';
+import { useRealtimeRefresh } from '@/lib/realtime';
 import { PAYMENT_STATUS_LABELS, SUBSCRIPTION_STATUS_LABELS } from '@/lib/labels';
 import type { SubscriptionPlan } from '@/lib/types';
 import { canManage, useOrganization } from '@/components/organization/OrgContext';
@@ -61,6 +62,7 @@ export default function OrganizationPlanPage() {
   useEffect(() => {
     void load();
   }, [load]);
+  useRealtimeRefresh(['billing', 'organization'], load);
 
   if (!org || subscription === undefined) return <PageSpinner />;
 

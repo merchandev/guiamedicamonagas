@@ -1742,3 +1742,27 @@ model Prescription {
   @@index([professionalId, issuedAt])
   @@index([patientId, issuedAt])
 }
+
+/**
+ * Bandeja de la sincronización en tiempo real. La llenan disparadores de la
+ * base (ver la migración `20261010120000_realtime_sync`) en la misma
+ * transacción de cada cambio, venga de la web, de la app, de la administración
+ * o de una tarea programada. Solo guarda qué fila cambió y los identificadores
+ * que dicen a quién le importa, nunca su contenido. La API lo reparte por su
+ * canal en tiempo real y borra lo que tiene más de un día.
+ */
+model RealtimeEvent {
+  id           BigInt    @id @default(autoincrement())
+  /// Tabla de origen («Appointment», «Notification»…).
+  source       String
+  /// INSERT, UPDATE o DELETE.
+  op           String
+  rowId        String?
+  /// Identificadores de la fila que dicen a quién avisar (profesional, paciente, usuario…).
+  keys         Json      @default("{}")
+  createdAt    DateTime  @default(now())
+  dispatchedAt DateTime?
+
+  @@index([dispatchedAt, id])
+  @@index([createdAt])
+}

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { api, ApiError } from '@/lib/api';
+import { useRealtimeRefresh } from '@/lib/realtime';
 import { Alert } from '@/components/ui/Alert';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -83,6 +84,7 @@ function IdentityQueue() {
   useEffect(() => {
     void load(status);
   }, [status, load]);
+  useRealtimeRefresh(['identities'], () => load(status));
 
   // Abrir un caso descifra la cédula y firma la foto por 5 minutos; el
   // backend lo deja en la auditoría.

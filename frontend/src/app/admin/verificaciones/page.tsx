@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { api, ApiError } from '@/lib/api';
+import { useRealtimeRefresh } from '@/lib/realtime';
 import { Alert } from '@/components/ui/Alert';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -39,6 +40,7 @@ export default function VerificationsQueuePage() {
   useEffect(() => {
     load();
   }, []);
+  useRealtimeRefresh(['documents', 'profile'], load);
 
   const openDocument = async (id: string) => {
     const { url } = await api.get<{ url: string }>(`/documents/admin/${id}/download`);

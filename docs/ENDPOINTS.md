@@ -86,6 +86,25 @@ Cada access token lleva la versión de sesión del usuario (`tv`); si no coincid
 * Paciente: `GET /contact/requests/prefill` (su nombre, teléfono y correo para precargar), `POST /contact/requests` (`{ professionalSlug, shareName, phone?, shareEmail, channel: PHONE|WHATSAPP|EMAIL, preferredTime?, message, acceptConsent: true }`; correo verificado, médico con plan que recibe mensajes, uno abierto por médico, cinco por día), `GET /contact/requests/me`, `PATCH /contact/requests/:id/withdraw` (borra los datos compartidos).
 * Médico: `PATCH /contact/requests/:id/status` (`{ status: CONTACTED|CLOSED }`). Los pedidos vencen a los 30 días y sus datos se borran (tarea cada hora).
 
+## Tiempo real (`REALTIME_ENABLED`; encendido)
+
+Canal Socket.IO en `/api/v1/realtime`, en el mismo origen de la API. Lo usan la web y la app móvil ([GUIAMEDICA_APP](https://github.com/merchandev/GUIAMEDICA_APP)).
+
+* **Conexión:**
+  * Con sesión, el token de acceso va en `auth.token`: la conexión entra a las salas de su cuenta, de su perfil de médico, de sus organizaciones y de administración. El cliente no elige sus salas.
+  * Sin token se entra como visitante, solo con el directorio y los catálogos.
+  * Un token inválido se rechaza con el error `unauthorized`.
+  * Hay un tope de 50 conexiones por IP.
+* **Servidor → cliente:**
+  * `ready` (`{ authenticated }`): conectado y en sus salas. Al recibirlo, el cliente recarga todo, porque mientras no hubo conexión pudo cambiar cualquier cosa.
+  * `sync` (`{ topics, refs? }`): qué temas cambiaron y, en salas privadas, los identificadores de las filas (hasta 20 por tema). Nunca contenido: los datos se piden a la API con la sesión y los permisos de siempre.
+  * `session` (`{ reason: 'revoked' }`): la sesión de la cuenta cambió (contraseña, cierre de sesiones, suspensión o baja) y la conexión se corta.
+* **Cliente → servidor:** `watch` / `unwatch` (`{ professionalId }`), para avisar cuando cambian los horarios libres de un médico publicado (también sin sesión; hasta 10 médicos y 30 pedidos por minuto). El primero responde con un acuse `{ ok }`.
+* **Temas:** `appointments`, `schedule`, `availability`, `notifications`, `contact`, `prescriptions`, `documents`, `profile`, `directory`, `posts`, `billing`, `reviews`, `access`, `patientProfile`, `identities`, `clinical`, `finance`, `account`, `requests`, `organization`, `catalog`. Cuáles le llegan a quién: [`realtime-audience.ts`](../backend/src/realtime/realtime-audience.ts).
+* **Origen de los avisos:**
+  * Disparadores de PostgreSQL llenan la bandeja `RealtimeEvent` en la misma transacción de cada cambio, venga de la web, de la app, de la administración, de una tarea programada o de SQL directo.
+  * La API la reparte cada medio segundo, al menos una vez, y borra lo que tiene más de un día.
+
 ## Récipes digitales (`PRESCRIPTIONS_ENABLED`; apagados en producción)
 * `GET /prescriptions/config` (público) — `{ enabled, rulesVersion, maxItems }`. Con el interruptor apagado, el resto responde 404.
 * Público, para quien tiene el código (paciente o farmacia; el código va en el cuerpo, nunca en la URL): `POST /prescriptions/verify` (`{ code }`: el récipe, su estado VALID|EXPIRED|ANNULLED y si la huella coincide; nunca el motivo de una anulación) y `POST /prescriptions/verify/pdf` (el PDF).

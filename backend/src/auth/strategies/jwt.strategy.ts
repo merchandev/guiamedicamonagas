@@ -5,6 +5,7 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 import type { EnvConfig } from '../../config/env.validation';
 import type { AuthenticatedUser } from '../../common/types/authenticated-user';
 import { PrismaService } from '../../prisma/prisma.service';
+import { SESSION_USER_SELECT, sessionUserFrom } from '../session-user';
 
 interface JwtPayload {
   sub: string;
@@ -34,15 +35,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
    * petición, no cuando el access token expire.
    */
   async validate(payload: JwtPayload): Promise<AuthenticatedUser> {
-    const user = await this.prisma.user.findUnique({
-      where: { id: payload.sub },
-      select: { id: true, email: true, role: true, isActive: true, tokenVersion: true, suspendedUntil: true },
-    });
-    // Una suspensión temporal (sanción) también corta la sesión mientras dura.
-    const suspended = !!user?.suspendedUntil && user.suspendedUntil > new Date();
-    if (!user || !user.isActive || suspended || (payload.tv ?? 0) !== user.tokenVersion) {
-      throw new UnauthorizedException('Sesión inválida, inicia sesión de nuevo');
-    }
-    return { id: user.id, email: user.email, role: user.role };
+    const row = await this.prisma.user.findUnique({ where: { id: payload.sub }, select: SESSION_USER_SELECT });
+    const user = sessionUserFrom(row, payload.tv ?? 0);
+    if (!user) throw new UnauthorizedException('Sesión inválida, inicia sesión de nuevo');
+    return user;
   }
 }

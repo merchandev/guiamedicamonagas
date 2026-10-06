@@ -4,6 +4,7 @@ import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
+import { useRealtimeRefresh } from '@/lib/realtime';
 import { trackSearchAppearances } from '@/lib/analytics';
 import { PaginatedResult, ProfessionalListItem, Specialty } from '@/lib/types';
 import { municipalityOptions, useMunicipalities } from '@/lib/catalogs';
@@ -78,6 +79,8 @@ function MedicosPageContent() {
       active = false;
     };
   }, [query]);
+  // Un médico que se publica o cambia su ficha aparece sin recargar (sin volver a contar apariciones).
+  useRealtimeRefresh(['directory'], () => api.get<DirectoryResult>(`/professionals?${query}`).then((data) => setResponse({ query, data }), () => undefined));
 
   const updateParam = useCallback(
     (key: string, value: string) => {

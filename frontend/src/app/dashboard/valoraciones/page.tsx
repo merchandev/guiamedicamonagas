@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api, ApiError } from '@/lib/api';
+import { useRealtimeRefresh } from '@/lib/realtime';
 import { REVIEW_REPLY_NOTICE, REVIEWS_PUBLIC_NOTICE } from '@/lib/legal';
 import { formatDate } from '@/lib/dates';
 import {
@@ -67,6 +68,7 @@ export default function DoctorReviewsPage() {
   useEffect(() => {
     if (enabled) load(page);
   }, [enabled, page, load]);
+  useRealtimeRefresh(['reviews'], () => enabled && load(page));
 
   const removeReply = async (review: DoctorReview) => {
     if (!window.confirm('¿Borrar tu respuesta?')) return;

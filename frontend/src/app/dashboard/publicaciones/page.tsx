@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api, ApiError } from '@/lib/api';
+import { useRealtimeRefresh } from '@/lib/realtime';
 import { Alert } from '@/components/ui/Alert';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -43,6 +44,7 @@ export default function PostsPage() {
   useEffect(() => {
     void load();
   }, [load]);
+  useRealtimeRefresh(['posts'], load);
 
   const create = async (e: React.FormEvent) => {
     e.preventDefault();

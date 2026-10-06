@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { api, ApiError } from '@/lib/api';
+import { useRealtimeRefresh } from '@/lib/realtime';
 import { useAuth } from '@/lib/auth-context';
 import { ORG_MEMBER_ROLE_LABELS } from '@/lib/labels';
 import { can, useOrganization, type OrgRole } from '@/components/organization/OrgContext';
@@ -65,6 +66,7 @@ export default function OrganizationMembersPage() {
   }, [org]);
 
   useEffect(load, [load]);
+  useRealtimeRefresh(['organization'], load);
 
   // Solo se puede invitar con los roles que permite el propio rol.
   const role: OrgRole =

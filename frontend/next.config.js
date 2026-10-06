@@ -21,13 +21,25 @@ const apiOrigin = (() => {
   }
 })();
 const localhost = httpsSite ? '' : ' http://localhost:* http://127.0.0.1:*';
+// El canal en tiempo real (Socket.IO en /api/v1/realtime) abre un WebSocket al
+// mismo origen de la API: en producción, wss:// del propio dominio. Algunos
+// navegadores no lo cuentan dentro de 'self', así que se nombra.
+const siteOrigin = (() => {
+  try {
+    return new URL(process.env.NEXT_PUBLIC_SITE_URL || '').origin;
+  } catch {
+    return '';
+  }
+})();
+const realtimeOrigin = [apiOrigin, siteOrigin].find((origin) => origin && !origin.startsWith('null'));
+const realtime = `${realtimeOrigin ? ` ${realtimeOrigin.replace(/^http/, 'ws')}` : ''}${httpsSite ? '' : ' ws://localhost:* ws://127.0.0.1:*'}`;
 const contentSecurityPolicy = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline'${devServer ? " 'unsafe-eval'" : ''}`,
   "style-src 'self' 'unsafe-inline'",
   `img-src 'self' data: blob: https://i.ytimg.com${localhost}`,
   "font-src 'self' data:",
-  `connect-src 'self'${apiOrigin && !apiOrigin.startsWith('null') ? ` ${apiOrigin}` : ''}${devServer ? ' ws: wss:' : ''}${localhost}`,
+  `connect-src 'self'${apiOrigin && !apiOrigin.startsWith('null') ? ` ${apiOrigin}` : ''}${realtime}${devServer ? ' ws: wss:' : ''}${localhost}`,
   'frame-src https://www.youtube-nocookie.com https://www.google.com https://maps.google.com',
   "media-src 'self'",
   "worker-src 'self' blob:",

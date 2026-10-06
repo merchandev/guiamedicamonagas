@@ -2,9 +2,10 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useId, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
+import { useRealtimeRefresh, useRealtimeStatus } from '@/lib/realtime';
 import { cn } from '@/lib/cn';
 import { timeAgo } from '@/lib/dates';
 import {
@@ -32,31 +33,36 @@ export function NotificationBell() {
   const [items, setItems] = useState<NotificationItem[] | null>(null);
   const [failed, setFailed] = useState(false);
 
-  // No leídos: al entrar, cada minuto mientras la pestaña está a la vista y al volver a ella.
+  const refreshCount = useCallback(() => {
+    if (document.visibilityState !== 'visible') return;
+    api.get<{ count: number }>('/notifications/unread-count').then((res) => setCount(res.count), () => undefined);
+  }, []);
+
+  // No leídos: al entrar, al volver a la pestaña y con cada aviso del canal en
+  // tiempo real. Sin canal (se cortó o está apagado), también cada minuto.
+  const live = useRealtimeStatus() === 'live';
   useEffect(() => {
     if (!user) return;
-    let active = true;
-    const refresh = () => {
-      if (document.visibilityState !== 'visible') return;
-      api.get<{ count: number }>('/notifications/unread-count').then(
-        (res) => {
-          if (active) setCount(res.count);
-        },
-        () => undefined,
-      );
-    };
-    refresh();
-    const timer = window.setInterval(refresh, POLL_MS);
-    document.addEventListener('visibilitychange', refresh);
+    refreshCount();
+    const timer = live ? undefined : window.setInterval(refreshCount, POLL_MS);
+    document.addEventListener('visibilitychange', refreshCount);
     // La página «Notificaciones» avisa cuando marca algo como leído.
-    window.addEventListener(NOTIFICATIONS_CHANGED, refresh);
+    window.addEventListener(NOTIFICATIONS_CHANGED, refreshCount);
     return () => {
-      active = false;
       window.clearInterval(timer);
-      document.removeEventListener('visibilitychange', refresh);
-      window.removeEventListener(NOTIFICATIONS_CHANGED, refresh);
+      document.removeEventListener('visibilitychange', refreshCount);
+      window.removeEventListener(NOTIFICATIONS_CHANGED, refreshCount);
     };
-  }, [user]);
+  }, [user, live, refreshCount]);
+
+  useRealtimeRefresh(
+    ['notifications'],
+    () => {
+      refreshCount();
+      if (open) api.get<NotificationPage>(`/notifications?limit=${PREVIEW}`).then((page) => setItems(page.items), () => undefined);
+    },
+    !!user,
+  );
 
   // Se cierra con Escape o al tocar fuera.
   useEffect(() => {

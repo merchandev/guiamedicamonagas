@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { useAuth } from '@/lib/auth-context';
 import { api, ApiError } from '@/lib/api';
+import { useRealtimeRefresh } from '@/lib/realtime';
+import { RemoteChangeNotice } from '@/components/RemoteChangeNotice';
 import { PATIENT_AREA_NOTICE } from '@/lib/legal';
 import { municipalityOptions, useMunicipalities } from '@/lib/catalogs';
 import { Input, Textarea } from '@/components/ui/Input';
@@ -97,9 +99,19 @@ export default function PatientProfilePage() {
   const [uploadingIdPhoto, setUploadingIdPhoto] = useState(false);
   const [completeness, setCompleteness] = useState<Completeness | null>(null);
 
-  const { register, handleSubmit, reset, control, watch, setValue } = useForm<PatientProfileForm>({
+  const {
+    register,
+    handleSubmit,
+    reset,
+    control,
+    watch,
+    setValue,
+    formState: { isDirty },
+  } = useForm<PatientProfileForm>({
     defaultValues: { isHealthy: false, medications: [], treatingDoctors: [] },
   });
+  // Versión nueva que llegó de otro dispositivo mientras había cambios sin guardar.
+  const [remoteProfile, setRemoteProfile] = useState<PatientProfileResponse | null>(null);
 
   const medicationsArray = useFieldArray({ control, name: 'medications' });
   const doctorsArray = useFieldArray({ control, name: 'treatingDoctors' });
@@ -132,7 +144,22 @@ export default function PatientProfilePage() {
     setIdentityStatus(profile.identityStatus);
     setIdentityReviewNote(profile.identityReviewNote);
     setCompleteness(profile.completeness);
+    setRemoteProfile(null);
   };
+
+  // Si la ficha cambia en otro dispositivo (o la administración revisa la foto
+  // de identidad), el estado se actualiza solo; lo que se está escribiendo no se pisa.
+  useRealtimeRefresh(['patientProfile'], () =>
+    api.get<PatientProfileResponse>('/patients/me').then((profile) => {
+      if (!isDirty) return applyProfile(profile);
+      setPhotoUrl(profile.photoUrl);
+      setIdPhotoUrl(profile.idPhotoUrl);
+      setIdentityStatus(profile.identityStatus);
+      setIdentityReviewNote(profile.identityReviewNote);
+      setCompleteness(profile.completeness);
+      setRemoteProfile(profile);
+    }, () => undefined),
+  );
 
   useEffect(() => {
     api
@@ -237,6 +264,7 @@ export default function PatientProfilePage() {
       <form onSubmit={handleSubmit(onSubmit)} className="card space-y-8 p-6">
         {error && <Alert tone="error">{error}</Alert>}
         {success && <Alert tone="success">Perfil actualizado correctamente.</Alert>}
+        {remoteProfile && <RemoteChangeNotice onLoad={() => applyProfile(remoteProfile)} />}
 
         <section className="space-y-4">
           <h2 className="border-b border-ink-100 pb-2 text-lg font-semibold text-ink-900">Datos personales</h2>

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/api';
+import { useRealtimeRefresh } from '@/lib/realtime';
 import { PageSpinner } from '@/components/ui/Spinner';
 import { formatDateTime } from '@/lib/dates';
 
@@ -25,6 +26,8 @@ export default function AdminHome() {
   useEffect(() => {
     api.get<AdminStats>('/admin/stats').then(setStats).catch(() => undefined);
   }, []);
+  // Los contadores cambian solos cuando llega algo nuevo a cualquier cola.
+  useRealtimeRefresh(['documents', 'billing', 'profile', 'account', 'organization', 'contact', 'identities', 'requests', 'reviews'], () => api.get<AdminStats>('/admin/stats').then(setStats).catch(() => undefined));
 
   if (!stats) return <PageSpinner />;
 

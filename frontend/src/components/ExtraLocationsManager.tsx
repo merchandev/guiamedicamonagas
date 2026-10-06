@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api, ApiError } from '@/lib/api';
+import { useRealtimeRefresh } from '@/lib/realtime';
 import { Alert } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -39,6 +40,7 @@ export function ExtraLocationsManager() {
   useEffect(() => {
     void load();
   }, [load]);
+  useRealtimeRefresh(['profile'], load);
 
   const add = async (e: React.FormEvent) => {
     e.preventDefault();

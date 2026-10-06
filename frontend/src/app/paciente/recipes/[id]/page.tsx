@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { api, apiBlob, ApiError } from '@/lib/api';
+import { useRealtimeRefresh } from '@/lib/realtime';
 import { formatDate } from '@/lib/dates';
 import type { PatientPrescription } from '@/lib/prescriptions';
 import { PrescriptionPaper } from '@/components/prescriptions/PrescriptionPaper';
@@ -21,6 +22,7 @@ export default function PatientPrescriptionPage() {
       setError(e instanceof ApiError ? e.message : 'No se pudo cargar el récipe'),
     );
   }, [id]);
+      useRealtimeRefresh(['prescriptions'], () => api.get<PatientPrescription>(`/prescriptions/me/${id}`).then(setPrescription, () => undefined));
 
   if (!prescription) return error ? <Alert tone="error">{error}</Alert> : <PageSpinner />;
 

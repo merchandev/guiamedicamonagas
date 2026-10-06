@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/api';
+import { useRealtimeRefresh } from '@/lib/realtime';
 import { useAuth } from '@/lib/auth-context';
 import { Badge } from '@/components/ui/Badge';
 import { PageSpinner } from '@/components/ui/Spinner';
@@ -29,6 +30,7 @@ export default function DashboardHome() {
   useEffect(() => {
     api.get<OwnProfile>('/professionals/me').then(setProfile).catch(() => undefined);
   }, []);
+  useRealtimeRefresh(['profile', 'documents', 'billing', 'appointments', 'contact'], () => api.get<OwnProfile>('/professionals/me').then(setProfile).catch(() => undefined));
 
   if (!profile) return <PageSpinner />;
 

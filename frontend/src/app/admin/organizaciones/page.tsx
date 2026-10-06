@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { api, ApiError } from '@/lib/api';
+import { useRealtimeRefresh } from '@/lib/realtime';
 import { Alert } from '@/components/ui/Alert';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -72,6 +73,7 @@ export default function AdminOrganizationsPage() {
   useEffect(() => {
     load();
   }, []);
+  useRealtimeRefresh(['organization'], load);
 
   const create = async (e: React.FormEvent) => {
     e.preventDefault();

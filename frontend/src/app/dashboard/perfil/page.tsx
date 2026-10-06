@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { api, ApiError } from '@/lib/api';
+import { useRealtimeRefresh } from '@/lib/realtime';
+import { RemoteChangeNotice } from '@/components/RemoteChangeNotice';
 import { Input, Textarea } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Button } from '@/components/ui/Button';
@@ -76,15 +78,32 @@ export default function EditProfilePage() {
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const municipalities = useMunicipalities();
 
-  const { register, handleSubmit, reset, control, watch } = useForm<OwnProfileForm>();
+  const {
+    register,
+    handleSubmit,
+    reset,
+    control,
+    watch,
+    formState: { isDirty },
+  } = useForm<OwnProfileForm>();
   const values = watch();
+  // Versión nueva que llegó de otro dispositivo mientras había cambios sin guardar.
+  const [remoteProfile, setRemoteProfile] = useState<OwnProfile | null>(null);
 
   const applyProfile = (loaded: OwnProfile) => {
     setProfile(loaded);
     reset(toForm(loaded));
     setSelectedSpecialties(loaded.specialties.map((s) => s.specialty.id));
     setPhotoUrl(loaded.photoUrl);
+    setRemoteProfile(null);
   };
+
+  useRealtimeRefresh(['profile', 'documents'], () =>
+    api.get<OwnProfile>('/professionals/me').then((loaded) => {
+      if (isDirty) setRemoteProfile(loaded);
+      else applyProfile(loaded);
+    }, () => undefined),
+  );
 
   useEffect(() => {
     Promise.all([api.get<OwnProfile>('/professionals/me'), api.get<Specialty[]>('/specialties')])
@@ -165,6 +184,7 @@ export default function EditProfilePage() {
       <form onSubmit={handleSubmit(onSubmit)} className="card space-y-10 p-6 sm:p-8" noValidate>
         {error && <Alert tone="error">{error}</Alert>}
         {success && <Alert tone="success">Perfil actualizado correctamente.</Alert>}
+        {remoteProfile && <RemoteChangeNotice onLoad={() => applyProfile(remoteProfile)} />}
 
         <section aria-labelledby="perfil-foto" className="space-y-4">
           <h2 id="perfil-foto" className={SECTION_TITLE}>

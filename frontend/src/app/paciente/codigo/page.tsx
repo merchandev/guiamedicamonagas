@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { api, ApiError } from '@/lib/api';
+import { useRealtimeRefresh } from '@/lib/realtime';
 import { SHARE_CODE_NOTICE } from '@/lib/legal';
 import { ALL_SCOPES, SCOPE_INFO, type PatientDataScope } from '@/lib/patient-scopes';
 import { Alert } from '@/components/ui/Alert';
@@ -43,6 +44,8 @@ export default function PatientShareCodePage() {
       })
       .catch((e) => setError(e instanceof ApiError ? e.message : 'No se pudo cargar tu código'));
   }, []);
+      // Solo el código y su estado: lo que se está eligiendo para compartir no se pisa.
+      useRealtimeRefresh(['patientProfile', 'access'], () => api.get<ShareCode>('/patients/me/share-code').then(setData, () => undefined));
 
   // El QR se dibuja en el navegador: el código no viaja a ningún servicio externo.
   const shareUrl = data?.url;

@@ -25,3 +25,8 @@ Este documento describe la arquitectura base implementada en la Fase 1.
 
 *   **Público**: Un visitante entra a `/medicos`. Next.js consulta la API internamente. La API busca en PostgreSQL o Redis y responde.
 *   **Privado**: Un médico sube una foto. NestJS valida el archivo, lo sube a MinIO y guarda la URL en PostgreSQL. Los comprobantes médicos generan URLs firmadas de tiempo limitado.
+*   **Tiempo real (ACT-0049)**: Cada cambio que alguien ve en pantalla deja, por un disparador de PostgreSQL y en la misma transacción, un evento en la bandeja `RealtimeEvent` (solo qué fila cambió y a quién le importa). La API lo reparte por su canal Socket.IO (`/api/v1/realtime`) a las salas autorizadas, y la web y la app vuelven a pedir esos datos a la API. Así lo que cambia en un lado (web, app, administración o una tarea programada) aparece en las otras pantallas abiertas sin recargar. Detalle del canal en [ENDPOINTS.md](ENDPOINTS.md#tiempo-real-realtime_enabled-encendido).
+
+## App móvil
+
+La app Android (y luego iOS) es un proyecto aparte, [merchandev/GUIAMEDICA_APP](https://github.com/merchandev/GUIAMEDICA_APP) (Expo y React Native). No tiene base de datos propia: usa esta misma API, las mismas cuentas y permisos, y el mismo canal en tiempo real. Un cambio del contrato de la API se hace primero aquí y se documenta en [ENDPOINTS.md](ENDPOINTS.md).

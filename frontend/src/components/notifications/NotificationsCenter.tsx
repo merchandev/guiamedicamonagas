@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { api, ApiError } from '@/lib/api';
 import { cn } from '@/lib/cn';
 import { formatDateTime } from '@/lib/dates';
+import { useRealtimeRefresh } from '@/lib/realtime';
 import {
   NOTIFICATIONS_CHANGED,
   safeNotificationLink,
@@ -38,6 +39,21 @@ export function NotificationsCenter() {
       setPrefsError('No se pudieron cargar tus preferencias de correo.'),
     );
   }, []);
+
+  // Un aviso nuevo o leído en otro dispositivo: la primera página se renueva y
+  // se conservan las anteriores que ya se habían cargado.
+  useRealtimeRefresh(['notifications'], () =>
+    api.get<NotificationPage>('/notifications').then(
+      (fresh) =>
+        setPage((current) => {
+          const freshIds = new Set(fresh.items.map((item) => item.id));
+          const oldest = fresh.items.at(-1)?.createdAt;
+          const older = oldest ? (current?.items ?? []).filter((item) => !freshIds.has(item.id) && item.createdAt < oldest) : [];
+          return { items: [...fresh.items, ...older], nextCursor: older.length ? (current?.nextCursor ?? null) : fresh.nextCursor };
+        }),
+      () => undefined,
+    ),
+  );
 
   const loadMore = () => {
     if (!page?.nextCursor) return;

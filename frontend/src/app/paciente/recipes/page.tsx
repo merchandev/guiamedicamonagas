@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { api, ApiError } from '@/lib/api';
+import { useRealtimeRefresh } from '@/lib/realtime';
 import { formatDate } from '@/lib/dates';
 import { PRESCRIPTION_PATIENT_NOTICE } from '@/lib/legal';
 import { normalizePrescriptionCode, PRESCRIPTION_STATUS, type PatientPrescriptionSummary } from '@/lib/prescriptions';
@@ -29,6 +30,7 @@ export default function PatientPrescriptionsPage() {
   }, []);
 
   useEffect(load, [load]);
+  useRealtimeRefresh(['prescriptions'], load);
 
   const claim = async (e: React.FormEvent) => {
     e.preventDefault();

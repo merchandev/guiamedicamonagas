@@ -18,6 +18,7 @@ import type {
   EventInput,
 } from '@fullcalendar/core';
 import { api, ApiError } from '@/lib/api';
+import { useRealtimeRefresh } from '@/lib/realtime';
 import {
   type AgendaAppointment,
   type CalendarData,
@@ -104,6 +105,9 @@ export function AgendaCalendar({ initialAppointmentId }: { initialAppointmentId?
   const reload = useCallback(() => {
     if (rangeRef.current) void load(rangeRef.current.from, rangeRef.current.to);
   }, [load]);
+
+  // Una cita reservada, movida o cancelada en otro lado (paciente, app, otra pestaña) aparece sola.
+  useRealtimeRefresh(['appointments', 'schedule'], reload);
 
   const onDatesSet = (arg: DatesSetArg) => {
     // Las flechas de la barra son decorativas: el botón ya se llama «Anterior»/«Siguiente».

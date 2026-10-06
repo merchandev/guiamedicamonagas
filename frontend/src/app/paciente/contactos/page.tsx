@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api, ApiError } from '@/lib/api';
+import { useRealtimeRefresh } from '@/lib/realtime';
 import { formatDate } from '@/lib/dates';
 import { CONTACT_CHANNEL_LABEL, CONTACT_REQUEST_STATUS, type ContactChannel, type ContactRequestStatus } from '@/lib/contact-requests';
 import { Alert } from '@/components/ui/Alert';
@@ -42,6 +43,7 @@ export default function PatientContactRequestsPage() {
   }, []);
 
   useEffect(load, [load]);
+  useRealtimeRefresh(['contact'], load);
 
   const withdraw = async (request: ContactRequest) => {
     if (!window.confirm(`¿Retirar tu pedido a Dr(a). ${request.professional.name}? Dejará de ver tus datos al instante.`)) return;

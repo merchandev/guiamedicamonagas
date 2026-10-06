@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { api, ApiError } from '@/lib/api';
+import { useRealtimeRefresh } from '@/lib/realtime';
 import { Alert } from '@/components/ui/Alert';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -49,6 +50,7 @@ export default function AdminPaymentsPage() {
   useEffect(() => {
     load();
   }, []);
+  useRealtimeRefresh(['billing'], load);
 
   const openReceipt = async (id: string) => {
     const { url } = await api.get<{ url: string }>(`/payments/admin/${id}/receipt`);

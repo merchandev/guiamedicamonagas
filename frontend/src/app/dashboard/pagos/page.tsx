@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api, ApiError } from '@/lib/api';
+import { useRealtimeRefresh } from '@/lib/realtime';
 import { Alert } from '@/components/ui/Alert';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -66,6 +67,7 @@ export default function PaymentsPage() {
   useEffect(() => {
     void load();
   }, [load]);
+  useRealtimeRefresh(['billing', 'documents'], load);
 
   const subscribe = async (planId: string) => {
     setError(null);

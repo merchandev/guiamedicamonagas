@@ -6,6 +6,7 @@ import fastifyHelmet from '@fastify/helmet';
 import fastifyCookie from '@fastify/cookie';
 import fastifyMultipart from '@fastify/multipart';
 import { AppModule } from './app.module';
+import { RealtimeServer } from './realtime/realtime.server';
 import { productionWarnings, type EnvConfig } from './config/env.validation';
 
 async function bootstrap() {
@@ -64,6 +65,9 @@ async function bootstrap() {
   );
 
   app.enableShutdownHooks();
+
+  // Canal en tiempo real (Socket.IO) en el mismo servidor HTTP: /api/v1/realtime.
+  app.get(RealtimeServer).attach(app.getHttpServer());
 
   const port = Number(process.env.PORT ?? 4000);
   await app.listen(port, '0.0.0.0');

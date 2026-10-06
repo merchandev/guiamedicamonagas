@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { api, ApiError } from '@/lib/api';
+import { useRealtimeRefresh } from '@/lib/realtime';
 import { Alert } from '@/components/ui/Alert';
 import { Badge } from '@/components/ui/Badge';
 import { PageSpinner } from '@/components/ui/Spinner';
@@ -28,6 +29,7 @@ export default function DocumentsPage() {
   useEffect(() => {
     load();
   }, []);
+  useRealtimeRefresh(['documents', 'profile'], load);
 
   const latestByType = (type: DocumentType) =>
     data?.documents

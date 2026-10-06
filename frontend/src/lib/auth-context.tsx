@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { api, ApiError, setAccessToken, refreshAccessToken } from './api';
+import { SESSION_CHANGED, startRealtime, stopRealtime, useRealtimeRefresh } from './realtime';
 import type { LegalDocumentKey } from './legal';
 
 export type Role = 'USER' | 'PROFESSIONAL' | 'ORGANIZATION' | 'ADMIN' | 'SUPERADMIN';
@@ -118,6 +119,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
     })();
   }, [loadMe]);
+
+  // Canal en tiempo real mientras haya sesión: lo que cambie en otro
+  // dispositivo, en la app o en la administración se ve sin recargar.
+  const userId = user?.id;
+  useEffect(() => {
+    if (!userId) return;
+    startRealtime();
+    return () => stopRealtime();
+  }, [userId]);
+
+  // La sesión cambió en otro lado (contraseña, cierre de sesiones, suspensión):
+  // se revisa; si ya no vale, la página privada lleva a «Iniciar sesión».
+  useEffect(() => {
+    const onSessionChanged = () => void loadMe();
+    window.addEventListener(SESSION_CHANGED, onSessionChanged);
+    return () => window.removeEventListener(SESSION_CHANGED, onSessionChanged);
+  }, [loadMe]);
+  useRealtimeRefresh(['account'], loadMe, !!userId);
 
   const startSession = useCallback(async (accessToken: string) => {
     setAccessToken(accessToken);

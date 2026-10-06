@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useEffectEvent, useState } from 'react';
 import { api, ApiError } from '@/lib/api';
+import { useRealtimeRefresh } from '@/lib/realtime';
 import {
   type AppointmentDetail as Detail,
   eventText,
@@ -69,6 +70,11 @@ export function AppointmentDetail({
       (e) => setError(e instanceof ApiError ? e.message : 'No se pudo cargar la cita'),
     );
   }, [appointmentId]);
+
+  // Si la cita cambia en otro lado mientras está abierta, se actualiza (sin mover el calendario).
+  useRealtimeRefresh(['appointments'], () =>
+    api.get<Detail>(`/appointments/me/${appointmentId}`).then(setDetail, () => undefined),
+  );
 
   const loadSlots = useCallback(
     (from: string, to: string) =>

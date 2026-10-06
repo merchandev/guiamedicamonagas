@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { api, ApiError } from '@/lib/api';
+import { useRealtimeRefresh } from '@/lib/realtime';
 import {
   LEGAL_REQUEST_CATEGORY_LABELS,
   LEGAL_REQUEST_STATUS,
@@ -89,6 +90,7 @@ export default function AdminLegalRequestsPage() {
   useEffect(() => {
     void load(status, page);
   }, [status, page, load]);
+  useRealtimeRefresh(['requests'], () => load(status, page));
 
   const open = (item: LegalRequestItem) => {
     setCurrent(item);

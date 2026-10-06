@@ -241,6 +241,8 @@ services:
       REVIEWS_ENABLED: ${REVIEWS_ENABLED:-false}
       # Récipes digitales: apagados hasta la revisión legal de sus textos (docs/legal/borrador-recipes.md).
       PRESCRIPTIONS_ENABLED: ${PRESCRIPTIONS_ENABLED:-false}
+      # Sincronización en tiempo real (/api/v1/realtime) de la web y la app; apagada, vuelven a consultar cada cierto tiempo.
+      REALTIME_ENABLED: ${REALTIME_ENABLED:-true}
       # Días de evidencia de valoraciones rechazadas o retiradas; vacío = no se borran.
       REVIEW_EVIDENCE_RETENTION_DAYS: ${REVIEW_EVIDENCE_RETENTION_DAYS:-}
     depends_on:

@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api, apiBlob, ApiError, saveBlob } from '@/lib/api';
+import { useRealtimeRefresh } from '@/lib/realtime';
+import { RemoteChangeNotice } from '@/components/RemoteChangeNotice';
 import { formatDate } from '@/lib/dates';
 import { PRESCRIPTION_RULES, PRESCRIPTION_RULES_VERSION } from '@/lib/legal';
 import { PAD_IMAGES, type PadImageKind, type PrescriptionPad } from '@/lib/prescriptions';
@@ -54,7 +56,20 @@ export default function PrescriptionPadPage() {
   const apply = (next: PrescriptionPad) => {
     setPad(next);
     setForm(toForm(next));
+    setRemotePad(null);
   };
+
+  // Versión nueva que llegó de otro dispositivo mientras había cambios sin guardar.
+  const [remotePad, setRemotePad] = useState<PrescriptionPad | null>(null);
+  useRealtimeRefresh(['prescriptions'], () =>
+    api.get<PrescriptionPad>('/prescriptions/pad').then((loaded) => {
+      const dirty = !!pad && !!form && JSON.stringify(form) !== JSON.stringify(toForm(pad));
+      if (!dirty) return apply(loaded);
+      // Las imágenes y las condiciones se actualizan igual; el formulario, cuando la persona quiera.
+      setPad(loaded);
+      setRemotePad(loaded);
+    }, () => undefined),
+  );
 
   useEffect(() => {
     api.get<PrescriptionPad>('/prescriptions/pad').then(
@@ -170,6 +185,7 @@ export default function PrescriptionPadPage() {
       <MissingRequirements pad={pad} />
       {error && <Alert tone="error">{error}</Alert>}
       {notice && <Alert tone="success">{notice}</Alert>}
+      {remotePad && <RemoteChangeNotice onLoad={() => apply(remotePad)} />}
 
       <section aria-labelledby="tus-datos" className="card space-y-2 p-5">
         <h2 id="tus-datos" className="text-lg font-semibold text-ink-900">

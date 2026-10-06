@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api, ApiError } from '@/lib/api';
+import { useRealtimeRefresh } from '@/lib/realtime';
 import { PATIENT_CONSENT_VERSION } from '@/lib/legal';
 import { ALL_SCOPES, SCOPE_INFO, type PatientDataScope } from '@/lib/patient-scopes';
 import { Alert } from '@/components/ui/Alert';
@@ -76,6 +77,7 @@ export default function PatientPermissionsPage() {
   useEffect(() => {
     void load();
   }, [load]);
+  useRealtimeRefresh(['access'], load);
 
   const toggleScope = (scope: Scope) =>
     setScopes((current) => (current.includes(scope) ? current.filter((s) => s !== scope) : [...current, scope]));

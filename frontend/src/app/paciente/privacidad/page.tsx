@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api, ApiError } from '@/lib/api';
+import { useRealtimeRefresh } from '@/lib/realtime';
 import { PATIENT_AREA_NOTICE } from '@/lib/legal';
 import {
   LEGAL_REQUEST_CATEGORY_LABELS,
@@ -62,6 +63,7 @@ export default function PatientPrivacyPage() {
         setLog([]);
       });
   }, []);
+        useRealtimeRefresh(['access', 'requests'], () => Promise.all([api.get<AccessLogEntry[]>('/patients/me/access-log'), api.get<LegalRequestSummary[]>('/legal-requests/me')]).then(([entries, own]) => { setLog(entries); setRequests(own); }, () => undefined));
 
   // La copia se arma en el navegador y se descarga como archivo: no pasa por ningún tercero.
   const download = async () => {

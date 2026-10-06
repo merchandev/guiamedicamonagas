@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api, ApiError } from '@/lib/api';
+import { useRealtimeRefresh } from '@/lib/realtime';
 import { formatDate } from '@/lib/dates';
 import { PRESCRIPTION_STATUS, type PrescriptionPad, type PrescriptionSummary } from '@/lib/prescriptions';
 import { MissingRequirements } from '@/components/prescriptions/MissingRequirements';
@@ -45,6 +46,7 @@ export default function DoctorPrescriptionsPage() {
       (e) => setError(e instanceof ApiError ? e.message : 'No se pudieron cargar tus récipes'),
     );
   }, [load, search]);
+  useRealtimeRefresh(['prescriptions'], () => load(search, 1).then(setData, () => undefined));
 
   const submitSearch = (e: React.FormEvent) => {
     e.preventDefault();

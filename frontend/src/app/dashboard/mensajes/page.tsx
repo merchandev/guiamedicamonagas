@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { api, ApiError } from '@/lib/api';
+import { useRealtimeRefresh } from '@/lib/realtime';
 import { Alert } from '@/components/ui/Alert';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -39,6 +40,7 @@ export default function MessagesPage() {
   }, []);
 
   useEffect(load, [load]);
+  useRealtimeRefresh(['contact'], load);
 
   const markRead = async (id: string) => {
     await api.patch(`/contact/${id}/read`).catch(() => undefined);

@@ -4,6 +4,7 @@ import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { api, ApiError } from '@/lib/api';
+import { useRealtimeRefresh } from '@/lib/realtime';
 import { REVIEW_RULES, REVIEW_RULES_VERSION } from '@/lib/legal';
 import { capitalizeFirst, formatMonthKey } from '@/lib/dates';
 import { REVIEW_BASIS_LABEL, REVIEW_STATUS, type ReviewAuthorDisplay, type ReviewBasis, type ReviewStatus } from '@/lib/reviews';
@@ -95,6 +96,7 @@ function ReviewsContent() {
   useEffect(() => {
     if (enabled) load();
   }, [enabled, load]);
+  useRealtimeRefresh(['reviews', 'appointments'], () => enabled && load());
 
   const remove = async (review: OwnReview) => {
     if (!window.confirm('¿Borrar tu valoración? Puedes escribir otra después.')) return;

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api, ApiError } from '@/lib/api';
+import { useRealtimeRefresh } from '@/lib/realtime';
 import { capitalizeFirst, formatDate, formatMonthKey } from '@/lib/dates';
 import {
   REPORT_REASON_LABEL,
@@ -143,6 +144,7 @@ export default function AdminReviewsPage() {
   }, [tab, page, query, rating]);
 
   useEffect(load, [load]);
+  useRealtimeRefresh(['reviews'], load);
 
   return (
     <div className="space-y-6">

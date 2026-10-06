@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { api } from '@/lib/api';
+import { useRealtimeRefresh } from '@/lib/realtime';
 import type { PlanTier } from '@/lib/types';
 import type { SocialLink } from '@/lib/social';
 
@@ -112,6 +113,7 @@ export function OrganizationProvider({ children }: { children: React.ReactNode }
   const reload = useCallback(async () => {
     if (currentId) await loadDetail(currentId);
   }, [currentId, loadDetail]);
+  useRealtimeRefresh(['organization', 'billing'], reload);
 
   return (
     <OrgContext.Provider value={{ organizations, current, selectOrganization, reload, setCurrent }}>

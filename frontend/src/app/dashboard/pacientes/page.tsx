@@ -4,6 +4,7 @@ import { Suspense, useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { api, ApiError } from '@/lib/api';
+import { useRealtimeRefresh } from '@/lib/realtime';
 import { ALL_SCOPES, SCOPE_INFO, type PatientDataScope } from '@/lib/patient-scopes';
 import { Alert } from '@/components/ui/Alert';
 import { Badge } from '@/components/ui/Badge';
@@ -94,6 +95,7 @@ function PacientesContent() {
   useEffect(() => {
     void load();
   }, [load]);
+  useRealtimeRefresh(['access', 'appointments'], load);
 
   const register = async (event: React.FormEvent) => {
     event.preventDefault();

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { api, ApiError } from '@/lib/api';
+import { useRealtimeRefresh } from '@/lib/realtime';
 import { ORGANIZATION_TYPE_LABELS } from '@/lib/labels';
 import { Alert } from '@/components/ui/Alert';
 import { Badge } from '@/components/ui/Badge';
@@ -22,6 +23,7 @@ export function AffiliationsManager() {
   useEffect(() => {
     api.get<Affiliation[]>('/organizations/affiliations/me').then(setItems).catch(() => setItems([]));
   }, []);
+  useRealtimeRefresh(['organization'], () => api.get<Affiliation[]>('/organizations/affiliations/me').then(setItems, () => undefined));
 
   const respond = async (organizationId: string, accept: boolean) => {
     setBusy(organizationId);
