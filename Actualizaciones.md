@@ -3,7 +3,7 @@
 > Bitácora central de cambios, implementaciones, decisiones técnicas y tareas de evolución del sistema.
 >
 > **Repositorio:** [`merchandev/guiamedicamonagas`](https://github.com/merchandev/guiamedicamonagas) · **Rama:** `main`<br>
-> **Última actualización de esta bitácora:** `2026-10-06 11:03:20 -04:00` · **Estado:** 🟢 Registro activo
+> **Última actualización de esta bitácora:** `2026-10-06 14:51:05 -04:00` · **Estado:** 🟢 Registro activo
 
 ![Estado](https://img.shields.io/badge/estado-registro%20activo-16a34a?style=flat-square)
 ![Rama](https://img.shields.io/badge/rama-main-2563eb?style=flat-square)
@@ -151,8 +151,9 @@ flowchart LR
     AT[💊 2026-10-05\n21:44:58\nACT-0046 · Récipes\ndigitales]
     AU[🧮 2026-10-06\n10:36:42\nACT-0047 · Resumen de\nadministración]
     AV[🔽 2026-10-06\n11:03:20\nACT-0048 · Lista del\nbuscador del inicio]
+    AW[🔄 2026-10-06\n14:51:05\nACT-0049 · Tiempo real\nweb y app]
 
-    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L --> M --> N --> O --> P --> Q --> R --> S --> T --> U --> V --> W --> X --> Y --> Z --> AA --> AB --> AC --> AD --> AE --> AF --> AG --> AH --> AI --> AJ --> AK --> AL --> AM --> AN --> AO --> AP --> AQ --> AR --> AS --> AT --> AU --> AV
+    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L --> M --> N --> O --> P --> Q --> R --> S --> T --> U --> V --> W --> X --> Y --> Z --> AA --> AB --> AC --> AD --> AE --> AF --> AG --> AH --> AI --> AJ --> AK --> AL --> AM --> AN --> AO --> AP --> AQ --> AR --> AS --> AT --> AU --> AV --> AW
 ```
 
 ### Resumen cuantitativo
@@ -160,8 +161,8 @@ flowchart LR
 | Indicador | Resultado |
 |---|---:|
 | Actividades históricas importadas desde Git | `3` |
-| Actividades documentales añadidas con esta bitácora | `45` |
-| Actividades registradas en total | `48` |
+| Actividades documentales añadidas con esta bitácora | `46` |
+| Actividades registradas en total | `49` |
 | Rama de referencia | `main` |
 | Commit base consultado | [`81b1091`](https://github.com/merchandev/guiamedicamonagas/commit/81b1091) |
 | Zona horaria de control | `America/Caracas` (`-04:00`) |
@@ -2253,6 +2254,111 @@ El titular avisó que en el inicio las opciones del buscador (especialidad y mun
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
+<a id="act-0049"></a>
+
+### 🔄 ACT-0049 · Sincronización en tiempo real de la web y la app, revisión de la app y su repositorio propio
+
+<details>
+<summary><strong>2026-10-06 14:51:05 -04:00</strong> · <code>7d58326</code> · 🟢 Completado</summary>
+
+**Responsable:** `Claude Opus 5.5` · **Tipo:** `funcionalidad | arquitectura | app móvil | seguridad | despliegue` · **Commits:** [`7d58326`](https://github.com/merchandev/guiamedicamonagas/commit/7d58326) (plataforma) · [`3eeb27e`](https://github.com/merchandev/GUIAMEDICA_APP/commit/3eeb27e) (app)
+
+El titular pidió tres cosas:
+- revisar si la app móvil (`E:\PROYECTO SEPTIEMBRE 2026\GUIA MEDICA APP`, hecha con otra herramienta) estaba bien conectada y estructurada con la plataforma;
+- crear la sincronización con todo el sistema;
+- llevar la app en un repositorio aparte, [merchandev/GUIAMEDICA_APP](https://github.com/merchandev/GUIAMEDICA_APP), conectado pero separado.
+
+Al final, actualizar los dos repositorios y producción.
+
+**Revisión de la app** (Expo SDK 57, React Native 0.86):
+- **Conexión con la API:** bien. Sus 23 llamadas usan rutas, campos y respuestas que existen; importa porque la API rechaza cualquier campo que no conozca.
+- **Código:** tenía componentes enteros en una sola línea (hasta 2.000 caracteres). Se le dio formato con Prettier y quedó con su configuración.
+- **Actualización:** consultaba la API cada 15 segundos desde tres lugares distintos. Ahora usa el canal en tiempo real.
+- **Sesión:** depende de la cookie de renovación de la web, porque la API no le entrega el token. Queda pendiente un transporte de sesión propio para la app.
+- **Repositorio en GitHub:** solo tenía una subida inicial, sin `src/`, `plugins/`, `scripts/`, `test/` ni `android/`, así que no compilaba.
+
+**Cómo funciona la sincronización** (detalle en [ENDPOINTS.md](docs/ENDPOINTS.md#tiempo-real-realtime_enabled-encendido) y [ARQUITECTURA.md](docs/ARQUITECTURA.md)):
+- **Bandeja de eventos:** 39 disparadores de PostgreSQL anotan cada cambio en la tabla `RealtimeEvent`, en la misma transacción. Así no se escapa ningún camino: web, app, administración, tareas programadas o SQL directo, y un evento solo existe si el cambio se confirmó.
+  - Se guarda solo qué fila cambió y los identificadores que dicen a quién le importa, nunca su contenido.
+  - Lo que cambia solo (el puntaje del directorio al arrancar la API, el último inicio de sesión, las marcas de recordatorios) no avisa.
+- **Canal:** Socket.IO en `/api/v1/realtime`, en el mismo servidor de la API.
+  - El token se valida con las mismas reglas que una petición normal: firma, versión de sesión, cuenta activa y sin suspensión.
+  - El servidor asigna las salas: la cuenta, el perfil de médico, las organizaciones y administración. Sin sesión solo se ven el directorio y los horarios libres de un médico publicado.
+  - Hay un tope de 50 conexiones por IP.
+- **Mensajes:** solo dicen qué tema cambió y, en las salas privadas, qué fila. La pantalla vuelve a pedir los datos a la API con su sesión y sus permisos, así que el canal no abre otro camino a los datos.
+- **Sesión cerrada:** un cambio de contraseña, «cerrar sesión en todos lados», una suspensión o una baja cortan también el canal de esa cuenta. Además, todas las sesiones se revisan cada 2 minutos.
+- **Reparto:** la API reparte la bandeja cada medio segundo, al menos una vez. No usa un cursor que pueda saltarse una transacción tardía. Al conectarse o reconectarse, cada pantalla vuelve a pedir todo, y lo que tiene más de un día se borra.
+- **Interruptor:** `REALTIME_ENABLED` (encendido). Apagado, la web y la app vuelven a consultar cada cierto tiempo.
+
+**En la web:**
+- Unas 40 pantallas se actualizan solas, sin indicador de carga, cuando cambia algo de lo que muestran:
+  - agenda, historial y detalle de citas;
+  - la campana y «Notificaciones»;
+  - mensajes y pedidos de contacto, récipes, documentos, pagos y plan, valoraciones;
+  - pacientes y permisos, la ficha del paciente;
+  - las colas y el resumen de administración, el directorio y las organizaciones.
+- Los formularios (perfil del médico, talonario y ficha del paciente) no pisan lo que se está escribiendo: ofrecen «Cargar la versión nueva».
+- La campana solo consulta cada minuto si el canal está caído.
+- Al reservar o reprogramar, un horario que otra persona acaba de tomar desaparece y se avisa: «El horario que elegiste se acaba de ocupar».
+- La política de seguridad del sitio deja abrir el WebSocket solo al origen de la API (`wss://guiamedicamonagas.com` en producción).
+
+**En la app:** se conecta al mismo canal desde que abre (el directorio es público) y otra vez con la sesión al iniciarla o cerrarla.
+- Citas, agenda, avisos, pedidos de contacto, ficha, permisos, directorio, horarios del médico abierto y cuenta se actualizan solos.
+- En segundo plano el canal se cierra. Al volver al frente, la app se reconecta y se pone al día.
+- Sin canal, consulta cada 30 segundos.
+- El estado dice «En vivo con la plataforma».
+
+**Error encontrado antes de producción:** sin argumentos (las tablas de catálogos), PostgreSQL pasa `TG_ARGV` como NULL y no como una lista vacía. Eso hacía fallar toda escritura en esas tablas; en local se vio porque falló la API al guardar la tasa del BCV al arrancar. Se corrigió con `COALESCE` antes de subir nada.
+
+**Dependencias:** `sharp` 0.35.5 en el backend y la web por GHSA-wq5f-xc86-pv6w (alta, publicada hoy, en librsvg). Sin excepción.
+
+**Repositorio de la app:** el proyecto completo se subió a [GUIAMEDICA_APP](https://github.com/merchandev/GUIAMEDICA_APP) sobre la subida inicial del titular (commit [`3eeb27e`](https://github.com/merchandev/GUIAMEDICA_APP/commit/3eeb27e), sobre `0177ad7` «Inicio de app»).
+- **Qué no se sube:** `node_modules`, las salidas de compilación, `.env`, las claves de firma y los binarios de `artifacts/` (APK y AAB).
+- **Ajustes:** `gradlew` quedó ejecutable, para compilar en Linux.
+- **README:** explica la relación entre los dos repositorios. La plataforma guarda las cuentas, los datos y el contrato; la app es solo un cliente.
+
+**Pruebas:**
+- Unitarias del backend: 158 en verde, 10 de ellas nuevas para las reglas de a quién avisar.
+- [`realtime.e2e.mjs`](backend/test/e2e/realtime.e2e.mjs), con 22 comprobaciones y agregada a CI:
+  - un token inválido no entra;
+  - cada cuenta recibe solo lo suyo y los visitantes solo lo público;
+  - los mensajes no llevan contenido;
+  - el puntaje del directorio no avisa;
+  - cerrar las sesiones corta el canal;
+  - la bandeja no deja nada sin repartir.
+- [`tiempo-real.spec.ts`](e2e/tests/tiempo-real.spec.ts), 3 pruebas en el navegador:
+  - la agenda y la campana del médico muestran al instante una reserva hecha desde otro lado;
+  - el paciente ve la cancelación del médico;
+  - la reserva avisa cuando otro toma el horario elegido.
+- En local, además:
+  - las suites de la API (todo en verde) y de administración (106 comprobaciones);
+  - la suite completa del sitio: 85 pasadas, 4 omitidas y la misma falla de la página de especialidad que solo ocurre en la base local (ver [ACT-0043](#act-0043));
+  - la app: tipos, pruebas y paquete de Android de Hermes generado con el cliente nuevo.
+
+**CI de GitHub:** «CI» (con la suite de punta a punta del canal y las 3 pruebas en el navegador) y «Seguridad» en verde para `7d58326`.
+
+**Despliegue en el VPS** (log `deploy-act49.log`): respaldo previo `gmm-db-20261006T184253Z-pre-deploy.dump.gpg`; **migración `20261010120000_realtime_sync` aplicada**; prueba de humo **25/25**; «Versión publicada: 7d5832616a8f (API y web)». En producción existen la tabla `RealtimeEvent`, los 39 disparadores y su función; la API registra «Canal en tiempo real activo» y no quedó ningún evento sin repartir (7 ya repartidos). La política de seguridad del sitio permite solo `wss://guiamedicamonagas.com`. Desde fuera, una conexión real por WebSocket atraviesa Traefik y Caddy y recibe `ready`; un token inválido y un médico inexistente se rechazan. Los otros proyectos del VPS siguen igual; disco al 72 %.
+
+**Pendiente** (en «Próximas actividades»):
+- avisos push (FCM) con la app cerrada;
+- transporte de sesión propio de la app;
+- App Links verificados;
+- pruebas con cuentas de ensayo en un teléfono real;
+- lo que corresponde al titular para publicar en Google Play.
+
+**Archivos destacados:**
+- [`backend/prisma/migrations/20261010120000_realtime_sync/migration.sql`](backend/prisma/migrations/20261010120000_realtime_sync/migration.sql)
+- [`backend/src/realtime/realtime-audience.ts`](backend/src/realtime/realtime-audience.ts)
+- [`backend/src/realtime/realtime.server.ts`](backend/src/realtime/realtime.server.ts)
+- [`backend/src/realtime/realtime.dispatcher.ts`](backend/src/realtime/realtime.dispatcher.ts)
+- [`frontend/src/lib/realtime.ts`](frontend/src/lib/realtime.ts)
+- [`frontend/src/components/agenda/SlotPicker.tsx`](frontend/src/components/agenda/SlotPicker.tsx)
+- [`docs/PLAN-APP-MOVIL.md`](docs/PLAN-APP-MOVIL.md) y [`docs/PLAN-APP-MOVIL-CONSOLIDADO.md`](docs/PLAN-APP-MOVIL-CONSOLIDADO.md)
+
+</details>
+
+<p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
+
 <a id="registro-por-area"></a>
 
 ## 🧩 Registro por área
@@ -2261,7 +2367,7 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 
 | Área | Implementaciones registradas | Actividades relacionadas |
 |---|---|---|
-| 🧱 Fundación técnica | NestJS, Next.js, Prisma, Docker, Caddy, Tailwind | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) |
+| 🧱 Fundación técnica | NestJS, Next.js, Prisma, Docker, Caddy, Tailwind, sincronización en tiempo real (bandeja de eventos con disparadores y canal Socket.IO) | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0049](#act-0049) |
 | 🔐 Auth y seguridad | JWT, refresh cookie, roles, correo, recuperación, throttling, Argon2id, permisos granulares, reuso de tokens, `tokenVersion`, cerrar todas las sesiones, MFA obligatorio en producción, subidas seguras, antivirus obligatorio y rotación de claves, bóveda de registros de pacientes con código de seguridad, aceptaciones legales con evidencia de solo inserción, política de uso aceptable y reporte de vulnerabilidades, CSP y pruebas de seguridad automáticas (política de rutas, IDOR/BOLA, tokens, fuerza bruta, XSS, ZAP) | [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0012](#act-0012) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0019](#act-0019) · [ACT-0024](#act-0024) · [ACT-0027](#act-0027) · [ACT-0033](#act-0033) · [ACT-0039](#act-0039) |
 | 👨‍⚕️ Profesionales | Perfiles, ubicaciones, documentos, verificación legal (sin solvencia deontológica), publicación con el 60% aprobado + biografía + foto, barra de progreso del registro, redes sociales, badges, código y QR del médico, SEO automático, tarjeta para compartir, video de presentación de YouTube (plan Agencia), condiciones para profesionales y políticas de verificación y de publicidad médica | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0020](#act-0020) · [ACT-0021](#act-0021) · [ACT-0028](#act-0028) · [ACT-0029](#act-0029) · [ACT-0030](#act-0030) · [ACT-0032](#act-0032) · [ACT-0033](#act-0033) |
 | 🏥 Organizaciones | Farmacias, laboratorios, clínicas, ubicaciones, autogestión, equipo con invitaciones y roles internos, médicos asociados y plan propio, sección «Próximamente» hasta cerrar alianzas | [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0015](#act-0015) · [ACT-0019](#act-0019) · [ACT-0025](#act-0025) |
@@ -2374,6 +2480,8 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | IMP-089 | Récipes digitales: talonario (establecimiento, firma, sello y logo), emisión solo por médicos verificados con los datos de la Resolución 031/2013 del MPPS, PDF de original y copia con QR, código de verificación y página pública `/recipe`, «Mis récipes» del paciente, envío por WhatsApp y correo, anulación; borrador legal | 🟢 Completado | [`backend/src/prescriptions`](backend/src/prescriptions), [`frontend/src/app/dashboard/recipes`](frontend/src/app/dashboard/recipes), [`docs/legal/borrador-recipes.md`](docs/legal/borrador-recipes.md) |
 | IMP-090 | Resumen de administración: cuenta solo médicos con cuenta vigente (no los registros anónimos de cuentas eliminadas) y muestra el total de pacientes; la eliminación definitiva de un médico borra también sus apariciones en búsquedas | 🟢 Completado | [`backend/src/admin/admin.service.ts`](backend/src/admin/admin.service.ts), [`frontend/src/app/admin/page.tsx`](frontend/src/app/admin/page.tsx), [`backend/src/admin/account-purge.service.ts`](backend/src/admin/account-purge.service.ts) |
 | IMP-091 | Inicio: la lista desplegable del buscador se ve completa encima de las secciones de abajo (la primera sección ya no recorta su contenido), con prueba en escritorio y teléfono | 🟢 Completado | [`frontend/src/app/page.tsx`](frontend/src/app/page.tsx), [`e2e/tests/publico.spec.ts`](e2e/tests/publico.spec.ts) |
+| IMP-092 | Sincronización en tiempo real: disparadores de PostgreSQL llenan la bandeja `RealtimeEvent` en la misma transacción de cada cambio; canal Socket.IO `/api/v1/realtime` con salas asignadas por el servidor y corte al cerrar sesiones; unas 40 pantallas de la web y la app móvil se actualizan solas | 🟢 Completado | [`backend/src/realtime`](backend/src/realtime), [`frontend/src/lib/realtime.ts`](frontend/src/lib/realtime.ts), [`backend/test/e2e/realtime.e2e.mjs`](backend/test/e2e/realtime.e2e.mjs) |
+| IMP-093 | App móvil revisada contra la API, con formato legible, conectada al canal en tiempo real y en su propio repositorio | 🟢 Completado | [GUIAMEDICA_APP](https://github.com/merchandev/GUIAMEDICA_APP) |
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
@@ -2442,6 +2550,8 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | 🔴 Alta | Encender las valoraciones: llevar [`docs/legal/borrador-valoraciones.md`](docs/legal/borrador-valoraciones.md) al abogado, fijar el plazo de evidencia (`REVIEW_EVIDENCE_RETENTION_DAYS`), publicar los textos junto con los datos del titular (`DATA_CONTROLLER`) en una sola subida de versión y poner `REVIEWS_ENABLED=true` en `.env.prod` | 🔴 Pendiente del titular | Ver [ACT-0043](#act-0043) y [ACT-0044](#act-0044) |
 | 🟠 Media | Llevar [`docs/legal/borrador-contacto-y-busquedas.md`](docs/legal/borrador-contacto-y-busquedas.md) al abogado junto con el de valoraciones y decidir si las apariciones en búsquedas se borran después de un tiempo | 🔴 Pendiente del titular | Ver [ACT-0045](#act-0045) |
 | 🔴 Alta | Encender los récipes digitales: llevar [`docs/legal/borrador-recipes.md`](docs/legal/borrador-recipes.md) al abogado (valor de la firma digitalizada frente a una certificada, duplicado, vencimiento, medicamentos de control especial, retención), publicar sus textos en la misma subida de versión que los demás borradores y poner `PRESCRIPTIONS_ENABLED=true` en `.env.prod` | 🔴 Pendiente del titular | Ver [ACT-0046](#act-0046) |
+| 🟠 Media | App móvil: transporte de sesión propio (renovación en el cuerpo y guardada en SecureStore), avisos push con FCM (proyecto Firebase del titular), App Links verificados y pruebas con cuentas de ensayo en un teléfono real | 🔵 Planificado | Ver [ACT-0049](#act-0049) y [GUIAMEDICA_APP](https://github.com/merchandev/GUIAMEDICA_APP) |
+| 🔴 Alta | Publicar la app en Google Play: persona jurídica con número D-U-N-S, cuenta de organización en Play Console, nombre e identificador definitivos de la app | 🔴 Pendiente del titular | Ver [`docs/PLAN-APP-MOVIL.md`](docs/PLAN-APP-MOVIL.md) |
 | 🟢 Continua | Registrar cada modificación nueva con fecha, hora, responsable y evidencia | 🟢 Activo | No existen cambios relevantes sin entrada en esta bitácora |
 | 🟢 Continua | Confirmar en el repositorio remoto cada cambio cerrado localmente | 🟢 Activo | `git status` limpio y `origin/main` sincronizado al cierre de cada sesión |
 
@@ -2535,6 +2645,7 @@ Para cada cambio futuro, añadir una entrada en la línea de tiempo y actualizar
 | `2026-10-06 04:08:47 -04:00` | Redespliegue de producción a `c42d605` a pedido del titular (sin cambios de código; prueba de humo 25/25), anotado en ACT-0046 | 🟢 Completado |
 | `2026-10-06 10:36:42 -04:00` | Incorporación de ACT-0047 (el resumen de administración contaba como médicos las cuentas eliminadas; tarjeta nueva con el total de pacientes; la eliminación de un médico borra también sus apariciones en búsquedas) con su despliegue | 🟢 Completado |
 | `2026-10-06 11:03:20 -04:00` | Incorporación de ACT-0048 (la lista del buscador del inicio quedaba cortada detrás de las secciones; nota sobre los errores de consola de una extensión del navegador) con su despliegue | 🟢 Completado |
+| `2026-10-06 14:51:05 -04:00` | Incorporación de ACT-0049 (sincronización en tiempo real de la web y la app; revisión de la app y su repositorio propio GUIAMEDICA_APP; sharp 0.35.5) con su despliegue; dos pendientes nuevos (app móvil y publicación en Google Play) | 🟢 Completado |
 
 ---
 
