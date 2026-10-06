@@ -3,7 +3,7 @@
 > Bitácora central de cambios, implementaciones, decisiones técnicas y tareas de evolución del sistema.
 >
 > **Repositorio:** [`merchandev/guiamedicamonagas`](https://github.com/merchandev/guiamedicamonagas) · **Rama:** `main`<br>
-> **Última actualización de esta bitácora:** `2026-10-05 08:33:33 -04:00` · **Estado:** 🟢 Registro activo
+> **Última actualización de esta bitácora:** `2026-10-05 20:33:18 -04:00` · **Estado:** 🟢 Registro activo
 
 ![Estado](https://img.shields.io/badge/estado-registro%20activo-16a34a?style=flat-square)
 ![Rama](https://img.shields.io/badge/rama-main-2563eb?style=flat-square)
@@ -147,8 +147,9 @@ flowchart LR
     AP[📅 2026-10-05\n07:15:08\nACT-0042 · Calendario\ne historial de citas]
     AQ[⭐ 2026-10-05\n08:08:03\nACT-0043 · Valoraciones\nde pacientes]
     AR[🛡️ 2026-10-05\n08:33:33\nACT-0044 · Moderación\ny sanciones por días]
+    AS[📨 2026-10-05\n20:33:18\nACT-0045 · Pedidos de contacto\ny apariciones en búsquedas]
 
-    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L --> M --> N --> O --> P --> Q --> R --> S --> T --> U --> V --> W --> X --> Y --> Z --> AA --> AB --> AC --> AD --> AE --> AF --> AG --> AH --> AI --> AJ --> AK --> AL --> AM --> AN --> AO --> AP --> AQ --> AR
+    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L --> M --> N --> O --> P --> Q --> R --> S --> T --> U --> V --> W --> X --> Y --> Z --> AA --> AB --> AC --> AD --> AE --> AF --> AG --> AH --> AI --> AJ --> AK --> AL --> AM --> AN --> AO --> AP --> AQ --> AR --> AS
 ```
 
 ### Resumen cuantitativo
@@ -156,8 +157,8 @@ flowchart LR
 | Indicador | Resultado |
 |---|---:|
 | Actividades históricas importadas desde Git | `3` |
-| Actividades documentales añadidas con esta bitácora | `41` |
-| Actividades registradas en total | `44` |
+| Actividades documentales añadidas con esta bitácora | `42` |
+| Actividades registradas en total | `45` |
 | Rama de referencia | `main` |
 | Commit base consultado | [`81b1091`](https://github.com/merchandev/guiamedicamonagas/commit/81b1091) |
 | Zona horaria de control | `America/Caracas` (`-04:00`) |
@@ -2027,6 +2028,52 @@ La administración ya puede moderar las valoraciones (que siguen **apagadas en p
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
+<a id="act-0045"></a>
+
+### 📨 ACT-0045 · Bloque 5 del plan de agenda: «Quiero que me contacte» y apariciones en búsquedas
+
+<details>
+<summary><strong>2026-10-05 20:33:18 -04:00</strong> · <code>976f243</code> · 🟢 Completado</summary>
+
+**Responsable:** `Claude Opus 5.5` · **Tipo:** `funcionalidad | privacidad | legal | despliegue` · **Commits:** [`976f243`](https://github.com/merchandev/guiamedicamonagas/commit/976f243)
+
+Último bloque del plan aprobado por el titular. En lugar de avisarle al médico «este paciente te buscó» (que revelaría quién busca a quién), el paciente decide pedir que lo contacten y elige qué compartir, y el médico ve cuántas veces apareció en las búsquedas como totales anónimos.
+
+**«Quiero que me contacte»** (ficha del médico, paciente con sesión):
+- Hace falta el correo verificado y que el plan del médico reciba mensajes (Profesional Plus o superior). Un pedido abierto por médico y como máximo cinco nuevos por día.
+- El paciente elige qué compartir: su nombre, un teléfono para llamada o WhatsApp, el correo de su cuenta, un horario preferido y un mensaje. Acepta un texto versionado (`CONTACT_REQUEST_CONSENT_VERSION` 1.0) que nombra al médico y el plazo.
+- El médico lo ve en «Mensajes», con la indicación de si la identidad del paciente está verificada. **El aviso y el correo que recibe no llevan los datos del paciente.** Lo marca como contactado o cerrado y el paciente recibe el aviso.
+- El paciente sigue sus pedidos en «Pedidos de contacto» (`/paciente/contactos`) y los **retira cuando quiera: los datos compartidos se borran al instante**. A los **30 días** el pedido vence y sus datos se borran (tarea cada hora); también al eliminar la cuenta. Queda solo el registro de que existió, con su fecha y su estado. Cada paso queda en la auditoría.
+
+**Apariciones en búsquedas:**
+- Solo con la analítica aceptada, el directorio y las páginas de especialidad suman una aparición por médico, por día de Caracas y por la especialidad y el municipio filtrados (solo valores de las listas del sitio). **No se guarda lo que la persona escribe, ni quién buscó, ni su IP o navegador.**
+- El médico las ve en «Estadísticas» desde el plan Profesional: total de los últimos 30 días, por especialidad y por municipio. No cambian el orden del directorio.
+- La Política de cookies (versión 1.2) y el banner nombran las apariciones en búsquedas dentro de la analítica.
+
+**Borrador legal** para el abogado en [`docs/legal/borrador-contacto-y-busquedas.md`](docs/legal/borrador-contacto-y-busquedas.md): párrafos de Privacidad, Condiciones para profesionales y Retención. Conviene sumarlos a la misma subida de versión que las valoraciones. Si las apariciones se borran después de un tiempo queda «[A DEFINIR]».
+
+**Datos:** migración `20261007120000_contact_requests_search_appearances` (solo agrega): columnas del pedido en `ContactMessage` (paciente, estado, canal, horario, identidad verificada, versión del consentimiento, vencimiento), el enum `ContactRequestStatus` y la tabla `SearchAppearance`, una fila por médico, día y filtro, con restricciones de formato.
+
+**Pruebas:** 136 pruebas unitarias en verde. De punta a punta (`e2e/tests/contacto.spec.ts`, 3 pruebas): el paciente elige qué compartir, el médico lo ve solo en el pedido (el aviso no lleva el teléfono ni el mensaje), lo marca como contactado y el paciente lo retira con sus datos borrados; reglas (correo verificado, plan, uno abierto por médico, datos coherentes, 30 días); apariciones solo con la analítica aceptada, sin el texto buscado, y en las estadísticas del médico. Tipos y ESLint del frontend sin errores.
+
+**CI de GitHub:** «CI» (que incluye la suite completa de punta a punta), «Seguridad» y «Disponibilidad» en verde para `976f243`.
+
+**Despliegue en el VPS** (`deploy-act45.log`): respaldo previo `gmm-db-20261006T002527Z-pre-deploy.dump.gpg`; **migración aplicada**; prueba de humo **25/25**; «Versión publicada: 976f243bd1d2 (API y web)». En producción existen `SearchAppearance` (vacía) y las columnas nuevas de `ContactMessage`; `/contact/requests/me` pide sesión (401), `/paciente/contactos` responde y la Política de cookies muestra la versión 1.2 con las apariciones en búsquedas. Sigue el aviso conocido de la imagen de MinIO (401 en `quay.io`, ver Próximas actividades): el despliegue usa la imagen que ya está en el servidor.
+
+**Archivos destacados:**
+- [`backend/src/contact/contact-requests.service.ts`](backend/src/contact/contact-requests.service.ts)
+- [`backend/src/analytics/analytics.service.ts`](backend/src/analytics/analytics.service.ts)
+- [`frontend/src/components/RequestContactForm.tsx`](frontend/src/components/RequestContactForm.tsx)
+- [`frontend/src/app/paciente/contactos/page.tsx`](frontend/src/app/paciente/contactos/page.tsx)
+- [`frontend/src/app/dashboard/mensajes/page.tsx`](frontend/src/app/dashboard/mensajes/page.tsx)
+- [`frontend/src/components/SearchAppearanceTracker.tsx`](frontend/src/components/SearchAppearanceTracker.tsx)
+- [`docs/legal/borrador-contacto-y-busquedas.md`](docs/legal/borrador-contacto-y-busquedas.md)
+- [`e2e/tests/contacto.spec.ts`](e2e/tests/contacto.spec.ts)
+
+</details>
+
+<p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
+
 <a id="registro-por-area"></a>
 
 ## 🧩 Registro por área
@@ -2041,10 +2088,10 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | 🏥 Organizaciones | Farmacias, laboratorios, clínicas, ubicaciones, autogestión, equipo con invitaciones y roles internos, médicos asociados y plan propio, sección «Próximamente» hasta cerrar alianzas | [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0015](#act-0015) · [ACT-0019](#act-0019) · [ACT-0025](#act-0025) |
 | 💳 Monetización | Planes, Pago Móvil, aprobación, tasa BCV, evidencia de tasa por cuota, catálogo de bancos, referencia única atómica, Plus/Premium/Agencia solo con el 100% de documentos, pagos externos registrados por la administración con renovación anticipada, precios de septiembre de 2026 (3,99 / 5,99 / 10,99 / 69,99 USD), planes Perfil Básico, Profesional, Plus, Premium y Marca Médica (servicio de contenido: 2 videos cada mes), Pago Móvil de la plataforma registrado desde Pagos y visible solo dentro del panel, y políticas de pagos y de reembolsos | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0010](#act-0010) · [ACT-0011](#act-0011) · [ACT-0015](#act-0015) · [ACT-0019](#act-0019) · [ACT-0021](#act-0021) · [ACT-0031](#act-0031) · [ACT-0032](#act-0032) · [ACT-0033](#act-0033) · [ACT-0035](#act-0035) · [ACT-0036](#act-0036) |
 | 📅 Agenda y citas | Horarios, disponibilidad, reservas, máquina de estados, anti-doble-reserva y sin solapes, zona America/Caracas (también en correos, avisos y recordatorios), calendario del médico con arrastrar y soltar, horario semanal en cuadrícula, historial de cada cita, reserva y reprogramación con calendario de mes, límites de reserva | [ACT-0007](#act-0007) · [ACT-0015](#act-0015) · [ACT-0040](#act-0040) · [ACT-0042](#act-0042) |
-| 🔒 Pacientes | Código pseudónimo, cifrado de datos de salud, consentimiento por alcance y tiempo, lecturas auditadas, registro propio, foto de identificación verificada por un admin, reserva con la ficha propia, código y QR para compartir, directorio del médico por código, bóveda de administración y noindex, registro visible desde el inicio, supresión de la cuenta conservando solo la evidencia legal, consentimiento expreso de datos de salud y mayoría de edad, descarga de los datos propios e historial de accesos, avance del registro (identidad y contacto, sin datos de salud) | [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0023](#act-0023) · [ACT-0027](#act-0027) · [ACT-0029](#act-0029) · [ACT-0031](#act-0031) · [ACT-0033](#act-0033) · [ACT-0043](#act-0043) |
+| 🔒 Pacientes | Código pseudónimo, cifrado de datos de salud, consentimiento por alcance y tiempo, lecturas auditadas, registro propio, foto de identificación verificada por un admin, reserva con la ficha propia, código y QR para compartir, directorio del médico por código, bóveda de administración y noindex, registro visible desde el inicio, supresión de la cuenta conservando solo la evidencia legal, consentimiento expreso de datos de salud y mayoría de edad, descarga de los datos propios e historial de accesos, avance del registro (identidad y contacto, sin datos de salud); «Quiero que me contacte»: el paciente elige qué compartir con un médico, lo retira cuando quiera y sus datos se borran a los 30 días | [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0023](#act-0023) · [ACT-0027](#act-0027) · [ACT-0029](#act-0029) · [ACT-0031](#act-0031) · [ACT-0033](#act-0033) · [ACT-0043](#act-0043) · [ACT-0045](#act-0045) |
 | ⭐ Valoraciones | Estrellas y comentario de pacientes con registro completo, cédula aprobada y consulta verificada; moderación previa de comentarios con filtro automático; autor anónimo por defecto; promedio desde 3; respuesta y denuncia del médico; moderación de la administración (aprobar, rechazar, retirar como evidencia, restaurar, eliminar), identidad del autor solo con la bóveda, sanciones por días que vencen solas; borrador legal para el abogado; apagadas en producción hasta la revisión legal (`REVIEWS_ENABLED`) | [ACT-0043](#act-0043) · [ACT-0044](#act-0044) |
 | 🛠️ Administración | Médicos, pagos, SEO, cookies, especialidades, planes, verificaciones, organizaciones, bancos, geografía, identidad de pacientes, cuentas (suspensión, baja, eliminación definitiva), planes pagados, video de presentación de los médicos, bandeja de solicitudes legales, Pago Móvil propio, video de muestra de Marca Médica y actividad reciente desplegable | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0031](#act-0031) · [ACT-0032](#act-0032) · [ACT-0033](#act-0033) · [ACT-0034](#act-0034) · [ACT-0035](#act-0035) · [ACT-0036](#act-0036) |
-| 📊 Observabilidad | Auditoría, analítica con consentimiento y sin IP, estadísticas del médico según su plan, centro de notificaciones (campana, página en cada panel, correos opcionales y avisos a la administración), salud, pruebas, CI, escaneo de imágenes y Dependabot, ESLint del frontend en CI, versión publicada verificable, estado de las dependencias (`/health/ready`), alertas por Telegram/correo/ntfy/webhook, interruptor de hombre muerto y monitor externo de GitHub, pruebas de punta a punta del sitio (Playwright) en escritorio y teléfono | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0036](#act-0036) · [ACT-0037](#act-0037) · [ACT-0038](#act-0038) · [ACT-0039](#act-0039) · [ACT-0041](#act-0041) |
+| 📊 Observabilidad | Auditoría, analítica con consentimiento y sin IP, estadísticas del médico según su plan, centro de notificaciones (campana, página en cada panel, correos opcionales y avisos a la administración), salud, pruebas, CI, escaneo de imágenes y Dependabot, ESLint del frontend en CI, versión publicada verificable, estado de las dependencias (`/health/ready`), alertas por Telegram/correo/ntfy/webhook, interruptor de hombre muerto y monitor externo de GitHub, pruebas de punta a punta del sitio (Playwright) en escritorio y teléfono, apariciones en búsquedas como totales anónimos (solo con la analítica aceptada y sin el texto buscado) | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0036](#act-0036) · [ACT-0037](#act-0037) · [ACT-0038](#act-0038) · [ACT-0039](#act-0039) · [ACT-0041](#act-0041) · [ACT-0045](#act-0045) |
 | 🎨 Experiencia | Directorios, dashboard, componentes UI, motion, legal, formularios legibles y utilizables con teclado, sección de pacientes en el inicio, tipografía Montserrat + Open Sans, suiches, botones y foco de campos corregidos, centro legal con 21 documentos versionados y avisos breves (descargo médico, verificación, QR), portada con cifras reales y directorio que explica cuando está vacío, accesibilidad revisada con axe (contraste, etiquetas, avisos anunciados, teclado), «Salir» que vuelve a la portada y tarjeta para compartir del sitio | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0013](#act-0013) · [ACT-0014](#act-0014) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0017](#act-0017) · [ACT-0019](#act-0019) · [ACT-0022](#act-0022) · [ACT-0023](#act-0023) · [ACT-0025](#act-0025) · [ACT-0026](#act-0026) · [ACT-0028](#act-0028) · [ACT-0033](#act-0033) · [ACT-0037](#act-0037) · [ACT-0039](#act-0039) |
 | 🚢 Operación | Variables de entorno, Compose, almacenamiento, correo, proxy, imágenes mínimas y antivirus, copia de respaldos fuera del servidor, restauración desde la copia externa, custodia de claves, simulacro de desastre e informe GO / NO-GO ampliado | [ACT-0001](#act-0001) · [ACT-0002](#act-0002) · [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0008](#act-0008) · [ACT-0009](#act-0009) · [ACT-0011](#act-0011) · [ACT-0016](#act-0016) · [ACT-0017](#act-0017) · [ACT-0018](#act-0018) · [ACT-0019](#act-0019) · [ACT-0024](#act-0024) · [ACT-0027](#act-0027) · [ACT-0037](#act-0037) · [ACT-0038](#act-0038) |
 
@@ -2143,6 +2190,7 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | IMP-085 | Calendario del médico (día, semana, mes y lista) con arrastrar y soltar y alternativa «Mover», horario semanal en cuadrícula, historial de citas con su línea de tiempo, reserva y reprogramación con calendario de mes, límites de reserva en el servidor y restricción contra citas solapadas | 🟢 Completado | [`backend/src/appointments/appointments.service.ts`](backend/src/appointments/appointments.service.ts), [`frontend/src/components/agenda/AgendaCalendar.tsx`](frontend/src/components/agenda/AgendaCalendar.tsx) |
 | IMP-086 | Valoraciones de pacientes: requisitos verificados por la API (registro al 100 %, cédula aprobada, consulta verificada), publicación sin comentario y moderación previa con filtro, promedio desde 3, paneles del paciente y del médico, permiso `MODERATE_REVIEWS`, apagadas con `REVIEWS_ENABLED` | 🟢 Completado | [`backend/src/reviews/reviews.service.ts`](backend/src/reviews/reviews.service.ts), [`frontend/src/app/paciente/valoraciones/page.tsx`](frontend/src/app/paciente/valoraciones/page.tsx) |
 | IMP-087 | Moderación de valoraciones (`/admin/valoraciones`): cola sin identidad, decisiones con motivo y aviso, evidencia al retirar, borrado con «ELIMINAR», respuestas y denuncias, identidad del autor con la bóveda; sanciones por días (opiniones o cuenta) que vencen solas sin tocar citas ni autorizaciones; categoría de reclamos «Valoración abusiva o falsa»; borrador legal | 🟢 Completado | [`backend/src/reviews/review-moderation.service.ts`](backend/src/reviews/review-moderation.service.ts), [`backend/src/reviews/sanctions.service.ts`](backend/src/reviews/sanctions.service.ts), [`docs/legal/borrador-valoraciones.md`](docs/legal/borrador-valoraciones.md) |
+| IMP-088 | «Quiero que me contacte» (el paciente elige qué compartir, el médico lo ve solo dentro del pedido, retiro y vencimiento a 30 días con borrado de los datos) y apariciones en búsquedas anónimas con la analítica aceptada, en las estadísticas del médico; borrador legal | 🟢 Completado | [`backend/src/contact/contact-requests.service.ts`](backend/src/contact/contact-requests.service.ts), [`backend/src/analytics/analytics.service.ts`](backend/src/analytics/analytics.service.ts), [`docs/legal/borrador-contacto-y-busquedas.md`](docs/legal/borrador-contacto-y-busquedas.md) |
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
@@ -2204,11 +2252,12 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | 🟡 Baja | Revisión manual en Firefox y Safari (iPhone) y en teléfonos reales; la suite ya los cubre a pedido con `E2E_TODOS_LOS_NAVEGADORES=1` | 🔵 Planificado | Ver [`e2e/README.md`](e2e/README.md) |
 | 🟠 Media | Aprobar la limpieza de disco del proyecto: 32,6 GB de caché de compilación y 11 imágenes sin uso (`GMM_PRUNE_AFTER_DEPLOY=true` en `deploy.sh`); no toca los otros proyectos ni la imagen de *rollback* | 🔴 Pendiente del titular | Disco por debajo del 50 % y limpieza en cada despliegue. Ver [ACT-0039](#act-0039) |
 | 🔴 Alta | Pendientes del titular para lanzar, en orden: datos del operador, SMTP real (y con él MFA), custodia de claves, copia externa, alertas, médicos reales publicados, revisión legal, Search Console, Pago Móvil y video de muestra, código nuevo de la bóveda | 🔴 Pendiente del titular | `deploy.sh --informe` en verde y la lista de [`docs/ROADMAP.md`](docs/ROADMAP.md) completa |
-| 🔴 Alta | Plan de agenda, notificaciones y valoraciones aprobado por el titular (bloque 5): «Quiero que me contacte» y apariciones en búsquedas | 🔵 En curso | Bloques 0 a 4 hechos en [ACT-0040](#act-0040) a [ACT-0044](#act-0044). Las valoraciones se encienden en producción solo con sus textos legales revisados por el abogado |
+| 🟢 Continua | ~~Plan de agenda, notificaciones y valoraciones aprobado por el titular (bloques 0 a 5)~~ — hecho | 🟢 Completado | Ver [ACT-0040](#act-0040) a [ACT-0045](#act-0045). Las valoraciones se encienden en producción solo con sus textos legales revisados por el abogado |
 | 🟡 Baja | Decidir cuántos días se guardan los avisos ya leídos de la campana, declararlo en la política de retención y cargarlo en `NOTIFICATION_RETENTION_DAYS` (hoy no se borran) | 🔴 Pendiente del titular | Ver [ACT-0041](#act-0041) |
 | 🟠 Media | MinIO: quay.io ya no entrega la imagen fijada en `docker-compose.prod.yml` (responde 401 desde el despliegue de ACT-0041). El contenedor funciona con su imagen local, pero si se pierde (un borrado de imágenes, un VPS nuevo) no se puede volver a descargar: elegir otra imagen o un registro propio y probar la migración de los datos | 🔴 Pendiente | Visto en `deploy-act41b.log`, `deploy-act42.log` y `deploy-act43.log` |
 | 🟡 Baja | Excepción fechada de `braces` (GHSA-vfj7-8cjw-p6xm, Tailwind 3, solo al compilar) hasta el 2026-12-31: retirarla cuando salga una versión corregida o al migrar a Tailwind 4 | 🔵 Planificado | Ver [ACT-0043](#act-0043) y `security/audit-exceptions.json` |
 | 🔴 Alta | Encender las valoraciones: llevar [`docs/legal/borrador-valoraciones.md`](docs/legal/borrador-valoraciones.md) al abogado, fijar el plazo de evidencia (`REVIEW_EVIDENCE_RETENTION_DAYS`), publicar los textos junto con los datos del titular (`DATA_CONTROLLER`) en una sola subida de versión y poner `REVIEWS_ENABLED=true` en `.env.prod` | 🔴 Pendiente del titular | Ver [ACT-0043](#act-0043) y [ACT-0044](#act-0044) |
+| 🟠 Media | Llevar [`docs/legal/borrador-contacto-y-busquedas.md`](docs/legal/borrador-contacto-y-busquedas.md) al abogado junto con el de valoraciones y decidir si las apariciones en búsquedas se borran después de un tiempo | 🔴 Pendiente del titular | Ver [ACT-0045](#act-0045) |
 | 🟢 Continua | Registrar cada modificación nueva con fecha, hora, responsable y evidencia | 🟢 Activo | No existen cambios relevantes sin entrada en esta bitácora |
 | 🟢 Continua | Confirmar en el repositorio remoto cada cambio cerrado localmente | 🟢 Activo | `git status` limpio y `origin/main` sincronizado al cierre de cada sesión |
 
@@ -2297,6 +2346,7 @@ Para cada cambio futuro, añadir una entrada en la línea de tiempo y actualizar
 | `2026-10-05 07:15:08 -04:00` | Incorporación de ACT-0042 (calendario con arrastrar y soltar, horario semanal en cuadrícula, historial de citas, reserva por mes, límites de reserva y restricción contra solapes) con su despliegue | 🟢 Completado |
 | `2026-10-05 08:08:03 -04:00` | Incorporación de ACT-0043 (valoraciones de pacientes con requisitos, moderación previa y paneles; apagadas en producción) con su despliegue y la excepción fechada de `braces`; dos pendientes nuevos (imagen de MinIO y excepción de `braces`) | 🟢 Completado |
 | `2026-10-05 08:33:33 -04:00` | Incorporación de ACT-0044 (moderación de valoraciones, sanciones por días, categoría de reclamos y borrador legal; valoraciones aún apagadas) con su despliegue; un pendiente nuevo del titular (encender las valoraciones) | 🟢 Completado |
+| `2026-10-05 20:33:18 -04:00` | Incorporación de ACT-0045 («Quiero que me contacte» y apariciones en búsquedas; cierre del plan de agenda, notificaciones y valoraciones) con su despliegue; un pendiente nuevo del titular (borrador legal de contacto y búsquedas) | 🟢 Completado |
 
 ---
 
