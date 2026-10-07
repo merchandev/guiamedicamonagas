@@ -479,6 +479,29 @@ if (process.env.PRESCRIPTIONS_ENABLED !== 'true') {
   check('apagados el paciente no ve «Mis récipes» → 404', (await call('GET', '/prescriptions/me', null, patientSession)).status === 404);
 }
 
+// 21. Sesión de la app móvil: el refresh token va en el cuerpo, nunca en cookie, y solo sin cabecera Origin.
+// Al final: reutilizar un token revoca todas las sesiones de la cuenta.
+const mobileApp = { 'x-client': 'mobile-app' };
+const setsRefreshCookie = (res) => /gmm_refresh_token=[^;]/.test(res.headers.get('set-cookie') ?? '');
+const patientLogin = { email: `p-${run}@t.local`, password: 'Nueva12345x' };
+r = await call('POST', '/auth/login', patientLogin, null, mobileApp);
+const mobileRefresh = r.data?.refreshToken;
+check('la app recibe el refresh token en el cuerpo y no una cookie', r.status === 200 && !!r.data?.accessToken && typeof mobileRefresh === 'string' && !setsRefreshCookie(r), String(r.status));
+r = await call('POST', '/auth/login', patientLogin, null, { ...mobileApp, origin: process.env.FRONTEND_URL ?? 'http://localhost:3000' });
+check('con cabecera Origin (un navegador) el token sigue solo en la cookie', r.status === 200 && !r.data?.refreshToken && setsRefreshCookie(r));
+r = await call('POST', '/auth/refresh', { refreshToken: mobileRefresh });
+check('sin la cabecera de la app, un token en el cuerpo no renueva nada', r.status === 200 && r.data?.accessToken === null);
+r = await call('POST', '/auth/refresh', { refreshToken: mobileRefresh }, null, mobileApp);
+const rotatedRefresh = r.data?.refreshToken;
+check('la app renueva con el token del cuerpo y recibe otro', r.status === 200 && !!r.data?.accessToken && !!rotatedRefresh && rotatedRefresh !== mobileRefresh && !setsRefreshCookie(r), String(r.status));
+r = await call('POST', '/auth/change-password', { currentPassword: 'Nueva12345x', newPassword: 'Movil12345x' }, r.data?.accessToken, mobileApp);
+check('el cambio de contraseña desde la app entrega la nueva sesión en el cuerpo', r.status === 200 && !!r.data?.refreshToken && !setsRefreshCookie(r), String(r.status));
+const afterChange = r.data?.refreshToken;
+r = await call('POST', '/auth/logout', { refreshToken: afterChange }, null, mobileApp);
+check('cerrar sesión desde la app revoca su token', r.status === 200 && (await call('POST', '/auth/refresh', { refreshToken: afterChange }, null, mobileApp)).status === 401);
+r = await call('POST', '/auth/refresh', { refreshToken: rotatedRefresh }, null, mobileApp);
+check('un token ya usado no sirve', r.status === 401, String(r.status));
+
 console.log(failures === 0 ? '\nTODO OK' : `\n${failures} FALLO(S)`);
 await db.end();
 process.exit(failures ? 1 : 0);

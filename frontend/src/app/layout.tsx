@@ -35,11 +35,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="es" className={`${display.variable} ${sans.variable}`}>
       <body className="flex min-h-screen flex-col font-sans">
         <AuthProvider>
-          <TopBar />
-          <Header />
+          {/* La app móvil abre los textos legales dentro de la app y marca la página
+              (html[data-embed="app"]): sin encabezado, pie ni aviso de cookies. */}
+          <div data-site-chrome className="contents">
+            <TopBar />
+            <Header />
+          </div>
           <main className="flex-1">{children}</main>
-          <Footer />
-          <CookieConsent />
+          <div data-site-chrome className="contents">
+            <Footer />
+            <CookieConsent />
+          </div>
           <LegalAcceptanceGate />
         </AuthProvider>
       </body>

@@ -129,3 +129,8 @@
   border-color: #0f6e5c;
   color: #ffffff;
 }
+
+/* Textos legales abiertos dentro de la app móvil (ver app/layout.tsx): solo el contenido. */
+html[data-embed="app"] [data-site-chrome] {
+  display: none !important;
+}

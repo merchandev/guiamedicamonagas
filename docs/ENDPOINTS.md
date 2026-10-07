@@ -13,6 +13,7 @@ no solo el rol.
 * `POST /auth/login` — inicio de sesión; con `ADMIN_MFA_ENABLED` un administrador recibe `{ mfaRequired, challengeToken }` (público).
 * `POST /auth/mfa/verify` — código de 6 dígitos del segundo factor (público).
 * `POST /auth/refresh` · `POST /auth/logout` — sesión por cookie httpOnly; un refresh token reutilizado revoca todas las sesiones.
+* **App móvil:** con la cabecera `X-Client: mobile-app` y sin cabecera `Origin`, `register`, `login`, `mfa/verify`, `refresh` y `change-password` devuelven `refreshToken` y `refreshTokenExpiresAt` en el cuerpo y no ponen cookie. `refresh` y `logout` lo reciben en el cuerpo (`{ refreshToken }`). La app lo guarda en el almacén seguro del teléfono. Un navegador siempre manda `Origin` en un POST, así que la web sigue solo con la cookie.
 * `GET /auth/me` — usuario, permisos, organizaciones y si debe re-aceptar los textos legales.
 * `POST /auth/accept-legal` — acepta las versiones vigentes de Términos y Privacidad.
 * `POST /auth/change-password` — cambia la contraseña, cierra las demás sesiones y devuelve un access token nuevo para este dispositivo.
