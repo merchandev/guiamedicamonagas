@@ -3,7 +3,7 @@
 > Bitácora central de cambios, implementaciones, decisiones técnicas y tareas de evolución del sistema.
 >
 > **Repositorio:** [`merchandev/guiamedicamonagas`](https://github.com/merchandev/guiamedicamonagas) · **Rama:** `main`<br>
-> **Última actualización de esta bitácora:** `2026-10-06 20:51:30 -04:00` · **Estado:** 🟢 Registro activo
+> **Última actualización de esta bitácora:** `2026-10-06 22:40:01 -04:00` · **Estado:** 🟢 Registro activo
 
 ![Estado](https://img.shields.io/badge/estado-registro%20activo-16a34a?style=flat-square)
 ![Rama](https://img.shields.io/badge/rama-main-2563eb?style=flat-square)
@@ -154,8 +154,9 @@ flowchart LR
     AW[🔄 2026-10-06\n14:51:05\nACT-0049 · Tiempo real\nweb y app]
     AX[📴 2026-10-06\n16:04:50\nACT-0050 · Sin conexión\napp móvil]
     AY[🩺 2026-10-06\n20:51:30\nACT-0051 · Ficha mínima\napp móvil]
+    AZ[💳 2026-10-06\n22:40:01\nACT-0052 · Sin plan gratis\nprueba de Plus]
 
-    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L --> M --> N --> O --> P --> Q --> R --> S --> T --> U --> V --> W --> X --> Y --> Z --> AA --> AB --> AC --> AD --> AE --> AF --> AG --> AH --> AI --> AJ --> AK --> AL --> AM --> AN --> AO --> AP --> AQ --> AR --> AS --> AT --> AU --> AV --> AW --> AX --> AY
+    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L --> M --> N --> O --> P --> Q --> R --> S --> T --> U --> V --> W --> X --> Y --> Z --> AA --> AB --> AC --> AD --> AE --> AF --> AG --> AH --> AI --> AJ --> AK --> AL --> AM --> AN --> AO --> AP --> AQ --> AR --> AS --> AT --> AU --> AV --> AW --> AX --> AY --> AZ
 ```
 
 ### Resumen cuantitativo
@@ -163,8 +164,8 @@ flowchart LR
 | Indicador | Resultado |
 |---|---:|
 | Actividades históricas importadas desde Git | `3` |
-| Actividades documentales añadidas con esta bitácora | `48` |
-| Actividades registradas en total | `51` |
+| Actividades documentales añadidas con esta bitácora | `49` |
+| Actividades registradas en total | `52` |
 | Rama de referencia | `main` |
 | Commit base consultado | [`81b1091`](https://github.com/merchandev/guiamedicamonagas/commit/81b1091) |
 | Zona horaria de control | `America/Caracas` (`-04:00`) |
@@ -2488,6 +2489,90 @@ El titular compartió una auditoría hecha con otra herramienta sobre lo que fal
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
+<a id="act-0052"></a>
+
+### 💳 ACT-0052 · Sin plan gratis: prueba de 14 días del plan Plus y aviso para pagar al terminar
+
+<details>
+<summary><strong>2026-10-06 22:40:01 -04:00</strong> · <code>10d65f7</code> · 🟢 Completado</summary>
+
+**Responsable:** `Claude Opus 5.5` · **Tipo:** `funcionalidad | planes | pagos | legal` · **Commits:** [`10d65f7`](https://github.com/merchandev/guiamedicamonagas/commit/10d65f7b0f2c17e69c19c8ba25e42c84cc85305d)
+
+El titular cambió la estrategia de ventas: eliminar el plan gratis (Perfil Básico) y dejar solo una prueba gratis de 14 días del plan Plus. Al terminar, se le avisa al médico que debe pagar para seguir con el servicio. Además decidió:
+- al vencer sin pago, el perfil se oculta hasta que pague;
+- los 14 días cuentan desde que el perfil se publica;
+- la prueba exige el 100 % de los documentos aprobados, como el plan Plus;
+- los avisos van 3 días antes, 1 día antes y al vencer.
+
+**Cómo funciona ahora:**
+- **Sin plan no se aparece:** un médico se muestra en el directorio solo con un plan activo, pagado o la prueba. Con el plan Profesional basta el 60 % de los documentos, la biografía y la foto.
+- **La prueba:** 14 días del plan Plus, una sola vez por médico.
+  - Empieza sola la primera vez que el perfil, sin plan pagado, reúne el 100 % de los documentos aprobados, la biografía y la foto. En ese momento se publica con el sello «Verificado».
+  - Quien ya tuvo un plan pagado no la tiene.
+- **Avisos:** en la campana y por correo, con enlace a «Suscripción y pagos»:
+  - cuando empieza, con la fecha de fin;
+  - 3 días antes y en el último día;
+  - al terminar.
+- **Al terminar sin pagar:** el perfil sale del directorio y de las búsquedas y no recibe citas nuevas.
+  - Conserva sus datos, sus documentos y las citas ya reservadas, que el médico puede ver, confirmar, atender o cancelar.
+  - Vuelve a aparecer cuando se valida su pago.
+- **Pagar durante la prueba:** el plan rige desde que se valida el pago, y los días de prueba que quedaban se suman al periodo pagado.
+- **Plan pagado vencido:** el médico queda sin plan y deja de aparecer, con aviso y correo.
+- **Organizaciones:** siguen como antes, con su perfil básico, porque el pedido fue para médicos.
+
+**Arreglos encontrados en el camino:**
+- Un médico con el plan vencido no podía volver a pagar: la API respondía «Ya tienes una suscripción en curso» y el panel no le mostraba los planes. Ahora puede renovar.
+- Al perder el plan, la agenda se bloqueaba entera, incluidas las citas ya reservadas. Ahora esas citas se ven y se gestionan; solo las citas nuevas necesitan plan.
+- Aprobar un pago no volvía a calcular la publicación del perfil, porque antes no dependía del plan. Ahora sí.
+
+**En la web:**
+- **`/planes`:** sin el plan gratis, con la prueba destacada, tres planes (Profesional, Plus y Premium) y Marca Médica. La comparación interactiva ya no tiene «Perfil Básico».
+- **Panel del médico:** una tarjeta del plan en el inicio y en «Suscripción y pagos» muestra:
+  - los días de prueba que quedan;
+  - o el plan pagado y su vencimiento;
+  - o qué le falta para aparecer.
+
+  La agenda explica qué se puede hacer sin plan.
+- **Registro:** dice que la cuenta de paciente y la verificación de los médicos son gratuitas, y que los médicos publican su perfil con 14 días gratis del plan Plus.
+
+**Textos legales** (describen lo que hace el sistema; la revisión del abogado sigue pendiente, como para el resto):
+- **Pagos y suscripciones 1.2:** sección nueva «Prueba gratuita del plan Plus»; qué es gratuito; vencimiento y cambio de plan.
+- **Cancelación y reembolsos 1.1.**
+- **Verificación de profesionales 1.1:** tabla de publicación y colores de la insignia.
+- **Publicidad médica 1.1:** colores de la insignia.
+- **Condiciones para profesionales 1.1:** el médico acepta que su perfil solo se muestre con un plan activo. Los médicos la vuelven a aceptar.
+- Cada texto cambiado muestra su propia fecha de vigencia (6 de octubre de 2026); los demás siguen con la general.
+- Los Términos generales no cambiaron, porque remiten a Pagos y suscripciones: los pacientes no tienen que aceptar nada nuevo.
+
+**Datos:** migración `20261012120000_plus_trial`, con el estado de la prueba en el perfil y el Perfil Básico desactivado. Los perfiles que ya estaban publicados sin plan empiezan la prueba si están verificados; si no, dejan de mostrarse. En producción no había ninguno: los 2 médicos registrados siguen sin publicar.
+
+**Pruebas:**
+- **Unitarias del servidor:** 181 en verde y 5 omitidas, como antes. Hay 23 nuevas: reglas de publicación con plan, inicio de la prueba, avisos, vencimiento, pago durante la prueba y estado del plan.
+- **De punta a punta, en local:**
+  - API: 156 de 156, incluidos el inicio y el vencimiento de la prueba, la agenda sin plan y la renovación con pago;
+  - cuentas de administración: 108 de 108;
+  - tiempo real: 23 de 23;
+  - la web: 87 de 87, con 4 omitidas.
+- **Navegador**, con una médica de ensayo local: el panel muestra «Te quedan 14 días» y, vencida la prueba, «Sin plan activo» con el enlace para pagar. La agenda sin plan muestra sus citas con el aviso.
+- **GitHub:** CI y Seguridad en verde.
+
+**Producción:** desplegado el 2026-10-06 a las 10:33 p. m. de Caracas (log `deploy-act52.log`): respaldo previo `gmm-db-20261007T023257Z-pre-deploy.dump.gpg`, **migración `20261012120000_plus_trial` aplicada**, prueba de humo **25/25** y «Versión publicada: 10d65f7b0f2c (API y web)». En producción existe el tipo `TrialNotice`, el Perfil Básico quedó desactivado y la API ya no lo ofrece, y no hay médicos publicados sin plan (los 2 registrados siguen sin publicar y sin prueba). `/planes` muestra la prueba y no menciona el Perfil Básico; Pagos y suscripciones está en 1.2 y las Condiciones para profesionales en 1.1. Los demás proyectos del VPS siguieron igual. Los textos cambiados salieron con «vigente desde el 7 de octubre», pero el cambio rige desde ese despliegue del 6: la fecha se corrigió a «6 de octubre» junto con este registro y se volvió a desplegar.
+
+**Pendiente del titular:**
+- Revisar los precios y los textos de cada plan en `/admin/planes`, porque la página de planes los muestra tal cual.
+- Los correos de los avisos dependen del SMTP real, pendiente antes del 2026-10-24 (hoy producción usa el buzón interno).
+- La revisión del abogado de los textos cambiados.
+
+**Archivos destacados:**
+- `backend/src/professionals/publication-rules.ts`
+- `backend/src/subscriptions/plan-trial.ts`, `plan-trials.service.ts` y `plan-trial-notices.ts`
+- `backend/prisma/migrations/20261012120000_plus_trial`
+- `frontend/src/components/PlanStatusCard.tsx`, `frontend/src/app/planes/page.tsx` y `frontend/src/app/pagos-y-suscripciones/page.tsx`
+
+</details>
+
+<p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
+
 <a id="registro-por-area"></a>
 
 ## 🧩 Registro por área
@@ -2500,7 +2585,7 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | 🔐 Auth y seguridad | JWT, refresh cookie, roles, correo, recuperación, throttling, Argon2id, permisos granulares, reuso de tokens, `tokenVersion`, cerrar todas las sesiones, MFA obligatorio en producción, subidas seguras, antivirus obligatorio y rotación de claves, bóveda de registros de pacientes con código de seguridad, aceptaciones legales con evidencia de solo inserción, política de uso aceptable y reporte de vulnerabilidades, CSP y pruebas de seguridad automáticas (política de rutas, IDOR/BOLA, tokens, fuerza bruta, XSS, ZAP) | [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0012](#act-0012) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0019](#act-0019) · [ACT-0024](#act-0024) · [ACT-0027](#act-0027) · [ACT-0033](#act-0033) · [ACT-0039](#act-0039) |
 | 👨‍⚕️ Profesionales | Perfiles, ubicaciones, documentos, verificación legal (sin solvencia deontológica), publicación con el 60% aprobado + biografía + foto, barra de progreso del registro, redes sociales, badges, código y QR del médico, SEO automático, tarjeta para compartir, video de presentación de YouTube (plan Agencia), condiciones para profesionales y políticas de verificación y de publicidad médica | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0020](#act-0020) · [ACT-0021](#act-0021) · [ACT-0028](#act-0028) · [ACT-0029](#act-0029) · [ACT-0030](#act-0030) · [ACT-0032](#act-0032) · [ACT-0033](#act-0033) |
 | 🏥 Organizaciones | Farmacias, laboratorios, clínicas, ubicaciones, autogestión, equipo con invitaciones y roles internos, médicos asociados y plan propio, sección «Próximamente» hasta cerrar alianzas | [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0015](#act-0015) · [ACT-0019](#act-0019) · [ACT-0025](#act-0025) |
-| 💳 Monetización | Planes, Pago Móvil, aprobación, tasa BCV, evidencia de tasa por cuota, catálogo de bancos, referencia única atómica, Plus/Premium/Agencia solo con el 100% de documentos, pagos externos registrados por la administración con renovación anticipada, precios de septiembre de 2026 (3,99 / 5,99 / 10,99 / 69,99 USD), planes Perfil Básico, Profesional, Plus, Premium y Marca Médica (servicio de contenido: 2 videos cada mes), Pago Móvil de la plataforma registrado desde Pagos y visible solo dentro del panel, y políticas de pagos y de reembolsos | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0010](#act-0010) · [ACT-0011](#act-0011) · [ACT-0015](#act-0015) · [ACT-0019](#act-0019) · [ACT-0021](#act-0021) · [ACT-0031](#act-0031) · [ACT-0032](#act-0032) · [ACT-0033](#act-0033) · [ACT-0035](#act-0035) · [ACT-0036](#act-0036) |
+| 💳 Monetización | Planes, Pago Móvil, aprobación, tasa BCV, evidencia de tasa por cuota, catálogo de bancos, referencia única atómica, Plus/Premium/Agencia solo con el 100% de documentos, pagos externos registrados por la administración con renovación anticipada, precios de septiembre de 2026 (3,99 / 5,99 / 10,99 / 69,99 USD), planes Perfil Básico, Profesional, Plus, Premium y Marca Médica (servicio de contenido: 2 videos cada mes), Pago Móvil de la plataforma registrado desde Pagos y visible solo dentro del panel, y políticas de pagos y de reembolsos; sin plan gratis: prueba de 14 días del plan Plus al publicarse con el 100 %, avisos antes y al vencer, perfil oculto sin plan y renovación tras vencer | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0010](#act-0010) · [ACT-0011](#act-0011) · [ACT-0015](#act-0015) · [ACT-0019](#act-0019) · [ACT-0021](#act-0021) · [ACT-0031](#act-0031) · [ACT-0032](#act-0032) · [ACT-0033](#act-0033) · [ACT-0035](#act-0035) · [ACT-0036](#act-0036) · [ACT-0052](#act-0052) |
 | 📅 Agenda y citas | Horarios, disponibilidad, reservas, máquina de estados, anti-doble-reserva y sin solapes, zona America/Caracas (también en correos, avisos y recordatorios), calendario del médico con arrastrar y soltar, horario semanal en cuadrícula, historial de cada cita, reserva y reprogramación con calendario de mes, límites de reserva | [ACT-0007](#act-0007) · [ACT-0015](#act-0015) · [ACT-0040](#act-0040) · [ACT-0042](#act-0042) |
 | 🔒 Pacientes | Código pseudónimo, cifrado de datos de salud, consentimiento por alcance y tiempo, lecturas auditadas, registro propio, foto de identificación verificada por un admin, reserva con la ficha propia, código y QR para compartir, directorio del médico por código, bóveda de administración y noindex, registro visible desde el inicio, supresión de la cuenta conservando solo la evidencia legal, consentimiento expreso de datos de salud y mayoría de edad, descarga de los datos propios e historial de accesos, avance del registro (identidad y contacto, sin datos de salud); «Quiero que me contacte»: el paciente elige qué compartir con un médico, lo retira cuando quiera y sus datos se borran a los 30 días; la app móvil recibe y guarda solo nombre, código, teléfono y municipio de la ficha, sin datos de salud ni de identidad | [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0023](#act-0023) · [ACT-0027](#act-0027) · [ACT-0029](#act-0029) · [ACT-0031](#act-0031) · [ACT-0033](#act-0033) · [ACT-0043](#act-0043) · [ACT-0045](#act-0045) · [ACT-0051](#act-0051) |
 | ⭐ Valoraciones | Estrellas y comentario de pacientes con registro completo, cédula aprobada y consulta verificada; moderación previa de comentarios con filtro automático; autor anónimo por defecto; promedio desde 3; respuesta y denuncia del médico; moderación de la administración (aprobar, rechazar, retirar como evidencia, restaurar, eliminar), identidad del autor solo con la bóveda, sanciones por días que vencen solas; borrador legal para el abogado; apagadas en producción hasta la revisión legal (`REVIEWS_ENABLED`) | [ACT-0043](#act-0043) · [ACT-0044](#act-0044) |
@@ -2613,6 +2698,7 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | IMP-093 | App móvil revisada contra la API, con formato legible, conectada al canal en tiempo real y en su propio repositorio | 🟢 Completado | [GUIAMEDICA_APP](https://github.com/merchandev/GUIAMEDICA_APP) |
 | IMP-094 | App móvil sin conexión: copia cifrada de cada pantalla en el teléfono, cola de cambios en orden con «No enviar», detección de la red y envío automático al volver la señal, con revisión de los cambios que ya estaban hechos | 🟢 Completado | [GUIAMEDICA_APP `src/offline`](https://github.com/merchandev/GUIAMEDICA_APP/tree/main/src/offline) |
 | IMP-095 | Ficha reducida del paciente para la app móvil (`/patients/me/basic`), sin datos de salud ni de identidad, y limpieza de la copia anterior del teléfono con clave nueva | 🟢 Completado | [`backend/src/patients`](backend/src/patients) · [GUIAMEDICA_APP `src/offline/store.ts`](https://github.com/merchandev/GUIAMEDICA_APP/blob/main/src/offline/store.ts) |
+| IMP-096 | Sin plan gratis: prueba de 14 días del plan Plus (una vez, al publicarse con el 100 %), avisos 3 días y 1 día antes y al vencer, perfil oculto sin plan, días de prueba sumados al pagar, renovación tras vencer y agenda de citas reservadas sin plan | 🟢 Completado | [`publication-rules.ts`](backend/src/professionals/publication-rules.ts) · [`plan-trials.service.ts`](backend/src/subscriptions/plan-trials.service.ts) · [`/planes`](frontend/src/app/planes/page.tsx) |
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
@@ -2650,8 +2736,8 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | 🟡 Baja | Fase 6 · Estadísticas avanzadas (embudo de citas, conversión, no-show) | 🔵 Planificado | Extiende `AnalyticsService` existente |
 | 🟡 Baja | Fase 7 · Compatibilidad con app Flutter (Android/iOS) | 🔵 Planificado | Variante de autenticación por token para clientes no-navegador |
 | 🔴 Alta | Cambiar el código de seguridad de la bóveda de pacientes: el actual se compartió por chat. En el servidor, `bash scripts/set-patient-vault-code.sh` (lo pide sin mostrarlo) | 🔴 Pendiente del titular | Código nuevo que solo conozca el titular; el anterior deja de abrir la bóveda |
-| 🟡 Baja | Decidir si el directorio de pacientes y el registro por código se abren al plan básico (hoy desde el plan Profesional, como la agenda) | 🔵 Planificado | Decisión del titular; es un cambio de una línea en `AGENDA_MIN_TIER` o una verificación propia |
-| 🟡 Baja | Decidir si el plan básico muestra foto y biografía en público (hoy son obligatorias para publicarse pero se ocultan en ese plan; por eso su tarjeta al compartir usa iniciales y su descripción SEO no usa la biografía) | 🔵 Planificado | Decisión del titular; `gateByTier` en `professionals.service.ts` |
+| 🟡 Baja | ~~Decidir si el directorio de pacientes y el registro por código se abren al plan básico~~: ya no hay plan básico; siguen desde el plan Profesional (también durante la prueba de Plus) | 🟢 Completado | Ver [ACT-0052](#act-0052) |
+| 🟡 Baja | ~~Decidir si el plan básico muestra foto y biografía en público~~: ya no hay plan básico; todo perfil visible tiene un plan que las muestra | 🟢 Completado | Ver [ACT-0052](#act-0052) |
 | 🟠 Media | Revisar y decidir los borradores de otra herramienta guardados en la rama local `wip/borradores-locales-2026-09-29` (sin subir). El lint en CI y el estado de las dependencias ya se hicieron aparte ([ACT-0037](#act-0037), [ACT-0038](#act-0038)); quedan reglas de producto: documentos esenciales para publicar, consentimiento del QR de 30 a 7 días, CSP estricta y bloqueo por correo sin verificar | 🔴 Bloqueado | Decisión del titular; ver [ACT-0031](#act-0031) |
 | 🟢 Continua | ~~Actualizar los textos legales para el plan Agencia~~ — hecho: la política de pagos incluye a Agencia en la regla del 100% de documentos y describe los 2 videos (para el profesional; uno puede mostrarse en la ficha). Los detalles de producción se coordinan con cada profesional | 🟢 Completado | Ver [ACT-0033](#act-0033) |
 | 🔴 Alta | Revisión de los 21 textos legales por un abogado venezolano antes del lanzamiento comercial (incluida la mención a la Ley sobre Mensajes de Datos y Firmas Electrónicas) | 🔴 Pendiente del titular | Textos aprobados; cada cambio sustancial sube la versión del documento. Ver [ACT-0033](#act-0033) |
@@ -2780,6 +2866,7 @@ Para cada cambio futuro, añadir una entrada en la línea de tiempo y actualizar
 | `2026-10-06 14:51:05 -04:00` | Incorporación de ACT-0049 (sincronización en tiempo real de la web y la app; revisión de la app y su repositorio propio GUIAMEDICA_APP; sharp 0.35.5) con su despliegue; dos pendientes nuevos (app móvil y publicación en Google Play) | 🟢 Completado |
 | `2026-10-06 16:04:50 -04:00` | Incorporación de ACT-0050 (la app móvil funciona sin conexión y se sincroniza sola al volver la señal; probada en el emulador cortando la red); pendientes de la app y de Google Play actualizados | 🟢 Completado |
 | `2026-10-06 20:51:30 -04:00` | Incorporación de ACT-0051 (la app recibe y guarda solo los datos básicos de la ficha del paciente; auditoría para Google Play comprobada y pendientes actualizados) | 🟢 Completado |
+| `2026-10-06 22:40:01 -04:00` | Incorporación de ACT-0052 (sin plan gratis: prueba de 14 días del plan Plus, avisos y perfil oculto sin plan; textos legales actualizados) y su despliegue | 🟢 Completado |
 
 ---
 
