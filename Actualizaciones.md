@@ -3,7 +3,7 @@
 > Bitácora central de cambios, implementaciones, decisiones técnicas y tareas de evolución del sistema.
 >
 > **Repositorio:** [`merchandev/guiamedicamonagas`](https://github.com/merchandev/guiamedicamonagas) · **Rama:** `main`<br>
-> **Última actualización de esta bitácora:** `2026-10-06 16:04:50 -04:00` · **Estado:** 🟢 Registro activo
+> **Última actualización de esta bitácora:** `2026-10-06 20:51:30 -04:00` · **Estado:** 🟢 Registro activo
 
 ![Estado](https://img.shields.io/badge/estado-registro%20activo-16a34a?style=flat-square)
 ![Rama](https://img.shields.io/badge/rama-main-2563eb?style=flat-square)
@@ -153,8 +153,9 @@ flowchart LR
     AV[🔽 2026-10-06\n11:03:20\nACT-0048 · Lista del\nbuscador del inicio]
     AW[🔄 2026-10-06\n14:51:05\nACT-0049 · Tiempo real\nweb y app]
     AX[📴 2026-10-06\n16:04:50\nACT-0050 · Sin conexión\napp móvil]
+    AY[🩺 2026-10-06\n20:51:30\nACT-0051 · Ficha mínima\napp móvil]
 
-    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L --> M --> N --> O --> P --> Q --> R --> S --> T --> U --> V --> W --> X --> Y --> Z --> AA --> AB --> AC --> AD --> AE --> AF --> AG --> AH --> AI --> AJ --> AK --> AL --> AM --> AN --> AO --> AP --> AQ --> AR --> AS --> AT --> AU --> AV --> AW --> AX
+    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L --> M --> N --> O --> P --> Q --> R --> S --> T --> U --> V --> W --> X --> Y --> Z --> AA --> AB --> AC --> AD --> AE --> AF --> AG --> AH --> AI --> AJ --> AK --> AL --> AM --> AN --> AO --> AP --> AQ --> AR --> AS --> AT --> AU --> AV --> AW --> AX --> AY
 ```
 
 ### Resumen cuantitativo
@@ -162,8 +163,8 @@ flowchart LR
 | Indicador | Resultado |
 |---|---:|
 | Actividades históricas importadas desde Git | `3` |
-| Actividades documentales añadidas con esta bitácora | `47` |
-| Actividades registradas en total | `50` |
+| Actividades documentales añadidas con esta bitácora | `48` |
+| Actividades registradas en total | `51` |
 | Rama de referencia | `main` |
 | Commit base consultado | [`81b1091`](https://github.com/merchandev/guiamedicamonagas/commit/81b1091) |
 | Zona horaria de control | `America/Caracas` (`-04:00`) |
@@ -2428,6 +2429,65 @@ El titular pidió que la app siga funcionando sin conexión a internet y que, al
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
+<a id="act-0051"></a>
+
+### 🩺 ACT-0051 · La app recibe y guarda solo los datos básicos de la ficha del paciente
+
+<details>
+<summary><strong>2026-10-06 20:51:30 -04:00</strong> · <code>f4230e1</code> · 🟢 Completado</summary>
+
+**Responsable:** `Claude Opus 5.5` · **Tipo:** `privacidad | app móvil | API` · **Commits:** [`f4230e1`](https://github.com/merchandev/guiamedicamonagas/commit/f4230e16d2898484b038a826eeb504dc9ed9072d) en la plataforma · [`2609d23`](https://github.com/merchandev/GUIAMEDICA_APP/commit/2609d2363eb32c100db9ece479648e44a44b8e24) en GUIAMEDICA_APP
+
+El titular compartió una auditoría hecha con otra herramienta sobre lo que falta para publicar la app en Google Play. Se comprobó contra el código de los dos repositorios y contra el APK, y el titular eligió corregir primero lo que la app recibe de la ficha del paciente.
+
+**Lo que se encontró:**
+- La cuenta del paciente en la app muestra solo nombre, código, teléfono y municipio.
+- Pero la app leía `GET /patients/me`, que devuelve la ficha completa: cédula, alergias, medicamentos, condición, contactos de emergencia y enlaces válidos por una hora a la foto y al documento de identidad.
+- Desde [ACT-0050](#act-0050), la app guardaba esa respuesta entera en su copia cifrada del teléfono. ACT-0050 dice que la app no descarga historias clínicas, y es cierto, pero esa copia sí contenía datos de salud.
+
+**Cambios:**
+- **API:**
+  - `GET /patients/me/basic` devuelve solo `firstName`, `lastName`, `patientCode`, `phone` y `municipality`.
+  - `PATCH /patients/me/basic` acepta solo `phone` y `municipality` y responde con lo mismo. Usa la misma lógica que `PATCH /patients/me`: el teléfono sigue siendo único y los datos de salud no cambian.
+  - La web sigue usando la ficha completa.
+- **App:**
+  - Pide y guarda solo la ficha reducida.
+  - Al abrirse, si encuentra una copia del formato anterior, le quita la ficha completa y la reescribe entera con una clave nueva. Así no queda legible en ninguno de los dos archivos.
+  - Los cambios de la ficha que esperaban conexión pasan a la ruta nueva.
+
+**Pruebas:**
+- **Plataforma:** una prueba e2e nueva comprueba que la ficha reducida tiene exactamente esos campos, y que esa ruta rechaza un dato de salud, que sigue intacto en la ficha completa. La ruta nueva está en la lista de rutas privadas (401 sin sesión). CI y Seguridad en verde.
+- **App:** 23 pruebas en verde, una de ellas nueva para la limpieza de la copia anterior.
+- **Emulador Android**, con la API local y una paciente de ensayo con una alergia de prueba:
+  - con la app anterior, la copia guardada contenía la ficha completa, alergia incluida;
+  - al abrir la app nueva, la ficha completa desapareció de la copia y se reescribieron los dos archivos;
+  - sin red, la cuenta mostró la ficha reducida desde la copia;
+  - un teléfono cambiado sin red llegó a la plataforma al volver la señal, y la alergia siguió intacta.
+
+**Otros hallazgos de la auditoría** (comprobados; no cambian en esta actividad):
+- **Ya se cumplen:**
+  - la app apunta a Android 16 (API 36);
+  - sus bibliotecas nativas están alineadas a páginas de 16 KB;
+  - la eliminación de cuenta se pide desde la app o desde `/reclamos` sin sesión, y el servidor la ejecuta de verdad.
+- **No hace falta cambiar el inicio de sesión** para las cuentas de revisión de Google: el código por correo solo se pide a administradores. Pacientes y médicos entran con correo y contraseña.
+- **Pendiente** (en «Próximas actividades»):
+  - la clave de publicación propia: el APK de pruebas usa la firma de desarrollo;
+  - los datos legales del responsable;
+  - los plazos de retención que pide la página de eliminación;
+  - cuentas de revisión con datos ficticios;
+  - el enlace al descargo médico en la app;
+  - quitar los permisos biométricos que agrega una biblioteca y que la app no usa.
+
+**Producción:** desplegado el 2026-10-06 por la noche (log `deploy-act51.log`): respaldo previo `gmm-db-20261007T003855Z-pre-deploy.dump.gpg`, sin migraciones, prueba de humo **25/25** y «Versión publicada: f4230e16d289 (API y web)». En el dominio, `/api/v1/patients/me/basic` responde 401 sin sesión (existe y es privada) y una ruta inexistente, 404. Los demás proyectos del VPS siguieron igual. El APK de pruebas se volvió a compilar con este cambio y contra producción (en `artifacts/` de la app, fuera de Git): arranca y queda «En vivo con la plataforma».
+
+**Archivos destacados:**
+- **Plataforma:** `backend/src/patients/patients.service.ts`, `patients.controller.ts` y `dto/update-patient-profile.dto.ts`; `e2e/tests/paciente.spec.ts`; `docs/ENDPOINTS.md`.
+- **GUIAMEDICA_APP:** `src/offline/store.ts`, `src/PatientAccount.tsx` y `test/offline.test.ts`.
+
+</details>
+
+<p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
+
 <a id="registro-por-area"></a>
 
 ## 🧩 Registro por área
@@ -2442,7 +2502,7 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | 🏥 Organizaciones | Farmacias, laboratorios, clínicas, ubicaciones, autogestión, equipo con invitaciones y roles internos, médicos asociados y plan propio, sección «Próximamente» hasta cerrar alianzas | [ACT-0003](#act-0003) · [ACT-0006](#act-0006) · [ACT-0015](#act-0015) · [ACT-0019](#act-0019) · [ACT-0025](#act-0025) |
 | 💳 Monetización | Planes, Pago Móvil, aprobación, tasa BCV, evidencia de tasa por cuota, catálogo de bancos, referencia única atómica, Plus/Premium/Agencia solo con el 100% de documentos, pagos externos registrados por la administración con renovación anticipada, precios de septiembre de 2026 (3,99 / 5,99 / 10,99 / 69,99 USD), planes Perfil Básico, Profesional, Plus, Premium y Marca Médica (servicio de contenido: 2 videos cada mes), Pago Móvil de la plataforma registrado desde Pagos y visible solo dentro del panel, y políticas de pagos y de reembolsos | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0010](#act-0010) · [ACT-0011](#act-0011) · [ACT-0015](#act-0015) · [ACT-0019](#act-0019) · [ACT-0021](#act-0021) · [ACT-0031](#act-0031) · [ACT-0032](#act-0032) · [ACT-0033](#act-0033) · [ACT-0035](#act-0035) · [ACT-0036](#act-0036) |
 | 📅 Agenda y citas | Horarios, disponibilidad, reservas, máquina de estados, anti-doble-reserva y sin solapes, zona America/Caracas (también en correos, avisos y recordatorios), calendario del médico con arrastrar y soltar, horario semanal en cuadrícula, historial de cada cita, reserva y reprogramación con calendario de mes, límites de reserva | [ACT-0007](#act-0007) · [ACT-0015](#act-0015) · [ACT-0040](#act-0040) · [ACT-0042](#act-0042) |
-| 🔒 Pacientes | Código pseudónimo, cifrado de datos de salud, consentimiento por alcance y tiempo, lecturas auditadas, registro propio, foto de identificación verificada por un admin, reserva con la ficha propia, código y QR para compartir, directorio del médico por código, bóveda de administración y noindex, registro visible desde el inicio, supresión de la cuenta conservando solo la evidencia legal, consentimiento expreso de datos de salud y mayoría de edad, descarga de los datos propios e historial de accesos, avance del registro (identidad y contacto, sin datos de salud); «Quiero que me contacte»: el paciente elige qué compartir con un médico, lo retira cuando quiera y sus datos se borran a los 30 días | [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0023](#act-0023) · [ACT-0027](#act-0027) · [ACT-0029](#act-0029) · [ACT-0031](#act-0031) · [ACT-0033](#act-0033) · [ACT-0043](#act-0043) · [ACT-0045](#act-0045) |
+| 🔒 Pacientes | Código pseudónimo, cifrado de datos de salud, consentimiento por alcance y tiempo, lecturas auditadas, registro propio, foto de identificación verificada por un admin, reserva con la ficha propia, código y QR para compartir, directorio del médico por código, bóveda de administración y noindex, registro visible desde el inicio, supresión de la cuenta conservando solo la evidencia legal, consentimiento expreso de datos de salud y mayoría de edad, descarga de los datos propios e historial de accesos, avance del registro (identidad y contacto, sin datos de salud); «Quiero que me contacte»: el paciente elige qué compartir con un médico, lo retira cuando quiera y sus datos se borran a los 30 días; la app móvil recibe y guarda solo nombre, código, teléfono y municipio de la ficha, sin datos de salud ni de identidad | [ACT-0007](#act-0007) · [ACT-0012](#act-0012) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0023](#act-0023) · [ACT-0027](#act-0027) · [ACT-0029](#act-0029) · [ACT-0031](#act-0031) · [ACT-0033](#act-0033) · [ACT-0043](#act-0043) · [ACT-0045](#act-0045) · [ACT-0051](#act-0051) |
 | ⭐ Valoraciones | Estrellas y comentario de pacientes con registro completo, cédula aprobada y consulta verificada; moderación previa de comentarios con filtro automático; autor anónimo por defecto; promedio desde 3; respuesta y denuncia del médico; moderación de la administración (aprobar, rechazar, retirar como evidencia, restaurar, eliminar), identidad del autor solo con la bóveda, sanciones por días que vencen solas; borrador legal para el abogado; apagadas en producción hasta la revisión legal (`REVIEWS_ENABLED`) | [ACT-0043](#act-0043) · [ACT-0044](#act-0044) |
 | 💊 Récipes | Talonario del médico verificado (establecimiento, firma y sello con el fondo vuelto transparente, logo), récipes según la Resolución 031/2013 del MPPS (dos partes, original y copia, datos del art. 6) que no se editan, PDF con QR y huella, verificación pública con el código sin que viaje en la URL, entrega en «Mis récipes» o con el código si la cédula coincide, WhatsApp y correo con el PDF, anulación; contenido cifrado; apagados en producción hasta la revisión legal (`PRESCRIPTIONS_ENABLED`) | [ACT-0046](#act-0046) |
 | 🛠️ Administración | Médicos, pagos, SEO, cookies, especialidades, planes, verificaciones, organizaciones, bancos, geografía, identidad de pacientes, cuentas (suspensión, baja, eliminación definitiva), planes pagados, video de presentación de los médicos, bandeja de solicitudes legales, Pago Móvil propio, video de muestra de Marca Médica y actividad reciente desplegable | [ACT-0001](#act-0001) · [ACT-0003](#act-0003) · [ACT-0015](#act-0015) · [ACT-0016](#act-0016) · [ACT-0031](#act-0031) · [ACT-0032](#act-0032) · [ACT-0033](#act-0033) · [ACT-0034](#act-0034) · [ACT-0035](#act-0035) · [ACT-0036](#act-0036) · [ACT-0047](#act-0047) |
@@ -2552,6 +2612,7 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | IMP-092 | Sincronización en tiempo real: disparadores de PostgreSQL llenan la bandeja `RealtimeEvent` en la misma transacción de cada cambio; canal Socket.IO `/api/v1/realtime` con salas asignadas por el servidor y corte al cerrar sesiones; unas 40 pantallas de la web y la app móvil se actualizan solas | 🟢 Completado | [`backend/src/realtime`](backend/src/realtime), [`frontend/src/lib/realtime.ts`](frontend/src/lib/realtime.ts), [`backend/test/e2e/realtime.e2e.mjs`](backend/test/e2e/realtime.e2e.mjs) |
 | IMP-093 | App móvil revisada contra la API, con formato legible, conectada al canal en tiempo real y en su propio repositorio | 🟢 Completado | [GUIAMEDICA_APP](https://github.com/merchandev/GUIAMEDICA_APP) |
 | IMP-094 | App móvil sin conexión: copia cifrada de cada pantalla en el teléfono, cola de cambios en orden con «No enviar», detección de la red y envío automático al volver la señal, con revisión de los cambios que ya estaban hechos | 🟢 Completado | [GUIAMEDICA_APP `src/offline`](https://github.com/merchandev/GUIAMEDICA_APP/tree/main/src/offline) |
+| IMP-095 | Ficha reducida del paciente para la app móvil (`/patients/me/basic`), sin datos de salud ni de identidad, y limpieza de la copia anterior del teléfono con clave nueva | 🟢 Completado | [`backend/src/patients`](backend/src/patients) · [GUIAMEDICA_APP `src/offline/store.ts`](https://github.com/merchandev/GUIAMEDICA_APP/blob/main/src/offline/store.ts) |
 
 <p align="right"><a href="#navegacion-rapida">⬆️ Volver a navegación</a></p>
 
@@ -2621,7 +2682,8 @@ Esta vista permite saltar directamente desde un dominio a las actividades que lo
 | 🟠 Media | Llevar [`docs/legal/borrador-contacto-y-busquedas.md`](docs/legal/borrador-contacto-y-busquedas.md) al abogado junto con el de valoraciones y decidir si las apariciones en búsquedas se borran después de un tiempo | 🔴 Pendiente del titular | Ver [ACT-0045](#act-0045) |
 | 🔴 Alta | Encender los récipes digitales: llevar [`docs/legal/borrador-recipes.md`](docs/legal/borrador-recipes.md) al abogado (valor de la firma digitalizada frente a una certificada, duplicado, vencimiento, medicamentos de control especial, retención), publicar sus textos en la misma subida de versión que los demás borradores y poner `PRESCRIPTIONS_ENABLED=true` en `.env.prod` | 🔴 Pendiente del titular | Ver [ACT-0046](#act-0046) |
 | 🟠 Media | App móvil: transporte de sesión propio (renovación en el cuerpo y guardada en SecureStore), avisos push con FCM (proyecto Firebase del titular), App Links verificados y pruebas con cuentas de ensayo en un teléfono real, también sin conexión | 🔵 Planificado | Ver [ACT-0049](#act-0049), [ACT-0050](#act-0050) y [GUIAMEDICA_APP](https://github.com/merchandev/GUIAMEDICA_APP) |
-| 🔴 Alta | Publicar la app en Google Play: persona jurídica con número D-U-N-S, cuenta de organización en Play Console, nombre e identificador definitivos de la app; y que su política de privacidad y la ficha de la tienda digan que guarda en el teléfono una copia cifrada para usarse sin conexión, que se borra al cerrar sesión (revisión del abogado) | 🔴 Pendiente del titular | Ver [`docs/PLAN-APP-MOVIL.md`](docs/PLAN-APP-MOVIL.md) y [ACT-0050](#act-0050) |
+| 🔴 Alta | Publicar la app en Google Play: persona jurídica con número D-U-N-S, cuenta de organización en Play Console, nombre e identificador definitivos de la app, clave de publicación propia (el APK de pruebas usa la firma de desarrollo), cuentas de revisión con datos ficticios y una forma de mostrar la agenda sin publicar un médico falso, declaraciones de apps de salud y de seguridad de los datos, plazos de retención para la página de eliminación; y que la política de privacidad y la ficha de la tienda digan que la app guarda en el teléfono una copia cifrada para usarse sin conexión, que se borra al cerrar sesión (revisión del abogado) | 🔴 Pendiente del titular | Ver [`docs/PLAN-APP-MOVIL.md`](docs/PLAN-APP-MOVIL.md), [ACT-0050](#act-0050) y [ACT-0051](#act-0051) |
+| 🟠 Media | App móvil antes de Google Play: enlace al descargo médico, nota sobre datos de salud antes del consentimiento del registro (revisión del abogado), quitar los permisos biométricos que la app no usa (`USE_BIOMETRIC`, `USE_FINGERPRINT`), compilación de publicación con la clave del titular guardada fuera del repositorio y página pública `/eliminar-cuenta` con los pasos y con lo que se borra y lo que se conserva | 🔵 Planificado | Ver [ACT-0051](#act-0051) |
 | 🟢 Continua | Registrar cada modificación nueva con fecha, hora, responsable y evidencia | 🟢 Activo | No existen cambios relevantes sin entrada en esta bitácora |
 | 🟢 Continua | Confirmar en el repositorio remoto cada cambio cerrado localmente | 🟢 Activo | `git status` limpio y `origin/main` sincronizado al cierre de cada sesión |
 
@@ -2717,6 +2779,7 @@ Para cada cambio futuro, añadir una entrada en la línea de tiempo y actualizar
 | `2026-10-06 11:03:20 -04:00` | Incorporación de ACT-0048 (la lista del buscador del inicio quedaba cortada detrás de las secciones; nota sobre los errores de consola de una extensión del navegador) con su despliegue | 🟢 Completado |
 | `2026-10-06 14:51:05 -04:00` | Incorporación de ACT-0049 (sincronización en tiempo real de la web y la app; revisión de la app y su repositorio propio GUIAMEDICA_APP; sharp 0.35.5) con su despliegue; dos pendientes nuevos (app móvil y publicación en Google Play) | 🟢 Completado |
 | `2026-10-06 16:04:50 -04:00` | Incorporación de ACT-0050 (la app móvil funciona sin conexión y se sincroniza sola al volver la señal; probada en el emulador cortando la red); pendientes de la app y de Google Play actualizados | 🟢 Completado |
+| `2026-10-06 20:51:30 -04:00` | Incorporación de ACT-0051 (la app recibe y guarda solo los datos básicos de la ficha del paciente; auditoría para Google Play comprobada y pendientes actualizados) | 🟢 Completado |
 
 ---
 
