@@ -9,10 +9,10 @@ pacientes reales, con su control automático: [`docs/operations/go-no-go.md`](op
 |---|---|
 | Directorio | Médicos publicados con verificación documental, búsqueda por nombre, especialidad, municipio o código `GM-…`, páginas por especialidad y por especialidad + municipio, SEO automático (título, descripción, JSON-LD, mapa del sitio) y tarjeta para compartir |
 | Cuentas | Registro de médico y de paciente, JWT con *refresh* rotado, Argon2id, verificación de correo, recuperación de contraseña, MFA por correo para administradores, permisos granulares, cierre de todas las sesiones, suspensión, baja y eliminación definitiva |
-| Verificación del médico | Documentos en orden de obtención, revisión humana, publicación con el 60 % aprobado más biografía y foto, sello con el 100 % |
+| Verificación del médico | Documentos en orden de obtención, revisión humana, publicación con el 60 % aprobado más biografía, foto y un plan, sello con el 100 % |
 | Pacientes | Ficha con datos de salud cifrados, consentimiento por alcance y tiempo, código y QR para autorizar, revocación, historial de accesos, descarga de sus datos y solicitudes; los registros cerrados incluso para la administración (bóveda con código) |
 | Agenda | Horarios, disponibilidad, reservas sin doble asignación, estados de la cita, recordatorios |
-| Planes y pagos | Perfil Básico, Profesional, Plus, Premium y Marca Médica (servicio de contenido); Pago Móvil reportado desde el panel y aprobado por la administración; tasa BCV automática; estadísticas del médico según su plan |
+| Planes y pagos | Prueba gratuita de 14 días del plan Plus (sin plan gratis), Profesional, Plus, Premium y Marca Médica (servicio de contenido); Pago Móvil reportado desde el panel y aprobado por la administración; tasa BCV automática; estadísticas del médico según su plan |
 | Administración | Verificaciones, identidad de pacientes, cuentas y planes, pagos, solicitudes legales, SEO, cookies, catálogos, Pago Móvil propio y video de muestra |
 | Legal | 21 documentos versionados, aceptaciones con evidencia, canal de reclamos con número de seguimiento, avisos breves |
 | Seguridad | Cifrado de campos con rotación de claves, antivirus obligatorio, subidas re-codificadas, *rate limit*, auditoría, cookies seguras, HSTS, pacientes fuera de buscadores |

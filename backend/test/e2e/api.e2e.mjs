@@ -343,7 +343,8 @@ check('requisitos del médico en orden de obtención y sin solvencia deontológi
 r = await call('GET', '/documents/requirements', null, doctorToken);
 check('catálogo de documentos sin tipos retirados', r.status === 200 && !r.data.some((x) => x.type === 'SOLVENCIA_DEONTOLOGICA'));
 
-// 15c. Publicación: 60% de documentos aprobados + biografía + foto; Plus/Premium con el 100%
+// 15c. Publicación: 60% de documentos aprobados + biografía + foto + un plan (no hay plan gratis);
+// la prueba gratuita de Plus (14 días, una sola vez) empieza sola con el 100%; Plus/Premium con el 100%
 r = await register({ email: `pub-${run}@t.local`, password: pw, role: 'PROFESSIONAL', firstName: 'Paula', lastName: 'Mora', acceptLegal: true, acceptProfessionalTerms: true });
 const pubToken = r.data?.accessToken;
 const pub = (await db.query(`select p.id, p.slug from "ProfessionalProfile" p join "User" u on u.id=p."userId" where u.email=$1`, [`pub-${run}@t.local`])).rows[0];
@@ -356,11 +357,32 @@ check('3 de 6 aprobados + biografía + foto → no se publica', r.status === 200
 r = await call('GET', '/professionals/me', null, pubToken);
 check('barra de progreso: incluye documentos, redes y web bloqueadas por plan', r.status === 200 && typeof r.data.progress?.percent === 'number' && r.data.progress.items.some((i) => i.key === 'documents' && i.detail?.startsWith('3 de 6')) && r.data.progress.items.find((i) => i.key === 'website')?.lockedUntil === 'PREMIUM' && r.data.progress.canPublish === false);
 r = await call('PATCH', `/documents/admin/pub-${run}-REGISTRO_MPPS_SACS/review`, { approved: true }, ad);
-const pubPublic = await call('GET', `/professionals/${pub.slug}`);
-check('4 de 6 aprobados + biografía + foto → público, aún sin sello «Verificado»', r.status === 200 && pubPublic.status === 200 && pubPublic.data?.verificationStatus === 'IN_REVIEW', `${r.status}/${pubPublic.status}/${pubPublic.data?.verificationStatus}`);
+check('4 de 6 aprobados + biografía + foto, sin plan → no se publica (no hay plan gratis)', r.status === 200 && (await call('GET', `/professionals/${pub.slug}`)).status === 404, String(r.status));
+r = await call('GET', '/professionals/me', null, pubToken);
+check('el panel pide un plan y anuncia la prueba gratis', r.data?.plan?.kind === 'NONE' && r.data.plan.trialAvailable === true && r.data.progress.publication.some((i) => i.key === 'plan' && !i.done && i.label.includes('prueba gratis')), JSON.stringify(r.data?.plan));
 const plans = (await call('GET', '/subscriptions/plans')).data ?? [];
+check('el plan gratis ya no se ofrece', plans.length > 0 && !plans.some((p) => p.tier === 'FREE'));
 r = await call('POST', '/subscriptions/me', { planId: plans.find((p) => p.tier === 'PROFESSIONAL_PLUS')?.id }, pubToken);
 check('Plus sin el 100% de documentos → 403', r.status === 403, String(r.status));
+await pubDoc('MATRICULA_COLEGIO_MONAGAS', 'APPROVED');
+await pubDoc('ARTICULO_8', 'PENDING');
+r = await call('PATCH', `/documents/admin/pub-${run}-ARTICULO_8/review`, { approved: true }, ad);
+const trialPublic = await call('GET', `/professionals/${pub.slug}`);
+// La columna no tiene zona: el fin va como texto UTC (node-pg la leería en hora local).
+const trialRow = (await db.query(`select "planTier", "trialStartedAt", "trialEndsAt", to_char("trialEndsAt", 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') as "endsIso" from "ProfessionalProfile" where id=$1`, [pub.id])).rows[0];
+check('con el 100%: empieza sola la prueba de Plus por 14 días y el perfil se publica verificado', r.status === 200 && trialPublic.status === 200 && trialPublic.data?.verificationStatus === 'VERIFIED' && trialRow.planTier === 'PROFESSIONAL_PLUS' && trialRow.trialEndsAt - trialRow.trialStartedAt === 14 * 86_400_000, `${trialPublic.status} ${JSON.stringify(trialRow)}`);
+check('aviso de la prueba en la campana', (await db.query(`select count(*)::int n from "Notification" n join "ProfessionalProfile" p on p."userId"=n."userId" where p.id=$1 and n.type='TRIAL_STARTED'`, [pub.id])).rows[0].n === 1);
+r = await call('GET', '/professionals/me', null, pubToken);
+check('el panel muestra la prueba y su fin', r.data?.plan?.kind === 'TRIAL' && r.data.plan.endsAt === trialRow.endsIso, `${JSON.stringify(r.data?.plan)} ${trialRow.endsIso}`);
+// La tarea horaria cierra la prueba vencida (aquí, directo en la base): el perfil deja de mostrarse y no empieza otra.
+await db.query(`update "ProfessionalProfile" set "planTier"='FREE', "trialNotice"='CLOSED', "trialEndsAt"=now() - interval '1 hour' where id=$1`, [pub.id]);
+r = await call('PATCH', '/professionals/me', { firstName: 'Paula', lastName: 'Mora', bio: 'Médico cirujano con diez años de experiencia en atención primaria y medicina familiar en Maturín.' }, pubToken);
+const afterTrial = (await db.query(`select "planTier", "isPublished" from "ProfessionalProfile" where id=$1`, [pub.id])).rows[0];
+check('prueba vencida: deja de mostrarse y no vuelve a empezar', r.status === 200 && (await call('GET', `/professionals/${pub.slug}`)).status === 404 && afterTrial.planTier === 'FREE' && afterTrial.isPublished === false, JSON.stringify(afterTrial));
+r = await call('GET', '/appointments/me/calendar?from=2026-10-01&to=2026-10-07', null, pubToken);
+check('sin plan ve su agenda (citas ya reservadas) pero no busca horarios para citas nuevas', r.status === 200 && r.data.planActive === false && (await call('GET', '/appointments/me/slots?from=2026-10-01&to=2026-10-07', null, pubToken)).status === 403, String(r.status));
+r = await call('POST', `/subscriptions/admin/professionals/${pub.id}/assign-paid-plan`, { planId: plans.find((p) => p.tier === 'PROFESSIONAL')?.id, amountBs: 150, method: 'PAGO_MOVIL', senderBankCode: '0134', referenceNumber: `TRIAL-${run}`.toUpperCase(), paidAt: new Date().toISOString(), reason: 'Pago de prueba e2e' }, ad);
+check('al pagar un plan vuelve al directorio', r.status === 201 && (await call('GET', `/professionals/${pub.slug}`)).status === 200, `${r.status} ${JSON.stringify(r.data?.message ?? '')}`);
 r = await call('PATCH', '/professionals/me', { firstName: 'Paula', lastName: 'Mora', bio: 'Corta' }, pubToken);
 check('sin biografía completa deja de ser público', r.status === 200 && (await call('GET', `/professionals/${pub.slug}`)).status === 404);
 

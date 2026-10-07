@@ -5,9 +5,11 @@ import type { EnvConfig } from '../config/env.validation';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { paidPlanAssignedTemplate } from '../mail/mail.templates';
-import { canSubscribeToTier, documentProgress } from '../professionals/publication-rules';
+import { canSubscribeToTier, documentProgress, recomputeProfessionalStatus } from '../professionals/publication-rules';
 import { recomputeDirectoryScore } from '../professionals/directory-score';
 import { SubscriptionsService } from './subscriptions.service';
+import { TRIAL_TIER } from './plan-tiers';
+import { paidPeriodAnchor } from './plan-trial';
 import { AssignPaidPlanDto } from './dto/assign-paid-plan.dto';
 import { caracasLongDate } from '../common/caracas-time';
 
@@ -63,7 +65,8 @@ export class AdminPlanAssignmentsService {
           orderBy: { createdAt: 'desc' },
         });
         const renewing = !!current && current.planId === plan.id && !!current.currentPeriodEnd && current.currentPeriodEnd > paidAt;
-        let periodEnd = renewing ? current!.currentPeriodEnd! : paidAt;
+        // Pagado durante la prueba gratuita: los días que le quedaban se suman al plan.
+        let periodEnd = renewing ? current!.currentPeriodEnd! : paidPeriodAnchor(paidAt, professional, TRIAL_TIER);
         for (let i = 0; i < periods; i += 1) periodEnd = SubscriptionsService.nextPeriodEnd(periodEnd, plan.billingCycle);
         if (periodEnd <= now) throw new BadRequestException('El período de ese pago ya venció');
 
@@ -88,7 +91,8 @@ export class AdminPlanAssignmentsService {
             installments: { create: installment },
           }, select });
         }
-        await tx.professionalProfile.update({ where: { id: professionalId }, data: { planTier: plan.tier } });
+        // Con un plan pagado ya no hay prueba gratuita (ni sus avisos).
+        await tx.professionalProfile.update({ where: { id: professionalId }, data: { planTier: plan.tier, trialNotice: 'CLOSED' } });
         await recomputeDirectoryScore(tx, professionalId);
         await tx.auditLog.create({ data: { userId: actorId, action: 'PAID_PLAN_ASSIGNED', resource: 'Subscription', resourceId: subscription.id,
           details: { professionalId, previousTier: professional.planTier, planId: plan.id, amountBs: dto.amountBs, periods, renewed: renewing,
@@ -106,6 +110,9 @@ export class AdminPlanAssignmentsService {
       throw error;
     }
 
+    // Con el plan activo vuelve al directorio (si cumple el resto de los requisitos).
+    await recomputeProfessionalStatus(this.prisma, professionalId);
+    await recomputeDirectoryScore(this.prisma, professionalId);
     await this.notifyDoctor(result.notice, result.subscription.currentPeriodEnd!);
     return { ...result.subscription, renewed: result.renewed };
   }

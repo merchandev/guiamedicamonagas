@@ -410,9 +410,16 @@ export class AppointmentsService {
     return rows.map((row) => this.presentAppointment(row));
   }
 
-  private async ownProfileOrThrow(userId: string) {
+  /** El perfil del médico, con o sin plan: sus citas ya reservadas se ven y se gestionan siempre. */
+  private async ownProfile(userId: string) {
     const profile = await this.prisma.professionalProfile.findUnique({ where: { userId } });
     if (!profile) throw new NotFoundException('No tienes un perfil profesional');
+    return profile;
+  }
+
+  /** Crear citas, moverlas y el directorio de pacientes son del plan Profesional en adelante. */
+  private async ownProfileOrThrow(userId: string) {
+    const profile = await this.ownProfile(userId);
     if (!tierAtLeast(profile.planTier, AGENDA_MIN_TIER)) {
       throw new ForbiddenException('La agenda requiere el plan Profesional o superior');
     }
@@ -445,7 +452,7 @@ export class AppointmentsService {
 
   /** Citas del médico entre dos días (hasta 62), con cada paciente según sus permisos. */
   async listOwnAgenda(userId: string, query: AgendaRangeDto, ipAddress?: string) {
-    const profile = await this.ownProfileOrThrow(userId);
+    const profile = await this.ownProfile(userId);
     this.checkRange(query.from, query.to);
     return this.agendaRows(profile.id, userId, query.from, query.to, query.status, ipAddress);
   }
@@ -466,15 +473,18 @@ export class AppointmentsService {
 
   /**
    * Todo lo que dibuja el calendario de un rango: el horario de atención de
-   * cada día (sin lo bloqueado), lo bloqueado con su motivo y las citas.
+   * cada día (sin lo bloqueado), lo bloqueado con su motivo y las citas. Sin
+   * plan (`planActive` false) se ven y se gestionan las citas ya reservadas,
+   * pero no se reciben ni se crean citas nuevas.
    */
   async calendar(userId: string, query: AgendaRangeDto, ipAddress?: string) {
-    const profile = await this.ownProfileOrThrow(userId);
+    const profile = await this.ownProfile(userId);
     this.checkRange(query.from, query.to);
     const schedule = await this.agenda.getScheduleForProfessional(profile.id);
     const days = schedule ? planDays(schedule, query.from, query.to) : [];
     const appointments = await this.agendaRows(profile.id, userId, query.from, query.to, query.status, ipAddress);
     return {
+      planActive: tierAtLeast(profile.planTier, AGENDA_MIN_TIER),
       settings: schedule
         ? {
             slotDurationMinutes: schedule.slotDurationMinutes,
@@ -516,7 +526,7 @@ export class AppointmentsService {
 
   /** Una cita del médico con todo su historial. */
   async getOwnAppointment(userId: string, appointmentId: string, ipAddress?: string) {
-    const profile = await this.ownProfileOrThrow(userId);
+    const profile = await this.ownProfile(userId);
     const appt = await this.prisma.appointment.findFirst({
       where: { id: appointmentId, professionalId: profile.id },
       include: { location: { select: { id: true, name: true } }, events: { orderBy: { createdAt: 'asc' } } },
@@ -541,7 +551,7 @@ export class AppointmentsService {
    * filtros. Con un paciente, además, sus totales por estado.
    */
   async history(userId: string, query: AppointmentHistoryDto, ipAddress?: string) {
-    const profile = await this.ownProfileOrThrow(userId);
+    const profile = await this.ownProfile(userId);
     if (query.from && query.to && query.to < query.from) {
       throw new BadRequestException('El rango de fechas es inválido');
     }
@@ -598,7 +608,7 @@ export class AppointmentsService {
   }
 
   async confirm(userId: string, appointmentId: string) {
-    const profile = await this.ownProfileOrThrow(userId);
+    const profile = await this.ownProfile(userId);
     const appt = await this.ownAppointmentOrThrow(profile.id, appointmentId);
     if (appt.status !== 'PENDING') {
       throw new BadRequestException('Solo se pueden confirmar citas pendientes');
@@ -654,7 +664,7 @@ export class AppointmentsService {
   }
 
   async complete(userId: string, appointmentId: string) {
-    const profile = await this.ownProfileOrThrow(userId);
+    const profile = await this.ownProfile(userId);
     const appt = await this.ownAppointmentOrThrow(profile.id, appointmentId);
     if (appt.status !== 'CONFIRMED') {
       throw new BadRequestException('Solo se pueden completar citas confirmadas');
@@ -666,7 +676,7 @@ export class AppointmentsService {
   }
 
   async noShow(userId: string, appointmentId: string) {
-    const profile = await this.ownProfileOrThrow(userId);
+    const profile = await this.ownProfile(userId);
     const appt = await this.ownAppointmentOrThrow(profile.id, appointmentId);
     if (appt.status !== 'CONFIRMED') {
       throw new BadRequestException('Solo se pueden marcar como no asistidas las citas confirmadas');

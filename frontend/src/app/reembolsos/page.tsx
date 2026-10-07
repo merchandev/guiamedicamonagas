@@ -26,8 +26,8 @@ const SECTIONS: LegalSection[] = [
     body: (
       <P>
         Los planes no se renuevan ni se cobran de forma automática, de modo que no hace falta cancelar nada para evitar un
-        cobro futuro: basta con no renovar. El plan contratado sigue activo hasta el final del periodo pagado y después el
-        perfil vuelve al plan básico gratuito.
+        cobro futuro: basta con no renovar. El plan contratado sigue activo hasta el final del periodo pagado; después el
+        perfil deja de mostrarse en el directorio hasta que se active otro plan (ver <DocLink to="pagos" />).
       </P>
     ),
   },

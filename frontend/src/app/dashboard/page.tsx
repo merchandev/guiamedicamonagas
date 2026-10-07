@@ -10,7 +10,8 @@ import { PageSpinner } from '@/components/ui/Spinner';
 import { VERIFICATION_LABELS } from '@/lib/labels';
 import { ProfessionalProgressCard } from '@/components/ProfessionalProgressCard';
 import { DoctorShareCodeCard } from '@/components/DoctorShareCodeCard';
-import type { ProfessionalProgress } from '@/lib/types';
+import { PlanStatusCard } from '@/components/PlanStatusCard';
+import type { DoctorPlanStatus, ProfessionalProgress } from '@/lib/types';
 
 interface OwnProfile {
   slug: string;
@@ -21,6 +22,7 @@ interface OwnProfile {
   isPublished: boolean;
   documents: { status: string }[];
   progress: ProfessionalProgress;
+  plan: DoctorPlanStatus;
 }
 
 export default function DashboardHome() {
@@ -66,13 +68,17 @@ export default function DashboardHome() {
               ? `Tienes ${rejectedDocs} documento(s) rechazado(s). Revísalos y vuelve a subirlos.`
               : pendingDocs > 0
                 ? `Tienes ${pendingDocs} documento(s) en revisión. Te avisaremos por correo y WhatsApp.`
-                : `Sube tus documentos: con ${profile.progress.documents.minimumToPublish} de ${profile.progress.documents.required} aprobados, tu biografía y tu foto, tu perfil aparece en el directorio.`}
+                : profile.plan.trialAvailable
+                  ? 'Sube tus documentos: con todos aprobados, tu biografía y tu foto, tu perfil se publica con 14 días gratis del plan Plus.'
+                  : `Sube tus documentos: con ${profile.progress.documents.minimumToPublish} de ${profile.progress.documents.required} aprobados, tu biografía, tu foto y un plan, tu perfil aparece en el directorio.`}
             <Link href="/dashboard/documentos" className="ml-2 font-semibold underline">
               Ir a documentos
             </Link>
           </div>
         )}
       </div>
+
+      {profile.plan && <PlanStatusCard plan={profile.plan} />}
 
       {profile.progress && <ProfessionalProgressCard progress={profile.progress} isPublished={profile.isPublished} />}
 

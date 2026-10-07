@@ -18,6 +18,19 @@ export function tierAtLeast(tier: PlanTier, min: PlanTier): boolean {
 /** Agenda y citas son un beneficio desde el plan Profesional en adelante. */
 export const AGENDA_MIN_TIER: PlanTier = 'PROFESSIONAL';
 
+/**
+ * Sin plan gratis (decisión del titular, 2026-10-06): un médico aparece en el
+ * directorio con un plan pagado o con la prueba gratuita del plan Plus, una
+ * sola vez y por 14 días. FREE quedó como «sin plan».
+ */
+export const TRIAL_TIER: PlanTier = 'PROFESSIONAL_PLUS';
+export const TRIAL_DAYS = 14;
+
+/** Un médico con plan (pagado o la prueba). Sin plan, el perfil no se muestra. */
+export function hasActivePlan(tier: PlanTier): boolean {
+  return tier !== 'FREE' && tier !== 'ORGANIZATION';
+}
+
 /** El video de presentación en la ficha es exclusivo del plan Marca Médica. */
 export const PRESENTATION_VIDEO_MIN_TIER: PlanTier = 'AGENCY';
 

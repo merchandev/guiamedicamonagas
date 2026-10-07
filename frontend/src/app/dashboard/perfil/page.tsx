@@ -13,7 +13,7 @@ import { PageSpinner } from '@/components/ui/Spinner';
 import { Badge } from '@/components/ui/Badge';
 import { municipalityOptions, useMunicipalities } from '@/lib/catalogs';
 import { AffiliationsManager } from '@/components/AffiliationsManager';
-import { PlanTier, ProfessionalProgress, Specialty } from '@/lib/types';
+import { DoctorPlanStatus, PlanTier, ProfessionalProgress, Specialty } from '@/lib/types';
 import { PLAN_TIER_LABELS } from '@/lib/labels';
 import { ExtraLocationsManager } from '@/components/ExtraLocationsManager';
 import { SocialLinksManager } from '@/components/SocialLinksManager';
@@ -56,6 +56,7 @@ interface OwnProfile extends Partial<Record<(typeof FORM_FIELDS)[number], string
   specialties: { specialty: { id: string; name: string } }[];
   socialLinks: SocialLink[];
   progress: ProfessionalProgress;
+  plan?: DoctorPlanStatus;
 }
 
 /** Del perfil que devuelve la API, solo lo editable y sin nulos (los campos vacíos se ven vacíos). */
@@ -177,6 +178,7 @@ export default function EditProfilePage() {
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="text-2xl">Mi perfil profesional</h1>
         {PLAN_TIER_LABELS[planTier] && <Badge tone={PLAN_TIER_LABELS[planTier].tone}>{PLAN_TIER_LABELS[planTier].label}</Badge>}
+        {profile.plan?.kind === 'TRIAL' && <Badge tone="gold">Prueba gratis</Badge>}
       </div>
 
       <ProfessionalProgressCard progress={profile.progress} isPublished={profile.isPublished} />

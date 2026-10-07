@@ -1,15 +1,18 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PlanTier, SubscriptionPlan } from '@prisma/client';
+import type { EnvConfig } from '../config/env.validation';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { ExchangeRateService } from '../exchange-rate/exchange-rate.service';
 import { BcvScraperService } from '../exchange-rate/bcv-scraper.service';
+import { subscriptionExpiredTemplate } from '../mail/mail.templates';
 import { UpsertPlanDto } from './dto/upsert-plan.dto';
 import { UpdateExchangeRateDto } from './dto/exchange-rate.dto';
 import { loadSubscriptionOwner } from './subscription-owner';
 import { recomputeDirectoryScore } from '../professionals/directory-score';
-import { canSubscribeToTier, documentProgress } from '../professionals/publication-rules';
+import { canSubscribeToTier, documentProgress, recomputeProfessionalStatus } from '../professionals/publication-rules';
 import { resolvePresentationVideo } from '../professionals/presentation-video';
 import { VENEZUELA_TIME_ZONE } from '../common/caracas-time';
 
@@ -27,6 +30,7 @@ export class SubscriptionsService {
     private readonly notifications: NotificationsService,
     private readonly exchangeRate: ExchangeRateService,
     private readonly bcvScraper: BcvScraperService,
+    private readonly config: ConfigService<EnvConfig, true>,
   ) {}
 
   // --- Tasa de cambio (los planes se cotizan en USD; Pago Móvil solo admite Bs) ---
@@ -133,7 +137,7 @@ export class SubscriptionsService {
     const plan = await this.prisma.subscriptionPlan.findUnique({ where: { id: planId } });
     if (!plan || !plan.isActive) throw new NotFoundException('Plan no disponible');
     if (plan.tier === 'FREE') {
-      throw new BadRequestException('El plan básico es gratuito, no requiere pago');
+      throw new BadRequestException('Ese plan no se ofrece: elige un plan de pago');
     }
     return plan;
   }
@@ -168,8 +172,9 @@ export class SubscriptionsService {
       );
     }
 
+    // Una suscripción vencida (PAST_DUE) no impide renovar: queda en el historial.
     const active = await this.prisma.subscription.findFirst({
-      where: { professionalId: profile.id, status: { in: ['PENDING', 'ACTIVE', 'PAST_DUE'] } },
+      where: { professionalId: profile.id, status: { in: ['PENDING', 'ACTIVE'] } },
     });
     if (active) {
       throw new ConflictException('Ya tienes una suscripción en curso');
@@ -212,7 +217,7 @@ export class SubscriptionsService {
     if (!plan || !plan.isActive) throw new NotFoundException('El plan de organizaciones no está disponible');
 
     const active = await this.prisma.subscription.findFirst({
-      where: { organizationId, status: { in: ['PENDING', 'ACTIVE', 'PAST_DUE'] } },
+      where: { organizationId, status: { in: ['PENDING', 'ACTIVE'] } },
     });
     if (active) throw new ConflictException('Esta organización ya tiene una suscripción en curso');
 
@@ -235,12 +240,17 @@ export class SubscriptionsService {
     return end;
   }
 
-  /** Cada día a las 7am (hora de Caracas): vence suscripciones activas cuyo periodo terminó y regresa al titular al plan gratuito. */
+  /**
+   * Cada día a las 7am (hora de Caracas): vence las suscripciones activas cuyo
+   * periodo terminó. Un médico queda sin plan y deja de mostrarse en el
+   * directorio hasta renovar; una organización vuelve a su perfil básico.
+   */
   @Cron(CronExpression.EVERY_DAY_AT_7AM, { timeZone: VENEZUELA_TIME_ZONE })
   async expireOverdueSubscriptions() {
     const now = new Date();
     const overdue = await this.prisma.subscription.findMany({
       where: { status: 'ACTIVE', currentPeriodEnd: { lt: now } },
+      include: { plan: { select: { name: true } } },
     });
 
     for (const subscription of overdue) {
@@ -258,19 +268,38 @@ export class SubscriptionsService {
       ]);
 
       if (subscription.professionalId) {
+        await recomputeProfessionalStatus(this.prisma, subscription.professionalId, now);
         await recomputeDirectoryScore(this.prisma, subscription.professionalId);
       }
 
       const owner = await loadSubscriptionOwner(this.prisma, subscription);
+      const plansUrl = `${this.config.get('FRONTEND_URL', { infer: true })}${owner.dashboardPath}`;
       for (const recipient of owner.recipients) {
-        await this.notifications.notify({
-          userId: recipient.userId,
-          type: 'SUBSCRIPTION_EXPIRED',
-          title: 'Tu suscripción venció',
-          content:
-            'El plan pago venció y el perfil volvió al plan básico gratuito (sigue verificado y visible). Renueva para recuperar los beneficios.',
-          link: owner.dashboardPath,
-        });
+        await this.notifications.notify(
+          owner.kind === 'PROFESSIONAL'
+            ? {
+                userId: recipient.userId,
+                type: 'SUBSCRIPTION_EXPIRED',
+                title: 'Tu plan venció',
+                content:
+                  'Tu perfil dejó de aparecer en el directorio y de recibir citas nuevas. Tus datos, tus documentos y las citas que ya tenías se conservan. Renueva desde «Suscripción y pagos» para volver a aparecer.',
+                link: owner.dashboardPath,
+                email: {
+                  to: recipient.email,
+                  subject: 'Tu plan venció — Guía Médica Monagas',
+                  html: subscriptionExpiredTemplate(`Dr(a). ${owner.displayName}`, subscription.plan.name, plansUrl),
+                  template: 'subscription_expired',
+                },
+              }
+            : {
+                userId: recipient.userId,
+                type: 'SUBSCRIPTION_EXPIRED',
+                title: 'Tu suscripción venció',
+                content:
+                  'El plan pago venció y el perfil volvió al plan básico gratuito (sigue verificado y visible). Renueva para recuperar los beneficios.',
+                link: owner.dashboardPath,
+              },
+        );
       }
     }
   }

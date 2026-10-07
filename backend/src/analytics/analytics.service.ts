@@ -8,7 +8,7 @@ import { caracasDayKey } from '../common/caracas-time';
 /**
  * Qué ve el médico en «Estadísticas», según lo que anuncia cada plan:
  * Profesional «estadísticas básicas», Plus «completas», Premium y Marca
- * Médica «analítica avanzada». El Perfil Básico no incluye estadísticas.
+ * Médica «analítica avanzada». Sin plan no hay estadísticas.
  */
 export type StatsLevel = 'NONE' | 'BASIC' | 'FULL' | 'ADVANCED';
 const LEVEL_BY_TIER: Record<PlanTier, StatsLevel> = {

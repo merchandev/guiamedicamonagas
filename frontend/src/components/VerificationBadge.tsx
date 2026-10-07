@@ -15,7 +15,7 @@ const DOCTOR_TIER_COLORS: Record<PlanTier, string> = {
 };
 
 const DOCTOR_TIER_TITLES: Record<PlanTier, string> = {
-  FREE: 'Credenciales verificadas · Perfil Básico',
+  FREE: 'Credenciales verificadas',
   PROFESSIONAL: 'Credenciales verificadas · Perfil Profesional',
   PROFESSIONAL_PLUS: 'Credenciales verificadas · Perfil Plus',
   PREMIUM: 'Credenciales verificadas · Perfil Premium',
@@ -51,8 +51,8 @@ type Props =
 /**
  * Ícono de verificación. El sello lleno significa credenciales verificadas al
  * 100%, igual para todos los planes: el color solo indica el nivel de perfil
- * (gris Perfil Básico, azul Profesional, índigo Plus, dorado Premium y Marca
- * Médica) o el tipo de organización.
+ * (azul Profesional, índigo Plus, dorado Premium y Marca Médica; gris solo si
+ * no hay plan, que no se muestra en el directorio) o el tipo de organización.
  * Un médico público con documentos aún en revisión lleva el sello en contorno.
  */
 export function VerificationBadge(props: Props) {

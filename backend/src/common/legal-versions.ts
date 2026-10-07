@@ -7,7 +7,7 @@ import type { LegalDocument, Role } from '@prisma/client';
 export const LEGAL_VERSIONS: Record<LegalDocument, string> = {
   TERMS: '3.0',
   PRIVACY: '3.0',
-  PROFESSIONAL_TERMS: '1.0',
+  PROFESSIONAL_TERMS: '1.1',
   PATIENT_HEALTH_CONSENT: '1.0',
   AGE_DECLARATION: '1.0',
 };

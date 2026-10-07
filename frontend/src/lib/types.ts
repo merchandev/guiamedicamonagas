@@ -109,6 +109,20 @@ export interface Organization {
   }[];
 }
 
+/**
+ * Plan del médico (GET /professionals/me → plan). TRIAL: la prueba gratuita
+ * de Plus · PAID: un plan pagado · NONE: sin plan, el perfil no se muestra.
+ */
+export interface DoctorPlanStatus {
+  kind: 'TRIAL' | 'PAID' | 'NONE';
+  tier: PlanTier;
+  /** Fin de la prueba o del periodo pagado. */
+  endsAt: string | null;
+  /** La prueba todavía no se usó: empieza sola al cumplir los requisitos. */
+  trialAvailable: boolean;
+  trialEndedAt: string | null;
+}
+
 export interface SubscriptionPlan {
   id: string;
   tier: PlanTier;

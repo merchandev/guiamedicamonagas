@@ -21,11 +21,14 @@ import { UpsertLocationDto } from './dto/upsert-location.dto';
 import { UpsertSocialLinksDto } from '../common/dto/social-link.dto';
 import { GeoService } from '../geo/geo.service';
 import { recomputeDirectoryScore } from './directory-score';
+import { planStatus } from '../subscriptions/plan-trial';
+import { notifyTrialStarted } from '../subscriptions/plan-trial-notices';
 import {
   documentProgress,
   GENERAL_MEDICINE_SLUG,
   professionalChecklist,
   recomputeProfessionalStatus,
+  trialAvailable,
 } from './publication-rules';
 import { notifyProfilePublished } from './publication-notice';
 import { assignPublicCode, directorySearchWhere, normalizePublicCode, searchNameFor } from './professional-search.util';
@@ -341,8 +344,11 @@ export class ProfessionalsService implements OnApplicationBootstrap {
       specialtyCount: profile.specialties.length,
       socialPlatforms: profile.socialLinks.map((link) => link.platform),
       documents: documentProgress(profile.isSpecialist, profile.documents),
+      trialAvailable: trialAvailable(profile),
     });
-    return { ...(await this.signPhoto(rest)), progress, bookingEnabled };
+    const latest = profile.subscriptions[0];
+    const plan = planStatus(profile, latest?.status === 'ACTIVE' ? latest : null);
+    return { ...(await this.signPhoto(rest)), progress, bookingEnabled, plan };
   }
 
   async updateOwnProfile(userId: string, dto: UpdateProfessionalProfileDto) {
@@ -405,6 +411,12 @@ export class ProfessionalsService implements OnApplicationBootstrap {
       where: { id: professionalId },
       include: { user: { select: { email: true } } },
     });
+    // Se publicó al empezar la prueba gratuita: un solo aviso, con su fecha de fin.
+    if (result.trialStarted) {
+      const frontendUrl = this.config.get('FRONTEND_URL', { infer: true });
+      await notifyTrialStarted(this.notifications, { ...profile, email: profile.user.email }, frontendUrl, result.trialEndsAt!);
+      return;
+    }
     await notifyProfilePublished(
       this.notifications,
       { ...profile, email: profile.user.email },
@@ -689,6 +701,11 @@ export class ProfessionalsService implements OnApplicationBootstrap {
           }
         : undefined,
     });
+    // Al reactivarse cumplió por primera vez lo que pide la prueba gratuita.
+    if (status?.trialStarted) {
+      const frontendUrl = this.config.get('FRONTEND_URL', { infer: true });
+      await notifyTrialStarted(this.notifications, { ...updated, email: profile.user.email }, frontendUrl, status.trialEndsAt!);
+    }
 
     return updated;
   }

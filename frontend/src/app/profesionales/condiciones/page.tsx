@@ -150,8 +150,10 @@ const SECTIONS: LegalSection[] = [
     body: (
       <P>
         Acepto que mi perfil se publique según la <DocLink to="verificacion" />, que la verificación es gratuita y que un
-        plan de pago no la sustituye. Las condiciones comerciales de los planes están en <DocLink to="pagos" /> y{' '}
-        <DocLink to="reembolsos" />.
+        plan de pago no la sustituye. Acepto que mi perfil solo se muestre en el directorio mientras tenga un plan activo:
+        la prueba gratuita de 14 días del plan Plus, una sola vez, o un plan pagado. Sin plan, mis datos, mis documentos y
+        las citas ya reservadas se conservan. Las condiciones comerciales de los planes y de la prueba están en{' '}
+        <DocLink to="pagos" /> y <DocLink to="reembolsos" />.
       </P>
     ),
   },

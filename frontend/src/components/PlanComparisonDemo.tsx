@@ -8,11 +8,11 @@ import { BadgeCheckIcon, BuildingIcon, LockIcon, MapPinIcon, SparklesIcon, Video
 import { MarcaMedicaLabel, VerificationBadge } from '@/components/VerificationBadge';
 import { DOCTOR_SOCIAL_LIMITS, SOCIAL_PLATFORM_COLORS, SOCIAL_PLATFORM_ICONS, type SocialPlatform } from '@/lib/social';
 
-type DoctorTier = 'FREE' | 'PROFESSIONAL' | 'PROFESSIONAL_PLUS' | 'PREMIUM' | 'AGENCY';
+// Sin plan gratis: todo perfil visible tiene un plan (o la prueba de Plus).
+type DoctorTier = 'PROFESSIONAL' | 'PROFESSIONAL_PLUS' | 'PREMIUM' | 'AGENCY';
 type DemoTier = DoctorTier | 'ORGANIZATION';
 
 const TIER_ORDER: Record<DoctorTier, number> = {
-  FREE: 0,
   PROFESSIONAL: 1,
   PROFESSIONAL_PLUS: 2,
   PREMIUM: 3,
@@ -20,7 +20,6 @@ const TIER_ORDER: Record<DoctorTier, number> = {
 };
 
 const TABS: { tier: DemoTier; label: string }[] = [
-  { tier: 'FREE', label: 'Perfil Básico' },
   { tier: 'PROFESSIONAL', label: 'Profesional' },
   { tier: 'PROFESSIONAL_PLUS', label: 'Plus' },
   { tier: 'PREMIUM', label: 'Premium' },
@@ -29,7 +28,7 @@ const TABS: { tier: DemoTier; label: string }[] = [
 ];
 
 const FEATURE_ROWS: { label: string; min: DoctorTier }[] = [
-  { label: 'Nombre, especialidad, N° MPPS / Colegio', min: 'FREE' },
+  { label: 'Nombre, especialidad, N° MPPS / Colegio', min: 'PROFESSIONAL' },
   { label: 'Foto de perfil y biografía', min: 'PROFESSIONAL' },
   { label: 'Botón directo de WhatsApp', min: 'PROFESSIONAL' },
   { label: 'Estadísticas básicas de tu perfil', min: 'PROFESSIONAL' },
@@ -64,7 +63,6 @@ function Locked({ label }: { label: string }) {
 
 function DoctorDemo({ tier }: { tier: DoctorTier }) {
   const rank = TIER_ORDER[tier];
-  const canRich = rank >= TIER_ORDER.PROFESSIONAL;
   const canPlus = rank >= TIER_ORDER.PROFESSIONAL_PLUS;
   const premiumLike = rank >= TIER_ORDER.PREMIUM;
   const featured = premiumLike;
@@ -73,15 +71,9 @@ function DoctorDemo({ tier }: { tier: DoctorTier }) {
   return (
     <div className="card p-6 sm:p-8">
       <div className="mb-6 flex flex-col items-start gap-5 sm:flex-row">
-        {canRich ? (
-          <div className="flex h-24 w-24 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-pine-600 to-pine-800 text-2xl font-semibold text-white shadow-md">
-            VB
-          </div>
-        ) : (
-          <div className="flex h-24 w-24 flex-shrink-0 items-center justify-center rounded-full bg-ink-100 text-ink-300">
-            <LockIcon className="h-7 w-7" />
-          </div>
-        )}
+        <div className="flex h-24 w-24 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-pine-600 to-pine-800 text-2xl font-semibold text-white shadow-md">
+          VB
+        </div>
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="text-xl text-ink-950">Dra. Valentina Blanco</h3>
@@ -90,16 +82,10 @@ function DoctorDemo({ tier }: { tier: DoctorTier }) {
             {featured && <Badge tone="gold">Destacado</Badge>}
           </div>
           <p className="mt-1 text-sm text-pine-700">Cardiología · Maturín, Monagas</p>
-          {canRich ? (
-            <p className="mt-2 max-w-md text-sm leading-relaxed text-ink-600">
-              Cardióloga egresada de la UDO con 12 años de experiencia. Enfoque en prevención cardiovascular y
-              ecocardiografía.
-            </p>
-          ) : (
-            <p className="mt-2 max-w-md text-sm italic text-ink-500">
-              Este plan no incluye foto ni biografía en el perfil público.
-            </p>
-          )}
+          <p className="mt-2 max-w-md text-sm leading-relaxed text-ink-600">
+            Cardióloga egresada de la UDO con 12 años de experiencia. Enfoque en prevención cardiovascular y
+            ecocardiografía.
+          </p>
         </div>
       </div>
 
@@ -140,13 +126,9 @@ function DoctorDemo({ tier }: { tier: DoctorTier }) {
       <div className="grid gap-6 md:grid-cols-2">
         <div>
           <h4 className="mb-2 text-sm font-semibold text-ink-900">Contacto</h4>
-          {canRich ? (
-            <a className="flex items-center justify-center gap-2 rounded-lg bg-[#25D366] px-4 py-2.5 text-sm font-semibold text-white pointer-events-none">
-              <WhatsAppIcon className="h-4 w-4" /> Escribir por WhatsApp
-            </a>
-          ) : (
-            <Locked label="WhatsApp disponible desde el plan Profesional" />
-          )}
+          <a className="flex items-center justify-center gap-2 rounded-lg bg-[#25D366] px-4 py-2.5 text-sm font-semibold text-white pointer-events-none">
+            <WhatsAppIcon className="h-4 w-4" /> Escribir por WhatsApp
+          </a>
           <div className="mt-3">
             {canPlus ? (
               <div className="rounded-lg border border-ink-100 p-3 text-sm text-ink-600">
@@ -283,7 +265,7 @@ function OrganizationDemo() {
 }
 
 export function PlanComparisonDemo() {
-  const [tier, setTier] = useState<DemoTier>('FREE');
+  const [tier, setTier] = useState<DemoTier>('PROFESSIONAL');
   const rank = tier === 'ORGANIZATION' ? -1 : TIER_ORDER[tier];
 
   return (
@@ -294,7 +276,7 @@ export function PlanComparisonDemo() {
           Un mismo perfil de ejemplo, mostrado tal como lo verían tus pacientes en cada plan.
         </p>
         <p className="mt-1 text-xs text-ink-500">
-          Todos pasan la misma verificación; el check solo cambia de color según el plan: gris (Perfil Básico), azul (Profesional),
+          Todos pasan la misma verificación; el check solo cambia de color según el plan: azul (Profesional),
           índigo (Plus), dorado (Premium y Marca Médica) — y para organizaciones, verde (farmacias), morado (laboratorios) y naranja
           (clínicas). La etiqueta «Marca Médica» indica el servicio contratado, no una verificación mayor.
         </p>

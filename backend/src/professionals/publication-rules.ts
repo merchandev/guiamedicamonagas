@@ -1,13 +1,23 @@
-import { DocumentStatus, DocumentType, PlanTier, SocialPlatform, VerificationStatus } from '@prisma/client';
+import { DocumentStatus, DocumentType, PlanTier, SocialPlatform, TrialNotice, VerificationStatus } from '@prisma/client';
 import type { PrismaService } from '../prisma/prisma.service';
 import { requiredDocumentsFor } from '../documents/document-requirements';
-import { PRESENTATION_VIDEO_MIN_TIER, SOCIAL_LINK_LIMITS, tierAtLeast } from '../subscriptions/plan-tiers';
+import {
+  PRESENTATION_VIDEO_MIN_TIER,
+  SOCIAL_LINK_LIMITS,
+  TRIAL_DAYS,
+  TRIAL_TIER,
+  hasActivePlan,
+  tierAtLeast,
+} from '../subscriptions/plan-tiers';
 
 /**
- * Reglas de publicación del médico (decisión del titular, 2026-09-24):
+ * Reglas de publicación del médico (decisiones del titular, 2026-09-24 y 2026-10-06):
  * - El perfil aparece en el directorio cuando un administrador aprobó al
- *   menos el 60% de sus documentos requeridos y el médico cargó biografía y
- *   foto de perfil.
+ *   menos el 60% de sus documentos requeridos, el médico cargó biografía y
+ *   foto de perfil y tiene un plan: pagado o la prueba gratuita de Plus.
+ * - La prueba gratuita (Plus durante 14 días, una sola vez) empieza sola la
+ *   primera vez que el perfil, sin plan, cumple todo eso con el 100% de los
+ *   documentos aprobados. Al vencer sin un plan pagado, deja de mostrarse.
  * - La insignia «Verificado» (verificationStatus VERIFIED) sigue exigiendo el
  *   100% de los documentos aprobados.
  * - Plus, Premium y Marca Médica solo se contratan con el 100% aprobado.
@@ -70,6 +80,10 @@ export interface PublicationInput {
   photoUrl: string | null;
   bio: string | null;
   documents: DocumentProgress;
+  /** Plan vigente; FREE = sin plan. */
+  planTier: PlanTier;
+  /** La prueba gratuita todavía no se usó (ver trialAvailable). */
+  trialAvailable?: boolean;
 }
 
 export function publicationRequirements(p: PublicationInput) {
@@ -81,11 +95,33 @@ export function publicationRequirements(p: PublicationInput) {
     },
     { key: 'bio', label: `Biografía profesional (mínimo ${MIN_BIO_LENGTH} caracteres)`, done: hasCompleteBio(p.bio) },
     { key: 'photo', label: 'Foto de perfil', done: !!p.photoUrl },
+    {
+      key: 'plan',
+      label: p.trialAvailable
+        ? `Un plan: tu prueba gratis de ${TRIAL_DAYS} días del plan Plus empieza sola con el 100% de tus documentos aprobados, tu biografía y tu foto (o elige un plan de pago)`
+        : 'Un plan activo: elígelo en «Suscripción y pagos»',
+      done: hasActivePlan(p.planTier),
+    },
   ];
 }
 
 export function canBePublished(p: PublicationInput): boolean {
   return p.verificationStatus !== 'SUSPENDED' && publicationRequirements(p).every((r) => r.done);
+}
+
+/** La prueba gratuita se usa una sola vez: no la tiene quien ya la empezó ni quien ya pagó un plan. */
+export function trialAvailable(p: { trialStartedAt: Date | null; trialNotice: TrialNotice }): boolean {
+  return !p.trialStartedAt && p.trialNotice !== 'CLOSED';
+}
+
+/** La prueba empieza la primera vez que el perfil, sin plan, puede publicarse con el 100% de los documentos aprobados. */
+export function startsTrial(p: PublicationInput): boolean {
+  return (
+    !!p.trialAvailable &&
+    !hasActivePlan(p.planTier) &&
+    p.documents.approved === p.documents.required &&
+    canBePublished({ ...p, planTier: TRIAL_TIER })
+  );
 }
 
 /** Plus, Premium y Marca Médica exigen el 100% de los documentos aprobados. */
@@ -99,7 +135,6 @@ export interface ChecklistInput extends PublicationInput {
   whatsapp: string | null;
   seoDescription: string | null;
   specialtyCount: number;
-  planTier: PlanTier;
   socialPlatforms: SocialPlatform[];
   presentationVideoId?: string | null;
 }
@@ -147,7 +182,9 @@ export function professionalChecklist(p: ChecklistInput) {
       label: 'Documentos de verificación',
       done: docs.approved === docs.required,
       fraction: docs.required ? docs.approved / docs.required : 0,
-      detail: `${docs.approved} de ${docs.required} aprobados · mínimo ${docs.minimumToPublish} para publicarte y todos para Plus, Premium o Marca Médica`,
+      detail: `${docs.approved} de ${docs.required} aprobados · ${
+        p.trialAvailable ? 'todos para tu prueba gratis de Plus; ' : ''
+      }mínimo ${docs.minimumToPublish} para publicarte con el plan Profesional y todos para Plus, Premium o Marca Médica`,
       href: '/dashboard/documentos',
       requiredToPublish: true,
     },
@@ -196,7 +233,8 @@ export function nextVerificationStatus(current: VerificationStatus, documents: D
 
 /**
  * Recalcula verificación y publicación con las reglas de arriba y guarda los
- * cambios. Devuelve las transiciones para que quien llama avise al médico.
+ * cambios; si corresponde, empieza la prueba gratuita de Plus. Devuelve las
+ * transiciones para que quien llama avise al médico.
  */
 export async function recomputeProfessionalStatus(
   prisma: Pick<PrismaService, 'professionalProfile'>,
@@ -212,6 +250,9 @@ export async function recomputeProfessionalStatus(
       isSpecialist: true,
       photoUrl: true,
       bio: true,
+      planTier: true,
+      trialStartedAt: true,
+      trialNotice: true,
       documents: { select: { type: true, status: true, createdAt: true, expiresAt: true } },
     },
   });
@@ -219,16 +260,27 @@ export async function recomputeProfessionalStatus(
 
   const documents = documentProgress(profile.isSpecialist, profile.documents, now);
   const verificationStatus = nextVerificationStatus(profile.verificationStatus, documents);
-  const isPublished = profile.user.isActive && canBePublished({ ...profile, verificationStatus, documents });
+  const input = { ...profile, verificationStatus, documents, trialAvailable: trialAvailable(profile) };
+  // Una cuenta suspendida o dada de baja no empieza la prueba.
+  const trialStarted = profile.user.isActive && startsTrial(input);
+  const planTier = trialStarted ? TRIAL_TIER : profile.planTier;
+  const trialEndsAt = trialStarted ? new Date(now.getTime() + TRIAL_DAYS * 86_400_000) : null;
+  const isPublished = profile.user.isActive && canBePublished({ ...input, planTier });
   const becameVerified = verificationStatus === 'VERIFIED' && profile.verificationStatus !== 'VERIFIED';
 
-  if (verificationStatus !== profile.verificationStatus || isPublished !== profile.isPublished) {
+  if (verificationStatus !== profile.verificationStatus || isPublished !== profile.isPublished || trialStarted) {
     const changed = await prisma.professionalProfile.updateMany({
-      where: { id: professionalId, verificationStatus: profile.verificationStatus,
+      // El plan también: un pago aprobado al mismo tiempo no se pisa con la prueba.
+      where: { id: professionalId, verificationStatus: profile.verificationStatus, planTier: profile.planTier,
         user: { isActive: profile.user.isActive } },
-      data: { verificationStatus, isPublished, ...(becameVerified ? { verifiedAt: now } : {}) },
+      data: {
+        verificationStatus,
+        isPublished,
+        ...(becameVerified ? { verifiedAt: now } : {}),
+        ...(trialStarted ? { planTier, trialStartedAt: now, trialEndsAt } : {}),
+      },
     });
-    // Una moderación concurrente tiene prioridad sobre este cálculo anterior.
+    // Una moderación o un pago concurrente tiene prioridad sobre este cálculo anterior.
     if (changed.count === 0) return null;
   }
   return {
@@ -237,5 +289,7 @@ export async function recomputeProfessionalStatus(
     isPublished,
     becamePublic: isPublished && !profile.isPublished,
     becameVerified,
+    trialStarted,
+    trialEndsAt,
   };
 }

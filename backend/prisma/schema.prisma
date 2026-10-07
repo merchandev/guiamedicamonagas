@@ -213,7 +213,16 @@ model ProfessionalProfile {
   verifiedAt         DateTime?
   isPublished        Boolean            @default(false)
   isSpecialist       Boolean            @default(false)
+  /// Plan vigente (pagado o la prueba). FREE = sin plan: el perfil no se
+  /// muestra en el directorio (ver publication-rules.ts).
   planTier           PlanTier           @default(FREE)
+  /// Prueba gratuita del plan Plus, una sola vez: empieza sola la primera vez
+  /// que el perfil puede publicarse con el 100% de los documentos aprobados.
+  trialStartedAt     DateTime?
+  trialEndsAt        DateTime?
+  /// Avisos de la prueba ya enviados. CLOSED: terminó o se pagó un plan (ya no
+  /// hay prueba para este médico).
+  trialNotice        TrialNotice        @default(NONE)
   /// 0–100, recalculado al editar el perfil.
   profileCompleteness Int               @default(0)
   /// Orden del directorio = completitud + impulso acotado por plan (máx. +15).
@@ -266,6 +275,15 @@ model ProfessionalProfile {
   @@index([municipality])
   @@index([planTier])
   @@index([directoryScore])
+  @@index([trialNotice, trialEndsAt])
+}
+
+/// Avisos de la prueba gratuita de Plus: 3 días antes, 1 día antes y al vencer.
+enum TrialNotice {
+  NONE
+  ENDS_IN_3_DAYS
+  ENDS_IN_1_DAY
+  CLOSED
 }
 
 enum RegistrationType {

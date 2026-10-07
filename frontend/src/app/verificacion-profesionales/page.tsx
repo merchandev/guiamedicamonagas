@@ -86,18 +86,31 @@ const SECTIONS: LegalSection[] = [
         <LegalTable
           head={['Estado', 'Condición', 'Cómo se muestra']}
           rows={[
-            ['No publicado', 'Menos del 60 % de los documentos aprobados, o falta la biografía o la foto.', 'No aparece en el directorio.'],
+            [
+              'No publicado',
+              'Menos del 60 % de los documentos aprobados, o falta la biografía, la foto o un plan activo.',
+              'No aparece en el directorio.',
+            ],
             [
               'Verificación en curso',
-              'Al menos el 60 % de los documentos aprobados, con biografía y foto de perfil.',
+              'Al menos el 60 % de los documentos aprobados, con biografía, foto de perfil y un plan pagado.',
               'Aparece con la leyenda «verificación en curso», sin la insignia de verificado.',
             ],
-            ['Verificado', 'El 100 % de los documentos exigidos aprobados.', 'Aparece con la insignia de verificado.'],
+            [
+              'Verificado',
+              'El 100 % de los documentos exigidos aprobados, con biografía, foto de perfil y un plan pagado o la prueba gratuita.',
+              'Aparece con la insignia de verificado.',
+            ],
           ]}
         />
         <P>
           Un perfil con «verificación en curso» <strong>no está verificado</strong>: parte de sus documentos sigue en
           revisión.
+        </P>
+        <P>
+          La primera vez que un perfil sin plan pagado reúne el 100 % de los documentos aprobados, la biografía y la foto,
+          se publica con la prueba gratuita de 14 días del plan Plus. Al terminar la prueba sin un plan pagado, deja de
+          mostrarse hasta que se active uno. La verificación no cambia por eso. Ver <DocLink to="pagos" />.
         </P>
       </>
     ),
@@ -159,7 +172,7 @@ const SECTIONS: LegalSection[] = [
     body: (
       <P>
         La verificación es <strong>gratuita y la misma para todos</strong>. Ningún plan de pago la sustituye, la acelera ni
-        la mejora. El color de la insignia (gris, azul o dorado) solo refleja el plan contratado: no indica un nivel
+        la mejora. El color de la insignia (azul, índigo o dorado) solo refleja el plan contratado: no indica un nivel
         distinto de verificación ni de calidad. Ver <DocLink to="pagos" />.
       </P>
     ),

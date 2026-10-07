@@ -421,6 +421,75 @@ export function paidPlanAssignedTemplate(rawName: string, rawPlanName: string, e
   );
 }
 
+const PARAGRAPH = 'font-size:14px;line-height:1.6;color:#3a3a3a;';
+
+/** La prueba gratuita de Plus empezó con la publicación del perfil (ver publication-rules.ts). */
+export function trialStartedTemplate(rawName: string, endsAtLabel: string, profileUrl: string, plansUrl: string) {
+  const name = escapeHtml(rawName);
+  return layout(
+    'Tu perfil ya es público: 14 días gratis de Plus',
+    `<h1 style="font-size:20px;margin:0 0 12px;">Felicidades, ${name} 🎉</h1>
+     <p style="${PARAGRAPH}">
+       Todos tus documentos fueron aprobados y tu perfil ya aparece en el directorio de ${BRAND_NAME} con el sello
+       «Verificado» y el plan <strong>Plus gratis</strong>.
+     </p>
+     <p style="${PARAGRAPH}">
+       Tu prueba termina el <strong>${escapeHtml(endsAtLabel)}</strong>: para seguir apareciendo después, elige un plan y
+       reporta tu pago desde tu panel. Si pagas antes, los días de prueba que te queden se suman a tu plan.
+     </p>
+     ${button(profileUrl, 'Ver mi perfil público')}
+     <p style="font-size:13px;margin:16px 0 0;"><a href="${plansUrl}" style="color:${BRAND_COLOR};">Ver los planes</a></p>`,
+  );
+}
+
+/** Aviso antes de que venza la prueba gratuita (3 días y 1 día antes). */
+export function trialEndingTemplate(rawName: string, endsAtLabel: string, plansUrl: string) {
+  const name = escapeHtml(rawName);
+  return layout(
+    'Tu prueba gratis de Plus está por terminar',
+    `<h1 style="font-size:20px;margin:0 0 12px;">Hola, ${name}</h1>
+     <p style="${PARAGRAPH}">
+       Tu prueba gratis del plan Plus en ${BRAND_NAME} termina el <strong>${escapeHtml(endsAtLabel)}</strong>: para seguir
+       apareciendo en el directorio y recibiendo citas, elige un plan y reporta tu pago desde tu panel.
+     </p>
+     <p style="${PARAGRAPH}">Si pagas antes de que termine, los días que te queden se suman a tu plan.</p>
+     ${button(plansUrl, 'Elegir mi plan')}`,
+  );
+}
+
+/** La prueba gratuita venció sin un plan pagado: el perfil deja de mostrarse. */
+export function trialExpiredTemplate(rawName: string, plansUrl: string) {
+  const name = escapeHtml(rawName);
+  return layout(
+    'Tu prueba gratis de Plus terminó',
+    `<h1 style="font-size:20px;margin:0 0 12px;">Hola, ${name}</h1>
+     <p style="${PARAGRAPH}">
+       Tu prueba gratis del plan Plus terminó y tu perfil ya no aparece en el directorio de ${BRAND_NAME} ni recibe
+       citas nuevas. Tus datos, tus documentos y las citas que ya tenías se conservan.
+     </p>
+     <p style="${PARAGRAPH}">
+       Para volver a aparecer, elige un plan y reporta tu pago desde tu panel. Si ya lo reportaste, tu perfil vuelve a
+       aparecer cuando el pago quede validado.
+     </p>
+     ${button(plansUrl, 'Elegir mi plan')}`,
+  );
+}
+
+/** El plan pagado de un médico venció sin renovarse: el perfil deja de mostrarse. */
+export function subscriptionExpiredTemplate(rawName: string, rawPlanName: string, plansUrl: string) {
+  const name = escapeHtml(rawName);
+  return layout(
+    'Tu plan venció',
+    `<h1 style="font-size:20px;margin:0 0 12px;">Hola, ${name}</h1>
+     <p style="${PARAGRAPH}">
+       Tu plan <strong>${escapeHtml(rawPlanName)}</strong> venció y tu perfil dejó de aparecer en el directorio de
+       ${BRAND_NAME} y de recibir citas nuevas. Tus datos, tus documentos y las citas que ya tenías se conservan.
+     </p>
+     <p style="${PARAGRAPH}">Para volver a aparecer, elige un plan y reporta tu pago desde tu panel.</p>
+     ${button(plansUrl, 'Renovar mi plan')}`,
+  );
+}
+
 export function legalRequestReceivedTemplate(rawName: string, ticket: string, rawCategory: string, statusUrl: string) {
   const name = escapeHtml(rawName);
   return layout(

@@ -18,8 +18,10 @@ import {
 } from './document-requirements';
 import type { SecuredFile } from '../uploads/upload-security.service';
 import { recomputeDirectoryScore } from '../professionals/directory-score';
-import { recomputeProfessionalStatus } from '../professionals/publication-rules';
+import { hasCompleteBio, recomputeProfessionalStatus, trialAvailable } from '../professionals/publication-rules';
 import { notifyProfilePublished } from '../professionals/publication-notice';
+import { TRIAL_DAYS } from '../subscriptions/plan-tiers';
+import { notifyTrialStarted } from '../subscriptions/plan-trial-notices';
 import { VENEZUELA_TIME_ZONE } from '../common/caracas-time';
 import { Permission } from '../common/permissions';
 
@@ -208,8 +210,9 @@ export class DocumentsService {
 
   /**
    * Recalcula el estado de verificación (VERIFIED solo con el 100% aprobado) y
-   * la publicación (60% aprobado + biografía + foto, ver publication-rules.ts).
-   * Un perfil suspendido sigue suspendido: solo un administrador lo reactiva.
+   * la publicación (60% aprobado + biografía + foto + un plan, o la prueba
+   * gratuita de Plus con el 100%; ver publication-rules.ts). Un perfil
+   * suspendido sigue suspendido: solo un administrador lo reactiva.
    */
   private async recomputeVerification(professionalId: string) {
     const profile = await this.prisma.professionalProfile.findUniqueOrThrow({
@@ -227,17 +230,28 @@ export class DocumentsService {
     });
     await recomputeDirectoryScore(this.prisma, professionalId);
 
-    const profileUrl = `${this.config.get('FRONTEND_URL', { infer: true })}/medicos/${profile.slug}`;
+    const frontendUrl = this.config.get('FRONTEND_URL', { infer: true });
+    const profileUrl = `${frontendUrl}/medicos/${profile.slug}`;
+    // La prueba gratuita empezó con la publicación: un solo aviso, con su fecha de fin.
+    if (result.trialStarted) {
+      await notifyTrialStarted(this.notifications, { ...profile, email: profile.user.email }, frontendUrl, result.trialEndsAt!);
+      return;
+    }
     if (result.becamePublic && !result.becameVerified) {
       await notifyProfilePublished(this.notifications, { ...profile, email: profile.user.email }, profileUrl, result.documents);
     }
     if (result.becameVerified && !result.isPublished) {
+      const missingProfile = !profile.photoUrl || !hasCompleteBio(profile.bio);
       await this.notifications.notify({
         userId: profile.userId,
         type: 'PROFILE_VERIFIED',
         title: '¡Tus documentos fueron aprobados!',
-        content: 'Completa tu biografía y tu foto de perfil para aparecer en el directorio con el sello «Verificado».',
-        link: '/dashboard/perfil',
+        content: missingProfile
+          ? `Completa tu biografía y tu foto de perfil para aparecer en el directorio con el sello «Verificado».${
+              trialAvailable(profile) ? ` Al completarlas, tu perfil se publica con ${TRIAL_DAYS} días gratis del plan Plus.` : ''
+            }`
+          : 'Elige un plan en «Suscripción y pagos» para aparecer en el directorio con el sello «Verificado».',
+        link: missingProfile ? '/dashboard/perfil' : '/dashboard/pagos',
       });
     }
     if (result.becameVerified && result.isPublished) {

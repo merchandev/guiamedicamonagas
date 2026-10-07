@@ -13,7 +13,7 @@ export type LegalDocumentKey =
 export const LEGAL_VERSIONS: Record<LegalDocumentKey, string> = {
   TERMS: '3.0',
   PRIVACY: '3.0',
-  PROFESSIONAL_TERMS: '1.0',
+  PROFESSIONAL_TERMS: '1.1',
   PATIENT_HEALTH_CONSENT: '1.0',
   AGE_DECLARATION: '1.0',
 };
@@ -87,6 +87,8 @@ export interface LegalDoc {
   /** Nombre corto para menús y enlaces. */
   short: string;
   version: string;
+  /** Si su última versión no rige desde la fecha general (LEGAL_EFFECTIVE_DATE_LABEL). */
+  effectiveDateLabel?: string;
   group: LegalDocGroup;
   summary: string;
 }
@@ -222,7 +224,8 @@ export const LEGAL_DOCS: LegalDoc[] = [
     href: '/publicidad-medica',
     title: 'Política de publicidad y contenido médico',
     short: 'Publicidad médica',
-    version: '1.0',
+    version: '1.1',
+    effectiveDateLabel: '7 de octubre de 2026',
     group: 'salud',
     summary: 'Qué no puede afirmar un perfil y cómo se señalan los espacios destacados.',
   },
@@ -231,7 +234,8 @@ export const LEGAL_DOCS: LegalDoc[] = [
     href: '/verificacion-profesionales',
     title: 'Política de verificación de profesionales',
     short: 'Verificación de profesionales',
-    version: '1.0',
+    version: '1.1',
+    effectiveDateLabel: '7 de octubre de 2026',
     group: 'profesionales',
     summary: 'Qué significa «verificado», qué documentos se revisan y qué no garantiza la verificación.',
   },
@@ -241,6 +245,7 @@ export const LEGAL_DOCS: LegalDoc[] = [
     title: 'Condiciones específicas para profesionales',
     short: 'Condiciones para profesionales',
     version: LEGAL_VERSIONS.PROFESSIONAL_TERMS,
+    effectiveDateLabel: '7 de octubre de 2026',
     group: 'profesionales',
     summary: 'Declaraciones, deberes de confidencialidad y responsabilidad profesional de quien publica un perfil.',
   },
@@ -249,7 +254,8 @@ export const LEGAL_DOCS: LegalDoc[] = [
     href: '/pagos-y-suscripciones',
     title: 'Política de pagos, planes y suscripciones',
     short: 'Pagos y suscripciones',
-    version: '1.1',
+    version: '1.2',
+    effectiveDateLabel: '7 de octubre de 2026',
     group: 'profesionales',
     summary: 'Planes, moneda, forma de pago, activación, vencimiento y cambios de plan.',
   },
@@ -258,7 +264,8 @@ export const LEGAL_DOCS: LegalDoc[] = [
     href: '/reembolsos',
     title: 'Política de cancelación, reembolsos y devoluciones',
     short: 'Cancelación y reembolsos',
-    version: '1.0',
+    version: '1.1',
+    effectiveDateLabel: '7 de octubre de 2026',
     group: 'profesionales',
     summary: 'Cómo se trata un pago duplicado, un pago no aplicado, una cancelación voluntaria y otros casos.',
   },

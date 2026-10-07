@@ -8,6 +8,7 @@ import { PatientDataCodec } from '../patients/patient-data.codec';
 import { accountModeratedTemplate } from '../mail/mail.templates';
 import { recomputeProfessionalStatus } from '../professionals/publication-rules';
 import { resolvePresentationVideo } from '../professionals/presentation-video';
+import { notifyTrialStarted } from '../subscriptions/plan-trial-notices';
 import { AccountListDto, ModerateAccountDto } from './account-management.dto';
 
 export type ManagedRole = 'USER' | 'PROFESSIONAL';
@@ -151,7 +152,16 @@ export class AccountManagementService {
     // Igual que al reactivar desde «Médicos»: sus documentos deciden la
     // verificación y las reglas de publicación, si vuelve al directorio.
     if (dto.action === 'RESTORE' && result.professionalId) {
-      await recomputeProfessionalStatus(this.prisma, result.professionalId);
+      const status = await recomputeProfessionalStatus(this.prisma, result.professionalId);
+      // Al reactivarse cumplió por primera vez lo que pide la prueba gratuita de Plus.
+      if (status?.trialStarted) {
+        const doctor = await this.prisma.professionalProfile.findUniqueOrThrow({
+          where: { id: result.professionalId },
+          select: { userId: true, firstName: true, slug: true },
+        });
+        await notifyTrialStarted(this.notifications, { ...doctor, email: result.email },
+          this.config.get('FRONTEND_URL', { infer: true }), status.trialEndsAt!);
+      }
     }
     await this.notifyHolder(id, dto, result.email, result.displayName);
     return result.response;

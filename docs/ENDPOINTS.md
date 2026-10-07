@@ -31,13 +31,13 @@ Cada access token lleva la versión de sesión del usuario (`tv`); si no coincid
 ## Citas
 * `GET /appointments/availability` (público) · `POST /appointments` (acepta `shareScopes`/`shareDays`) · `GET /appointments/me`.
 * Paciente: `PATCH /appointments/:id/reschedule` y `PATCH /appointments/:id/cancel` (también el médico; solo se avisa a la otra parte).
-* Médico: `GET /appointments/me/calendar?from=&to=` (hasta 62 días: citas, horas de atención y bloqueos), `GET /appointments/me/history` (filtros y paginado; nombre y teléfono solo con autorización, auditado), `GET /appointments/me/:id` (detalle con su línea de tiempo), `GET /appointments/me/slots` (horarios libres para «Mover»), `POST /appointments/me/manual` (`outsideSchedule` para atender fuera de horario).
+* Médico: `GET /appointments/me/calendar?from=&to=` (hasta 62 días: citas, horas de atención, bloqueos y `planActive`), `GET /appointments/me/history` (filtros y paginado; nombre y teléfono solo con autorización, auditado), `GET /appointments/me/:id` (detalle con su línea de tiempo), `GET /appointments/me/slots` (horarios libres para «Mover»), `POST /appointments/me/manual` (`outsideSchedule` para atender fuera de horario).
 * Médico: `GET /appointments/me/agenda`, `GET /appointments/me/patients`, `POST /appointments/me/patients/:id/data` (solo con autorización vigente, auditado), `POST /appointments/me/patients/:id/access-request`.
 
 ## Profesionales
 * `GET /professionals` (público; incluye `featured`) · `GET /professionals/:slug` (público).
 * `GET /professionals/sitemap?page=` · `GET /professionals/landing-pages` (públicos, SEO).
-* `GET|PATCH /professionals/me`, `POST /professionals/me/photo`, sedes y redes.
+* `GET|PATCH /professionals/me`, `POST /professionals/me/photo`, sedes y redes. `GET /professionals/me` incluye `plan`: `{ kind: TRIAL|PAID|NONE, tier, endsAt, trialAvailable, trialEndedAt }` (ver «Planes, prueba gratuita y visibilidad»).
 
 ## Documentos de verificación
 * Médico: `GET /documents/requirements`, `GET /documents/me`, `POST /documents` (subida verificada y analizada por ClamAV), `GET /documents/me/:id/download`.
@@ -58,10 +58,11 @@ Cada access token lleva la versión de sesión del usuario (`tv`); si no coincid
 ## Suscripciones y pagos
 * `GET /subscriptions/plans` · `GET /subscriptions/exchange-rate` (públicos).
 * `GET /subscriptions/showcase` (público): `{ sampleVideoId }`, el video de muestra del plan Marca Médica en `/planes` (o null). `PUT /subscriptions/admin/showcase` (`MANAGE_PLANS`, `{ url }` de YouTube o null; auditado como `PLAN_SAMPLE_VIDEO_SET`/`PLAN_SAMPLE_VIDEO_CLEARED`).
-* `GET|POST /subscriptions/me` (médico) · `GET|POST /subscriptions/organizations/:id` (organización).
+* `GET|POST /subscriptions/me` (médico) · `GET|POST /subscriptions/organizations/:id` (organización). Una suscripción vencida (`PAST_DUE`) no impide contratar otra: queda en el historial.
 * `POST /payments` — reporte de Pago Móvil con comprobante (el médico, o dueño/admin de la organización). Una referencia del mismo banco no puede repetirse en pagos vigentes (409, garantizado por índice único).
 * `GET /payments/pago-movil-account` — cuenta a la que se paga (titular, cédula o RIF, banco, teléfono y número de cuenta). Solo con sesión de médico o de miembro de una organización: se muestra dentro del panel, junto al formulario de reporte. Devuelve `configured: false` mientras la administración no la registre.
 * Admin: cola, comprobante (apertura auditada: `PAYMENT_RECEIPT_VIEWED`) y revisión (`REVIEW_PAYMENTS`); planes y tasa manual (`MANAGE_PLANS`).
+* **Planes, prueba gratuita y visibilidad (ACT-0052).** No hay plan gratis: `planTier = FREE` es un médico sin plan, que no aparece en el directorio, no recibe citas y no reserva horarios nuevos (`GET /appointments/me/slots` y `POST /appointments/me/manual` responden 403); sus citas ya reservadas se ven y se gestionan (calendario, historial, detalle, confirmar, atender, inasistencia y cancelar). La prueba gratuita (Plus por 14 días, una vez) empieza sola la primera vez que el perfil, sin plan, se puede publicar con el 100% de los documentos (`trialStartedAt`/`trialEndsAt`, aviso `TRIAL_STARTED`). Cada hora, `PlanTrialsService` avisa 3 días y 1 día antes (`TRIAL_ENDING`) y al vencer deja el perfil sin plan (`TRIAL_EXPIRED`), salvo que haya un plan pagado. Al validarse un pago (o una asignación del admin) la prueba se cierra (`trialNotice = CLOSED`) y, si se paga durante la prueba, el vencimiento se calcula desde su fin. Al vencer un plan pagado (7 a. m.), el médico queda sin plan (`SUBSCRIPTION_EXPIRED`, con correo).
 * Admin: `GET /payments/admin/pago-movil-account` (`REVIEW_PAYMENTS`) y `PUT /payments/admin/pago-movil-account` (además `MANAGE_PLANS`, es decir SUPERADMIN; auditado como `PAGO_MOVIL_ACCOUNT_UPDATED`). Se guarda en `SiteSettings` (`pago_movil_account`).
 
 ## Analítica

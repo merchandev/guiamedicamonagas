@@ -10,9 +10,10 @@ import { Button } from '@/components/ui/Button';
 import { PageSpinner } from '@/components/ui/Spinner';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { PAYMENT_STATUS_LABELS, PLAN_TIER_LABELS, SUBSCRIPTION_STATUS_LABELS } from '@/lib/labels';
-import { ProfessionalProgress, SubscriptionPlan } from '@/lib/types';
+import { DoctorPlanStatus, ProfessionalProgress, SubscriptionPlan } from '@/lib/types';
 import { BcvRateBadge, useExchangeRate } from '@/components/BcvRateBadge';
 import { PagoMovilReportForm, type PendingInstallment } from '@/components/PagoMovilReportForm';
+import { PlanStatusCard } from '@/components/PlanStatusCard';
 import { formatDate } from '@/lib/dates';
 
 type Plan = SubscriptionPlan;
@@ -35,39 +36,39 @@ interface Subscription {
   installments: Installment[];
 }
 
+// En curso: la que se está pagando o la vigente. Una vencida queda en el historial y se puede renovar.
+const ONGOING = ['PENDING', 'ACTIVE'];
+
 export default function PaymentsPage() {
   const [loading, setLoading] = useState(true);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [documents, setDocuments] = useState<ProfessionalProgress['documents'] | null>(null);
+  const [planStatus, setPlanStatus] = useState<DoctorPlanStatus | null>(null);
   const rate = useExchangeRate();
   const exchangeRate = rate?.usdToBs ?? null;
 
   const load = useCallback(
     () =>
-      api
-        .get<Subscription | null>('/subscriptions/me')
-        .catch(() => null)
-        .then(async (sub) => {
-          setSubscription(sub);
-          if (!sub) {
-            const [allPlans, own] = await Promise.all([
-              api.get<Plan[]>('/subscriptions/plans').catch(() => []),
-              api.get<{ progress?: ProfessionalProgress }>('/professionals/me').catch(() => null),
-            ]);
-            setPlans(allPlans.filter((p) => p.tier !== 'FREE' && p.tier !== 'ORGANIZATION'));
-            setDocuments(own?.progress?.documents ?? null);
-          }
-          setLoading(false);
-        }),
+      Promise.all([
+        api.get<Subscription | null>('/subscriptions/me').catch(() => null),
+        api.get<Plan[]>('/subscriptions/plans').catch(() => []),
+        api.get<{ progress?: ProfessionalProgress; plan?: DoctorPlanStatus }>('/professionals/me').catch(() => null),
+      ]).then(([sub, allPlans, own]) => {
+        setSubscription(sub);
+        setPlans(allPlans.filter((p) => p.tier !== 'FREE' && p.tier !== 'ORGANIZATION'));
+        setDocuments(own?.progress?.documents ?? null);
+        setPlanStatus(own?.plan ?? null);
+        setLoading(false);
+      }),
     [],
   );
 
   useEffect(() => {
     void load();
   }, [load]);
-  useRealtimeRefresh(['billing', 'documents'], load);
+  useRealtimeRefresh(['billing', 'documents', 'profile'], load);
 
   const subscribe = async (planId: string) => {
     setError(null);
@@ -80,7 +81,8 @@ export default function PaymentsPage() {
     }
   };
 
-  const pendingInstallment = subscription?.installments.find((i) => i.status === 'PENDING');
+  const current = subscription && ONGOING.includes(subscription.status) ? subscription : null;
+  const pendingInstallment = current?.installments.find((i) => i.status === 'PENDING');
   const hasPendingPayment = pendingInstallment?.payments.some((p) => p.status === 'PENDING');
   if (loading) return <PageSpinner />;
 
@@ -93,7 +95,15 @@ export default function PaymentsPage() {
 
       {error && <Alert tone="error">{error}</Alert>}
 
-      {!subscription && plans.length > 0 && (
+      {planStatus && !current && <PlanStatusCard plan={planStatus} withLink={false} />}
+
+      {subscription?.status === 'PAST_DUE' && subscription.currentPeriodEnd && (
+        <p className="text-sm text-ink-600">
+          Tu plan {subscription.plan.name} venció el {formatDate(subscription.currentPeriodEnd)}. Puedes renovarlo o elegir otro.
+        </p>
+      )}
+
+      {!current && plans.length > 0 && (
         <p className="text-xs text-ink-500">
           Al elegir un plan aceptas las condiciones de{' '}
           <Link href="/pagos-y-suscripciones" target="_blank" className="font-medium text-pine-700 underline">
@@ -107,7 +117,7 @@ export default function PaymentsPage() {
         </p>
       )}
 
-      {!subscription ? (
+      {!current ? (
         <div className="grid gap-4 sm:grid-cols-2">
           {plans.length === 0 ? (
             <EmptyState title="Aún no hay planes disponibles" description="Vuelve pronto." />
@@ -150,21 +160,21 @@ export default function PaymentsPage() {
           <div className="card p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-ink-500">{subscription.plan.name}</p>
+                <p className="text-sm text-ink-500">{current.plan.name}</p>
                 <div className="mt-1 flex flex-wrap items-center gap-2">
-                  <Badge tone={SUBSCRIPTION_STATUS_LABELS[subscription.status]?.tone ?? 'neutral'}>
-                    {SUBSCRIPTION_STATUS_LABELS[subscription.status]?.label ?? subscription.status}
+                  <Badge tone={SUBSCRIPTION_STATUS_LABELS[current.status]?.tone ?? 'neutral'}>
+                    {SUBSCRIPTION_STATUS_LABELS[current.status]?.label ?? current.status}
                   </Badge>
-                  {PLAN_TIER_LABELS[subscription.plan.tier] && (
-                    <Badge tone={PLAN_TIER_LABELS[subscription.plan.tier].tone}>
-                      {PLAN_TIER_LABELS[subscription.plan.tier].label}
+                  {PLAN_TIER_LABELS[current.plan.tier] && (
+                    <Badge tone={PLAN_TIER_LABELS[current.plan.tier].tone}>
+                      {PLAN_TIER_LABELS[current.plan.tier].label}
                     </Badge>
                   )}
                 </div>
               </div>
-              {subscription.currentPeriodEnd && (
+              {current.currentPeriodEnd && (
                 <p className="text-sm text-ink-500">
-                  Vence: {formatDate(subscription.currentPeriodEnd)}
+                  Vence: {formatDate(current.currentPeriodEnd)}
                 </p>
               )}
             </div>
@@ -173,8 +183,8 @@ export default function PaymentsPage() {
           {pendingInstallment && !hasPendingPayment && (
             <PagoMovilReportForm
               installment={pendingInstallment}
-              planName={subscription.plan.name}
-              priceUsd={subscription.plan.priceUsd}
+              planName={current.plan.name}
+              priceUsd={current.plan.priceUsd}
               onReported={load}
             />
           )}
@@ -186,10 +196,10 @@ export default function PaymentsPage() {
           <div className="card p-6">
             <h2 className="mb-3 text-lg font-semibold text-ink-900">Historial de pagos</h2>
             <div className="space-y-2">
-              {subscription.installments.flatMap((i) => i.payments).length === 0 ? (
+              {current.installments.flatMap((i) => i.payments).length === 0 ? (
                 <p className="text-sm text-ink-500">Aún no has reportado pagos.</p>
               ) : (
-                subscription.installments
+                current.installments
                   .flatMap((i) => i.payments)
                   .map((p) => (
                     <div key={p.id} className="flex items-center justify-between rounded-lg border border-ink-100 p-3 text-sm">

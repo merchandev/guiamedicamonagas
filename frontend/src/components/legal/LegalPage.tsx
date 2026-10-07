@@ -45,7 +45,7 @@ export function LegalPage({
       </nav>
       <h1 className="mt-2 text-3xl">{doc.title}</h1>
       <p className="mt-2 text-sm text-ink-500">
-        Versión {doc.version} — vigente desde el {LEGAL_EFFECTIVE_DATE_LABEL}.
+        Versión {doc.version} — vigente desde el {doc.effectiveDateLabel ?? LEGAL_EFFECTIVE_DATE_LABEL}.
       </p>
       {lead && <div className="mt-4 text-ink-700">{lead}</div>}
 

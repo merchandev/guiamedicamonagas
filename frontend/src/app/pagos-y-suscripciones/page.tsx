@@ -11,7 +11,25 @@ const SECTIONS: LegalSection[] = [
       <Ul
         items={[
           'El uso del directorio y la cuenta de paciente.',
-          'El registro de un profesional, la verificación de sus documentos y el perfil básico.',
+          'El registro de un profesional y la verificación de sus documentos.',
+          'La prueba gratuita de 14 días del plan Plus, una sola vez por profesional (ver «Prueba gratuita»).',
+        ]}
+      />
+    ),
+  },
+  {
+    id: 'prueba',
+    title: 'Prueba gratuita del plan Plus',
+    body: (
+      <Ul
+        items={[
+          'Un perfil profesional aparece en el directorio solo mientras tiene un plan activo: un plan pagado o la prueba gratuita. No hay un plan gratuito permanente.',
+          'La prueba gratuita da el plan Plus durante 14 días. Empieza sola la primera vez que el perfil, sin un plan pagado, cumple los requisitos de publicación con el 100 % de los documentos exigidos aprobados, la biografía y la foto de perfil (ver Verificación de profesionales).',
+          'Es una sola por profesional: no se renueva ni vuelve a empezar, y no la tiene quien ya tuvo un plan pagado.',
+          'No pide datos de pago ni se convierte sola en un plan pagado: al terminar no se cobra nada.',
+          'El profesional recibe un aviso en su panel y por correo 3 días antes de que termine, otro en su último día y otro el día que termina.',
+          'Si termina sin un plan pagado, el perfil deja de mostrarse en el directorio y no recibe citas nuevas. Se conservan sus datos, sus documentos y las citas ya reservadas, que puede seguir gestionando. Vuelve a mostrarse cuando se valida el pago de un plan, si sigue cumpliendo los requisitos de publicación.',
+          'Si se contrata un plan durante la prueba, el plan rige desde que se valida el pago, y los días de prueba que quedaban se suman al periodo pagado.',
         ]}
       />
     ),
@@ -22,13 +40,17 @@ const SECTIONS: LegalSection[] = [
     body: (
       <>
         <P>
-          Los planes de pago para profesionales añaden herramientas (por ejemplo, agenda, fotos, publicaciones,
-          estadísticas, sedes adicionales, redes sociales) y visibilidad comercial. Los planes vigentes, lo que incluye
-          cada uno y su precio están publicados en{' '}
+          Los planes de pago para profesionales mantienen el perfil en el directorio y añaden herramientas (por ejemplo,
+          agenda, publicaciones, estadísticas, sedes adicionales, redes sociales) y visibilidad comercial. Los planes
+          vigentes, lo que incluye cada uno y su precio están publicados en{' '}
           <Link href="/planes" className="text-pine-700 underline">
             Planes y precios
           </Link>
           ; esa página es la referencia al momento de contratar.
+        </P>
+        <P>
+          El plan Profesional permite publicar el perfil desde el 60 % de los documentos exigidos aprobados, con la biografía
+          y la foto de perfil.
         </P>
         <P>
           Los planes Plus, Premium y Marca Médica solo pueden contratarse con el 100 % de los documentos exigidos
@@ -123,7 +145,7 @@ const SECTIONS: LegalSection[] = [
         items={[
           'Los planes son mensuales: cada pago cubre un periodo.',
           'No hay renovación ni cobro automático. Para continuar con el plan se reporta un nuevo pago.',
-          'Si el periodo vence sin renovarse, el perfil vuelve al plan básico gratuito: sigue publicado y conserva su verificación, y dejan de estar disponibles las funciones exclusivas del plan vencido.',
+          'Si el periodo vence sin renovarse, el perfil deja de mostrarse en el directorio y no recibe citas nuevas hasta que se valide un nuevo pago. Conserva su verificación, sus datos, sus documentos y las citas ya reservadas, que puede seguir gestionando. El profesional recibe un aviso en su panel y por correo cuando el plan vence.',
         ]}
       />
     ),
@@ -138,7 +160,8 @@ const SECTIONS: LegalSection[] = [
         <Link href="/reclamos?tipo=BILLING" className="text-pine-700 underline">
           canal de solicitudes
         </Link>
-        ; al vencer el periodo, el profesional puede contratar el plan que prefiera o quedarse en el básico.
+        ; al vencer el periodo, el profesional puede contratar el plan que prefiera. Sin un plan activo, el perfil no se
+        muestra en el directorio.
       </P>
     ),
   },
@@ -194,8 +217,9 @@ export default function PaymentsPolicyPage() {
       slug="pagos"
       lead={
         <p>
-          La verificación y el perfil básico son gratuitos. Los planes de pago son mensuales, se pagan por Pago Móvil y no
-          se renuevan ni se cobran de forma automática.
+          La verificación es gratuita y cada profesional tiene una prueba gratuita de 14 días del plan Plus. Para aparecer
+          en el directorio después, hace falta un plan de pago: son mensuales, se pagan por Pago Móvil y no se renuevan ni se
+          cobran de forma automática.
         </p>
       }
       sections={SECTIONS}

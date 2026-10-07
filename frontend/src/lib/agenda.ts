@@ -58,6 +58,8 @@ export interface ScheduleSettings {
 }
 
 export interface CalendarData {
+  /** Sin plan: se ven y se gestionan las citas ya reservadas, pero no llegan ni se crean citas nuevas. */
+  planActive: boolean;
   settings: ScheduleSettings | null;
   days: CalendarDay[];
   appointments: AgendaAppointment[];

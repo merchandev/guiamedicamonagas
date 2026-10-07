@@ -56,7 +56,7 @@ const SECTIONS: LegalSection[] = [
           items={[
             'El orden del directorio prioriza la relevancia de la búsqueda y los perfiles completos; los planes de pago suman un impulso acotado.',
             'Los espacios comerciales se muestran con la etiqueta «Destacado»: son publicidad.',
-            'El color de la insignia de verificado (gris, azul o dorado) refleja el plan contratado, no un grado distinto de verificación ni de calidad.',
+            'El color de la insignia de verificado (azul, índigo o dorado) refleja el plan contratado, no un grado distinto de verificación ni de calidad.',
             'La verificación es la misma para todos los planes y no se compra.',
           ]}
         />

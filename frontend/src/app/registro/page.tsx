@@ -176,7 +176,8 @@ function RegisterContent() {
         {ORGANIZATIONS_LAUNCHED
           ? 'Regístrate como paciente, como médico o como farmacia, laboratorio o clínica.'
           : 'Regístrate como paciente o como médico.'}{' '}
-        La verificación y el perfil básico son gratuitos.
+        La cuenta de paciente y la verificación de los médicos son gratuitas; los médicos publican su perfil con 14 días
+        gratis del plan Plus.
       </p>
 
       <form onSubmit={handleSubmit(onSubmit)} className="card mt-6 space-y-4 p-6">

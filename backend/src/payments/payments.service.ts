@@ -10,6 +10,9 @@ import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { loadSubscriptionOwner, userManagesSubscription } from '../subscriptions/subscription-owner';
 import type { SecuredFile } from '../uploads/upload-security.service';
 import { recomputeDirectoryScore } from '../professionals/directory-score';
+import { recomputeProfessionalStatus } from '../professionals/publication-rules';
+import { TRIAL_TIER } from '../subscriptions/plan-tiers';
+import { paidPeriodAnchor } from '../subscriptions/plan-trial';
 import { isUniqueViolation } from '../common/utils/prisma-errors';
 import { ReportPaymentDto } from './dto/report-payment.dto';
 import { UpdatePagoMovilAccountDto } from './dto/update-pago-movil-account.dto';
@@ -257,16 +260,25 @@ export class PaymentsService {
 
       if (approved) {
         const now = new Date();
-        const periodEnd = SubscriptionsService.nextPeriodEnd(now, subscription.plan.billingCycle);
+        // Pagado durante la prueba gratuita: los días que le quedaban se suman al plan.
+        const doctor = subscription.professionalId
+          ? await tx.professionalProfile.findUnique({
+              where: { id: subscription.professionalId },
+              select: { planTier: true, trialEndsAt: true, trialNotice: true },
+            })
+          : null;
+        const anchor = doctor ? paidPeriodAnchor(now, doctor, TRIAL_TIER) : now;
+        const periodEnd = SubscriptionsService.nextPeriodEnd(anchor, subscription.plan.billingCycle);
         await tx.subscriptionInstallment.update({ where: { id: payment.installmentId }, data: { status: 'PAID' } });
         await tx.subscription.update({
           where: { id: subscription.id },
           data: { status: 'ACTIVE', currentPeriodStart: now, currentPeriodEnd: periodEnd },
         });
         if (subscription.professionalId) {
+          // Con un plan pagado ya no hay prueba gratuita (ni sus avisos).
           await tx.professionalProfile.update({
             where: { id: subscription.professionalId },
-            data: { planTier: subscription.plan.tier },
+            data: { planTier: subscription.plan.tier, trialNotice: 'CLOSED' },
           });
         } else {
           await tx.organization.update({
@@ -278,6 +290,8 @@ export class PaymentsService {
     });
 
     if (approved && subscription.professionalId) {
+      // Con el plan activo vuelve al directorio (si cumple el resto de los requisitos).
+      await recomputeProfessionalStatus(this.prisma, subscription.professionalId);
       await recomputeDirectoryScore(this.prisma, subscription.professionalId);
     }
 

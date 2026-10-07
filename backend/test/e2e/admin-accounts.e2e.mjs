@@ -159,6 +159,9 @@ try {
   r=await call('PATCH',`/admin/accounts/professionals/${ids.modDoctor}`,mod('RESTORE'));
   const restored=(await db.query('SELECT "verificationStatus","isPublished" FROM "ProfessionalProfile" WHERE id=$1',[ids.modProfile])).rows[0];
   check('reactivar con documentos completos: vuelve verificado y al directorio',r.status===200 && restored.verificationStatus==='VERIFIED' && restored.isPublished===true);
+  // Nunca tuvo plan ni prueba: al cumplir todo, la reactivación le empieza la prueba gratis de Plus y se le avisa.
+  check('la reactivación empieza su prueba gratis de Plus, con aviso',(await db.query('SELECT "planTier" FROM "ProfessionalProfile" WHERE id=$1',[ids.modProfile])).rows[0].planTier==='PROFESSIONAL_PLUS'
+    && await count('SELECT count(*)::int n FROM "Notification" WHERE "userId"=$1 AND type=\'TRIAL_STARTED\'',[ids.modDoctor])===1);
   const relogin=await login(modEmail, modPassword);
   check('inicia sesión tras reactivar',relogin.status===200 && !!relogin.data?.accessToken);
   const modToken=relogin.data.accessToken;
@@ -169,7 +172,7 @@ try {
   check('catálogo con los precios nuevos y el plan Marca Médica',catalog.PROFESSIONAL===3.99 && catalog.PROFESSIONAL_PLUS===5.99
     && catalog.PREMIUM===10.99 && catalog.AGENCY===69.99);
   const planNames=Object.fromEntries((r.data??[]).map(p=>[p.tier,p.name]));
-  check('los planes se llaman Perfil Básico, Profesional, Plus, Premium y Marca Médica',planNames.FREE==='Perfil Básico' && planNames.PROFESSIONAL==='Profesional'
+  check('se ofrecen Profesional, Plus, Premium y Marca Médica, sin plan gratis',!('FREE' in planNames) && planNames.PROFESSIONAL==='Profesional'
     && planNames.PROFESSIONAL_PLUS==='Plus' && planNames.PREMIUM==='Premium' && planNames.AGENCY==='Marca Médica'
     && !JSON.stringify(r.data).includes('Profesional Plus') && !JSON.stringify(r.data).includes('Agencia'));
   check('Marca Médica deja explícitos los 2 videos cada mes',(r.data??[]).find(p=>p.tier==='AGENCY')?.features?.includes('2 videos profesionales cada mes'));
@@ -190,7 +193,7 @@ try {
   // Estadísticas del médico según su plan.
   const doctorTv=(await db.query('SELECT "tokenVersion" FROM "User" WHERE id=$1',[ids.doctor])).rows[0].tokenVersion;
   r=await call('GET','/analytics/me',null,token(ids.doctor,'PROFESSIONAL',doctorTv));
-  check('el Perfil Básico no incluye estadísticas',r.status===200 && r.data.level==='NONE' && !r.data.events);
+  check('sin plan no hay estadísticas',r.status===200 && r.data.level==='NONE' && !r.data.events);
   const videoId='dQw4w9WgXcQ';
   r=await call('PUT','/professionals/me/presentation-video',{url:`https://youtu.be/${videoId}?si=e2e`},modToken);
   check('sin el plan Marca Médica el médico no puede poner video',r.status===403);

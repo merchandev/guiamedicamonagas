@@ -338,7 +338,13 @@ export function AgendaCalendar({ initialAppointmentId }: { initialAppointmentId?
     <div className="space-y-4">
       {message && <Alert tone="success">{message}</Alert>}
       {error && <Alert tone="error">{error}</Alert>}
-      {data && !data.settings && (
+      {data && !data.planActive && (
+        <Alert tone="warning">
+          Sin un plan activo no recibes citas nuevas ni puedes cargarlas. Las que ya tenías siguen aquí: puedes confirmarlas,
+          atenderlas o cancelarlas. <Link href="/dashboard/pagos" className="underline">Elegir un plan</Link>
+        </Alert>
+      )}
+      {data && data.planActive && !data.settings && (
         <Alert tone="warning">
           Todavía no configuraste tu horario de atención. Hazlo en <Link href="/dashboard/agenda/horario" className="underline">Horario</Link> para recibir reservas.
         </Alert>

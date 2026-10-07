@@ -26,21 +26,18 @@ const SPECIALTIES = [
 ];
 
 const PLANS = [
+  // FREE es «sin plan» y no se ofrece (ACT-0052): sin un plan activo o la
+  // prueba gratuita de Plus, el perfil no aparece en el directorio.
   {
     tier: 'FREE' as const,
-    name: 'Perfil Básico',
-    description: 'Registro gratuito con presencia mínima en el directorio.',
+    name: 'Sin plan',
+    description: 'No se ofrece: sin un plan activo el perfil no aparece en el directorio.',
     priceUsd: 0,
     billingCycle: 'MONTHLY' as const,
     maxLocations: 1,
     postsLimit: 0,
-    features: [
-      'Verificación de credenciales gratuita',
-      'Insignia de verificado (gris)',
-      'Nombre',
-      'Especialidad',
-      'Ubicación (municipio)',
-    ],
+    features: [],
+    isActive: false,
   },
   {
     tier: 'PROFESSIONAL' as const,
@@ -174,6 +171,7 @@ async function main() {
         maxLocations: plan.maxLocations,
         postsLimit: plan.postsLimit,
         features: plan.features,
+        isActive: 'isActive' in plan ? plan.isActive : true,
       },
     });
   }

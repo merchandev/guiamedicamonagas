@@ -11,12 +11,14 @@ import { ORGANIZATIONS_LAUNCHED } from '@/lib/features';
 export const metadata: Metadata = {
   title: 'Planes y precios',
   description: ORGANIZATIONS_LAUNCHED
-    ? 'Planes para médicos, farmacias, laboratorios y clínicas en Guía Médica Monagas. Regístrate gratis o publica un perfil verificado completo.'
-    : 'Planes para médicos en Guía Médica Monagas: Perfil Básico gratis, Profesional, Plus, Premium y Marca Médica. Regístrate gratis y publica un perfil verificado.',
+    ? 'Planes para médicos, farmacias, laboratorios y clínicas en Guía Médica Monagas. Los médicos publican su perfil verificado con 14 días gratis del plan Plus.'
+    : 'Planes para médicos en Guía Médica Monagas: Profesional, Plus, Premium y Marca Médica. Publica tu perfil verificado con 14 días gratis del plan Plus.',
   alternates: { canonical: '/planes' },
 };
 
-const DOCTOR_TIERS = ['FREE', 'PROFESSIONAL', 'PROFESSIONAL_PLUS', 'PREMIUM'];
+// No hay plan gratis: la prueba de 14 días del plan Plus (ver /pagos-y-suscripciones).
+const DOCTOR_TIERS = ['PROFESSIONAL', 'PROFESSIONAL_PLUS', 'PREMIUM'];
+const TRIAL_TIER = 'PROFESSIONAL_PLUS';
 
 // Lo que hace el equipo cada mes; la lista detallada sale del catálogo (/admin/planes).
 const MARCA_MEDICA_PILLARS = [
@@ -47,15 +49,40 @@ export default async function PlansPage() {
         <div className="mx-auto max-w-2xl text-center">
           <h1 className="text-4xl">Planes para tu perfil médico</h1>
           <p className="mt-3 text-lg text-ink-600">
-            Empieza gratis o desbloquea foto, biografía, WhatsApp, publicaciones y más visibilidad en el directorio. Y si
-            quieres crecer también fuera de la plataforma, con Marca Médica producimos contigo contenido en video cada mes.
+            Publica tu perfil verificado con 14 días gratis del plan Plus y después elige el plan que te sirva: agenda en línea,
+            WhatsApp, publicaciones y más visibilidad en el directorio. Y si quieres crecer también fuera de la plataforma, con
+            Marca Médica producimos contigo contenido en video cada mes.
           </p>
         </div>
       </Reveal>
 
-      <RevealGroup className="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+      <Reveal delay={0.03}>
+        <section
+          aria-labelledby="prueba-gratis"
+          className="mx-auto mt-10 max-w-3xl rounded-xl2 border border-pine-200 bg-pine-50 p-6 text-center sm:p-8"
+        >
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-pine-700">Prueba gratis</p>
+          <h2 id="prueba-gratis" className="mt-2 text-2xl text-ink-950">
+            14 días del plan Plus, sin pagar nada
+          </h2>
+          <p className="mt-3 text-sm leading-relaxed text-ink-700">
+            Cuando tu perfil está completo (todos tus documentos aprobados, tu biografía y tu foto), se publica solo con el
+            plan Plus durante 14 días. Te avisamos 3 días antes, 1 día antes y el día que termina. Para seguir apareciendo en
+            el directorio después, eliges un plan: sin un plan activo, el perfil no se muestra. Es una sola prueba por médico
+            y no se cobra nada al terminar.
+          </p>
+          <Link
+            href="/registro?tipo=medico"
+            className="mt-5 inline-block rounded-lg bg-pine-700 px-5 py-2.5 text-sm font-semibold text-white transition-transform hover:-translate-y-0.5 hover:bg-pine-800"
+          >
+            Registrarme como médico
+          </Link>
+        </section>
+      </Reveal>
+
+      <RevealGroup className="mx-auto mt-12 grid max-w-5xl gap-6 md:grid-cols-2 lg:grid-cols-3">
         {doctorPlans.map((plan) => {
-          const highlighted = plan.tier === 'PROFESSIONAL_PLUS';
+          const highlighted = plan.tier === TRIAL_TIER;
           return (
             <RevealItem key={plan.id}>
               <div
@@ -65,7 +92,7 @@ export default async function PlansPage() {
               >
                 {highlighted && (
                   <span className="mb-3 inline-block w-fit rounded-full bg-white/15 px-2.5 py-1 text-xs font-semibold text-white">
-                    Más elegido
+                    14 días gratis al publicarte
                   </span>
                 )}
                 <h2 className={`text-lg font-semibold ${highlighted ? 'text-white' : 'text-ink-900'}`}>{plan.name}</h2>
@@ -92,7 +119,7 @@ export default async function PlansPage() {
                     highlighted ? 'bg-white text-pine-800 hover:bg-pine-50' : 'bg-pine-700 text-white hover:bg-pine-800'
                   }`}
                 >
-                  {Number(plan.priceUsd) === 0 ? 'Registrarme gratis' : 'Elegir este plan'}
+                  {highlighted ? 'Empezar con 14 días gratis' : 'Elegir este plan'}
                 </Link>
               </div>
             </RevealItem>
@@ -227,9 +254,10 @@ export default async function PlansPage() {
         <p className="mx-auto mt-10 max-w-2xl text-center text-xs text-ink-500">
           Los precios se cotizan en USD. El pago se realiza por Pago Móvil en bolívares, a la tasa oficial del BCV vigente
           al suscribirse. Los datos para pagar se muestran dentro de tu panel de médico, en «Suscripción y pagos», y desde
-          ahí mismo reportas el pago. Los planes son mensuales y no se renuevan ni se cobran de forma automática. La verificación de
-          credenciales y el perfil básico son gratuitos, y la verificación es la misma en todos los planes: pagar nunca
-          sustituye ni acelera la revisión de documentos, ni indica superioridad clínica. Condiciones completas en{' '}
+          ahí mismo reportas el pago. Los planes son mensuales y no se renuevan ni se cobran de forma automática. Sin un plan
+          activo o la prueba gratis, el perfil no aparece en el directorio. La verificación de credenciales es gratuita y la
+          misma en todos los planes: pagar nunca sustituye ni acelera la revisión de documentos, ni indica superioridad clínica.
+          Condiciones completas en{' '}
           <Link href="/pagos-y-suscripciones" className="underline">
             Pagos y suscripciones
           </Link>{' '}
