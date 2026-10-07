@@ -1,6 +1,7 @@
 // Recorridos del paciente con un médico real: reservar una cita en línea, y
 // entregar su código → el médico lo registra → el paciente revoca y el médico
-// pierde el acceso.
+// pierde el acceso. Además, lo que recibe de su ficha la app móvil.
+import { randomBytes } from 'node:crypto';
 import { expect, test } from '@playwright/test';
 import { api, caracasDay, createPatient, createPublishedDoctor, pickFirstFreeDay, signIn, spreadRateLimits } from './support';
 
@@ -91,4 +92,26 @@ test('código del paciente: el médico lo registra, el paciente revoca y el méd
   expect((await api('POST', '/appointments/me/patients/register', { code }, doctor.token)).status).toBe(403);
   await patientContext.close();
   await doctorContext.close();
+});
+
+test('la app móvil recibe solo los datos básicos de la ficha, sin datos de salud ni de identidad', async () => {
+  const patient = await createPatient();
+  const full = await api('PATCH', '/patients/me', { allergies: 'Penicilina', medications: [{ name: 'Losartán', schedule: '8 a. m.' }] }, patient.token);
+  expect(full.status, JSON.stringify(full.data)).toBe(200);
+  const keys = ['firstName', 'lastName', 'municipality', 'patientCode', 'phone'];
+
+  const basic = await api('GET', '/patients/me/basic', undefined, patient.token);
+  expect(basic.status).toBe(200);
+  expect(Object.keys(basic.data).sort()).toEqual(keys);
+  expect(basic.data).toMatchObject({ firstName: patient.firstName, lastName: patient.lastName, phone: null, municipality: null });
+
+  const phone = `0414-${String(randomBytes(4).readUInt32BE(0) % 10_000_000).padStart(7, '0')}`;
+  const saved = await api('PATCH', '/patients/me/basic', { phone, municipality: 'Maturín' }, patient.token);
+  expect(saved.status, JSON.stringify(saved.data)).toBe(200);
+  expect(Object.keys(saved.data).sort()).toEqual(keys);
+  expect(saved.data).toMatchObject({ phone, municipality: 'Maturín' });
+
+  // Por esta ruta no se tocan los datos de salud, y la ficha completa de la web sigue igual.
+  expect((await api('PATCH', '/patients/me/basic', { allergies: 'Ninguna' }, patient.token)).status).toBe(400);
+  expect((await api('GET', '/patients/me', undefined, patient.token)).data).toMatchObject({ allergies: 'Penicilina', phone, municipality: 'Maturín' });
 });

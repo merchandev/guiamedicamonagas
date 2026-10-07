@@ -22,6 +22,7 @@ Cada access token lleva la versión de sesión del usuario (`tv`); si no coincid
 
 ## Pacientes (ficha propia, cifrada)
 * `GET /patients/me` · `PATCH /patients/me` — ficha y datos de salud.
+* `GET /patients/me/basic` · `PATCH /patients/me/basic` — para la app móvil, que guarda lo que recibe en el teléfono: solo `firstName`, `lastName`, `patientCode`, `phone` y `municipality`, sin datos de salud ni de identidad. El `PATCH` acepta solo `phone` y `municipality`.
 * `POST /patients/me/photo` · `POST /patients/me/id-photo` — fotos (verificadas y re-codificadas).
 * `GET /patients/me/grants` · `POST /patients/me/grants` · `DELETE /patients/me/grants/:id` — autorizaciones a médicos.
 * `GET /patients/me/professionals` — médicos con los que tuvo citas.

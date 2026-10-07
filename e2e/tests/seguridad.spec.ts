@@ -60,6 +60,7 @@ test('sin sesión, las rutas privadas responden 401', async () => {
   for (const path of [
     '/auth/me',
     '/patients/me',
+    '/patients/me/basic',
     '/patients/me/grants',
     '/appointments/me',
     '/professionals/me',

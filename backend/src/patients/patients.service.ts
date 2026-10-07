@@ -20,7 +20,7 @@ import {
 } from '../mail/mail.templates';
 import { generatePatientCode } from './patient-code.util';
 import { formatShareCode, generateShareCode, normalizeShareCode } from './share-code.util';
-import { UpdatePatientProfileDto } from './dto/update-patient-profile.dto';
+import { UpdatePatientBasicDto, UpdatePatientProfileDto } from './dto/update-patient-profile.dto';
 import { CreatePatientDataGrantDto, DEFAULT_GRANT_DAYS, MAX_GRANT_DAYS } from './dto/patient-data-grant.dto';
 import { DecodedPatient, PatientDataCodec, PatientHealthData } from './patient-data.codec';
 import { patientCompleteness } from './patient-completeness';
@@ -145,11 +145,37 @@ export class PatientsService {
     return { ...rest, hasIdPhoto: !!idPhotoKey, photoUrl, idPhotoUrl, completeness };
   }
 
+  /**
+   * Lo mínimo de la ficha, sin datos de salud ni de identidad: lo que usa la
+   * app móvil, que además lo guarda en el teléfono para verlo sin conexión.
+   */
+  private basic(profile: PatientProfile) {
+    return {
+      firstName: profile.firstName,
+      lastName: profile.lastName,
+      patientCode: profile.patientCode,
+      phone: this.codec.decodePhone(profile),
+      municipality: profile.municipality,
+    };
+  }
+
   async getOwnProfile(userId: string) {
     return this.present(await this.ownProfileOrThrow(userId));
   }
 
+  async getOwnBasic(userId: string) {
+    return this.basic(await this.ownProfileOrThrow(userId));
+  }
+
   async updateOwnProfile(userId: string, dto: UpdatePatientProfileDto) {
+    return this.present(await this.applyOwnUpdate(userId, dto));
+  }
+
+  async updateOwnBasic(userId: string, dto: UpdatePatientBasicDto) {
+    return this.basic(await this.applyOwnUpdate(userId, dto));
+  }
+
+  private async applyOwnUpdate(userId: string, dto: UpdatePatientProfileDto) {
     const profile = await this.ownProfileOrThrow(userId);
     const current = this.codec.decode(profile);
 
@@ -186,8 +212,7 @@ export class PatientsService {
     data.healthDataEnc = this.codec.encodeHealth(health);
 
     try {
-      const updated = await this.prisma.patientProfile.update({ where: { id: profile.id }, data });
-      return this.present(updated);
+      return await this.prisma.patientProfile.update({ where: { id: profile.id }, data });
     } catch (error) {
       throw this.translateUniqueError(error);
     }

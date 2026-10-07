@@ -92,3 +92,15 @@ export class UpdatePatientProfileDto {
   @MaxLength(120, { each: true })
   treatingDoctors?: string[];
 }
+
+/** Lo que la app móvil edita de la ficha: solo los datos de contacto. */
+export class UpdatePatientBasicDto {
+  @IsOptional()
+  @Matches(PHONE_REGEX, { message: 'Teléfono inválido (ej. 0414-1234567)' })
+  phone?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  municipality?: string;
+}

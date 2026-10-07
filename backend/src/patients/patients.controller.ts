@@ -7,7 +7,7 @@ import { readSingleUploadedFile } from '../common/utils/multipart';
 import { StorageService } from '../storage/storage.service';
 import { IMAGE_TYPES, UploadSecurityService } from '../uploads/upload-security.service';
 import { PatientsService } from './patients.service';
-import { UpdatePatientProfileDto } from './dto/update-patient-profile.dto';
+import { UpdatePatientBasicDto, UpdatePatientProfileDto } from './dto/update-patient-profile.dto';
 import { CreatePatientDataGrantDto, UpdateShareScopesDto } from './dto/patient-data-grant.dto';
 
 const MAX_PHOTO_SIZE = 5 * 1024 * 1024;
@@ -32,6 +32,19 @@ export class PatientsController {
   @Patch('me')
   updateOwnProfile(@CurrentUser() user: AuthenticatedUser, @Body() dto: UpdatePatientProfileDto) {
     return this.patients.updateOwnProfile(user.id, dto);
+  }
+
+  // Para la app móvil: nombre, código, teléfono y municipio, sin datos de salud
+  // ni de identidad (la app guarda lo que recibe en el teléfono).
+
+  @Get('me/basic')
+  getOwnBasic(@CurrentUser() user: AuthenticatedUser) {
+    return this.patients.getOwnBasic(user.id);
+  }
+
+  @Patch('me/basic')
+  updateOwnBasic(@CurrentUser() user: AuthenticatedUser, @Body() dto: UpdatePatientBasicDto) {
+    return this.patients.updateOwnBasic(user.id, dto);
   }
 
   @Post('me/photo')
