@@ -19,7 +19,7 @@
     "@hookform/resolvers": "^3.9.1",
     "clsx": "^2.1.1",
     "framer-motion": "^13.4.6",
-    "next": "^16.3.7",
+    "next": "^16.3.8",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "react-hook-form": "^7.54.0",
