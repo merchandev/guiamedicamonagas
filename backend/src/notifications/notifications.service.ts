@@ -6,9 +6,11 @@ import type { EnvConfig } from '../config/env.validation';
 import { PrismaService } from '../prisma/prisma.service';
 import { MailService } from '../mail/mail.service';
 import { WhatsappService } from '../whatsapp/whatsapp.service';
+import { FcmService } from './fcm.service';
 import { Permission, ROLE_PERMISSIONS } from '../common/permissions';
 import { VENEZUELA_TIME_ZONE } from '../common/caracas-time';
 import { isInternalLink, OPTIONAL_EMAIL_TYPES, optionalEmailTypesFor } from './notification-types';
+import type { RegisterDeviceTokenDto } from './dto/device-token.dto';
 
 interface NotifyOptions {
   userId: string;
@@ -43,10 +45,12 @@ export class NotificationsService {
     private readonly prisma: PrismaService,
     private readonly mail: MailService,
     private readonly whatsapp: WhatsappService,
+    private readonly fcm: FcmService,
     private readonly config: ConfigService<EnvConfig, true>,
   ) {}
 
   async notify(options: NotifyOptions): Promise<void> {
+    const internalLink = isInternalLink(options.link) ? options.link : null;
     const tasks: Promise<unknown>[] = [
       this.prisma.notification.create({
         data: {
@@ -54,8 +58,17 @@ export class NotificationsService {
           type: options.type,
           title: options.title,
           content: options.content,
-          link: isInternalLink(options.link) ? options.link : null,
+          link: internalLink,
         },
+      }),
+      // Mismo aviso como notificación push al móvil (FCM). Lleva solo el título
+      // y el texto de la campana —sin datos de salud— y la ruta interna a abrir.
+      this.fcm.sendToUser({
+        userId: options.userId,
+        title: options.title,
+        body: options.content,
+        link: internalLink,
+        type: options.type,
       }),
     ];
 
@@ -149,6 +162,28 @@ export class NotificationsService {
       where: { userId, isRead: false },
       data: { isRead: true, readAt: new Date() },
     });
+  }
+
+  /**
+   * La app móvil registra el token de FCM de esta instalación al iniciar sesión.
+   * El token es único: si el teléfono ya lo tenía con otra cuenta (otra persona
+   * inició sesión en el mismo aparato), pasa a la cuenta actual para que los
+   * avisos no lleguen a quien ya no está.
+   */
+  async registerMobileToken(userId: string, dto: RegisterDeviceTokenDto) {
+    const platform = dto.platform ?? 'ANDROID';
+    await this.prisma.mobilePushToken.upsert({
+      where: { token: dto.token },
+      create: { userId, token: dto.token, platform, deviceInfo: dto.deviceInfo ?? null },
+      update: { userId, platform, deviceInfo: dto.deviceInfo ?? null, lastSeenAt: new Date() },
+    });
+    return { ok: true };
+  }
+
+  /** Al cerrar sesión la app borra su token (solo si es de la propia cuenta). */
+  async removeMobileToken(userId: string, token: string) {
+    await this.prisma.mobilePushToken.deleteMany({ where: { token, userId } });
+    return { ok: true };
   }
 
   /** Correos opcionales que corresponden a su tipo de cuenta y si los recibe. */

@@ -3,11 +3,12 @@ import { MailModule } from '../mail/mail.module';
 import { WhatsappModule } from '../whatsapp/whatsapp.module';
 import { NotificationsController } from './notifications.controller';
 import { NotificationsService } from './notifications.service';
+import { FcmService } from './fcm.service';
 
 @Module({
   imports: [MailModule, WhatsappModule],
   controllers: [NotificationsController],
-  providers: [NotificationsService],
+  providers: [NotificationsService, FcmService],
   exports: [NotificationsService],
 })
 export class NotificationsModule {}

@@ -74,6 +74,7 @@ Cada access token lleva la versión de sesión del usuario (`tv`); si no coincid
 ## Notificaciones
 * `GET /notifications?cursor=&limit=` · `GET /notifications/unread-count` · `PATCH /notifications/:id/read` · `PATCH /notifications/read-all` — avisos de la propia cuenta (nunca de otra).
 * `GET|PUT /notifications/preferences` — correos opcionales de su tipo de cuenta (`{ emailOptOut: [...] }`).
+* **App móvil (push):** `POST /notifications/device-tokens` (`{ token, platform?: ANDROID|IOS, deviceInfo? }`) registra el token de FCM de la instalación al iniciar sesión; `DELETE /notifications/device-tokens` (`{ token }`) lo borra al cerrar sesión. El token es único por instalación. Cada aviso de la campana (`notify()`) también sale como notificación push a los móviles de esa cuenta, con el mismo título y texto —sin datos de salud— y la ruta interna a abrir. El envío a FCM solo ocurre si el servidor tiene configurada `FCM_SERVICE_ACCOUNT_FILE` o `FCM_SERVICE_ACCOUNT_JSON`; si no, el push queda desactivado y el resto sigue igual. Un token muerto (app desinstalada) se borra solo al primer fallo `UNREGISTERED`.
 
 ## Valoraciones (`REVIEWS_ENABLED`; apagadas en producción)
 * `GET /reviews/config` (público): `{ enabled, minForAverage }`. Con las valoraciones apagadas el resto responde 404 y la ficha no muestra promedio.

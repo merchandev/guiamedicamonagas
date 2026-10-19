@@ -65,6 +65,7 @@ model User {
   reviewedDocuments   ProfessionalDocument[] @relation("DocumentReviewer")
   reviewedPayments    Payment[]              @relation("PaymentReviewer")
   pushSubscriptions   PushSubscription[]
+  mobilePushTokens    MobilePushToken[]
   grantedPatientData  PatientDataGrant[]
   reviewedIdentities  PatientProfile[]       @relation("IdentityReviewer")
   patientVaultSessions PatientVaultSession[]
@@ -1483,6 +1484,31 @@ model PushSubscription {
   userAgent String?
 
   createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+enum MobilePlatform {
+  ANDROID
+  IOS
+}
+
+/// Token de notificaciones push de una instalación de la app móvil (Firebase
+/// Cloud Messaging). A diferencia de PushSubscription (Web Push del navegador),
+/// aquí se guarda el token de registro FCM de un teléfono. Un token = una
+/// instalación (único). Nunca guarda datos de salud ni de identidad.
+model MobilePushToken {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  token      String         @unique
+  platform   MobilePlatform @default(ANDROID)
+  /// Marca opaca del dispositivo/app para depurar (p. ej. «android 14 · app 0.2.0»); nunca datos personales.
+  deviceInfo String?
+  createdAt  DateTime       @default(now())
+  /// Se actualiza cada vez que la app vuelve a registrar el token (sesión abierta).
+  lastSeenAt DateTime       @default(now())
 
   @@index([userId])
 }

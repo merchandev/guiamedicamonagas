@@ -1,8 +1,9 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Put, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post, Put, Query } from '@nestjs/common';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../common/types/authenticated-user';
 import { NotificationsService } from './notifications.service';
 import { ListNotificationsDto, UpdateNotificationPreferencesDto } from './dto/notifications.dto';
+import { RegisterDeviceTokenDto, RemoveDeviceTokenDto } from './dto/device-token.dto';
 
 // Sin @Roles(): cada cuenta (paciente, médico, organización o administración)
 // ve solo sus propios avisos.
@@ -38,5 +39,19 @@ export class NotificationsController {
   @Patch(':id/read')
   markRead(@CurrentUser() user: AuthenticatedUser, @Param('id', ParseUUIDPipe) id: string) {
     return this.notifications.markAsRead(user.id, id);
+  }
+
+  // Notificaciones push de la app móvil: la app registra el token de FCM al
+  // iniciar sesión y lo borra al cerrarla.
+  @Post('device-tokens')
+  @HttpCode(200)
+  registerDevice(@CurrentUser() user: AuthenticatedUser, @Body() dto: RegisterDeviceTokenDto) {
+    return this.notifications.registerMobileToken(user.id, dto);
+  }
+
+  @Delete('device-tokens')
+  @HttpCode(200)
+  removeDevice(@CurrentUser() user: AuthenticatedUser, @Body() dto: RemoveDeviceTokenDto) {
+    return this.notifications.removeMobileToken(user.id, dto.token);
   }
 }

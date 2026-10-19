@@ -80,6 +80,13 @@ const baseEnvSchema = z.object({
   WHATSAPP_ACCESS_TOKEN: z.string().optional().default(''),
   WHATSAPP_ADMIN_NUMBER: z.string().optional().default(''),
 
+  // Notificaciones push de la app móvil (Firebase Cloud Messaging). Sin ninguna
+  // de estas dos, el push al móvil queda desactivado (dev local y tests). Es la
+  // clave de cuenta de servicio de Firebase: FILE = ruta a un .json FUERA del
+  // repo; JSON = su contenido en línea (útil en entornos sin disco). Secreta.
+  FCM_SERVICE_ACCOUNT_FILE: z.string().optional().default(''),
+  FCM_SERVICE_ACCOUNT_JSON: z.string().optional().default(''),
+
   // SEC-05: llavero de cifrado de datos de pacientes, FUERA de PostgreSQL.
   // Perderlas = perder los datos cifrados: respaldarlas aparte, nunca junto
   // al volcado de la base de datos.
