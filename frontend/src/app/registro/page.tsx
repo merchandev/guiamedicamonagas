@@ -50,7 +50,7 @@ const schema = z
     email: z.string().email('Correo inválido'),
     password: z
       .string()
-      .min(10, 'Al menos 10 caracteres')
+      .min(6, 'Al menos 6 caracteres')
       .regex(/^(?=.*[A-Za-z])(?=.*\d).+$/, 'Debe incluir letras y números'),
     confirmPassword: z.string(),
   })
@@ -285,7 +285,7 @@ function RegisterContent() {
             label="Contraseña"
             type="password"
             required
-            hint="Mínimo 10 caracteres, con letras y números"
+            hint="Mínimo 6 caracteres, con letras y números"
             {...register('password')}
             error={errors.password?.message}
           />

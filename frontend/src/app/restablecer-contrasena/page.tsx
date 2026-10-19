@@ -15,7 +15,7 @@ const schema = z
   .object({
     newPassword: z
       .string()
-      .min(10, 'Al menos 10 caracteres')
+      .min(6, 'Al menos 6 caracteres')
       .regex(/^(?=.*[A-Za-z])(?=.*\d).+$/, 'Debe incluir letras y números'),
     confirmPassword: z.string(),
   })
@@ -62,7 +62,7 @@ function ResetPasswordContent() {
           label="Nueva contraseña"
           type="password"
           required
-          hint="Mínimo 10 caracteres, con letras y números"
+          hint="Mínimo 6 caracteres, con letras y números"
           {...register('newPassword')}
           error={errors.newPassword?.message}
         />
