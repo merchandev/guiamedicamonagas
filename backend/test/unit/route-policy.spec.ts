@@ -117,6 +117,9 @@ const PUBLIC_ROUTES = [
   'POST /cookie-consent',
   'POST /legal-requests',
   'POST /legal-requests/lookup',
+  'POST /newsletter/confirm',
+  'POST /newsletter/subscribe',
+  'POST /newsletter/unsubscribe',
   'POST /prescriptions/verify',
   'POST /prescriptions/verify/pdf',
 ];

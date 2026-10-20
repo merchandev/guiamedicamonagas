@@ -21,6 +21,7 @@ const LINKS: { href: string; label: string; permission?: Permission; reviews?: b
   { href: '/admin/especialidades', label: 'Especialidades', permission: 'MANAGE_CATALOG' },
   { href: '/admin/catalogos', label: 'Bancos y geografía', permission: 'MANAGE_CATALOG' },
   { href: '/admin/planes', label: 'Planes y tasa', permission: 'MANAGE_PLANS' },
+  { href: '/admin/boletines', label: 'Boletines', permission: 'MANAGE_NEWSLETTER' },
   { href: '/admin/seo', label: 'SEO', permission: 'MANAGE_SITE' },
   { href: '/admin/cookies', label: 'Cookies', permission: 'MANAGE_SITE' },
   { href: '/admin/notificaciones', label: 'Notificaciones' },

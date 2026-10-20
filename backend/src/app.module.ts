@@ -13,6 +13,7 @@ import { StorageModule } from './storage/storage.module';
 import { MailModule } from './mail/mail.module';
 import { WhatsappModule } from './whatsapp/whatsapp.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { NewsletterModule } from './newsletter/newsletter.module';
 import { AuthModule } from './auth/auth.module';
 import { ProfessionalsModule } from './professionals/professionals.module';
 import { AgendaModule } from './agenda/agenda.module';
@@ -53,6 +54,7 @@ import { HealthModule } from './health/health.module';
     MailModule,
     WhatsappModule,
     NotificationsModule,
+    NewsletterModule,
     AuthModule,
     ProfessionalsModule,
     AgendaModule,

@@ -1810,3 +1810,94 @@ model RealtimeEvent {
   @@index([dispatchedAt, id])
   @@index([createdAt])
 }
+
+// --- Boletines (newsletter) --------------------------------------------------
+// Envío masivo de boletines con el diseño de la marca. Los destinatarios salen
+// de tres orígenes: la lista propia de suscriptores, los usuarios registrados
+// (pacientes/médicos) y las altas públicas con doble opt-in. Todo correo lleva
+// enlace de baja; las bajas quedan en la lista de supresión y se excluyen en
+// cada envío. El detalle por destinatario queda en NewsletterDelivery.
+
+enum NewsletterSubscriberStatus {
+  PENDING
+  ACTIVE
+  UNSUBSCRIBED
+}
+
+enum NewsletterSubscriberSource {
+  ADMIN
+  IMPORT
+  PUBLIC
+  /// Fila «sombra» de un usuario registrado: existe solo para darle un token de
+  /// baja estable; no forma parte de la lista propia que administra el admin.
+  REGISTERED
+}
+
+model NewsletterSubscriber {
+  id               String                     @id @default(uuid())
+  email            String                     @unique
+  name             String?
+  status           NewsletterSubscriberStatus @default(ACTIVE)
+  source           NewsletterSubscriberSource @default(ADMIN)
+  /// Token del correo de confirmación (doble opt-in de las altas públicas).
+  confirmToken     String?                    @unique
+  /// Token estable para darse de baja desde cualquier correo.
+  unsubscribeToken String                     @unique
+  createdAt        DateTime                   @default(now())
+  confirmedAt      DateTime?
+  unsubscribedAt   DateTime?
+
+  @@index([status])
+}
+
+enum NewsletterCampaignStatus {
+  DRAFT
+  SENDING
+  SENT
+  PARTIAL
+  FAILED
+}
+
+model NewsletterCampaign {
+  id          String @id @default(uuid())
+  subject     String
+  /// 'BLOCKS' (editor por bloques) o 'HTML' (HTML libre). Ambos van dentro de la plantilla con la marca.
+  contentMode String @default("BLOCKS")
+  blocks      Json?
+  rawHtml     String?
+  /// HTML del cuerpo ya compuesto (sin el enlace de baja, que es por destinatario).
+  renderedHtml String
+
+  audienceList          Boolean @default(true)
+  audiencePatients      Boolean @default(false)
+  audienceProfessionals Boolean @default(false)
+
+  status      NewsletterCampaignStatus @default(DRAFT)
+  totalCount  Int                      @default(0)
+  sentCount   Int                      @default(0)
+  failedCount Int                      @default(0)
+  createdBy   String?
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime                 @default(now())
+  updatedAt   DateTime                 @updatedAt
+
+  deliveries NewsletterDelivery[]
+
+  @@index([status])
+}
+
+model NewsletterDelivery {
+  id           String             @id @default(uuid())
+  campaignId   String
+  campaign     NewsletterCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  email        String
+  subscriberId String?
+  userId       String?
+  /// 'SENT' o 'FAILED'.
+  status String
+  error  String?
+  sentAt DateTime @default(now())
+
+  @@index([campaignId])
+}

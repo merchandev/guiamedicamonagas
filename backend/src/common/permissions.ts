@@ -24,6 +24,8 @@ export enum Permission {
   MANAGE_LEGAL_REQUESTS = 'MANAGE_LEGAL_REQUESTS',
   /** Moderar valoraciones, respuestas y denuncias, y sancionar a sus autores. */
   MODERATE_REVIEWS = 'MODERATE_REVIEWS',
+  /** Gestionar boletines: suscriptores, redacción y envío masivo con historial. */
+  MANAGE_NEWSLETTER = 'MANAGE_NEWSLETTER',
 }
 
 export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
@@ -41,6 +43,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     Permission.VIEW_ADMIN_STATS,
     Permission.MANAGE_LEGAL_REQUESTS,
     Permission.MODERATE_REVIEWS,
+    Permission.MANAGE_NEWSLETTER,
   ],
   SUPERADMIN: Object.values(Permission),
 };

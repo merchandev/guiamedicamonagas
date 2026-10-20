@@ -660,3 +660,62 @@ export function prescriptionSharedTemplate(rawDoctorName: string, numberLabel: s
     `Enviado por Dr(a). ${escapeHtml(rawDoctorName)} desde ${BRAND_NAME}.`,
   );
 }
+
+// --- Boletines (newsletter) --------------------------------------------------
+
+/** Un bloque del editor del boletín. El texto se escapa siempre al renderizar. */
+export type NewsletterBlock =
+  | { type: 'heading'; text: string }
+  | { type: 'paragraph'; text: string }
+  | { type: 'button'; text: string; url: string }
+  | { type: 'image'; url: string; alt?: string }
+  | { type: 'divider' };
+
+/** Solo http(s) y mailto; cualquier otra cosa se neutraliza. Evita javascript: y similares. */
+function safeUrl(raw: string): string {
+  const url = (raw ?? '').trim();
+  return /^https?:\/\//i.test(url) || /^mailto:/i.test(url) ? url : '#';
+}
+
+/** Convierte los bloques del editor en HTML seguro dentro del estilo de la marca. */
+export function renderNewsletterBlocks(blocks: NewsletterBlock[]): string {
+  return (blocks ?? [])
+    .map((b) => {
+      switch (b.type) {
+        case 'heading':
+          return `<h1 style="font-size:20px;margin:0 0 12px;color:#1c1c1c;">${escapeHtml(b.text)}</h1>`;
+        case 'paragraph':
+          return `<p style="font-size:14px;line-height:1.6;color:#3a3a3a;margin:0 0 14px;">${escapeHtml(b.text).replace(/\n/g, '<br/>')}</p>`;
+        case 'button':
+          return `<p style="margin:0 0 14px;">${button(safeUrl(b.url), escapeHtml(b.text) || 'Ver más')}</p>`;
+        case 'image':
+          return `<img src="${escapeHtml(safeUrl(b.url))}" alt="${escapeHtml(b.alt ?? '')}" style="max-width:100%;height:auto;border-radius:8px;margin:0 0 14px;display:block;" />`;
+        case 'divider':
+          return `<hr style="border:none;border-top:1px solid #eee;margin:18px 0;" />`;
+        default:
+          return '';
+      }
+    })
+    .join('\n');
+}
+
+/**
+ * Envuelve el cuerpo ya compuesto (bloques o HTML libre) en la plantilla con la
+ * marca y agrega el enlace de baja obligatorio, personalizado por destinatario.
+ */
+export function newsletterEmail(opts: { subject: string; bodyHtml: string; unsubscribeUrl: string }): string {
+  const footer = `Recibiste este correo de ${BRAND_NAME}. Si ya no quieres recibir boletines, <a href="${escapeHtml(opts.unsubscribeUrl)}" style="color:${BRAND_COLOR};">cancela tu suscripción aquí</a>.`;
+  return layout(opts.subject, opts.bodyHtml, footer);
+}
+
+/** Correo de doble opt-in para las altas públicas del formulario de la web. */
+export function newsletterConfirmTemplate(rawName: string | undefined, confirmUrl: string) {
+  const greeting = rawName ? `Hola, ${escapeHtml(rawName)}` : 'Hola';
+  return layout(
+    'Confirma tu suscripción',
+    `<h1 style="font-size:20px;margin:0 0 12px;">${greeting} 👋</h1>
+     <p style="font-size:14px;line-height:1.6;color:#3a3a3a;">Confirma que quieres recibir el boletín de ${BRAND_NAME} con novedades, salud y recordatorios.</p>
+     ${button(confirmUrl, 'Confirmar mi suscripción')}
+     <p style="font-size:12px;color:#9a9a9a;margin-top:20px;">Si no fuiste tú, ignora este mensaje y no quedarás suscrito.</p>`,
+  );
+}

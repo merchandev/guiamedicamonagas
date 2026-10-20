@@ -20,7 +20,8 @@ export type Permission =
   | 'MANAGE_PLANS'
   | 'MANAGE_SITE'
   | 'VIEW_ADMIN_STATS'
-  | 'MODERATE_REVIEWS';
+  | 'MODERATE_REVIEWS'
+  | 'MANAGE_NEWSLETTER';
 
 export interface OrganizationMembership {
   role: 'OWNER' | 'ADMIN' | 'EDITOR';
