@@ -49,6 +49,10 @@ function AccountSecurity() {
   const [confirmingLogoutAll, setConfirmingLogoutAll] = useState(false);
   const [loggingOutAll, setLoggingOutAll] = useState(false);
   const [logoutAllError, setLogoutAllError] = useState<string | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const {
     register,
@@ -78,6 +82,22 @@ function AccountSecurity() {
     } catch (e) {
       setLogoutAllError(e instanceof ApiError ? e.message : 'No se pudieron cerrar las sesiones');
       setLoggingOutAll(false);
+    }
+  };
+
+  const onDeleteAccount = async () => {
+    if (!deletePassword) {
+      setDeleteError('Escribe tu contraseña actual');
+      return;
+    }
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await api.post('/auth/account/deletion', { currentPassword: deletePassword });
+      router.push('/iniciar-sesion?eliminada=1');
+    } catch (e) {
+      setDeleteError(e instanceof ApiError ? e.message : 'No se pudo programar la eliminación');
+      setDeleting(false);
     }
   };
 
@@ -190,6 +210,54 @@ function AccountSecurity() {
           <div className="flex justify-end">
             <Button variant="outline" onClick={() => setConfirmingLogoutAll(true)}>
               Cerrar sesión en todos los dispositivos
+            </Button>
+          </div>
+        )}
+      </section>
+
+      <section className="card space-y-4 border-red-200 p-6">
+        <div>
+          <h2 className="text-lg font-semibold text-ink-900">Eliminar mi cuenta</h2>
+          <p className="mt-1 text-sm text-ink-600">
+            Al eliminarla cerramos tu sesión y empieza un plazo de 30 días. Si no vuelves a iniciar sesión en ese tiempo,
+            borramos tus datos personales de forma definitiva; volver a entrar antes la cancela.{' '}
+            <Link href="/eliminar-cuenta" className="text-pine-700 hover:underline">
+              Qué se elimina y qué se conserva
+            </Link>
+            .
+          </p>
+        </div>
+        {deleteError && <Alert tone="error">{deleteError}</Alert>}
+        {confirmingDelete ? (
+          <div className="space-y-3">
+            <Input
+              label="Contraseña actual"
+              type="password"
+              autoComplete="current-password"
+              value={deletePassword}
+              onChange={(e) => setDeletePassword(e.target.value)}
+            />
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setConfirmingDelete(false);
+                  setDeletePassword('');
+                  setDeleteError(null);
+                }}
+                disabled={deleting}
+              >
+                Cancelar
+              </Button>
+              <Button variant="danger" loading={deleting} onClick={onDeleteAccount}>
+                Sí, eliminar mi cuenta
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex justify-end">
+            <Button variant="danger" onClick={() => setConfirmingDelete(true)}>
+              Eliminar mi cuenta
             </Button>
           </div>
         )}

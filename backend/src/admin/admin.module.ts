@@ -7,11 +7,12 @@ import { NotificationsModule } from '../notifications/notifications.module';
 import { MailModule } from '../mail/mail.module';
 import { AccountManagementService } from './account-management.service';
 import { AccountPurgeService } from './account-purge.service';
+import { AccountDeletionCron } from './account-deletion.cron';
 import { PatientAccountsController, ProfessionalAccountsController } from './account-management.controller';
 
 @Module({
   imports: [PatientsModule, StorageModule, NotificationsModule, MailModule],
   controllers: [AdminController, PatientAccountsController, ProfessionalAccountsController],
-  providers: [AdminService, AccountManagementService, AccountPurgeService],
+  providers: [AdminService, AccountManagementService, AccountPurgeService, AccountDeletionCron],
 })
 export class AdminModule {}

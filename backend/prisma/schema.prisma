@@ -21,6 +21,10 @@ model User {
   isActive            Boolean   @default(true)
   /// Baja administrativa reversible; nunca elimina pagos ni datos clínicos.
   deletedAt           DateTime?
+  /// Eliminación pedida por el propio usuario (Google Play): la cuenta queda en
+  /// período de gracia; si no vuelve a iniciar sesión en 30 días, un cron la
+  /// purga. Un login válido la cancela (vuelve a null). Distinto de deletedAt.
+  deletionRequestedAt DateTime?
   moderationReason    String?
   /// Eliminación definitiva (solo SUPERADMIN, sobre una cuenta ya suspendida
   /// o dada de baja): se borran los datos personales. Un médico queda como registro

@@ -729,3 +729,19 @@ export function newsletterConfirmTemplate(rawName: string | undefined, confirmUr
      <p style="font-size:12px;color:#9a9a9a;margin-top:20px;">Si no fuiste tú, ignora este mensaje y no quedarás suscrito.</p>`,
   );
 }
+
+/**
+ * Aviso de eliminación de cuenta programada (la pidió el propio usuario). La
+ * cuenta entra en período de gracia de 30 días; volver a iniciar sesión la
+ * cancela.
+ */
+export function accountDeletionScheduledTemplate() {
+  return layout(
+    'Programamos la eliminación de tu cuenta',
+    `<h1 style="font-size:20px;margin:0 0 12px;">Tu cuenta se eliminará en 30 días</h1>
+     <p style="font-size:14px;line-height:1.6;color:#3a3a3a;">Recibimos tu solicitud para eliminar tu cuenta de ${BRAND_NAME}. Cerramos tu sesión en todos los dispositivos.</p>
+     <p style="font-size:14px;line-height:1.6;color:#3a3a3a;">Si cambias de idea, <strong>vuelve a iniciar sesión antes de 30 días</strong> y tu cuenta quedará como estaba. Si no lo haces, eliminaremos tus datos personales de forma definitiva.</p>
+     <p style="font-size:12px;line-height:1.6;color:#6a6a6a;margin-top:18px;">Por normativa tributaria, de las cuentas de médicos solo se conservan sus registros de pago de forma anonimizada.</p>`,
+    `Si no pediste esto, inicia sesión cuanto antes para cancelarlo.`,
+  );
+}

@@ -56,6 +56,11 @@ export function Footer() {
               </Link>
             </li>
             <li>
+              <Link href="/eliminar-cuenta" className="hover:text-pine-700">
+                Eliminar mi cuenta
+              </Link>
+            </li>
+            <li>
               <Link href="/legal" className="font-medium text-pine-700 hover:underline">
                 Centro legal: todos los textos
               </Link>

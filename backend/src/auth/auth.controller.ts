@@ -13,6 +13,7 @@ import { LoginDto } from './dto/login.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { RequestAccountDeletionDto } from './dto/delete-account.dto';
 import { VerifyMfaDto } from './dto/verify-mfa.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 
@@ -205,6 +206,20 @@ export class AuthController {
     @Res({ passthrough: true }) reply: FastifyReply,
   ) {
     const result = await this.auth.logoutAll(user.id, req.ip);
+    this.clearRefreshCookie(reply);
+    return result;
+  }
+
+  @Throttle({ default: { limit: 5, ttl: 300_000 } })
+  @HttpCode(HttpStatus.OK)
+  @Post('account/deletion')
+  async requestAccountDeletion(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: RequestAccountDeletionDto,
+    @Req() req: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ) {
+    const result = await this.auth.requestAccountDeletion(user.id, dto.currentPassword, req.ip);
     this.clearRefreshCookie(reply);
     return result;
   }

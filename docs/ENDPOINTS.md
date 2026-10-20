@@ -18,6 +18,7 @@ no solo el rol.
 * `POST /auth/accept-legal` — acepta las versiones vigentes de Términos y Privacidad.
 * `POST /auth/change-password` — cambia la contraseña, cierra las demás sesiones y devuelve un access token nuevo para este dispositivo.
 * `POST /auth/logout-all` — cierra todas las sesiones (refresh y access tokens) al instante.
+* `POST /auth/account/deletion` (`{ currentPassword }`) — el propio usuario pide eliminar su cuenta (requisito de Google Play). Verifica la contraseña, marca `deletionRequestedAt`, cierra todas las sesiones y manda un correo. La cuenta entra en **período de gracia de 30 días**; **volver a iniciar sesión la cancela** (se limpia `deletionRequestedAt` en el login). Un cron diario (`AccountDeletionCron`) purga las que lo cumplan vía `AccountPurgeService` (paciente se borra; médico queda anonimizado conservando sus pagos). Política pública: `/eliminar-cuenta`.
 
 Cada access token lleva la versión de sesión del usuario (`tv`); si no coincide con la de la base de datos, o la cuenta está inactiva, la API responde 401.
 

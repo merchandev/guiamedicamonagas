@@ -13,7 +13,12 @@ import { createHash, randomBytes, randomInt, timingSafeEqual } from 'crypto';
 import type { EnvConfig } from '../config/env.validation';
 import { PrismaService } from '../prisma/prisma.service';
 import { MailService } from '../mail/mail.service';
-import { emailVerificationTemplate, mfaCodeTemplate, passwordResetTemplate } from '../mail/mail.templates';
+import {
+  accountDeletionScheduledTemplate,
+  emailVerificationTemplate,
+  mfaCodeTemplate,
+  passwordResetTemplate,
+} from '../mail/mail.templates';
 import { AuditService } from '../audit/audit.service';
 import { slugify } from '../common/utils/slugify';
 import { hashPassword, verifyPassword } from '../common/utils/password.util';
@@ -346,6 +351,14 @@ export class AuthService {
     mfa = false,
   ): Promise<LoginResult> {
     await this.prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date(), lastLoginIp: ipAddress } });
+    // Volver a iniciar sesión cancela una eliminación de cuenta programada.
+    const cancelled = await this.prisma.user.updateMany({
+      where: { id: user.id, deletionRequestedAt: { not: null } },
+      data: { deletionRequestedAt: null },
+    });
+    if (cancelled.count) {
+      await this.audit.record({ userId: user.id, action: 'ACCOUNT_DELETION_CANCELLED', resource: 'User', resourceId: user.id, ipAddress });
+    }
     await this.audit.record({
       userId: user.id,
       action: 'LOGIN',
@@ -570,6 +583,38 @@ export class AuthService {
     ]);
     await this.audit.record({ userId, action: 'PASSWORD_CHANGED', resource: 'User', resourceId: userId, ipAddress });
     return this.issueTokens(updated, ipAddress, userAgent);
+  }
+
+  /**
+   * El propio usuario pide eliminar su cuenta (requisito de Google Play). La
+   * cuenta entra en período de gracia: se cierra sesión en todos los
+   * dispositivos y, si no vuelve a iniciar sesión en 30 días, un cron la purga
+   * (AccountPurgeService). Volver a entrar la cancela.
+   */
+  async requestAccountDeletion(userId: string, currentPassword: string, ipAddress?: string) {
+    const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
+    const verification = await verifyPassword(currentPassword, user.passwordHash);
+    if (!verification.valid) {
+      throw new BadRequestException('La contraseña no es correcta');
+    }
+    await this.prisma.$transaction([
+      this.prisma.refreshToken.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: new Date() } }),
+      this.prisma.user.update({
+        where: { id: userId },
+        data: { tokenVersion: { increment: 1 }, deletionRequestedAt: new Date() },
+      }),
+    ]);
+    await this.audit.record({ userId, action: 'ACCOUNT_DELETION_REQUESTED', resource: 'User', resourceId: userId, ipAddress });
+    await this.mail
+      .send({
+        to: user.email,
+        subject: 'Programamos la eliminación de tu cuenta — MonagasMed',
+        html: accountDeletionScheduledTemplate(),
+        template: 'account_deletion_scheduled',
+        relatedUserId: userId,
+      })
+      .catch(() => undefined);
+    return { ok: true };
   }
 
   /**
