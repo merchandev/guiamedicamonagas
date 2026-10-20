@@ -28,8 +28,8 @@ POLICY_NAME=gmm-app-policy
 deadline=$((SECONDS + 180))
 echo "Esperando el MinIO exclusivo del proyecto..."
 # Create a known alias using credentials already present inside this container.
-until timeout 10 "${COMPOSE[@]}" exec -T minio sh -c 'mc alias set gmm http://127.0.0.1:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" >/dev/null' &&
-      timeout 10 "${COMPOSE[@]}" exec -T minio mc ready "${MINIO_ALIAS}" >/dev/null 2>&1; do
+until timeout 30 "${COMPOSE[@]}" exec -T --interactive=false minio sh -c 'mc alias set gmm http://127.0.0.1:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" >/dev/null' &&
+      timeout 30 "${COMPOSE[@]}" exec -T --interactive=false minio mc ready "${MINIO_ALIAS}" >/dev/null 2>&1; do
   if (( SECONDS >= deadline )); then
     echo "ERROR: MinIO no estuvo listo en 180 segundos; revisa sus logs y credenciales." >&2
     exit 1
@@ -38,10 +38,10 @@ until timeout 10 "${COMPOSE[@]}" exec -T minio sh -c 'mc alias set gmm http://12
 done
 
 echo "Preparando bucket privado y usuario de aplicación..."
-"${COMPOSE[@]}" exec -T minio mc mb --ignore-existing "${MINIO_ALIAS}/${S3_BUCKET}"
-"${COMPOSE[@]}" exec -T minio mc anonymous set none "${MINIO_ALIAS}/${S3_BUCKET}"
+"${COMPOSE[@]}" exec -T --interactive=false minio mc mb --ignore-existing "${MINIO_ALIAS}/${S3_BUCKET}"
+"${COMPOSE[@]}" exec -T --interactive=false minio mc anonymous set none "${MINIO_ALIAS}/${S3_BUCKET}"
 # Existing users are updated by MinIO; any actual error stops the deployment.
-"${COMPOSE[@]}" exec -T minio mc admin user add "${MINIO_ALIAS}" "${S3_ACCESS_KEY}" "${S3_SECRET_KEY}"
+"${COMPOSE[@]}" exec -T --interactive=false minio mc admin user add "${MINIO_ALIAS}" "${S3_ACCESS_KEY}" "${S3_SECRET_KEY}"
 
 "${COMPOSE[@]}" exec -T minio mc admin policy create "${MINIO_ALIAS}" "${POLICY_NAME}" /dev/stdin <<EOF
 {
@@ -62,8 +62,8 @@ echo "Preparando bucket privado y usuario de aplicación..."
 EOF
 
 # Skip an already attached policy without swallowing permissions/network errors.
-USER_INFO="$("${COMPOSE[@]}" exec -T minio mc admin user info "${MINIO_ALIAS}" "${S3_ACCESS_KEY}" --json)"
+USER_INFO="$("${COMPOSE[@]}" exec -T --interactive=false minio mc admin user info "${MINIO_ALIAS}" "${S3_ACCESS_KEY}" --json)"
 if ! grep -Eq '"policyName"[[:space:]]*:[[:space:]]*"([^",]*,)*gmm-app-policy(,[^",]*)*"' <<< "${USER_INFO}"; then
-  "${COMPOSE[@]}" exec -T minio mc admin policy attach "${MINIO_ALIAS}" "${POLICY_NAME}" --user "${S3_ACCESS_KEY}"
+  "${COMPOSE[@]}" exec -T --interactive=false minio mc admin policy attach "${MINIO_ALIAS}" "${POLICY_NAME}" --user "${S3_ACCESS_KEY}"
 fi
 echo "MinIO inicializado: bucket privado y permisos de objetos/HEAD limitados a este proyecto."

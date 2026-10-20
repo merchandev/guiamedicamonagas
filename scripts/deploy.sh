@@ -223,7 +223,7 @@ echo "Arrancando API, web y proxy propios..."
 # inodo y el contenedor seguiría leyendo el anterior. Si cambió, se valida y se
 # recrea solo caddy (unos segundos sin proxy). La validación usa un contenedor
 # suelto, sin las etiquetas de Traefik, para que nunca reciba tráfico.
-if ! "${COMPOSE[@]}" exec -T caddy cat /etc/caddy/Caddyfile | cmp -s - "${PROJECT_DIR}/Caddyfile"; then
+if ! "${COMPOSE[@]}" exec -T --interactive=false caddy cat /etc/caddy/Caddyfile | cmp -s - "${PROJECT_DIR}/Caddyfile"; then
   echo "El Caddyfile cambió: validando y recreando caddy..."
   CADDY_IMAGE="$(docker inspect -f '{{.Config.Image}}' "${PROJECT_NAME}-caddy-1")"
   docker run --rm -e S3_BUCKET="${S3_BUCKET}" -v "${PROJECT_DIR}/Caddyfile:/etc/caddy/Caddyfile:ro" "${CADDY_IMAGE}" \
@@ -234,7 +234,7 @@ fi
 
 # La API cifra en su arranque cualquier dato heredado en claro y borra la tabla
 # temporal: si sigue existiendo, el despliegue NO está completo.
-LEGACY="$("${COMPOSE[@]}" exec -T postgres psql -U "${DB_USER}" -d "${DB_NAME}" -At \
+LEGACY="$("${COMPOSE[@]}" exec -T --interactive=false postgres psql -U "${DB_USER}" -d "${DB_NAME}" -At \
   -c "SELECT coalesce(to_regclass('public.\"_PatientPlaintextLegacy\"')::text, '')")"
 if [[ -n "${LEGACY}" ]]; then
   echo "ERROR: la tabla _PatientPlaintextLegacy sigue existiendo: revisar los logs de la API antes de dar por bueno el despliegue." >&2
