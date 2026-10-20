@@ -49,6 +49,16 @@ export default function BoletinDetallePage() {
     }
   };
 
+  const cancelSchedule = async () => {
+    setError(null);
+    try {
+      await newsletterApi.cancelSchedule(campaign.id);
+      await load();
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'No se pudo cancelar.');
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -59,7 +69,16 @@ export default function BoletinDetallePage() {
         <p className="text-sm text-ink-500">{audienceLabel(campaign)}</p>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      {campaign.status === 'SCHEDULED' && campaign.scheduledAt && (
+        <Alert tone="info">
+          Programado para el {new Date(campaign.scheduledAt).toLocaleString('es-VE')}.{' '}
+          <button onClick={cancelSchedule} className="font-medium underline">
+            Cancelar programación
+          </button>
+        </Alert>
+      )}
+
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         <div className="card p-4 text-center">
           <p className="text-2xl font-semibold text-ink-900">{campaign.totalCount}</p>
           <p className="text-xs text-ink-500">Destinatarios</p>
@@ -67,6 +86,14 @@ export default function BoletinDetallePage() {
         <div className="card p-4 text-center">
           <p className="text-2xl font-semibold text-pine-700">{campaign.sentCount}</p>
           <p className="text-xs text-ink-500">Enviados</p>
+        </div>
+        <div className="card p-4 text-center">
+          <p className="text-2xl font-semibold text-ink-900">{campaign.openCount}</p>
+          <p className="text-xs text-ink-500">Aperturas</p>
+        </div>
+        <div className="card p-4 text-center">
+          <p className="text-2xl font-semibold text-ink-900">{campaign.clickCount}</p>
+          <p className="text-xs text-ink-500">Clics</p>
         </div>
         <div className="card p-4 text-center">
           <p className="text-2xl font-semibold text-red-600">{campaign.failedCount}</p>
@@ -93,6 +120,8 @@ export default function BoletinDetallePage() {
                 <span className="truncate text-ink-800">{d.email}</span>
                 <div className="flex flex-shrink-0 items-center gap-2">
                   {d.error && <span className="text-xs text-ink-400">{d.error}</span>}
+                  {d.clickedAt && <Badge tone="gold">Clic</Badge>}
+                  {d.openedAt && !d.clickedAt && <Badge tone="pine">Abierto</Badge>}
                   <Badge tone={d.status === 'SENT' ? 'pine' : 'red'}>{d.status === 'SENT' ? 'Enviado' : 'Falló'}</Badge>
                 </div>
               </div>

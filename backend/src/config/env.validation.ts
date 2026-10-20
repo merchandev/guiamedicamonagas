@@ -36,6 +36,10 @@ const baseEnvSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().default(4000),
   FRONTEND_URL: z.string().url(),
+  // URL pública de la API (para el píxel de apertura y los enlaces rastreables
+  // de los boletines, que abren los clientes de correo). Si no se define, se
+  // deriva de FRONTEND_URL + /api/v1 (en producción comparten dominio).
+  PUBLIC_API_URL: z.string().url().optional(),
 
   DATABASE_URL: z.string().min(1),
 

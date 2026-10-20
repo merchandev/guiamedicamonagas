@@ -1,5 +1,19 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Post, Query } from '@nestjs/common';
-import { Throttle } from '@nestjs/throttler';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Header,
+  HttpCode,
+  HttpStatus,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  Query,
+  Res,
+} from '@nestjs/common';
+import { SkipThrottle, Throttle } from '@nestjs/throttler';
+import type { FastifyReply } from 'fastify';
 import { Public } from '../common/decorators/public.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../common/types/authenticated-user';
@@ -11,6 +25,7 @@ import {
   ImportSubscribersDto,
   ListSubscribersDto,
   PublicSubscribeDto,
+  SaveTemplateDto,
   SendTestDto,
   TokenQueryDto,
 } from './dto/newsletter.dto';
@@ -45,6 +60,26 @@ export class NewsletterController {
     return this.newsletter.unsubscribe(dto.token);
   }
 
+  // --- Público: seguimiento de apertura y clic -------------------------------
+
+  @Public()
+  @SkipThrottle()
+  @Get('t/o/:id')
+  @Header('Cache-Control', 'no-store, no-cache, must-revalidate, private')
+  @Header('Content-Type', 'image/gif')
+  async trackOpen(@Param('id') id: string, @Res() reply: FastifyReply) {
+    const pixel = await this.newsletter.recordOpen(id);
+    reply.send(pixel);
+  }
+
+  @Public()
+  @SkipThrottle()
+  @Get('t/c/:id')
+  async trackClick(@Param('id') id: string, @Query('u') u: string, @Res() reply: FastifyReply) {
+    const target = await this.newsletter.recordClick(id, u ?? '');
+    reply.header('Location', target).status(HttpStatus.FOUND).send();
+  }
+
   // --- Admin: suscriptores ---------------------------------------------------
 
   @RequirePermissions(Permission.MANAGE_NEWSLETTER)
@@ -69,6 +104,32 @@ export class NewsletterController {
   @Delete('subscribers/:id')
   removeSubscriber(@Param('id', ParseUUIDPipe) id: string) {
     return this.newsletter.removeSubscriber(id);
+  }
+
+  // --- Admin: plantillas -----------------------------------------------------
+
+  @RequirePermissions(Permission.MANAGE_NEWSLETTER)
+  @Get('templates')
+  listTemplates() {
+    return this.newsletter.listTemplates();
+  }
+
+  @RequirePermissions(Permission.MANAGE_NEWSLETTER)
+  @Post('templates')
+  saveTemplate(@CurrentUser() user: AuthenticatedUser, @Body() dto: SaveTemplateDto) {
+    return this.newsletter.saveTemplate(dto, user.id);
+  }
+
+  @RequirePermissions(Permission.MANAGE_NEWSLETTER)
+  @Get('templates/:id')
+  getTemplate(@Param('id', ParseUUIDPipe) id: string) {
+    return this.newsletter.getTemplate(id);
+  }
+
+  @RequirePermissions(Permission.MANAGE_NEWSLETTER)
+  @Delete('templates/:id')
+  deleteTemplate(@Param('id', ParseUUIDPipe) id: string) {
+    return this.newsletter.deleteTemplate(id);
   }
 
   // --- Admin: campañas -------------------------------------------------------
@@ -124,5 +185,18 @@ export class NewsletterController {
   @HttpCode(HttpStatus.OK)
   resendFailed(@Param('id', ParseUUIDPipe) id: string) {
     return this.newsletter.resendFailed(id);
+  }
+
+  @RequirePermissions(Permission.MANAGE_NEWSLETTER)
+  @Post('campaigns/:id/cancel')
+  @HttpCode(HttpStatus.OK)
+  cancelSchedule(@Param('id', ParseUUIDPipe) id: string) {
+    return this.newsletter.cancelSchedule(id);
+  }
+
+  @RequirePermissions(Permission.MANAGE_NEWSLETTER)
+  @Post('campaigns/:id/duplicate')
+  duplicate(@CurrentUser() user: AuthenticatedUser, @Param('id', ParseUUIDPipe) id: string) {
+    return this.newsletter.duplicateCampaign(id, user.id);
   }
 }

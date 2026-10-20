@@ -1852,6 +1852,7 @@ model NewsletterSubscriber {
 
 enum NewsletterCampaignStatus {
   DRAFT
+  SCHEDULED
   SENDING
   SENT
   PARTIAL
@@ -1876,6 +1877,11 @@ model NewsletterCampaign {
   totalCount  Int                      @default(0)
   sentCount   Int                      @default(0)
   failedCount Int                      @default(0)
+  /// Aperturas y clics únicos (métricas), contados por destinatario la primera vez.
+  openCount   Int                      @default(0)
+  clickCount  Int                      @default(0)
+  /// Si está definida y el estado es SCHEDULED, un cron la envía al llegar la hora.
+  scheduledAt DateTime?
   createdBy   String?
   startedAt   DateTime?
   completedAt DateTime?
@@ -1885,6 +1891,7 @@ model NewsletterCampaign {
   deliveries NewsletterDelivery[]
 
   @@index([status])
+  @@index([status, scheduledAt])
 }
 
 model NewsletterDelivery {
@@ -1895,9 +1902,24 @@ model NewsletterDelivery {
   subscriberId String?
   userId       String?
   /// 'SENT' o 'FAILED'.
-  status String
-  error  String?
-  sentAt DateTime @default(now())
+  status   String
+  error    String?
+  sentAt   DateTime  @default(now())
+  /// Primera apertura (píxel) y primer clic (enlace rastreable) de este destinatario.
+  openedAt DateTime?
+  clickedAt DateTime?
 
   @@index([campaignId])
+}
+
+model NewsletterTemplate {
+  id          String   @id @default(uuid())
+  name        String
+  subject     String
+  contentMode String   @default("BLOCKS")
+  blocks      Json?
+  rawHtml     String?
+  createdBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }

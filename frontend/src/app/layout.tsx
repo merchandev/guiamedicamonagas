@@ -6,6 +6,7 @@ import { TopBar } from '@/components/layout/TopBar';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import CookieConsent from '@/components/CookieConsent';
+import { NewsletterPopup } from '@/components/NewsletterPopup';
 import { LegalAcceptanceGate } from '@/components/LegalAcceptanceGate';
 import { ORGANIZATIONS_LAUNCHED } from '@/lib/features';
 import { SITE_NAME, SITE_TITLE } from '@/lib/seo';
@@ -45,6 +46,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <div data-site-chrome className="contents">
             <Footer />
             <CookieConsent />
+            <NewsletterPopup />
           </div>
           <LegalAcceptanceGate />
         </AuthProvider>

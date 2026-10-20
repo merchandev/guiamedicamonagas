@@ -1,5 +1,6 @@
-import { randomBytes } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { Prisma } from '@prisma/client';
 import { ConfigService } from '@nestjs/config';
 import type { EnvConfig } from '../config/env.validation';
@@ -11,11 +12,20 @@ import {
   renderNewsletterBlocks,
   type NewsletterBlock,
 } from '../mail/mail.templates';
-import type { CampaignContentDto } from './dto/newsletter.dto';
+import type { CampaignContentDto, SaveTemplateDto } from './dto/newsletter.dto';
 
 /** Pausa entre envíos para no saturar el SMTP (Hostinger). ~6-7 correos/seg. */
 const SEND_DELAY_MS = 150;
+/** Cada cuántos envíos se refresca el contador de la campaña (progreso en vivo). */
+const PROGRESS_EVERY = 20;
 const EMAIL_RE = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/gi;
+
+/** 1x1 GIF transparente para el píxel de apertura. */
+const TRACKING_PIXEL = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
+
+function isHttpUrl(raw: string): boolean {
+  return /^https?:\/\//i.test((raw ?? '').trim());
+}
 
 interface Recipient {
   email: string;
@@ -52,6 +62,41 @@ export class NewsletterService {
 
   private confirmUrl(token: string): string {
     return `${this.frontendUrl()}/boletin/confirmar?token=${encodeURIComponent(token)}`;
+  }
+
+  /** Base pública de la API: PUBLIC_API_URL, o FRONTEND_URL + /api/v1 (mismo dominio en prod). */
+  private apiBaseUrl(): string {
+    return this.config.get('PUBLIC_API_URL', { infer: true }) ?? `${this.frontendUrl()}/api/v1`;
+  }
+
+  private pixelUrl(deliveryId: string): string {
+    return `${this.apiBaseUrl()}/newsletter/t/o/${deliveryId}`;
+  }
+
+  private clickUrl(deliveryId: string, target: string): string {
+    return `${this.apiBaseUrl()}/newsletter/t/c/${deliveryId}?u=${encodeURIComponent(target)}`;
+  }
+
+  /**
+   * Arma el HTML final para un destinatario: reescribe los enlaces http(s) del
+   * cuerpo para rastrear clics y añade el píxel de apertura. El enlace de baja
+   * lo agrega `newsletterEmail` DESPUÉS, así que nunca se reescribe ni cuenta
+   * como clic, y siempre funciona.
+   */
+  private buildEmailHtml(subject: string, body: string, unsubscribeToken: string, deliveryId?: string): string {
+    let rendered = body;
+    if (deliveryId) {
+      rendered = body.replace(
+        /href="(https?:\/\/[^"]+)"/gi,
+        (_m, url: string) => `href="${this.clickUrl(deliveryId, url)}"`,
+      );
+    }
+    return newsletterEmail({
+      subject,
+      bodyHtml: rendered,
+      unsubscribeUrl: this.unsubscribeUrl(unsubscribeToken),
+      trackingPixelUrl: deliveryId ? this.pixelUrl(deliveryId) : undefined,
+    });
   }
 
   // --- Suscriptores ----------------------------------------------------------
@@ -291,6 +336,9 @@ export class NewsletterService {
         totalCount: true,
         sentCount: true,
         failedCount: true,
+        openCount: true,
+        clickCount: true,
+        scheduledAt: true,
         createdAt: true,
         completedAt: true,
       },
@@ -304,7 +352,7 @@ export class NewsletterService {
       where: { campaignId: id },
       orderBy: { sentAt: 'desc' },
       take: 1000,
-      select: { id: true, email: true, status: true, error: true, sentAt: true },
+      select: { id: true, email: true, status: true, error: true, sentAt: true, openedAt: true, clickedAt: true },
     });
     return { campaign, deliveries };
   }
@@ -350,16 +398,44 @@ export class NewsletterService {
     return { ok: true };
   }
 
-  /** Guarda (o actualiza) el borrador y lo envía a toda la audiencia en segundo plano. */
+  private sleep(ms: number) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  /**
+   * Guarda el borrador y lo envía ya, o —si `scheduledAt` es futura— lo deja
+   * PROGRAMADO para que el cron lo envíe al llegar la hora.
+   */
   async send(dto: CampaignContentDto, userId: string) {
     this.assertHasContent(dto);
     const campaign = await this.saveDraft(dto, userId);
+
+    if (dto.scheduledAt) {
+      const when = new Date(dto.scheduledAt);
+      if (when.getTime() > Date.now() + 30_000) {
+        await this.prisma.newsletterCampaign.update({
+          where: { id: campaign.id },
+          data: { status: 'SCHEDULED', scheduledAt: when },
+        });
+        return { ok: true, id: campaign.id, scheduled: true, scheduledAt: when.toISOString() };
+      }
+    }
+
     const recipients = await this.resolveRecipients(campaign);
     if (!recipients.length) throw new BadRequestException('La audiencia no tiene destinatarios.');
 
     await this.prisma.newsletterCampaign.update({
       where: { id: campaign.id },
-      data: { status: 'SENDING', startedAt: new Date(), totalCount: recipients.length, sentCount: 0, failedCount: 0 },
+      data: {
+        status: 'SENDING',
+        startedAt: new Date(),
+        scheduledAt: null,
+        totalCount: recipients.length,
+        sentCount: 0,
+        failedCount: 0,
+        openCount: 0,
+        clickCount: 0,
+      },
     });
 
     // Disparo en segundo plano: el panel sigue el avance por el log de entregas.
@@ -367,14 +443,54 @@ export class NewsletterService {
     return { ok: true, id: campaign.id, total: recipients.length };
   }
 
+  /** Cada minuto: envía las campañas programadas cuya hora ya llegó. */
+  @Cron(CronExpression.EVERY_MINUTE)
+  async processScheduledCampaigns() {
+    const due = await this.prisma.newsletterCampaign.findMany({
+      where: { status: 'SCHEDULED', scheduledAt: { lte: new Date() } },
+      select: { id: true },
+    });
+    for (const c of due) await this.startScheduled(c.id);
+  }
+
+  private async startScheduled(id: string) {
+    // Reclama la campaña de forma atómica: si otro ciclo ya la tomó, count=0.
+    const claimed = await this.prisma.newsletterCampaign.updateMany({
+      where: { id, status: 'SCHEDULED' },
+      data: { status: 'SENDING', startedAt: new Date() },
+    });
+    if (claimed.count === 0) return;
+
+    const campaign = await this.prisma.newsletterCampaign.findUnique({ where: { id } });
+    if (!campaign) return;
+    const recipients = await this.resolveRecipients(campaign);
+    if (!recipients.length) {
+      await this.prisma.newsletterCampaign.update({ where: { id }, data: { status: 'FAILED', completedAt: new Date() } });
+      return;
+    }
+    await this.prisma.newsletterCampaign.update({
+      where: { id },
+      data: { totalCount: recipients.length, sentCount: 0, failedCount: 0, openCount: 0, clickCount: 0 },
+    });
+    await this.deliver(campaign.id, campaign.subject, campaign.renderedHtml, recipients);
+  }
+
   private async deliver(campaignId: string, subject: string, body: string, recipients: Recipient[]) {
     let sent = 0;
     let failed = 0;
+    let i = 0;
     for (const r of recipients) {
-      const html = newsletterEmail({ subject, bodyHtml: body, unsubscribeUrl: this.unsubscribeUrl(r.unsubscribeToken) });
-      const ok = await this.mail.send({ to: r.email, subject, html, template: 'newsletter', relatedUserId: r.userId });
+      const deliveryId = randomUUID();
+      const html = this.buildEmailHtml(subject, body, r.unsubscribeToken, deliveryId);
+      let ok = await this.mail.send({ to: r.email, subject, html, template: 'newsletter', relatedUserId: r.userId });
+      // Un reintento ante un fallo puntual del SMTP antes de darlo por perdido.
+      if (!ok) {
+        await this.sleep(500);
+        ok = await this.mail.send({ to: r.email, subject, html, template: 'newsletter', relatedUserId: r.userId });
+      }
       await this.prisma.newsletterDelivery.create({
         data: {
+          id: deliveryId,
           campaignId,
           email: r.email,
           subscriberId: r.subscriberId,
@@ -384,7 +500,13 @@ export class NewsletterService {
         },
       });
       ok ? (sent += 1) : (failed += 1);
-      await new Promise((resolve) => setTimeout(resolve, SEND_DELAY_MS));
+      // Progreso en vivo cada cierto número de envíos.
+      if (++i % PROGRESS_EVERY === 0) {
+        await this.prisma.newsletterCampaign
+          .update({ where: { id: campaignId }, data: { sentCount: sent, failedCount: failed } })
+          .catch(() => undefined);
+      }
+      await this.sleep(SEND_DELAY_MS);
     }
     const status = failed === 0 ? 'SENT' : sent === 0 ? 'FAILED' : 'PARTIAL';
     await this.prisma.newsletterCampaign
@@ -429,13 +551,13 @@ export class NewsletterService {
     for (const row of failedRows) {
       if (suppressed.has(row.email)) continue;
       const token = tokenByEmail.get(row.email) ?? 'baja';
-      const html = newsletterEmail({ subject, bodyHtml: body, unsubscribeUrl: this.unsubscribeUrl(token) });
+      const html = this.buildEmailHtml(subject, body, token, row.id);
       const ok = await this.mail.send({ to: row.email, subject, html, template: 'newsletter' });
       if (ok) {
         await this.prisma.newsletterDelivery.update({ where: { id: row.id }, data: { status: 'SENT', error: null, sentAt: new Date() } });
         recovered += 1;
       }
-      await new Promise((resolve) => setTimeout(resolve, SEND_DELAY_MS));
+      await this.sleep(SEND_DELAY_MS);
     }
     const campaign = await this.prisma.newsletterCampaign.findUnique({
       where: { id: campaignId },
@@ -448,5 +570,108 @@ export class NewsletterService {
       .update({ where: { id: campaignId }, data: { status, sentCount, failedCount } })
       .catch(() => undefined);
     this.logger.log(`Reintento de la campaña ${campaignId}: ${recovered} recuperados (total ${campaign?.totalCount ?? '?'}).`);
+  }
+
+  /** Cancela una campaña programada y la devuelve a borrador. */
+  async cancelSchedule(id: string) {
+    const c = await this.prisma.newsletterCampaign.findUnique({ where: { id }, select: { status: true } });
+    if (!c) throw new NotFoundException('Boletín no encontrado.');
+    if (c.status !== 'SCHEDULED') throw new BadRequestException('El boletín no está programado.');
+    await this.prisma.newsletterCampaign.update({ where: { id }, data: { status: 'DRAFT', scheduledAt: null } });
+    return { ok: true };
+  }
+
+  /** Copia una campaña como borrador nuevo (para reusar el diseño). */
+  async duplicateCampaign(id: string, userId: string) {
+    const c = await this.prisma.newsletterCampaign.findUnique({ where: { id } });
+    if (!c) throw new NotFoundException('Boletín no encontrado.');
+    return this.prisma.newsletterCampaign.create({
+      data: {
+        subject: `${c.subject} (copia)`,
+        contentMode: c.contentMode,
+        blocks: c.blocks === null ? Prisma.JsonNull : (c.blocks as Prisma.InputJsonValue),
+        rawHtml: c.rawHtml,
+        renderedHtml: c.renderedHtml,
+        audienceList: c.audienceList,
+        audiencePatients: c.audiencePatients,
+        audienceProfessionals: c.audienceProfessionals,
+        createdBy: userId,
+        status: 'DRAFT',
+      },
+    });
+  }
+
+  // --- Plantillas reutilizables ----------------------------------------------
+
+  listTemplates() {
+    return this.prisma.newsletterTemplate.findMany({
+      orderBy: { updatedAt: 'desc' },
+      select: { id: true, name: true, subject: true, contentMode: true, updatedAt: true },
+    });
+  }
+
+  async getTemplate(id: string) {
+    const t = await this.prisma.newsletterTemplate.findUnique({ where: { id } });
+    if (!t) throw new NotFoundException('Plantilla no encontrada.');
+    return t;
+  }
+
+  saveTemplate(dto: SaveTemplateDto, userId: string) {
+    return this.prisma.newsletterTemplate.create({
+      data: {
+        name: dto.name,
+        subject: dto.subject,
+        contentMode: dto.contentMode,
+        blocks: dto.contentMode === 'BLOCKS' ? ((dto.blocks ?? []) as unknown as Prisma.InputJsonValue) : Prisma.JsonNull,
+        rawHtml: dto.contentMode === 'HTML' ? (dto.rawHtml ?? '') : null,
+        createdBy: userId,
+      },
+    });
+  }
+
+  async deleteTemplate(id: string) {
+    await this.prisma.newsletterTemplate.delete({ where: { id } }).catch(() => undefined);
+    return { ok: true };
+  }
+
+  // --- Seguimiento (apertura y clic) -----------------------------------------
+
+  /** Marca la apertura (la primera) y devuelve el píxel transparente. */
+  async recordOpen(deliveryId: string): Promise<Buffer> {
+    const d = await this.prisma.newsletterDelivery
+      .findUnique({ where: { id: deliveryId }, select: { id: true, campaignId: true, openedAt: true } })
+      .catch(() => null);
+    if (d && !d.openedAt) {
+      await this.prisma
+        .$transaction([
+          this.prisma.newsletterDelivery.update({ where: { id: d.id }, data: { openedAt: new Date() } }),
+          this.prisma.newsletterCampaign.update({ where: { id: d.campaignId }, data: { openCount: { increment: 1 } } }),
+        ])
+        .catch(() => undefined);
+    }
+    return TRACKING_PIXEL;
+  }
+
+  /** Marca el clic (el primero; un clic implica apertura) y devuelve el destino seguro. */
+  async recordClick(deliveryId: string, url: string): Promise<string> {
+    const target = isHttpUrl(url) ? url : this.frontendUrl();
+    const d = await this.prisma.newsletterDelivery
+      .findUnique({ where: { id: deliveryId }, select: { id: true, campaignId: true, clickedAt: true, openedAt: true } })
+      .catch(() => null);
+    if (d && !d.clickedAt) {
+      await this.prisma
+        .$transaction([
+          this.prisma.newsletterDelivery.update({
+            where: { id: d.id },
+            data: { clickedAt: new Date(), openedAt: d.openedAt ?? new Date() },
+          }),
+          this.prisma.newsletterCampaign.update({
+            where: { id: d.campaignId },
+            data: { clickCount: { increment: 1 }, ...(d.openedAt ? {} : { openCount: { increment: 1 } }) },
+          }),
+        ])
+        .catch(() => undefined);
+    }
+    return target;
   }
 }

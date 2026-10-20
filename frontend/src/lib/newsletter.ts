@@ -8,7 +8,7 @@ export type NewsletterBlock =
   | { type: 'divider' };
 
 export type SubscriberStatus = 'PENDING' | 'ACTIVE' | 'UNSUBSCRIBED';
-export type CampaignStatus = 'DRAFT' | 'SENDING' | 'SENT' | 'PARTIAL' | 'FAILED';
+export type CampaignStatus = 'DRAFT' | 'SCHEDULED' | 'SENDING' | 'SENT' | 'PARTIAL' | 'FAILED';
 
 export interface Subscriber {
   id: string;
@@ -36,6 +36,9 @@ export interface CampaignSummary {
   totalCount: number;
   sentCount: number;
   failedCount: number;
+  openCount: number;
+  clickCount: number;
+  scheduledAt: string | null;
   createdAt: string;
   completedAt: string | null;
 }
@@ -46,6 +49,21 @@ export interface Delivery {
   status: 'SENT' | 'FAILED';
   error: string | null;
   sentAt: string;
+  openedAt: string | null;
+  clickedAt: string | null;
+}
+
+export interface TemplateSummary {
+  id: string;
+  name: string;
+  subject: string;
+  contentMode: 'BLOCKS' | 'HTML';
+  updatedAt: string;
+}
+
+export interface TemplateDetail extends TemplateSummary {
+  blocks: NewsletterBlock[] | null;
+  rawHtml: string | null;
 }
 
 export interface CampaignDetail {
@@ -63,6 +81,8 @@ export interface CampaignContent {
   audienceList: boolean;
   audiencePatients: boolean;
   audienceProfessionals: boolean;
+  /** ISO 8601; si es futura, el boletín se programa en vez de enviarse ya. */
+  scheduledAt?: string;
 }
 
 export const newsletterApi = {
@@ -86,6 +106,18 @@ export const newsletterApi = {
   preview: (dto: CampaignContent) => api.post<{ html: string }>('/newsletter/campaigns/preview', dto),
   estimate: (dto: CampaignContent) => api.post<{ total: number }>('/newsletter/campaigns/estimate', dto),
   test: (dto: CampaignContent & { to: string }) => api.post<{ ok: boolean }>('/newsletter/campaigns/test', dto),
-  send: (dto: CampaignContent) => api.post<{ ok: boolean; id: string; total: number }>('/newsletter/campaigns/send', dto),
+  send: (dto: CampaignContent) =>
+    api.post<{ ok: boolean; id: string; total?: number; scheduled?: boolean; scheduledAt?: string }>(
+      '/newsletter/campaigns/send',
+      dto,
+    ),
   resendFailed: (id: string) => api.post<{ ok: boolean; retrying: number }>(`/newsletter/campaigns/${id}/resend-failed`),
+  cancelSchedule: (id: string) => api.post<{ ok: boolean }>(`/newsletter/campaigns/${id}/cancel`),
+  duplicate: (id: string) => api.post<{ id: string }>(`/newsletter/campaigns/${id}/duplicate`),
+
+  // Plantillas
+  listTemplates: () => api.get<TemplateSummary[]>('/newsletter/templates'),
+  getTemplate: (id: string) => api.get<TemplateDetail>(`/newsletter/templates/${id}`),
+  saveTemplate: (dto: CampaignContent & { name: string }) => api.post<TemplateSummary>('/newsletter/templates', dto),
+  deleteTemplate: (id: string) => api.delete(`/newsletter/templates/${id}`),
 };

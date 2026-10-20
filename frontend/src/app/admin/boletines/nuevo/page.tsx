@@ -5,10 +5,11 @@ import { useRouter } from 'next/navigation';
 import { Alert } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
 import { Input, Textarea } from '@/components/ui/Input';
+import { Select } from '@/components/ui/Select';
 import { Switch } from '@/components/ui/Switch';
 import { ApiError } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
-import { newsletterApi, type CampaignContent, type NewsletterBlock } from '@/lib/newsletter';
+import { newsletterApi, type CampaignContent, type NewsletterBlock, type TemplateSummary } from '@/lib/newsletter';
 
 const BLOCK_LABEL: Record<NewsletterBlock['type'], string> = {
   heading: 'Título',
@@ -51,6 +52,9 @@ export default function NuevoBoletinPage() {
   const [info, setInfo] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [testing, setTesting] = useState(false);
+
+  const [templates, setTemplates] = useState<TemplateSummary[]>([]);
+  const [scheduledAt, setScheduledAt] = useState('');
 
   const dto = useMemo<CampaignContent>(
     () => ({
@@ -109,7 +113,38 @@ export default function NuevoBoletinPage() {
     });
   const addBlock = (type: NewsletterBlock['type']) => setBlocks((bs) => [...bs, emptyBlock(type)]);
 
+  // Plantillas disponibles.
+  useEffect(() => {
+    newsletterApi.listTemplates().then(setTemplates).catch(() => undefined);
+  }, []);
+
   const noAudience = !audienceList && !audiencePatients && !audienceProfessionals;
+
+  const applyTemplate = async (id: string) => {
+    if (!id) return;
+    try {
+      const t = await newsletterApi.getTemplate(id);
+      setSubject(t.subject);
+      setMode(t.contentMode);
+      if (t.contentMode === 'BLOCKS') setBlocks(t.blocks ?? []);
+      else setRawHtml(t.rawHtml ?? '');
+      setInfo(`Plantilla «${t.name}» cargada.`);
+    } catch {
+      setError('No se pudo cargar la plantilla.');
+    }
+  };
+
+  const saveAsTemplate = async () => {
+    const name = window.prompt('Nombre de la plantilla:');
+    if (!name?.trim()) return;
+    try {
+      await newsletterApi.saveTemplate({ ...dto, name: name.trim() });
+      setInfo(`Plantilla «${name.trim()}» guardada.`);
+      newsletterApi.listTemplates().then(setTemplates).catch(() => undefined);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'No se pudo guardar la plantilla.');
+    }
+  };
 
   const sendTest = async () => {
     if (!user?.email) return;
@@ -126,14 +161,27 @@ export default function NuevoBoletinPage() {
     }
   };
 
-  const send = async () => {
+  const send = async (schedule: boolean) => {
     setError(null);
     setInfo(null);
     const count = estimate ?? 0;
-    if (!window.confirm(`¿Enviar el boletín a ${count} destinatario(s)? Esta acción no se puede deshacer.`)) return;
+    if (schedule) {
+      if (!scheduledAt) {
+        setError('Elige la fecha y hora para programar el envío.');
+        return;
+      }
+      if (new Date(scheduledAt).getTime() <= Date.now()) {
+        setError('La fecha de programación debe ser futura.');
+        return;
+      }
+      if (!window.confirm(`¿Programar el envío a ${count} destinatario(s) para ${new Date(scheduledAt).toLocaleString('es-VE')}?`))
+        return;
+    } else if (!window.confirm(`¿Enviar el boletín a ${count} destinatario(s)? Esta acción no se puede deshacer.`)) {
+      return;
+    }
     setSending(true);
     try {
-      const res = await newsletterApi.send(dto);
+      const res = await newsletterApi.send({ ...dto, scheduledAt: schedule ? new Date(scheduledAt).toISOString() : undefined });
       router.push(`/admin/boletines/${res.id}`);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'No se pudo enviar el boletín.');
@@ -238,13 +286,53 @@ export default function NuevoBoletinPage() {
             )}
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" onClick={sendTest} loading={testing} disabled={!user?.email}>
-              Enviar prueba a mi correo
-            </Button>
-            <Button onClick={send} loading={sending} disabled={noAudience}>
-              Enviar boletín
-            </Button>
+          {/* Plantillas */}
+          <div className="card space-y-3 p-5">
+            <p className="text-sm font-medium text-ink-800">Plantillas</p>
+            <div className="flex flex-wrap items-end gap-2">
+              <div className="min-w-[14rem] flex-1">
+                <Select
+                  ariaLabel="Cargar plantilla"
+                  value=""
+                  onChange={applyTemplate}
+                  placeholder={templates.length ? 'Cargar una plantilla…' : 'Sin plantillas guardadas'}
+                  options={templates.map((t) => ({ value: t.id, label: t.name }))}
+                />
+              </div>
+              <Button variant="outline" onClick={saveAsTemplate}>
+                Guardar como plantilla
+              </Button>
+            </div>
+          </div>
+
+          {/* Programación y envío */}
+          <div className="card space-y-4 p-5">
+            <div>
+              <label htmlFor="nl-sched" className="mb-1 block text-sm font-medium text-ink-800">
+                Programar envío (opcional)
+              </label>
+              <input
+                id="nl-sched"
+                type="datetime-local"
+                value={scheduledAt}
+                onChange={(e) => setScheduledAt(e.target.value)}
+                className="block w-full rounded-lg border border-ink-300 bg-white px-3.5 py-2.5 text-sm text-ink-900 shadow-sm focus:border-pine-600 focus:outline-none focus:ring-2 focus:ring-pine-600/20"
+              />
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" onClick={sendTest} loading={testing} disabled={!user?.email}>
+                Enviar prueba a mi correo
+              </Button>
+              {scheduledAt ? (
+                <Button onClick={() => send(true)} loading={sending} disabled={noAudience}>
+                  Programar envío
+                </Button>
+              ) : (
+                <Button onClick={() => send(false)} loading={sending} disabled={noAudience}>
+                  Enviar ahora
+                </Button>
+              )}
+            </div>
           </div>
         </div>
 

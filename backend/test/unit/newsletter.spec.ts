@@ -30,6 +30,18 @@ describe('render de bloques del boletín', () => {
     expect(html).toContain('https://sitio/boletin/baja?token=abc');
     expect(html).toContain('cancela tu suscripción');
   });
+
+  it('incluye el píxel de apertura solo cuando se pasa la URL de seguimiento', () => {
+    const withPixel = newsletterEmail({
+      subject: 'Hola',
+      bodyHtml: '<p>x</p>',
+      unsubscribeUrl: 'https://sitio/boletin/baja?token=abc',
+      trackingPixelUrl: 'https://api/newsletter/t/o/dlv-1',
+    });
+    expect(withPixel).toContain('https://api/newsletter/t/o/dlv-1');
+    const withoutPixel = newsletterEmail({ subject: 'Hola', bodyHtml: '<p>x</p>', unsubscribeUrl: 'https://sitio/baja' });
+    expect(withoutPixel).not.toContain('/t/o/');
+  });
 });
 
 describe('audiencia: dedupe, supresión y filtro por rol', () => {

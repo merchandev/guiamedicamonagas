@@ -84,6 +84,8 @@ const PUBLIC_ROUTES = [
   'GET /geo/states',
   'GET /health',
   'GET /health/ready',
+  'GET /newsletter/t/c/:id',
+  'GET /newsletter/t/o/:id',
   'GET /organizations',
   'GET /organizations/:slug',
   'GET /organizations/invitations/preview',

@@ -3,6 +3,7 @@ import {
   ArrayMaxSize,
   IsArray,
   IsBoolean,
+  IsDateString,
   IsEmail,
   IsIn,
   IsInt,
@@ -67,12 +68,24 @@ export class CampaignContentDto {
 
   @IsBoolean()
   audienceProfessionals!: boolean;
+
+  /** Si viene y es futura, el boletín se programa (no se envía al instante). ISO 8601. */
+  @IsOptional()
+  @IsDateString()
+  scheduledAt?: string;
 }
 
 /** Enviar una prueba al correo indicado, con el contenido en edición. */
 export class SendTestDto extends CampaignContentDto {
   @IsEmail()
   to!: string;
+}
+
+/** Guardar el contenido en edición como plantilla reutilizable. */
+export class SaveTemplateDto extends CampaignContentDto {
+  @IsString()
+  @MaxLength(120)
+  name!: string;
 }
 
 export class AddSubscriberDto {

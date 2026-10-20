@@ -703,9 +703,19 @@ export function renderNewsletterBlocks(blocks: NewsletterBlock[]): string {
  * Envuelve el cuerpo ya compuesto (bloques o HTML libre) en la plantilla con la
  * marca y agrega el enlace de baja obligatorio, personalizado por destinatario.
  */
-export function newsletterEmail(opts: { subject: string; bodyHtml: string; unsubscribeUrl: string }): string {
+export function newsletterEmail(opts: {
+  subject: string;
+  bodyHtml: string;
+  unsubscribeUrl: string;
+  trackingPixelUrl?: string;
+}): string {
   const footer = `Recibiste este correo de ${BRAND_NAME}. Si ya no quieres recibir boletines, <a href="${escapeHtml(opts.unsubscribeUrl)}" style="color:${BRAND_COLOR};">cancela tu suscripción aquí</a>.`;
-  return layout(opts.subject, opts.bodyHtml, footer);
+  // Píxel de apertura (1x1 transparente); si el cliente de correo no carga
+  // imágenes, simplemente no se cuenta la apertura.
+  const pixel = opts.trackingPixelUrl
+    ? `<img src="${escapeHtml(opts.trackingPixelUrl)}" width="1" height="1" alt="" style="display:none;width:1px;height:1px;" />`
+    : '';
+  return layout(opts.subject, `${opts.bodyHtml}${pixel}`, footer);
 }
 
 /** Correo de doble opt-in para las altas públicas del formulario de la web. */

@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import { openCookiePreferences } from '@/components/CookieConsent';
-import { NewsletterSignup } from '@/components/NewsletterSignup';
 import { EMERGENCY_NOTICE, MEDICAL_DISCLAIMER_NOTICE, legalDoc, type LegalDocSlug } from '@/lib/legal';
 
 // Los textos que más se consultan; el resto está en el Centro legal.
@@ -67,11 +66,6 @@ export function Footer() {
               </button>
             </li>
           </ul>
-        </div>
-      </div>
-      <div className="border-t border-ink-100 bg-ink-50/40">
-        <div className="container-page py-8 md:max-w-md">
-          <NewsletterSignup />
         </div>
       </div>
       <div className="border-t border-ink-100 py-4">
