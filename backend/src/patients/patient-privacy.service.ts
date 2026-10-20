@@ -135,7 +135,7 @@ export class PatientPrivacyService {
     return {
       generatedAt: new Date().toISOString(),
       notice:
-        'Copia de los datos que Guía Médica Monagas guarda sobre ti. Contiene información de salud: guárdala en un lugar seguro. ' +
+        'Copia de los datos que MonagasMed guarda sobre ti. Contiene información de salud: guárdala en un lugar seguro. ' +
         'Las notas internas de cada médico forman parte de su propio registro profesional y no se incluyen.',
       account: user,
       profile: {

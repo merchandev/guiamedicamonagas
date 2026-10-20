@@ -51,11 +51,11 @@ export function MarcaMedicaPhone({ videoId }: { videoId: string | null }) {
         {sample ? (
           <>
             <span className="block text-sm font-semibold text-white">Mira lo que podemos producir para tu perfil</span>
-            Video de ejemplo producido por Guía Médica Monagas: guion, grabación, edición, subtítulos y difusión. Se carga
+            Video de ejemplo producido por MonagasMed: guion, grabación, edición, subtítulos y difusión. Se carga
             desde YouTube al pulsar.
           </>
         ) : (
-          <>Ilustración: así se ve un video vertical con tu nombre, subtítulos y la colaboración con Guía Médica Monagas.</>
+          <>Ilustración: así se ve un video vertical con tu nombre, subtítulos y la colaboración con MonagasMed.</>
         )}
       </figcaption>
     </figure>
@@ -81,7 +81,7 @@ function ReelMock() {
           <span className="flex h-7 w-7 items-center justify-center rounded-full bg-gold-400 text-[10px] font-bold text-ink-950">TU</span>
           <div className="min-w-0 flex-1">
             <p className="truncate text-[11px] font-semibold">Tu nombre · Tu especialidad</p>
-            <p className="truncate text-[10px] text-white/70">con Guía Médica Monagas</p>
+            <p className="truncate text-[10px] text-white/70">con MonagasMed</p>
           </div>
         </div>
         <div className="space-y-1">

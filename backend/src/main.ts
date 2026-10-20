@@ -72,7 +72,7 @@ async function bootstrap() {
   const port = Number(process.env.PORT ?? 4000);
   await app.listen(port, '0.0.0.0');
   const logger = new Logger('Bootstrap');
-  logger.log(`Guía Médica Monagas API escuchando en el puerto ${port}`);
+  logger.log(`MonagasMed API escuchando en el puerto ${port}`);
   for (const warning of productionWarnings({
     NODE_ENV: config.get('NODE_ENV', { infer: true }),
     ADMIN_MFA_ENABLED: config.get('ADMIN_MFA_ENABLED', { infer: true }),

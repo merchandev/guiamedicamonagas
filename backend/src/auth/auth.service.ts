@@ -236,7 +236,7 @@ export class AuthService {
     const verifyUrl = `${this.config.get('FRONTEND_URL', { infer: true })}/verificar-correo?token=${rawToken}`;
     return this.mail.send({
       to: email,
-      subject: 'Confirma tu correo — Guía Médica Monagas',
+      subject: 'Confirma tu correo — MonagasMed',
       html: emailVerificationTemplate(name, verifyUrl),
       template: 'email_verification',
       relatedUserId: userId,
@@ -382,7 +382,7 @@ export class AuthService {
     ]);
     await this.mail.send({
       to: email,
-      subject: 'Tu código de acceso — Guía Médica Monagas',
+      subject: 'Tu código de acceso — MonagasMed',
       html: mfaCodeTemplate(code),
       template: 'mfa_code',
       relatedUserId: userId,
@@ -520,7 +520,7 @@ export class AuthService {
       const resetUrl = `${this.config.get('FRONTEND_URL', { infer: true })}/restablecer-contrasena?token=${rawToken}`;
       await this.mail.send({
         to: user.email,
-        subject: 'Restablece tu contraseña — Guía Médica Monagas',
+        subject: 'Restablece tu contraseña — MonagasMed',
         html: passwordResetTemplate(profile?.firstName ?? user.email, resetUrl),
         template: 'password_reset',
         relatedUserId: user.id,

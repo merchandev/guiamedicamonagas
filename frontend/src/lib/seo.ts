@@ -3,14 +3,15 @@
  * Lo usan la página pública (metadata) y la vista previa de su panel, para que
  * el médico vea exactamente lo que mostrará Google.
  *
- *   Título:      «Nombre Apellido - Especialidad | Guía Médica Monagas»
+ *   Título:      «Nombre Apellido - Especialidad | MonagasMed»
  *   Descripción: «Nombre Apellido, Especialidad en Municipio. <resumen o
  *                 biografía recortado…> Agenda cita.»
  *
  * Largos según lo que Google muestra sin cortar: ~60 caracteres de título y
  * ~155 de descripción. Si no cabe, se recorta por palabras con «…».
  */
-export const SITE_NAME = 'Guía Médica Monagas';
+export const SITE_NAME = 'MonagasMed';
+export const SITE_TITLE = 'MonagasMed - Guía Médica Monagas — Directorio médico verificado';
 export const TITLE_MAX = 60;
 export const DESCRIPTION_MAX = 155;
 /** Llamada a la acción al final de la descripción (solo si recibe citas en línea). */

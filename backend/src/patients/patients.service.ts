@@ -407,7 +407,7 @@ export class PatientsService {
       link: '/paciente',
       email: {
         to: patient.user.email,
-        subject: approved ? 'Identidad verificada — Guía Médica Monagas' : 'Revisa tu foto de identificación — Guía Médica Monagas',
+        subject: approved ? 'Identidad verificada — MonagasMed' : 'Revisa tu foto de identificación — MonagasMed',
         template: approved ? 'patient_identity_verified' : 'patient_identity_rejected',
         html: identityReviewedTemplate(patient.firstName ?? 'Paciente', approved, note, `${FRONTEND_URL}/paciente`),
       },
@@ -795,7 +795,7 @@ export class PatientsService {
       link: '/paciente/permisos',
       email: {
         to: patient.user.email,
-        subject: 'Un médico te registró como paciente — Guía Médica Monagas',
+        subject: 'Un médico te registró como paciente — MonagasMed',
         template: 'patient_registered_by_code',
         html: patientRegisteredByCodeTemplate(patient.firstName ?? 'Paciente', doctorName, scopeLabels, `${FRONTEND_URL}/paciente/permisos`),
       },
@@ -915,7 +915,7 @@ export class PatientsService {
       link: '/paciente/permisos',
       email: {
         to: patient.user.email,
-        subject: 'Solicitud de acceso a tus datos — Guía Médica Monagas',
+        subject: 'Solicitud de acceso a tus datos — MonagasMed',
         template: 'patient_data_access_requested',
         html: patientDataAccessRequestedTemplate(
           patient.firstName ?? 'Paciente',

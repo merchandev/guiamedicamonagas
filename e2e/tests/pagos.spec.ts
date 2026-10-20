@@ -25,7 +25,7 @@ test('el médico ve el Pago Móvil de la plataforma, reporta su pago y la admini
   );
   const bank = banks[0];
   const account = {
-    holderName: 'Guía Médica Monagas Pruebas',
+    holderName: 'MonagasMed Pruebas',
     documentId: 'J-12345678-9',
     bankCode: bank.code,
     accountNumber: `${bank.code}${'0'.repeat(15)}7`,

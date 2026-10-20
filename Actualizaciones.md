@@ -1,4 +1,4 @@
-# 🩺 Guía Médica Monagas · Registro de actualizaciones
+# 🩺 MonagasMed · Registro de actualizaciones
 
 > Bitácora central de cambios, implementaciones, decisiones técnicas y tareas de evolución del sistema.
 >

@@ -58,7 +58,7 @@ const SECTIONS: LegalSection[] = [
         </P>
         <P>
           <strong>Plan Marca Médica.</strong> Además de todo lo de Premium, es un servicio de producción de contenido: cada
-          mes pagado incluye dos videos profesionales producidos junto a Guía Médica Monagas (guion, grabación, edición,
+          mes pagado incluye dos videos profesionales producidos junto a MonagasMed (guion, grabación, edición,
           subtítulos y portada), su publicación colaborativa y un informe mensual de rendimiento. Uno de los videos puede
           mostrarse como video de presentación en la ficha mientras el plan esté vigente; si el plan vence, el video deja de
           mostrarse y queda guardado, y no se producen videos de los meses no pagados.

@@ -72,7 +72,7 @@ export default async function DoctorProfilePage({ params }: { params: Promise<{ 
   const profileUrl = `${siteUrl}/medicos/${doctor.slug}`;
   // El enlace corto con el código no cambia aunque cambie el slug.
   const shareUrl = doctor.publicCode ? `${siteUrl}/m/${doctor.publicCode}` : profileUrl;
-  const whatsappShare = `https://wa.me/?text=${encodeURIComponent(`${fullName} en Guía Médica Monagas: ${shareUrl}`)}`;
+  const whatsappShare = `https://wa.me/?text=${encodeURIComponent(`${fullName} en MonagasMed: ${shareUrl}`)}`;
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'Physician',
@@ -165,7 +165,7 @@ export default async function DoctorProfilePage({ params }: { params: Promise<{ 
           </h2>
           <p className="mb-4 text-sm text-pine-800">
             {doctor.verificationStatus === 'VERIFIED'
-              ? 'Verificado: Guía Médica Monagas revisó y aprobó todos los documentos exigidos a este profesional. La verificación es la misma para todos los planes.'
+              ? 'Verificado: MonagasMed revisó y aprobó todos los documentos exigidos a este profesional. La verificación es la misma para todos los planes.'
               : 'Verificación en curso: un administrador ya aprobó parte de sus documentos y revisa el resto. El sello de verificado se otorga con todos aprobados.'}
           </p>
           <p className="mb-4 text-xs leading-relaxed text-pine-800/90">

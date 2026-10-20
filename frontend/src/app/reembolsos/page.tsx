@@ -119,7 +119,7 @@ const SECTIONS: LegalSection[] = [
       <P>
         Las condiciones de contratación están en <DocLink to="pagos" />. Esta política solo se refiere a los planes de la
         plataforma: los honorarios que un paciente pague a un profesional por su consulta son un asunto entre ambos, en el
-        que Guía Médica Monagas no interviene.
+        que MonagasMed no interviene.
       </P>
     ),
   },

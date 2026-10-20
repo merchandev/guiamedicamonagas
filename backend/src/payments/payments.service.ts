@@ -317,7 +317,7 @@ export class PaymentsService {
         link: owner.dashboardPath,
         email: {
           to: recipient.email,
-          subject: approved ? 'Pago aprobado — Guía Médica Monagas' : 'Pago rechazado — Guía Médica Monagas',
+          subject: approved ? 'Pago aprobado — MonagasMed' : 'Pago rechazado — MonagasMed',
           html: paymentReviewedTemplate(owner.displayName, approved, amount, note, dashboardUrl),
           template: 'payment_reviewed',
         },
@@ -327,7 +327,7 @@ export class PaymentsService {
                 to: owner.whatsapp,
                 template: 'payment_reviewed',
                 body: approved
-                  ? `Tu pago de Bs. ${amount} fue aprobado. Tu suscripción en Guía Médica Monagas ya está activa.`
+                  ? `Tu pago de Bs. ${amount} fue aprobado. Tu suscripción en MonagasMed ya está activa.`
                   : `Tu pago de Bs. ${amount} fue rechazado. Motivo: ${note}. Puedes reportarlo de nuevo desde tu panel.`,
               }
             : undefined,

@@ -48,7 +48,7 @@ const SECTIONS: LegalSection[] = [
         </P>
         <Callout>
           Varias de estas conductas son delito según la Ley Especial contra los Delitos Informáticos, entre ellas el
-          acceso indebido y la obtención, revelación o uso de datos personales sin consentimiento. Guía Médica Monagas
+          acceso indebido y la obtención, revelación o uso de datos personales sin consentimiento. MonagasMed
           puede denunciarlas ante las autoridades competentes.
         </Callout>
       </>

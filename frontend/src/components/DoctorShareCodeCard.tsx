@@ -14,7 +14,7 @@ export function DoctorShareCodeCard({ code, isPublished, fullName }: { code: str
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || (typeof window !== 'undefined' ? window.location.origin : '');
   const url = `${siteUrl}/m/${code}`;
   const qrSvg = useMemo(() => brandQrSvg(url), [url]);
-  const whatsapp = `https://wa.me/?text=${encodeURIComponent(`${fullName} en Guía Médica Monagas: ${url}`)}`;
+  const whatsapp = `https://wa.me/?text=${encodeURIComponent(`${fullName} en MonagasMed: ${url}`)}`;
 
   const copy = async (text: string, done: string) => {
     try {

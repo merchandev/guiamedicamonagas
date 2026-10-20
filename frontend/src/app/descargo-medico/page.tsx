@@ -11,7 +11,7 @@ const SECTIONS: LegalSection[] = [
       <>
         <Callout>
           <strong>
-            Guía Médica Monagas es un directorio tecnológico y no un prestador de atención médica.
+            MonagasMed es un directorio tecnológico y no un prestador de atención médica.
           </strong>{' '}
           {MEDICAL_DISCLAIMER_NOTICE}
         </Callout>
@@ -59,7 +59,7 @@ const SECTIONS: LegalSection[] = [
     body: (
       <>
         <P>
-          Los profesionales del directorio ejercen de forma independiente. Guía Médica Monagas no dirige sus decisiones
+          Los profesionales del directorio ejercen de forma independiente. MonagasMed no dirige sus decisiones
           clínicas y no decide el diagnóstico, el medicamento, la dosis, la cirugía, el procedimiento, las pruebas, el alta
           ni el seguimiento.
         </P>
@@ -138,7 +138,7 @@ const SECTIONS: LegalSection[] = [
     body: (
       <P>
         Este descargo delimita qué hace y qué no hace la plataforma. No excluye ni reduce la responsabilidad que la ley
-        atribuya directamente a Guía Médica Monagas por sus propios actos u omisiones en la operación del sitio —por
+        atribuya directamente a MonagasMed por sus propios actos u omisiones en la operación del sitio —por
         ejemplo, la custodia de los datos que almacena o las comprobaciones que declara hacer—, ni los derechos
         irrenunciables de los usuarios.
       </P>

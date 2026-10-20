@@ -338,7 +338,7 @@ export class AppointmentsService {
       link: doctorAppointmentLink(appt.id),
       email: {
         to: appt.professional.user.email,
-        subject: 'Nueva solicitud de cita — Guía Médica Monagas',
+        subject: 'Nueva solicitud de cita — MonagasMed',
         template: 'appointment_requested_professional',
         html: appointmentRequestedProfessionalTemplate(
           doctorName,
@@ -374,7 +374,7 @@ export class AppointmentsService {
         link: PATIENT_APPOINTMENTS_LINK,
         email: {
           to: appt.patient.user.email,
-          subject: isConfirmed ? 'Cita confirmada — Guía Médica Monagas' : 'Solicitud de cita recibida',
+          subject: isConfirmed ? 'Cita confirmada — MonagasMed' : 'Solicitud de cita recibida',
           template: isConfirmed ? 'appointment_confirmed' : 'appointment_requested_patient',
           html,
           attachments: isConfirmed ? [this.buildIcsAttachment(appt)] : undefined,
@@ -645,7 +645,7 @@ export class AppointmentsService {
       link: PATIENT_APPOINTMENTS_LINK,
       email: {
         to: appt.patient.user.email,
-        subject: 'Cita confirmada — Guía Médica Monagas',
+        subject: 'Cita confirmada — MonagasMed',
         template: 'appointment_confirmed',
         html: appointmentConfirmedTemplate(
           appt.patient.firstName ?? 'Paciente',
@@ -722,7 +722,7 @@ export class AppointmentsService {
         link: doctorAppointmentLink(appt.id),
         email: {
           to: appt.professional.user.email,
-          subject: 'Cita cancelada — Guía Médica Monagas',
+          subject: 'Cita cancelada — MonagasMed',
           template: 'appointment_cancelled',
           html: appointmentCancelledTemplate(
             `Dr(a). ${appt.professional.firstName}`,
@@ -740,7 +740,7 @@ export class AppointmentsService {
         link: PATIENT_APPOINTMENTS_LINK,
         email: {
           to: appt.patient.user.email,
-          subject: 'Cita cancelada — Guía Médica Monagas',
+          subject: 'Cita cancelada — MonagasMed',
           template: 'appointment_cancelled',
           html: appointmentCancelledTemplate(appt.patient.firstName ?? 'Paciente', { dateLabel, timeLabel, reason }, 'el médico'),
         },
@@ -808,7 +808,7 @@ export class AppointmentsService {
         link: PATIENT_APPOINTMENTS_LINK,
         email: {
           to: appt.patient.user.email,
-          subject: 'Cita reprogramada — Guía Médica Monagas',
+          subject: 'Cita reprogramada — MonagasMed',
           template: 'appointment_rescheduled',
           html: appointmentRescheduledTemplate(appt.patient.firstName ?? 'Paciente', { dateLabel, timeLabel }, `${FRONTEND_URL}/paciente/citas`),
         },
@@ -823,7 +823,7 @@ export class AppointmentsService {
         link: doctorAppointmentLink(appt.id),
         email: {
           to: appt.professional.user.email,
-          subject: 'Cita reprogramada — Guía Médica Monagas',
+          subject: 'Cita reprogramada — MonagasMed',
           template: 'appointment_rescheduled',
           html: appointmentRescheduledTemplate(
             `Dr(a). ${appt.professional.firstName}`,

@@ -1,4 +1,4 @@
-# Despliegue independiente de Guía Médica Monagas
+# Despliegue independiente de MonagasMed
 
 La instalación está en `/opt/guiamedicamonagas`, dentro del proyecto Docker Compose `gmm-independent`, y se sirve en [https://guiamedicamonagas.com](https://guiamedicamonagas.com) a través del Traefik del VPS (certificado de Let's Encrypt desde el 2026-09-25, renovación automática). El puerto 8088 queda solo en `127.0.0.1` del servidor; el acceso por `http://72.61.77.167:8088` se cerró al activar el dominio. Falta el SMTP de entrega real. La verificación final de disponibilidad y comparación de los proyectos anteriores debe registrarse al cerrar el despliegue.
 

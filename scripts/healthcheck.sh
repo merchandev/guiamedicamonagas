@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# Monitoreo de Guía Médica Monagas (cron cada 5 minutos).
+# Monitoreo de MonagasMed (cron cada 5 minutos).
 #
 #   scripts/healthcheck.sh            # revisa y avisa cuando algo cambia
 #   scripts/healthcheck.sh --status   # muestra cada control, sin avisar
@@ -66,7 +66,7 @@ send_ntfy() {
   # El nombre del tema es el secreto del canal: también va por la entrada estándar.
   local config="url = \"${GMM_ALERT_NTFY_URL}\""
   [[ -n "${GMM_ALERT_NTFY_TOKEN:-}" ]] && config+=$'\n'"header = \"Authorization: Bearer ${GMM_ALERT_NTFY_TOKEN}\""
-  curl -sf -m 20 -o /dev/null -K - -H "Title: Guia Medica Monagas" -H "Priority: high" -H "Tags: rotating_light" \
+  curl -sf -m 20 -o /dev/null -K - -H "Title: MonagasMed" -H "Priority: high" -H "Tags: rotating_light" \
     --data-binary "$1" <<< "${config}"
 }
 send_webhook() {
@@ -87,7 +87,7 @@ send_email() {
   if [[ "${secure}" == "true" || "${port}" == "465" ]]; then scheme=smtps; else scheme=smtp; tls=(--ssl-reqd); fi
   mail="$(mktemp)"; chmod 600 "${mail}"
   {
-    printf 'From: Monitoreo Guia Medica Monagas <%s>\r\n' "${from}"
+    printf 'From: Monitoreo MonagasMed <%s>\r\n' "${from}"
     printf 'To: %s\r\n' "${GMM_ALERT_EMAIL_TO}"
     printf 'Subject: =?UTF-8?B?%s?=\r\n' "$(printf '%s' "${1%%:*}" | base64 -w0)"
     printf 'Date: %s\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: 8bit\r\n\r\n' "$(date -R)"
@@ -120,7 +120,7 @@ notify() {
 
 if [[ "${MODE}" == "--test" ]]; then
   echo "Aviso de prueba:"
-  if notify "PRUEBA Guía Médica Monagas: el canal de alertas del servidor funciona ($(date -u +%Y-%m-%dT%H:%M:%SZ))."; then
+  if notify "PRUEBA MonagasMed: el canal de alertas del servidor funciona ($(date -u +%Y-%m-%dT%H:%M:%SZ))."; then
     rc=0
   else
     echo "  Ningún canal entregó el aviso: revisa ${CONFIG_DIR}/alerts.env (ver docs/operations/monitoreo-y-alertas.md)."; rc=1
@@ -242,14 +242,14 @@ last_notice="$(cat "${STATE_DIR}/health.notified" 2>/dev/null || echo 0)"
 message=""
 if [[ "${current}" != "${previous}" ]]; then
   if (( ${#problems[@]} )); then
-    message="ALERTA Guía Médica Monagas: $(printf '%s; ' "${problems[@]}")"
+    message="ALERTA MonagasMed: $(printf '%s; ' "${problems[@]}")"
   else
-    message="OK Guía Médica Monagas: todo en orden de nuevo."
+    message="OK MonagasMed: todo en orden de nuevo."
   fi
   echo "${now} ${message}" >> "${LOG_DIR}/health.log"
   printf '%s' "${current}" > "${STATE_DIR}/health.state"
 elif (( ${#problems[@]} )) && (( now_epoch - last_notice >= REPEAT_HOURS * 3600 )); then
-  message="SIGUE FALLANDO Guía Médica Monagas: $(printf '%s; ' "${problems[@]}")"
+  message="SIGUE FALLANDO MonagasMed: $(printf '%s; ' "${problems[@]}")"
 fi
 
 if [[ -n "${message}" ]]; then

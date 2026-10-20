@@ -71,7 +71,7 @@ emitió.
 ## 1. Política de privacidad: sección nueva «Récipes digitales»
 
 **Quién los crea.** Solo los médicos verificados de la plataforma, desde su panel. El médico decide su contenido y
-responde por él; Guía Médica Monagas no prescribe ni dispensa medicamentos.
+responde por él; MonagasMed no prescribe ni dispensa medicamentos.
 
 **Qué datos lleva un récipe.** Los que exige la norma sanitaria: del médico (nombre, cédula, N° MPPS, N° del Colegio y
 especialidades), del establecimiento (nombre, dirección, RIF y teléfono), del paciente (nombre, cédula o la de su
@@ -105,7 +105,7 @@ El médico acepta, antes de emitir (texto que ya muestra el talonario, versión 
 >   laboratorios, medicamentos ni marcas comerciales.
 > - Mi cuenta es personal: no dejo que otra persona emita récipes con mi firma y mi sello.
 > - Si un récipe tiene un error, lo anulo y emito otro: un récipe emitido no se edita.
-> - Guía Médica Monagas guarda una copia de cada récipe para que el paciente la vea y lo descargue, y para que la
+> - MonagasMed guarda una copia de cada récipe para que el paciente la vea y lo descargue, y para que la
 >   farmacia compruebe con su código que es auténtico y está vigente.
 
 Agregar: «La plataforma no revisa el contenido clínico de los récipes. Un récipe solo se emite si el perfil del médico
@@ -115,7 +115,7 @@ puede emitir hasta que se revise de nuevo. Los récipes ya emitidos no cambian»
 ## 3. Términos y condiciones y Descargo médico
 
 Hoy dicen que la plataforma no ofrece «prescripciones, recetas o indicaciones de tratamiento». Sigue siendo cierto:
-proponer aclararlo así: «Guía Médica Monagas no prescribe. Ofrece a los médicos verificados una herramienta para emitir
+proponer aclararlo así: «MonagasMed no prescribe. Ofrece a los médicos verificados una herramienta para emitir
 y compartir sus propios récipes; el contenido de cada récipe es responsabilidad del médico que lo firma».
 
 ## 4. Política de retención

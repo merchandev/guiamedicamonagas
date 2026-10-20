@@ -201,7 +201,7 @@ export class AccountManagementService {
         content: `Motivo: ${dto.reason}`,
         email: {
           to: email,
-          subject: `${NOTICE_TITLES[dto.action]} — Guía Médica Monagas`,
+          subject: `${NOTICE_TITLES[dto.action]} — MonagasMed`,
           template: `account_${dto.action.toLowerCase()}`,
           html: accountModeratedTemplate(displayName, dto.action, dto.reason, loginUrl),
         },

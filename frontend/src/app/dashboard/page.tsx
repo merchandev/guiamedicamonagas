@@ -44,7 +44,7 @@ export default function DashboardHome() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl">Hola, {user?.professionalProfile?.firstName ?? 'Doctor(a)'}</h1>
-        <p className="mt-1 text-ink-600">Este es el estado de tu perfil en Guía Médica Monagas.</p>
+        <p className="mt-1 text-ink-600">Este es el estado de tu perfil en MonagasMed.</p>
       </div>
 
       <div className="card p-6">

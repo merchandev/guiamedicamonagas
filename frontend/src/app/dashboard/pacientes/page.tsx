@@ -291,7 +291,7 @@ function PacientesContent() {
                         <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-500">Identidad</p>
                         <Field label="Nombre" value={`${shown.identity.firstName ?? ''} ${shown.identity.lastName ?? ''}`.trim()} />
                         {shown.identity.identityVerified && (
-                          <p className="mt-1 text-xs font-medium text-pine-700">✓ Identidad verificada por Guía Médica Monagas</p>
+                          <p className="mt-1 text-xs font-medium text-pine-700">✓ Identidad verificada por MonagasMed</p>
                         )}
                       </div>
                     )}

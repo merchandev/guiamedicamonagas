@@ -107,7 +107,7 @@ const PLANS = [
       '2 videos profesionales cada mes',
       'Guion y planificación de cada video',
       'Grabación, edición, subtítulos y portada',
-      'Publicación colaborativa con Guía Médica Monagas',
+      'Publicación colaborativa con MonagasMed',
       'Uno de tus videos como presentación en tu ficha',
       'Prioridad en el espacio «Destacado» (señalado como patrocinado)',
       'Estadísticas de visitas, contactos y citas',

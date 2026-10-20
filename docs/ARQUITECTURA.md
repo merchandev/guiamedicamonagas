@@ -1,4 +1,4 @@
-# Arquitectura - Guía Médica Monagas
+# Arquitectura - MonagasMed
 
 Este documento describe la arquitectura base implementada en la Fase 1.
 

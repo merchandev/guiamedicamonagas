@@ -13,7 +13,7 @@ const SECTIONS: LegalSection[] = [
     title: 'Para qué sirve este canal',
     body: (
       <>
-        <P>Es el medio oficial para presentar a Guía Médica Monagas:</P>
+        <P>Es el medio oficial para presentar a MonagasMed:</P>
         <Ul items={LEGAL_REQUEST_CATEGORIES.filter((c) => c.value !== 'OTHER').map((c) => c.label)} />
         <P>
           No es un canal de atención médica ni de emergencias. {EMERGENCY_NOTICE} Los reclamos sobre la atención recibida

@@ -225,7 +225,7 @@ export class SanctionsService {
         link: '/reclamos',
         email: {
           to: user.email,
-          subject: `${title} — Guía Médica Monagas`,
+          subject: `${title} — MonagasMed`,
           template: `sanction_${kind.toLowerCase()}`,
           html: sanctionTemplate(name, kind, account, reason, sanctionEndLabel(sanction.endsAt), `${FRONTEND_URL}/reclamos`),
         },

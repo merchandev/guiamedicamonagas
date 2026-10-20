@@ -104,7 +104,7 @@ const SECTIONS: LegalSection[] = [
           ]}
         />
         <P>
-          Guía Médica Monagas no participa en el acto médico ni dirige mis decisiones clínicas. Las notas y registros que
+          MonagasMed no participa en el acto médico ni dirige mis decisiones clínicas. Las notas y registros que
           lleve en las herramientas de la plataforma son un apoyo a mi consulta: no sustituyen mis obligaciones de
           registro clínico.
         </P>
@@ -116,7 +116,7 @@ const SECTIONS: LegalSection[] = [
     title: 'Relación con la plataforma',
     body: (
       <P>
-        Publicar un perfil no crea una relación laboral, societaria ni de representación con Guía Médica Monagas. Fijo con
+        Publicar un perfil no crea una relación laboral, societaria ni de representación con MonagasMed. Fijo con
         libertad mis honorarios, horarios y condiciones de atención, y respondo por ellos ante mis pacientes.
       </P>
     ),

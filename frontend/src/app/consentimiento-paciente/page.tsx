@@ -9,7 +9,7 @@ const SECTIONS: LegalSection[] = [
     title: 'Qué datos se almacenan',
     body: (
       <>
-        <P>Autorizo a Guía Médica Monagas a almacenar y proteger los datos que yo decida registrar en mi perfil:</P>
+        <P>Autorizo a MonagasMed a almacenar y proteger los datos que yo decida registrar en mi perfil:</P>
         <Ul
           items={[
             'mis datos de identidad y contacto: nombre, apellido, cédula, teléfono, municipio, foto de perfil y foto de mi documento de identidad;',
@@ -104,7 +104,7 @@ const SECTIONS: LegalSection[] = [
     title: 'La plataforma no presta servicios médicos',
     body: (
       <P>
-        Entiendo que Guía Médica Monagas es un directorio tecnológico: no me atiende, no me diagnostica, no me prescribe
+        Entiendo que MonagasMed es un directorio tecnológico: no me atiende, no me diagnostica, no me prescribe
         y no es un servicio de emergencias. Mi perfil es un resumen aportado por mí y no sustituye la historia clínica que
         lleva mi médico. Ver el <DocLink to="descargo-medico" />.
       </P>

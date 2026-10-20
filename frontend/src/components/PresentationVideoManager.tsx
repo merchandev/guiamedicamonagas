@@ -74,7 +74,7 @@ export function PresentationVideoManager({ planTier, initialVideoId }: { planTie
       <div>
         <h2 className="text-lg font-semibold text-ink-900">Video de presentación</h2>
         <p className="mt-1 text-sm text-ink-600">
-          Tu plan Marca Médica incluye 2 videos profesionales cada mes, producidos con Guía Médica Monagas. Cuando estén en
+          Tu plan Marca Médica incluye 2 videos profesionales cada mes, producidos con MonagasMed. Cuando estén en
           YouTube, pega aquí el enlace del que quieras mostrar en tu ficha.
         </p>
       </div>

@@ -73,7 +73,7 @@ suspensión de estos términos.
 **Reclamos.** Cualquier persona puede denunciar una valoración, y cualquier autor o médico puede reclamar por una
 decisión o una sanción, en «Reclamos y solicitudes» (categoría «Valoración abusiva o falsa»).
 
-**Naturaleza.** Las valoraciones son opiniones de pacientes, no una recomendación de Guía Médica Monagas, y no cambian el
+**Naturaleza.** Las valoraciones son opiniones de pacientes, no una recomendación de MonagasMed, y no cambian el
 orden del directorio.
 
 ## 2. Política de privacidad: sección nueva «Valoraciones»

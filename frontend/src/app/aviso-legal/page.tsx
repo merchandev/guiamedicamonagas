@@ -8,7 +8,7 @@ const PENDING = 'Pendiente de publicación';
 
 // Se muestran siempre: lo que falte aparece como «pendiente», nunca con datos de ejemplo.
 const OPERATOR_ROWS: { label: string; value: string | null }[] = [
-  { label: 'Denominación comercial', value: 'Guía Médica Monagas' },
+  { label: 'Denominación comercial', value: 'MonagasMed' },
   { label: 'Sitio web', value: SITE_DOMAIN },
   { label: 'Titular del sitio (nombre o razón social)', value: DATA_CONTROLLER.legalName },
   { label: 'RIF', value: DATA_CONTROLLER.rif },
@@ -55,7 +55,7 @@ const SECTIONS: LegalSection[] = [
     body: (
       <>
         <P>
-          Guía Médica Monagas es una plataforma tecnológica de directorio: permite encontrar, identificar y contactar a
+          MonagasMed es una plataforma tecnológica de directorio: permite encontrar, identificar y contactar a
           profesionales médicos independientes del estado Monagas, y ofrece a los pacientes un área privada para guardar
           su información y decidir con quién la comparten.
         </P>
@@ -130,7 +130,7 @@ const SECTIONS: LegalSection[] = [
     title: 'Marca, dominio y propiedad intelectual',
     body: (
       <P>
-        El nombre «Guía Médica Monagas», su identidad gráfica, el dominio {SITE_DOMAIN}, el software y el diseño del sitio
+        El nombre «MonagasMed», su identidad gráfica, el dominio {SITE_DOMAIN}, el software y el diseño del sitio
         pertenecen a su titular o se usan con autorización. Las reglas sobre el contenido que aportan los usuarios están en
         la política de <DocLink to="propiedad-intelectual" />.
       </P>
@@ -164,7 +164,7 @@ export default function LegalNoticePage() {
   return (
     <LegalPage
       slug="aviso-legal"
-      lead={<p>Quién está detrás de Guía Médica Monagas, cómo contactarlo y bajo qué normas opera el sitio.</p>}
+      lead={<p>Quién está detrás de MonagasMed, cómo contactarlo y bajo qué normas opera el sitio.</p>}
       sections={SECTIONS}
       related={['terminos', 'privacidad', 'propiedad-intelectual', 'reclamos']}
     />

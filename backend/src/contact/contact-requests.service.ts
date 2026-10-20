@@ -141,7 +141,7 @@ export class ContactRequestsService {
       link: DOCTOR_LINK,
       email: doctor && {
         to: doctor.email,
-        subject: 'Nuevo pedido de contacto — Guía Médica Monagas',
+        subject: 'Nuevo pedido de contacto — MonagasMed',
         html: contactRequestTemplate(`${professional.firstName} ${professional.lastName}`, CONTACT_REQUEST_DAYS, `${FRONTEND_URL}${DOCTOR_LINK}`),
         template: 'contact-request',
       },

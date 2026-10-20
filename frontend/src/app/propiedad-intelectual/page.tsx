@@ -10,7 +10,7 @@ const SECTIONS: LegalSection[] = [
     title: 'Derechos sobre la plataforma',
     body: (
       <P>
-        El nombre «Guía Médica Monagas», su identidad gráfica, el dominio {SITE_DOMAIN}, el software, el diseño del sitio,
+        El nombre «MonagasMed», su identidad gráfica, el dominio {SITE_DOMAIN}, el software, el diseño del sitio,
         sus textos propios y la organización del directorio pertenecen a su titular o se usan con autorización. No se
         permite copiarlos, reproducirlos ni extraer el directorio de forma masiva sin autorización escrita. Ver{' '}
         <DocLink to="uso-aceptable" />.
@@ -25,7 +25,7 @@ const SECTIONS: LegalSection[] = [
         <P>Cada usuario conserva los derechos que legalmente le correspondan sobre el contenido original que aporta:</P>
         <Ul items={['fotografías;', 'biografías y textos;', 'publicaciones;', 'certificados y documentos;', 'videos enlazados.']} />
         <P>
-          Al cargarlo, concede a Guía Médica Monagas una <strong>licencia limitada</strong>, no exclusiva y gratuita,
+          Al cargarlo, concede a MonagasMed una <strong>licencia limitada</strong>, no exclusiva y gratuita,
           únicamente para operar la función correspondiente: mostrar el perfil público en el directorio, generar la imagen
           con la que el perfil se comparte en redes y buscadores, y conservar los documentos para su verificación. La
           licencia termina cuando el contenido se retira o la cuenta se elimina, salvo lo que deba conservarse según la
@@ -79,9 +79,9 @@ const SECTIONS: LegalSection[] = [
     body: (
       <P>
         El video de presentación de un perfil está alojado en YouTube y se rige, además, por las condiciones de ese
-        servicio; el profesional debe tener derecho a publicarlo. Los videos producidos junto a Guía Médica Monagas dentro
+        servicio; el profesional debe tener derecho a publicarlo. Los videos producidos junto a MonagasMed dentro
         del plan Marca Médica son para el profesional: puede usarlos en sus redes sociales, en WhatsApp y en su propio sitio
-        web. Guía Médica Monagas puede difundirlos en publicaciones colaborativas con el profesional, en los términos que
+        web. MonagasMed puede difundirlos en publicaciones colaborativas con el profesional, en los términos que
         se coordinen con él.
       </P>
     ),

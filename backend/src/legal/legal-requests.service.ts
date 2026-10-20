@@ -99,7 +99,7 @@ export class LegalRequestsService {
     });
     await this.mail.send({
       to: email,
-      subject: `Recibimos tu solicitud ${created.ticket} — Guía Médica Monagas`,
+      subject: `Recibimos tu solicitud ${created.ticket} — MonagasMed`,
       template: 'legal_request_received',
       relatedUserId: userId,
       html: legalRequestReceivedTemplate(dto.requesterName, created.ticket, LEGAL_REQUEST_CATEGORY_LABELS[dto.category], this.statusUrl(created.ticket)),
@@ -190,7 +190,7 @@ export class LegalRequestsService {
     if (current.status !== dto.status) {
       await this.mail.send({
         to: current.requesterEmail,
-        subject: `Tu solicitud ${current.ticket}: ${LEGAL_REQUEST_STATUS_LABELS[dto.status]} — Guía Médica Monagas`,
+        subject: `Tu solicitud ${current.ticket}: ${LEGAL_REQUEST_STATUS_LABELS[dto.status]} — MonagasMed`,
         template: 'legal_request_updated',
         relatedUserId: current.userId ?? undefined,
         html: legalRequestUpdatedTemplate(

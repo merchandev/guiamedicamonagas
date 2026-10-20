@@ -61,7 +61,7 @@ export class AppointmentRemindersService {
           link: '/paciente/citas',
           email: {
             to: appt.patient.user.email,
-            subject: 'Recordatorio de tu cita — Guía Médica Monagas',
+            subject: 'Recordatorio de tu cita — MonagasMed',
             template: 'appointment_reminder',
             html: appointmentReminderTemplate(
               appt.patient.firstName ?? 'Paciente',

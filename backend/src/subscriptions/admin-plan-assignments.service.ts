@@ -129,7 +129,7 @@ export class AdminPlanAssignmentsService {
         link: '/dashboard/pagos',
         email: {
           to: notice.email,
-          subject: 'Tu plan está activo — Guía Médica Monagas',
+          subject: 'Tu plan está activo — MonagasMed',
           template: 'paid_plan_assigned',
           html: paidPlanAssignedTemplate(`Dr(a). ${notice.firstName}`, notice.planName, endsAtLabel,
             `${this.config.get('FRONTEND_URL', { infer: true })}/dashboard/pagos`),

@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 export function GET() {
   return Response.json(
     {
-      service: 'Guia Medica Monagas web',
+      service: 'MonagasMed web',
       version: (process.env.GMM_BUILD_SHA || 'dev').slice(0, 12),
       builtAt: process.env.GMM_BUILT_AT || null,
     },

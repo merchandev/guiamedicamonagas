@@ -15,9 +15,9 @@ export function Footer() {
         <div className="md:col-span-2">
           <div className="flex items-center gap-2 font-display text-lg font-semibold text-ink-950">
             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-pine-700 text-sm font-bold text-white">
-              GM
+              MM
             </span>
-            Guía Médica Monagas
+            MonagasMed
           </div>
           <p className="mt-3 max-w-sm text-sm text-ink-600">
             Directorio de médicos del estado Monagas con verificación documental. Una persona del equipo revisa los
@@ -79,7 +79,7 @@ export function Footer() {
           <p>
             {MEDICAL_DISCLAIMER_NOTICE} {EMERGENCY_NOTICE}
           </p>
-          <p className="text-ink-500">© {new Date().getFullYear()} Guía Médica Monagas.</p>
+          <p className="text-ink-500">© {new Date().getFullYear()} MonagasMed.</p>
         </div>
       </div>
     </footer>

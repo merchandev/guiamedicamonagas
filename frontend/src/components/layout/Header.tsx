@@ -40,9 +40,9 @@ export function Header() {
       <div className="container-page flex h-16 items-center justify-between">
         <Link href="/" className="flex items-center gap-2 whitespace-nowrap font-display text-lg font-semibold text-ink-950">
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-pine-700 text-sm font-bold text-white">
-            GM
+            MM
           </span>
-          Guía Médica Monagas
+          MonagasMed
         </Link>
 
         <nav className="hidden items-center gap-1 xl:flex">

@@ -17,7 +17,7 @@ export async function notifyProfilePublished(
     link: '/dashboard',
     email: {
       to: profile.email,
-      subject: 'Tu perfil ya es público — Guía Médica Monagas',
+      subject: 'Tu perfil ya es público — MonagasMed',
       html: profilePublishedTemplate(profile.firstName, profileUrl, documents.approved, documents.required),
       template: 'profile_published',
     },
@@ -25,7 +25,7 @@ export async function notifyProfilePublished(
       ? {
           to: profile.whatsapp,
           template: 'profile_published',
-          body: `Dr(a). ${profile.firstName}, tu perfil en Guía Médica Monagas ya es público: ${profileUrl}`,
+          body: `Dr(a). ${profile.firstName}, tu perfil en MonagasMed ya es público: ${profileUrl}`,
         }
       : undefined,
   });

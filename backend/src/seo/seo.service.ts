@@ -12,7 +12,7 @@ export interface GlobalSeoConfig {
 }
 
 const DEFAULT_GLOBAL_SEO: GlobalSeoConfig = {
-  siteName: 'Guía Médica Monagas',
+  siteName: 'MonagasMed',
   titleSeparator: '-',
   allowIndexing: true,
 };

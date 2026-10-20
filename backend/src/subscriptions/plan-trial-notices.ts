@@ -30,7 +30,7 @@ export async function notifyTrialStarted(
     link: PLANS_PATH,
     email: {
       to: doctor.email,
-      subject: `Tu perfil ya es público: ${TRIAL_DAYS} días gratis de Plus — Guía Médica Monagas`,
+      subject: `Tu perfil ya es público: ${TRIAL_DAYS} días gratis de Plus — MonagasMed`,
       html: trialStartedTemplate(`Dr(a). ${doctor.firstName}`, ends, `${frontendUrl}/medicos/${doctor.slug}`, `${frontendUrl}${PLANS_PATH}`),
       template: 'trial_started',
     },
@@ -54,7 +54,7 @@ export async function notifyTrialEnding(
     link: PLANS_PATH,
     email: {
       to: doctor.email,
-      subject: `${title} — Guía Médica Monagas`,
+      subject: `${title} — MonagasMed`,
       html: trialEndingTemplate(`Dr(a). ${doctor.firstName}`, ends, `${frontendUrl}${PLANS_PATH}`),
       template: 'trial_ending',
     },
@@ -71,7 +71,7 @@ export async function notifyTrialExpired(notifications: NotificationsService, do
     link: PLANS_PATH,
     email: {
       to: doctor.email,
-      subject: 'Tu prueba gratis de Plus terminó — Guía Médica Monagas',
+      subject: 'Tu prueba gratis de Plus terminó — MonagasMed',
       html: trialExpiredTemplate(`Dr(a). ${doctor.firstName}`, `${frontendUrl}${PLANS_PATH}`),
       template: 'trial_expired',
     },

@@ -16,7 +16,7 @@ export const DOCUMENT_LABELS: Record<DocumentType, string> = {
 /**
  * Naturaleza de cada requisito. No todo lo que pide la plataforma es
  * "obligatorio por ley": se distingue lo legal de lo gremial, lo fiscal y lo
- * que es política interna de verificación de Guía Médica Monagas.
+ * que es política interna de verificación de MonagasMed.
  */
 export type DocumentCategory =
   | 'LEGAL'

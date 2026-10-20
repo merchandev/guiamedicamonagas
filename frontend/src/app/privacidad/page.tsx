@@ -11,7 +11,7 @@ const SECTIONS: LegalSection[] = [
     body: (
       <>
         <P>
-          El responsable del tratamiento es el operador de Guía Médica Monagas, identificado en el{' '}
+          El responsable del tratamiento es el operador de MonagasMed, identificado en el{' '}
           <DocLink to="aviso-legal" />.
           {DATA_CONTROLLER.legalName ? (
             <>

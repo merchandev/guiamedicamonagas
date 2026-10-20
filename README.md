@@ -1,4 +1,4 @@
-# 🩺 Guía Médica Monagas
+# 🩺 MonagasMed
 
 > Directorio médico digital para conectar a pacientes, profesionales de la salud y organizaciones sanitarias de Monagas en una plataforma confiable, verificable y preparada para crecer.
 
@@ -34,7 +34,7 @@
 
 ## 🌎 Qué es
 
-Guía Médica Monagas es una plataforma full-stack enfocada en el descubrimiento de servicios de salud en el estado Monagas, Venezuela.
+MonagasMed es una plataforma full-stack enfocada en el descubrimiento de servicios de salud en el estado Monagas, Venezuela.
 
 La solución permite:
 
@@ -466,6 +466,6 @@ El paquete del backend declara UNLICENSED. Este repositorio es público para fac
 Proyecto mantenido por [Merchan.dev](https://github.com/merchandev).
 
 <p align="center">
-  <sub>🩺 Guía Médica Monagas · Tecnología para encontrar y gestionar servicios de salud</sub><br>
+  <sub>🩺 MonagasMed · Tecnología para encontrar y gestionar servicios de salud</sub><br>
   <a href="Actualizaciones.md">Ver bitácora de actualizaciones →</a>
 </p>

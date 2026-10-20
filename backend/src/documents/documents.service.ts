@@ -192,7 +192,7 @@ export class DocumentsService {
       link: '/dashboard/documentos',
       email: {
         to: document.professional.user.email,
-        subject: approved ? 'Documento aprobado — Guía Médica Monagas' : 'Documento rechazado — Guía Médica Monagas',
+        subject: approved ? 'Documento aprobado — MonagasMed' : 'Documento rechazado — MonagasMed',
         html: documentReviewedTemplate(
           document.professional.firstName,
           DOCUMENT_LABELS[document.type],
@@ -263,7 +263,7 @@ export class DocumentsService {
         link: '/dashboard',
         email: {
           to: profile.user.email,
-          subject: '¡Tu perfil fue verificado! — Guía Médica Monagas',
+          subject: '¡Tu perfil fue verificado! — MonagasMed',
           html: profileVerifiedTemplate(profile.firstName, profileUrl),
           template: 'profile_verified',
         },
@@ -271,7 +271,7 @@ export class DocumentsService {
           ? {
               to: profile.whatsapp,
               template: 'profile_verified',
-              body: `¡Felicidades, Dr(a). ${profile.firstName}! Tu perfil en Guía Médica Monagas fue verificado y ya es público: ${profileUrl}`,
+              body: `¡Felicidades, Dr(a). ${profile.firstName}! Tu perfil en MonagasMed fue verificado y ya es público: ${profileUrl}`,
             }
           : undefined,
       });

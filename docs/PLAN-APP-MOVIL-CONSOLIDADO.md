@@ -2,7 +2,7 @@
 
 Fecha: 6 de octubre de 2026. Estado: propuesta; no implementada.
 
-Proyecto: Guía Médica Monagas. Dominio: guiamedicamonagas.com. Backend productivo: gmm-independent.
+Proyecto: MonagasMed. Dominio: guiamedicamonagas.com. Backend productivo: gmm-independent.
 
 Este documento compara PLAN-APP-MOVIL.md, el contexto adicional entregado y la propuesta previa. No autoriza despliegues ni cambios de código. Las duraciones, costes operativos y metas de rendimiento son estimaciones que deben validarse.
 

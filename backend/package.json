@@ -1,8 +1,8 @@
 {
   "name": "guia-medica-backend",
   "version": "1.0.0",
-  "description": "API backend para Guía Médica Monagas",
-  "author": "Guía Médica Monagas",
+  "description": "API backend para MonagasMed",
+  "author": "MonagasMed",
   "private": true,
   "license": "UNLICENSED",
   "prisma": {

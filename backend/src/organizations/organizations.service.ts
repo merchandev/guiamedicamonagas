@@ -444,7 +444,7 @@ export class OrganizationsService {
     const existingUser = await this.prisma.user.findUnique({ where: { email }, select: { id: true } });
     const email$ = {
       to: email,
-      subject: `Invitación a ${org.name} — Guía Médica Monagas`,
+      subject: `Invitación a ${org.name} — MonagasMed`,
       template: 'organization_invitation',
       html: organizationInvitationTemplate(org.name, ROLE_LABELS[dto.role], acceptUrl, INVITATION_TTL_HOURS),
     };

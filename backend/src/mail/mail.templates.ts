@@ -1,5 +1,5 @@
 const BRAND_COLOR = '#0f6e5c';
-const BRAND_NAME = 'Guía Médica Monagas';
+const BRAND_NAME = 'MonagasMed';
 
 /** Escapa HTML para evitar inyección en correos a partir de datos de usuario. */
 function escapeHtml(value: string): string {

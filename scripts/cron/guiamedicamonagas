@@ -1,4 +1,4 @@
-# Tareas programadas de Guía Médica Monagas — se instala en /etc/cron.d/guiamedicamonagas
+# Tareas programadas de MonagasMed — se instala en /etc/cron.d/guiamedicamonagas
 # (ver docs/operations/respaldos-y-restauracion.md). Hora del servidor: UTC (Caracas = UTC-4).
 SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin

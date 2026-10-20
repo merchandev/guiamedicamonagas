@@ -8,7 +8,7 @@ import { Footer } from '@/components/layout/Footer';
 import CookieConsent from '@/components/CookieConsent';
 import { LegalAcceptanceGate } from '@/components/LegalAcceptanceGate';
 import { ORGANIZATIONS_LAUNCHED } from '@/lib/features';
-import { SITE_NAME } from '@/lib/seo';
+import { SITE_NAME, SITE_TITLE } from '@/lib/seo';
 
 // Solo dos familias en todo el sitio: Montserrat para títulos (h1–h4 y el
 // logo) y Open Sans para el texto, los botones y los formularios.
@@ -18,8 +18,8 @@ const sans = Open_Sans({ subsets: ['latin'], variable: '--font-sans' });
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'),
   title: {
-    default: 'Guía Médica Monagas — Directorio médico verificado',
-    template: '%s — Guía Médica Monagas',
+    default: SITE_TITLE,
+    template: '%s | MonagasMed',
   },
   description: `Encuentra ${
     ORGANIZATIONS_LAUNCHED ? 'médicos, especialistas, farmacias y clínicas verificadas' : 'médicos y especialistas verificados'

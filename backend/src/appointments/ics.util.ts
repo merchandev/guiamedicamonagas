@@ -13,7 +13,7 @@ export function buildAppointmentIcs(opts: {
   return [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//Guia Medica Monagas//ES',
+    'PRODID:-//MonagasMed//ES',
     'BEGIN:VEVENT',
     `UID:${opts.uid}`,
     `DTSTAMP:${fmt(new Date())}`,

@@ -58,5 +58,5 @@ jobs:
             echo "Intento $attempt: $problems"
             [ "$attempt" = 3 ] || sleep 60
           done
-          echo "::error title=Guía Médica Monagas no responde bien desde Internet::$(tr '\n' ';' <<< "$problems")"
+          echo "::error title=MonagasMed no responde bien desde Internet::$(tr '\n' ';' <<< "$problems")"
           exit 1

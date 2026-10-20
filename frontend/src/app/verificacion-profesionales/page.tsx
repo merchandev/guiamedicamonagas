@@ -25,7 +25,7 @@ const SECTIONS: LegalSection[] = [
     body: (
       <>
         <P>
-          «Verificado» significa que una persona del equipo administrativo de Guía Médica Monagas revisó y aprobó{' '}
+          «Verificado» significa que una persona del equipo administrativo de MonagasMed revisó y aprobó{' '}
           <strong>todos</strong> los documentos que esta política exige a ese profesional.
         </P>
         <Callout>{VERIFICATION_NOTICE}</Callout>

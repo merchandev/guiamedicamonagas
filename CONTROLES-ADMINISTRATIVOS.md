@@ -1,4 +1,4 @@
-# Registro completo de cambios — Guía Médica Monagas
+# Registro completo de cambios — MonagasMed
 
 Fecha de revisión: 29 de septiembre de 2026  
 Rama integrada: `main`  

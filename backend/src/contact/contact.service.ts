@@ -45,7 +45,7 @@ export class ContactService {
       link: '/dashboard/mensajes',
       email: {
         to: professional.user.email,
-        subject: `Nuevo mensaje de un paciente — Guía Médica Monagas`,
+        subject: `Nuevo mensaje de un paciente — MonagasMed`,
         html: contactMessageTemplate(professional.firstName, dto.senderName, dto.senderEmail, dto.senderPhone, dto.content),
         template: 'contact_message',
       },

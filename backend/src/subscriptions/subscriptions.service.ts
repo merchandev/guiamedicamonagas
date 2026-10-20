@@ -286,7 +286,7 @@ export class SubscriptionsService {
                 link: owner.dashboardPath,
                 email: {
                   to: recipient.email,
-                  subject: 'Tu plan venció — Guía Médica Monagas',
+                  subject: 'Tu plan venció — MonagasMed',
                   html: subscriptionExpiredTemplate(`Dr(a). ${owner.displayName}`, subscription.plan.name, plansUrl),
                   template: 'subscription_expired',
                 },

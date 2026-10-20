@@ -11,8 +11,8 @@ import { ORGANIZATIONS_LAUNCHED } from '@/lib/features';
 export const metadata: Metadata = {
   title: 'Planes y precios',
   description: ORGANIZATIONS_LAUNCHED
-    ? 'Planes para médicos, farmacias, laboratorios y clínicas en Guía Médica Monagas. Los médicos publican su perfil verificado con 14 días gratis del plan Plus.'
-    : 'Planes para médicos en Guía Médica Monagas: Profesional, Plus, Premium y Marca Médica. Publica tu perfil verificado con 14 días gratis del plan Plus.',
+    ? 'Planes para médicos, farmacias, laboratorios y clínicas en MonagasMed. Los médicos publican su perfil verificado con 14 días gratis del plan Plus.'
+    : 'Planes para médicos en MonagasMed: Profesional, Plus, Premium y Marca Médica. Publica tu perfil verificado con 14 días gratis del plan Plus.',
   alternates: { canonical: '/planes' },
 };
 
@@ -190,7 +190,7 @@ export default async function PlansPage() {
               </ul>
               <p className="mt-8 text-base font-medium text-white">Tú hablas de medicina. Nosotros nos encargamos del contenido.</p>
               <p className="mt-2 max-w-3xl text-xs leading-relaxed text-pine-200">
-                Producción realizada junto a Guía Médica Monagas. El contenido es informativo y sigue la{' '}
+                Producción realizada junto a MonagasMed. El contenido es informativo y sigue la{' '}
                 <Link href="/publicidad-medica" className="underline">
                   Política de publicidad médica
                 </Link>

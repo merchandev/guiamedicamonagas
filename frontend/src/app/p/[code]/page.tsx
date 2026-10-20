@@ -28,7 +28,7 @@ export default async function PatientCodeLanding({ params }: { params: Promise<{
         <div>
           <h1 className="text-2xl">Código de paciente</h1>
           <p className="mt-2 text-sm text-ink-600">
-            Este código permite que un médico registre a su paciente en Guía Médica Monagas. Por privacidad, aquí no se
+            Este código permite que un médico registre a su paciente en MonagasMed. Por privacidad, aquí no se
             muestra ningún dato del paciente.
           </p>
         </div>

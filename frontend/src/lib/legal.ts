@@ -118,7 +118,7 @@ export const LEGAL_DOCS: LegalDoc[] = [
     short: 'Términos y condiciones',
     version: LEGAL_VERSIONS.TERMS,
     group: 'general',
-    summary: 'Qué es y qué no es Guía Médica Monagas, las reglas de las cuentas y los límites de responsabilidad.',
+    summary: 'Qué es y qué no es MonagasMed, las reglas de las cuentas y los límites de responsabilidad.',
   },
   {
     slug: 'propiedad-intelectual',
@@ -313,7 +313,7 @@ export const ACCEPTANCE_DOCUMENTS: Record<LegalDocumentKey, { docs: LegalDocSlug
   TERMS: {
     docs: ['terminos', 'descargo-medico'],
     statement:
-      'Acepto los Términos y condiciones y entiendo que Guía Médica Monagas es un directorio tecnológico: no presta atención médica ni de emergencia.',
+      'Acepto los Términos y condiciones y entiendo que MonagasMed es un directorio tecnológico: no presta atención médica ni de emergencia.',
   },
   PRIVACY: {
     docs: ['privacidad'],
@@ -358,14 +358,14 @@ export function requiredLegalDocuments(role: 'USER' | 'PROFESSIONAL' | 'ORGANIZA
 
 /** Perfiles, directorio, reserva y pie de página. */
 export const MEDICAL_DISCLAIMER_NOTICE =
-  'Guía Médica Monagas es un directorio tecnológico. No presta atención médica, veterinaria, estética ni de emergencia; no diagnostica, prescribe ni recomienda tratamientos y no vende medicamentos, alimentos o productos sanitarios.';
+  'MonagasMed es un directorio tecnológico. No presta atención médica, veterinaria, estética ni de emergencia; no diagnostica, prescribe ni recomienda tratamientos y no vende medicamentos, alimentos o productos sanitarios.';
 
 export const EMERGENCY_NOTICE =
   'Este sitio no es un servicio de emergencias. Ante una urgencia, acude al centro de salud más cercano o llama a los servicios de emergencia de tu localidad.';
 
 /** Área privada del paciente. */
 export const PATIENT_AREA_NOTICE =
-  'Tu información privada se utiliza exclusivamente para operar y proteger las funciones de Guía Médica Monagas. No vendemos tus datos, no los usamos para estudiar tus hábitos de consumo y no utilizamos tu información privada o de salud para entrenar modelos de lenguaje o inteligencia artificial. El acceso de un profesional requiere tu autorización cuando corresponda.';
+  'Tu información privada se utiliza exclusivamente para operar y proteger las funciones de MonagasMed. No vendemos tus datos, no los usamos para estudiar tus hábitos de consumo y no utilizamos tu información privada o de salud para entrenar modelos de lenguaje o inteligencia artificial. El acceso de un profesional requiere tu autorización cuando corresponda.';
 
 /** Pantalla del código y QR del paciente. */
 export const SHARE_CODE_NOTICE =
@@ -380,7 +380,7 @@ export const REVIEW_RULES: string[] = [
   'Es tu opinión sobre la atención que recibiste: el trato, la puntualidad, la claridad de las explicaciones y el lugar de consulta.',
   'No incluyas datos de salud tuyos ni de otras personas (diagnósticos, tratamientos o medicamentos), ni teléfonos, correos, enlaces o números de cédula.',
   'Sin insultos ni acusaciones que no puedas sostener.',
-  'Si solo eliges las estrellas, tu valoración se publica al enviarla. Si escribes un comentario, el equipo de Guía Médica Monagas lo revisa antes de publicarlo y puede rechazarlo si incumple estas reglas.',
+  'Si solo eliges las estrellas, tu valoración se publica al enviarla. Si escribes un comentario, el equipo de MonagasMed lo revisa antes de publicarlo y puede rechazarlo si incumple estas reglas.',
   'Se publica como «Paciente verificado», salvo que elijas mostrar tu nombre y la inicial de tu apellido. Nunca se muestran tu cédula, tu código, tu foto ni la fecha exacta de tu consulta: solo el mes y el año.',
 ];
 
@@ -404,7 +404,7 @@ export const PRESCRIPTION_RULES: string[] = [
   'La firma y el sello que subo son míos, y el logo es de mi consultorio o del centro donde atiendo, nunca de laboratorios, medicamentos ni marcas comerciales.',
   'Mi cuenta es personal: no dejo que otra persona emita récipes con mi firma y mi sello.',
   'Si un récipe tiene un error, lo anulo y emito otro: un récipe emitido no se edita.',
-  'Guía Médica Monagas guarda una copia de cada récipe para que el paciente la vea y lo descargue, y para que la farmacia compruebe con su código que es auténtico y está vigente.',
+  'MonagasMed guarda una copia de cada récipe para que el paciente la vea y lo descargue, y para que la farmacia compruebe con su código que es auténtico y está vigente.',
 ];
 
 /** Recordatorio en el formulario de emisión. */
@@ -413,15 +413,15 @@ export const PRESCRIPTION_CONTROLLED_NOTICE =
 
 /** En «Mis récipes» del paciente. */
 export const PRESCRIPTION_PATIENT_NOTICE =
-  'Tus médicos emiten estos récipes y responden por su contenido. Guía Médica Monagas no prescribe ni vende medicamentos: guarda el récipe para que lo veas, lo descargues y la farmacia compruebe con su código que es auténtico.';
+  'Tus médicos emiten estos récipes y responden por su contenido. MonagasMed no prescribe ni vende medicamentos: guarda el récipe para que lo veas, lo descargues y la farmacia compruebe con su código que es auténtico.';
 
 /** En la página pública de verificación. */
 export const PRESCRIPTION_VERIFY_NOTICE =
-  'Muestra el récipe tal como lo emitió el médico, para que el paciente y la farmacia comprueben que es auténtico y está vigente. Guía Médica Monagas no prescribe ni dispensa medicamentos.';
+  'Muestra el récipe tal como lo emitió el médico, para que el paciente y la farmacia comprueben que es auténtico y está vigente. MonagasMed no prescribe ni dispensa medicamentos.';
 
 /** Junto a las valoraciones de una ficha. */
 export const REVIEWS_PUBLIC_NOTICE =
-  'Son opiniones de pacientes con la identidad verificada y una consulta verificada con este médico. No son una recomendación de Guía Médica Monagas.';
+  'Son opiniones de pacientes con la identidad verificada y una consulta verificada con este médico. No son una recomendación de MonagasMed.';
 
 /** Al responder una valoración. */
 export const REVIEW_REPLY_NOTICE =
@@ -429,7 +429,7 @@ export const REVIEW_REPLY_NOTICE =
 
 /** Perfil público del profesional. */
 export const VERIFICATION_NOTICE =
-  'La verificación indica que Guía Médica Monagas realizó las comprobaciones documentales definidas en su Política de verificación. No constituye una recomendación clínica, certificación estatal adicional, garantía de calidad asistencial ni garantía de resultados.';
+  'La verificación indica que MonagasMed realizó las comprobaciones documentales definidas en su Política de verificación. No constituye una recomendación clínica, certificación estatal adicional, garantía de calidad asistencial ni garantía de resultados.';
 
 /** Lo que la plataforma NO hace (Términos y Descargo médico). */
 export const NOT_PROVIDED_SERVICES: string[] = [

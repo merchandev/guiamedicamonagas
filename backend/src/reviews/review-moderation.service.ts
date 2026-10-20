@@ -411,7 +411,7 @@ export class ReviewModerationService {
         link: DOCTOR_PANEL_LINK,
         email: user && {
           to: user.email,
-          subject: `${withdrawn ? 'Retiramos tu respuesta' : 'Tu respuesta no se publicó'} — Guía Médica Monagas`,
+          subject: `${withdrawn ? 'Retiramos tu respuesta' : 'Tu respuesta no se publicó'} — MonagasMed`,
           template: withdrawn ? 'review-reply-withdrawn' : 'review-reply-rejected',
           html: reviewReplyModeratedTemplate(doctorName, withdrawn, dto.reason!, `${FRONTEND_URL}${DOCTOR_PANEL_LINK}`),
         },
@@ -480,7 +480,7 @@ export class ReviewModerationService {
       link: PATIENT_PANEL_LINK,
       email: user && {
         to: user.email,
-        subject: `${titles[kind]} — Guía Médica Monagas`,
+        subject: `${titles[kind]} — MonagasMed`,
         template: `review-${kind.toLowerCase()}`,
         html: reviewModeratedTemplate(firstName ?? 'Paciente', kind, reason, `${FRONTEND_URL}${PATIENT_PANEL_LINK}`, `${FRONTEND_URL}/reclamos`),
       },

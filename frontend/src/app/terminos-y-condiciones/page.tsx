@@ -11,7 +11,7 @@ const SECTIONS: LegalSection[] = [
     body: (
       <>
         <P>
-          Guía Médica Monagas es una <strong>plataforma tecnológica de directorio y conexión</strong>. Permite encontrar,
+          MonagasMed es una <strong>plataforma tecnológica de directorio y conexión</strong>. Permite encontrar,
           identificar y contactar a profesionales médicos independientes; ofrece a esos profesionales herramientas para
           presentar su consulta y organizar su agenda, y ofrece a los pacientes un área privada para guardar su
           información y decidir con quién la comparten.
@@ -25,10 +25,10 @@ const SECTIONS: LegalSection[] = [
   },
   {
     id: 'no-presta',
-    title: 'Lo que Guía Médica Monagas no hace',
+    title: 'Lo que MonagasMed no hace',
     body: (
       <>
-        <P>Guía Médica Monagas no presta, por sí misma ni por cuenta de los profesionales, ninguno de estos servicios:</P>
+        <P>MonagasMed no presta, por sí misma ni por cuenta de los profesionales, ninguno de estos servicios:</P>
         <Ul items={NOT_PROVIDED_SERVICES} />
         <P>
           La plataforma no sustituye al médico tratante, no garantiza resultados médicos y no participa en el acto médico.
@@ -44,11 +44,11 @@ const SECTIONS: LegalSection[] = [
       <>
         <P>
           Los médicos que aparecen en el directorio ejercen de forma <strong>independiente</strong>. No son empleados,
-          agentes ni representantes de Guía Médica Monagas, y la plataforma no dirige ni supervisa sus decisiones
+          agentes ni representantes de MonagasMed, y la plataforma no dirige ni supervisa sus decisiones
           clínicas, sus honorarios, sus horarios ni la forma en que atienden.
         </P>
         <P>
-          <strong>El uso del sitio no crea una relación médico-paciente entre Guía Médica Monagas y el usuario.</strong>{' '}
+          <strong>El uso del sitio no crea una relación médico-paciente entre MonagasMed y el usuario.</strong>{' '}
           La relación asistencial nace entre el paciente y el profesional que lo atiende, fuera de la plataforma, y se rige
           por las normas del ejercicio profesional.
         </P>
@@ -159,7 +159,7 @@ const SECTIONS: LegalSection[] = [
           videos enlazados y mensajes. Debe ser veraz, lícito y no vulnerar derechos de terceros.
         </P>
         <P>
-          Guía Médica Monagas puede retirar o dejar de mostrar contenido que incumpla estos términos o la ley, y atiende
+          MonagasMed puede retirar o dejar de mostrar contenido que incumpla estos términos o la ley, y atiende
           las denuncias por el <DocLink to="reclamos">canal de reclamos</DocLink>. Los derechos sobre el contenido se
           explican en <DocLink to="propiedad-intelectual" />.
         </P>
@@ -184,7 +184,7 @@ const SECTIONS: LegalSection[] = [
       <>
         <P>
           El directorio podrá incluir, ahora o en el futuro, a terceros como farmacias, laboratorios, clínicas u otros
-          establecimientos. Su sola presencia en el directorio no convierte a Guía Médica Monagas en vendedor, farmacia,
+          establecimientos. Su sola presencia en el directorio no convierte a MonagasMed en vendedor, farmacia,
           laboratorio, clínica ni transportista.
         </P>
         <P>
@@ -192,7 +192,7 @@ const SECTIONS: LegalSection[] = [
           terceros se rigen por la relación entre ellos y el usuario. Los hechos exclusivamente imputables a un tercero
           (por ejemplo, un producto equivocado o vencido, un error de dosificación, un retraso o una pérdida en una
           entrega) corresponden a quien resulte responsable conforme a la ley, cuando no exista un acto u omisión
-          imputable a Guía Médica Monagas.
+          imputable a MonagasMed.
         </P>
       </>
     ),
@@ -226,7 +226,7 @@ const SECTIONS: LegalSection[] = [
     body: (
       <>
         <P>
-          <strong>Acto médico.</strong> Guía Médica Monagas no ejecuta el acto médico y no decide el diagnóstico, el
+          <strong>Acto médico.</strong> MonagasMed no ejecuta el acto médico y no decide el diagnóstico, el
           medicamento, la dosis, la cirugía, el procedimiento, las pruebas, el alta ni el seguimiento. Cuando una
           consecuencia sea exclusivamente atribuible al acto de un profesional independiente (negligencia, impericia,
           imprudencia, error diagnóstico, omisión, prescripción o procedimiento), la responsabilidad corresponde a quien
@@ -244,7 +244,7 @@ const SECTIONS: LegalSection[] = [
         </P>
         <Callout title="Límites de estas cláusulas">
           Estas limitaciones se aplican solo dentro de lo que la ley permite. Nada en estos términos excluye ni reduce la
-          responsabilidad que la ley atribuya directamente a Guía Médica Monagas por sus propios actos u omisiones, ni los
+          responsabilidad que la ley atribuya directamente a MonagasMed por sus propios actos u omisiones, ni los
           derechos irrenunciables de los usuarios.
         </Callout>
       </>
@@ -322,7 +322,7 @@ export default function TermsPage() {
       slug="terminos"
       lead={
         <p>
-          Guía Médica Monagas es un directorio tecnológico de profesionales médicos independientes con herramientas
+          MonagasMed es un directorio tecnológico de profesionales médicos independientes con herramientas
           privadas para pacientes. No presta atención médica ni de emergencia. Estas son las reglas para usarlo.
         </p>
       }

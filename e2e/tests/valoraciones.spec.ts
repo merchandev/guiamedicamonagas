@@ -134,7 +134,7 @@ test('sin comentario se publica al instante, el promedio aparece desde la tercer
   await expect(section.getByRole('heading', { name: 'Opiniones de pacientes' })).toBeVisible();
   await expect(section).toContainText('4,0');
   await expect(section).toContainText('3 opiniones');
-  await expect(section).toContainText('No son una recomendación de Guía Médica Monagas');
+  await expect(section).toContainText('No son una recomendación de MonagasMed');
   await expect(section.getByRole('img', { name: '4 de 5 estrellas' }).first()).toBeVisible();
   const { violations } = await new AxeBuilder({ page: publicPage }).include('#opiniones').withTags(['wcag2a', 'wcag2aa']).analyze();
   expect(violations.map((v) => `${v.id}: ${v.nodes.length}`)).toEqual([]);

@@ -104,7 +104,7 @@ test('SEO: URL canónica (sin filtros) y tarjeta para compartir en las páginas 
 test('/version.json dice qué versión está publicada y no se guarda en caché', async ({ request }) => {
   const res = await request.get('/version.json');
   expect(res.ok()).toBeTruthy();
-  expect(await res.json()).toMatchObject({ service: 'Guia Medica Monagas web', version: expect.any(String) });
+  expect(await res.json()).toMatchObject({ service: 'MonagasMed web', version: expect.any(String) });
   expect(res.headers()['cache-control']).toContain('no-store');
 });
 

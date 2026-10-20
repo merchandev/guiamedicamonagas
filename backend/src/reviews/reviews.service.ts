@@ -418,7 +418,7 @@ export class ReviewsService {
       link: DOCTOR_PANEL_LINK,
       email: user && {
         to: user.email,
-        subject: 'Tienes una opinión nueva en Guía Médica Monagas',
+        subject: 'Tienes una opinión nueva en MonagasMed',
         html: reviewPublishedTemplate(`${professional.firstName} ${professional.lastName}`, `${FRONTEND_URL}${DOCTOR_PANEL_LINK}`),
         template: 'review-published',
       },

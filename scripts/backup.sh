@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# Respaldo cifrado de Guía Médica Monagas (proyecto Compose gmm-independent).
+# Respaldo cifrado de MonagasMed (proyecto Compose gmm-independent).
 #
 #   scripts/backup.sh                  # base de datos
 #   scripts/backup.sh --with-files     # base de datos + archivos de MinIO

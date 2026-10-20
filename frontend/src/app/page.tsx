@@ -2,7 +2,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { serverGet } from '@/lib/server-fetch';
 import { ORGANIZATIONS_LAUNCHED } from '@/lib/features';
-import { SITE_NAME } from '@/lib/seo';
+import { SITE_NAME, SITE_TITLE } from '@/lib/seo';
 import { Organization, PaginatedResult, ProfessionalListItem, Specialty } from '@/lib/types';
 import { Badge } from '@/components/ui/Badge';
 import { DoctorCard } from '@/components/DoctorCard';
@@ -112,7 +112,7 @@ export const metadata: Metadata = {
     siteName: SITE_NAME,
     locale: 'es_VE',
     url: '/',
-    title: 'Guía Médica Monagas — Directorio médico verificado',
+    title: SITE_TITLE,
     description:
       'Directorio de médicos y especialistas del estado Monagas con verificación documental de sus credenciales. Busca por especialidad, municipio o código.',
   },
@@ -422,7 +422,7 @@ export default async function HomePage() {
                 <div className="flex items-center gap-2 rounded-lg bg-white/95 px-4 py-3 shadow-soft">
                   <WhatsAppIcon className="h-5 w-5 flex-shrink-0 text-[#25D366]" />
                   <p className="text-sm text-ink-800">
-                    Hola doctor, ¿tiene cupo esta semana? Lo vi en Guía Médica Monagas.
+                    Hola doctor, ¿tiene cupo esta semana? Lo vi en MonagasMed.
                   </p>
                 </div>
                 <ul className="mt-4 space-y-3 text-sm text-pine-100">

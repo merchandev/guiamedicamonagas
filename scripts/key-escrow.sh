@@ -76,7 +76,7 @@ case "${1:-}" in
     umask 077
     OUT="${OUT_DIR}/gmm-custodia-$(date -u +%Y%m%dT%H%M%SZ).txt.gpg"
     {
-      echo "# Custodia de claves de Guía Médica Monagas — $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+      echo "# Custodia de claves de MonagasMed — $(date -u +%Y-%m-%dT%H:%M:%SZ)"
       echo "# Guardar FUERA del servidor: gestor de contraseñas y una copia sin conexión."
       echo "# Sin estas claves no se pueden leer los datos cifrados ni abrir los respaldos."
       echo "# Recuperación: docs/operations/respaldos-y-restauracion.md"

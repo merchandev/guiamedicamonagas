@@ -684,7 +684,7 @@ export class ProfessionalsService implements OnApplicationBootstrap {
       content:
         note ??
         (suspended
-          ? 'Tu perfil fue suspendido por el equipo de Guía Médica Monagas.'
+          ? 'Tu perfil fue suspendido por el equipo de MonagasMed.'
           : visible
             ? 'Tu perfil fue reactivado y vuelve a estar visible.'
             : 'Tu perfil fue reactivado. Completa los requisitos de tu panel para volver al directorio.'),
@@ -692,7 +692,7 @@ export class ProfessionalsService implements OnApplicationBootstrap {
       email: visible
         ? {
             to: profile.user.email,
-            subject: 'Tu perfil fue reactivado — Guía Médica Monagas',
+            subject: 'Tu perfil fue reactivado — MonagasMed',
             html:
               updated.verificationStatus === 'VERIFIED' || !status
                 ? profileVerifiedTemplate(profile.firstName, profileUrl)

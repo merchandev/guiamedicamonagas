@@ -93,7 +93,7 @@ export class AccountPurgeService {
           name: appt.patient.firstName ?? 'Paciente',
           startsAt: appt.startsAt,
           content: 'se canceló: el médico ya no está disponible en la plataforma.',
-          reason: `Dr(a). ${doctorName} ya no está disponible en Guía Médica Monagas`,
+          reason: `Dr(a). ${doctorName} ya no está disponible en MonagasMed`,
         });
       }
       fileKeys.push(...[professional.photoUrl, ...professional.documents.map((d) => d.fileKey)].filter((k): k is string => !!k));
@@ -345,9 +345,9 @@ export class AccountPurgeService {
           content: `Tu cita del ${dateLabel} ${timeLabel} ${notice.content}`,
           email: {
             to: notice.email,
-            subject: 'Cita cancelada — Guía Médica Monagas',
+            subject: 'Cita cancelada — MonagasMed',
             template: 'appointment_cancelled',
-            html: appointmentCancelledTemplate(notice.name, { dateLabel, timeLabel, reason: notice.reason }, 'el equipo de Guía Médica Monagas'),
+            html: appointmentCancelledTemplate(notice.name, { dateLabel, timeLabel, reason: notice.reason }, 'el equipo de MonagasMed'),
           },
         })
         .catch((error: Error) => this.logger.warn(`Aviso de cita cancelada no enviado: ${error.message}`));
@@ -361,7 +361,7 @@ export class AccountPurgeService {
   private async sendFinalNotice(userId: string, email: string, name: string) {
     await this.mail.send({
       to: email,
-      subject: 'Tu cuenta fue eliminada — Guía Médica Monagas',
+      subject: 'Tu cuenta fue eliminada — MonagasMed',
       html: accountPurgedTemplate(name),
       template: 'account_purged',
       relatedUserId: userId,

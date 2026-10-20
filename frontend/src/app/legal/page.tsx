@@ -11,7 +11,7 @@ import {
 export const metadata: Metadata = {
   title: 'Centro legal',
   description:
-    'Todos los textos legales de Guía Médica Monagas: términos, privacidad, datos de salud, verificación de profesionales, pagos, seguridad y reclamos.',
+    'Todos los textos legales de MonagasMed: términos, privacidad, datos de salud, verificación de profesionales, pagos, seguridad y reclamos.',
   alternates: { canonical: '/legal' },
 };
 
@@ -22,7 +22,7 @@ export default function LegalCenterPage() {
     <div className="container-page max-w-4xl py-12">
       <h1 className="text-3xl">Centro legal</h1>
       <p className="mt-2 max-w-2xl text-ink-600">
-        Aquí están todos los textos que regulan el uso de Guía Médica Monagas. Cada uno lleva su versión y su fecha;
+        Aquí están todos los textos que regulan el uso de MonagasMed. Cada uno lleva su versión y su fecha;
         vigentes desde el {LEGAL_EFFECTIVE_DATE_LABEL}.
       </p>
       <p className="mt-4 rounded-lg border border-pine-200 bg-pine-50 px-4 py-3 text-sm text-pine-900">

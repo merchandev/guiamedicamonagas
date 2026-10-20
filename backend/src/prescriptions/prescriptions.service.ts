@@ -511,7 +511,7 @@ export class PrescriptionsService {
       link,
       email: {
         to: patient.email,
-        subject: 'Tienes un récipe nuevo — Guía Médica Monagas',
+        subject: 'Tienes un récipe nuevo — MonagasMed',
         template: 'prescription_received',
         html: prescriptionReceivedTemplate(patient.firstName ?? 'Paciente', doctorName, caracasLongDate(prescription.expiresAt), `${this.frontendUrl}${link}`),
       },
@@ -665,7 +665,7 @@ export class PrescriptionsService {
           link,
           email: {
             to: patient.user.email,
-            subject: 'Récipe anulado — Guía Médica Monagas',
+            subject: 'Récipe anulado — MonagasMed',
             template: 'prescription_annulled',
             html: prescriptionAnnulledTemplate(patient.firstName ?? 'Paciente', doctorName, label, `${this.frontendUrl}${link}`),
           },
