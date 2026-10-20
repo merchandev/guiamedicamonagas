@@ -186,7 +186,7 @@ fi
 echo "Arrancando los servicios de datos y el antivirus..."
 "${COMPOSE[@]}" up -d --no-deps "${DATA_SERVICES[@]}" clamav
 deadline=$((SECONDS + 180))
-until timeout 10 "${COMPOSE[@]}" exec -T postgres pg_isready -U "${DB_USER}" -d "${DB_NAME}" -t 5 -q; do
+until timeout 30 "${COMPOSE[@]}" exec -T --interactive=false postgres pg_isready -U "${DB_USER}" -d "${DB_NAME}" -t 5 -q; do
   if (( SECONDS >= deadline )); then
     echo "ERROR: PostgreSQL no estuvo listo en 180 segundos." >&2
     exit 1
