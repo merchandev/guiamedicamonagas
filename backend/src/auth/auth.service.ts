@@ -3,6 +3,7 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -222,7 +223,7 @@ export class AuthService {
     return this.issueTokens(user, ipAddress);
   }
 
-  private async sendVerificationEmail(userId: string, email: string, name: string) {
+  private async sendVerificationEmail(userId: string, email: string, name: string): Promise<boolean> {
     const rawToken = randomBytes(32).toString('hex');
     await this.prisma.verificationToken.create({
       data: {
@@ -233,7 +234,7 @@ export class AuthService {
       },
     });
     const verifyUrl = `${this.config.get('FRONTEND_URL', { infer: true })}/verificar-correo?token=${rawToken}`;
-    await this.mail.send({
+    return this.mail.send({
       to: email,
       subject: 'Confirma tu correo — Guía Médica Monagas',
       html: emailVerificationTemplate(name, verifyUrl),
@@ -248,7 +249,8 @@ export class AuthService {
       throw new BadRequestException('Este correo ya fue verificado');
     }
     const profile = await this.prisma.professionalProfile.findUnique({ where: { userId } });
-    await this.sendVerificationEmail(user.id, user.email, profile?.firstName ?? user.email);
+    const sent = await this.sendVerificationEmail(user.id, user.email, profile?.firstName ?? user.email);
+    if (!sent) throw new ServiceUnavailableException('No pudimos enviar el correo de verificación. Intenta de nuevo más tarde.');
     return { message: 'Correo de verificación reenviado' };
   }
 

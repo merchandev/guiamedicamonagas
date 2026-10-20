@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { ApiError } from '@/lib/api';
+import { api, ApiError } from '@/lib/api';
 import { homePathFor, useAuth } from '@/lib/auth-context';
 import { RequireAuth } from '@/components/RequireAuth';
 import { Input } from '@/components/ui/Input';
@@ -41,6 +41,9 @@ export default function AccountSecurityPage() {
 function AccountSecurity() {
   const router = useRouter();
   const { user, changePassword, logoutAll } = useAuth();
+  const [verificationBusy, setVerificationBusy] = useState(false);
+  const [verificationMessage, setVerificationMessage] = useState<string | null>(null);
+  const [verificationError, setVerificationError] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordChanged, setPasswordChanged] = useState(false);
   const [confirmingLogoutAll, setConfirmingLogoutAll] = useState(false);
@@ -78,6 +81,20 @@ function AccountSecurity() {
     }
   };
 
+  const onResendVerification = async () => {
+    setVerificationBusy(true);
+    setVerificationMessage(null);
+    setVerificationError(null);
+    try {
+      await api.post('/auth/resend-verification');
+      setVerificationMessage('Correo enviado. Revisa tu bandeja de entrada y la carpeta de correo no deseado.');
+    } catch (error) {
+      setVerificationError(error instanceof ApiError ? error.message : 'No se pudo enviar el correo de verificación.');
+    } finally {
+      setVerificationBusy(false);
+    }
+  };
+
   return (
     <div className="container-page max-w-2xl space-y-6 py-10">
       <div>
@@ -87,6 +104,27 @@ function AccountSecurity() {
         <h1 className="mt-2 text-2xl">Seguridad de la cuenta</h1>
         <p className="mt-1 text-sm text-ink-600">{user?.email}</p>
       </div>
+
+      <section className="card space-y-4 p-6">
+        <div>
+          <h2 className="text-lg font-semibold text-ink-900">Verificación del correo</h2>
+          <p className="mt-1 text-sm text-ink-600">{user?.email}</p>
+        </div>
+        {user?.isEmailVerified ? (
+          <Alert tone="success">Tu correo está verificado.</Alert>
+        ) : (
+          <>
+            <Alert tone="warning">Tu correo aún no está verificado. Usa el enlace que te enviamos para confirmar la cuenta.</Alert>
+            {verificationMessage && <Alert tone="success">{verificationMessage}</Alert>}
+            {verificationError && <Alert tone="error">{verificationError}</Alert>}
+            <div className="flex justify-end">
+              <Button type="button" variant="outline" loading={verificationBusy} onClick={() => void onResendVerification()}>
+                Reenviar verificación
+              </Button>
+            </div>
+          </>
+        )}
+      </section>
 
       <form onSubmit={handleSubmit(onSubmit)} className="card space-y-4 p-6">
         <div>
